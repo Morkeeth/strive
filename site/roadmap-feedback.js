@@ -5,9 +5,12 @@ window.StriveFeedback=function({client,me,signIn}){
  document.body.append(root);const dialog=root.querySelector('dialog'),form=root.querySelector('form'),message=form.elements.message,state=root.querySelector('[role=status]'),send=form.querySelector('[type=submit]');let owner,requestId=crypto.randomUUID(),busy=false,ambiguous=false,revised=false;
  message.addEventListener('input',()=>{requestId=crypto.randomUUID();if(ambiguous){revised=true;state.textContent='The earlier message may already be saved. Send this edited text as a new message.';sync()}});
  const loginKey='strive_feedback_login_draft';
+ const freshLogin=draft=>Number.isFinite(draft?.at)&&Date.now()-draft.at>=0&&Date.now()-draft.at<30*60*1000;
  let pendingLogin=null;
- try{const draft=JSON.parse(sessionStorage.getItem(loginKey)||'null');if(draft&&typeof draft.text==='string'&&draft.text.length<=2000&&Date.now()-draft.at<30*60*1000)pendingLogin=draft;else sessionStorage.removeItem(loginKey)}catch(_){}
- function sync(){const next=me()?.id||null;if(next!==owner){const was=owner;owner=next;
+ try{const draft=JSON.parse(sessionStorage.getItem(loginKey)||'null');if(draft&&typeof draft.text==='string'&&draft.text.length<=2000&&freshLogin(draft))pendingLogin=draft;else sessionStorage.removeItem(loginKey)}catch(_){}
+ function sync(){const next=me()?.id||null;
+   if(pendingLogin&&!freshLogin(pendingLogin)){pendingLogin=null;try{sessionStorage.removeItem(loginKey)}catch(_){};requestId=crypto.randomUUID();state.textContent=''}
+   if(next!==owner){const was=owner;owner=next;
    // Only an explicitly staged signed-out draft can cross a login boundary.
    if(!was&&next&&pendingLogin){message.value=pendingLogin.text;requestId=pendingLogin.id;pendingLogin=null;try{sessionStorage.removeItem(loginKey)}catch(_){};state.textContent='Your draft is ready. Review it, then send.';if(!dialog.open)dialog.showModal();message.focus()}
    else if(was){ambiguous=false;revised=false;message.value='';state.textContent='';requestId=crypto.randomUUID();pendingLogin=null;try{sessionStorage.removeItem(loginKey)}catch(_){}}
