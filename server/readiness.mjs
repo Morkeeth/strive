@@ -8,7 +8,7 @@ export async function readiness(config,{fetcher=fetch,storageKey=process.env.STR
  const tables={
   profiles:'profiles?select=id,handle,github_handle,display_name&limit=0',
   runs:'runs?select=id,title,visibility,measurement_revision,rhythm,ridge,code_route,hero_visual,history_evidence&limit=0',
-  photos:'run_photos?select=id,run_id,width,height,byte_size,is_cover&limit=0'
+  photos:'run_photos?select=id,run_id,width,height,byte_size,is_cover,content_sha256&limit=0'
  };
  const checks=Object.fromEntries(await Promise.all(Object.entries(tables).map(async([name,path])=>[name,(await read('/rest/v1/'+path))?.ok?'ready':'unavailable'])));
  // An anonymous caller must reach the RPC but be denied, not receive a missing-function error.

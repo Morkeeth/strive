@@ -79,3 +79,10 @@ friend, unrelated signed-in reader and anonymous contexts, then revoke access an
 In Photos, use **Use as cover** on a saved photo. The other photos remain in the gallery. The selected cover is shown first on cards and public run pages, and the image keeps the crop you approved. If no explicit cover remains, the oldest remaining photo is used. Removing the cover does not delete the other photos.
 
 Only the run owner can choose its cover. The server checks ownership and the database changes the selection atomically. Photo access still follows the run's current audience.
+
+
+## Exact upload retries
+
+Adding the same sanitized image again to the same run returns the existing photo, without changing its cover choice or writing another image. The UI explains that it is already there. An in-progress upload returns a retry message rather than claiming completion. Migration `028_photo_duplicate.sql` adds per-run exact-content uniqueness for new uploads; existing photos without a stored digest are compared by stored bytes when adding an image.
+
+This is exact-image retry handling, not visual-similarity detection. Different crops or encodings may remain distinct. Authors can choose the same image for different runs; no cross-run private-data lookup or automatic reassignment is made. Existing public cover reuse needs the author's intended replacement choice. No bulk deletion or reassignment occurs.

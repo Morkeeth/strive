@@ -11,12 +11,13 @@ begin
       or jsonb_typeof(new.history_evidence) is distinct from 'object' or octet_length(new.history_evidence::text)>2048 then
     raise exception 'Choose a source-indexed historical summary';
    end if;
-   if (select count(*) from jsonb_object_keys(new.history_evidence))<>6 or exists(select 1 from jsonb_object_keys(new.history_evidence) k where k not in ('first_observed_at','last_observed_at','history_entries','repo_commits','repo_revision','source_ref')) then raise exception 'Unsupported historical evidence field'; end if;
+   if (select count(*) from jsonb_object_keys(new.history_evidence))<>8 or exists(select 1 from jsonb_object_keys(new.history_evidence) k where k not in ('first_observed_at','last_observed_at','history_entries','repo_commits','repo_revision','source_ref','repo_window_start','repo_window_end')) then raise exception 'Unsupported historical evidence field'; end if;
    foreach field in array array['history_entries','repo_commits'] loop
     if strava.grinder_is_safe_count(new.history_evidence->field) is not true then raise exception 'Historical counts need source references'; end if;
    end loop;
    if new.history_evidence->>'repo_revision' is null or new.history_evidence->>'repo_revision' !~ '^[a-f0-9]{40}$' or new.history_evidence->>'source_ref' is null or new.history_evidence->>'source_ref' !~ '^[a-f0-9]{64}$' then raise exception 'Historical source reference missing'; end if;
    if new.history_evidence->>'first_observed_at' !~ '^\d{4}-\d{2}-\d{2}T' or new.history_evidence->>'last_observed_at' !~ '^\d{4}-\d{2}-\d{2}T' or new.history_evidence->>'first_observed_at' is null or new.history_evidence->>'last_observed_at' is null or (new.history_evidence->>'first_observed_at')::timestamptz>(new.history_evidence->>'last_observed_at')::timestamptz or (new.history_evidence->>'last_observed_at')::timestamptz>now() then raise exception 'Invalid historical source window'; end if;
+   if new.history_evidence->>'repo_window_start' is null or new.history_evidence->>'repo_window_end' is null or new.history_evidence->>'repo_window_start' !~ '^\d{4}-\d{2}-\d{2}T' or new.history_evidence->>'repo_window_end' !~ '^\d{4}-\d{2}-\d{2}T' or (new.history_evidence->>'repo_window_start')::timestamptz >= (new.history_evidence->>'repo_window_end')::timestamptz or (new.history_evidence->>'repo_window_end')::timestamptz > now() then raise exception 'Invalid repository query window'; end if;
    foreach field in array array['started_at','harness','model','prompts','duration_s','wall_time_s','tool_calls','shell_calls','files_touched','commits','claims','claims_verified','artifacts_produced','rhythm','route','tool_mix','ridge','worker_bins','commit_bins','ridge_basis','ridge_wall_seconds','ridge_tool_calls','code_route','progress_delta'] loop
     if to_jsonb(new)->field <> 'null'::jsonb then raise exception 'Historical reconstruction cannot claim session metrics'; end if;
    end loop;

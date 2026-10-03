@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import H from '../site/historical-import.js';
-const fixture={schema:'local-historical-recovery-v1',source:{full_transcript_recovered:false,contains_raw_prompt_text:false,rows:[{timestamp_ms:1700000000000,line_sha256:'a'.repeat(64)}]},observed_history:{unique_timestamped_entries:1},repo_evidence:{reachable_commits_in_utc_window:[],commit_count:0,frozen_head:'b'.repeat(40)}};
+const fixture={schema:'local-historical-recovery-v1',source:{full_transcript_recovered:false,contains_raw_prompt_text:false,rows:[{timestamp_ms:1700000000000,line_sha256:'a'.repeat(64)}]},observed_history:{unique_timestamped_entries:1},repo_evidence:{window:['2023-11-01T00:00:00Z','2023-12-01T00:00:00Z'],reachable_commits_in_utc_window:[],commit_count:0,frozen_head:'b'.repeat(40)}};
 const dom=new JSDOM('<main></main>'),slot=dom.window.document.querySelector('main');
 let person={id:'first'},generation=1,resolveLookup,inserted=false,opened=false;
 const lookup=new Promise(resolve=>{resolveLookup=resolve;});

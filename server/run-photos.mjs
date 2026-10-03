@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const MAX_PHOTO_BYTES=3*1024*1024;
@@ -87,10 +87,25 @@ export async function runPhotos({method,headers={},query={},body},config,fetchIm
    // INSERT RLS proves ownership and the captured source before the server writes any bytes.
    const image=await sanitizePhoto(body?.image_base64).catch(()=>null);
    if(!image) return result(400,{error:'Choose a still JPEG, PNG or WebP photo under 3 MB (up to 40 megapixels).'});
-   const p={id:randomUUID(),run_id:runId,width:image.width,height:image.height,byte_size:image.data.length};
+   const digest=createHash('sha256').update(image.data).digest('hex');
+   async function existingPhoto(){
+    const candidates=await rows('run_photos?select='+fields+',content_sha256&run_id=eq.'+runId);
+    for(const candidate of candidates){
+     if(candidate.content_sha256&&candidate.content_sha256!==digest)continue;
+     const stored=await storage('authenticated/'+BUCKET+'/'+path(candidate),{method:'GET'});
+     if(!stored.ok){if(candidate.content_sha256===digest)return result(409,{error:'This photo is still being added. Wait a moment, then try again.'});continue;}
+     if(createHash('sha256').update(Buffer.from(await stored.arrayBuffer())).digest('hex')===digest){
+      const {content_sha256,...visible}=candidate;
+      return result(200,{photo:present(visible),duplicate:true});
+     }
+    }
+    return null;
+   }
+   const prior=await existingPhoto();if(prior)return prior;
+   const p={id:randomUUID(),run_id:runId,width:image.width,height:image.height,byte_size:image.data.length,content_sha256:digest};
    let saved;
    try {saved=await rows('run_photos?select='+fields,{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(p)});}
-   catch(error) {return result(error.status===401?401:400,{error:'This run cannot accept the photo. Use your own recorded session, with no more than six photos.'});}
+   catch(error) {if(error.status===409){const prior=await existingPhoto();if(prior)return prior;}return result(error.status===401?401:400,{error:'This run cannot accept the photo. Use your own recorded session, with no more than six photos.'});}
    let uploaded;
    try {uploaded=await storage(BUCKET+'/'+path(p),{method:'POST',headers:{'Content-Type':'image/jpeg','x-upsert':'false'},body:image.data});} catch {}
    if(!uploaded?.ok) {
