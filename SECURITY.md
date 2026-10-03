@@ -4,11 +4,9 @@
 
 Do not put exploit details, credentials, sign-in links, tokens, private photos or session contents in a public issue or pull request.
 
-GitHub private vulnerability reporting was **not enabled** for this repository when checked on 3 October 2026. No dedicated security email or response-time guarantee is published here. Do not assume an unlisted GitHub URL is a private reporting channel.
+Use [GitHub private vulnerability reporting](https://github.com/Morkeeth/strive/security/advisories/new) for security issues. It is enabled for this repository. Include the affected version, safe reproduction steps, impact and a minimal redacted example. Do not test against other users' records or send live credentials, private photos or raw transcripts.
 
-Use the signed-in [STRIVE feedback form](https://striverun.app/?feedback) to request a private reporting route. At this stage send only a short description of the affected feature and a request for secure contact, without the exploit, another person's data or a secret. The feedback message is stored for the operator; a notification is separate and may fail. This is not an encrypted security inbox or a guaranteed response channel.
-
-If feedback is unavailable, a [public issue](https://github.com/Morkeeth/strive/issues) may ask only how to make a private report. Wait for the maintainer to establish an appropriate private channel before providing sensitive details. Once provided, include the affected version, safe reproduction steps, impact and a minimal redacted example. Do not test against other users' records.
+For ordinary product bugs and ideas, use the signed-in [STRIVE feedback form](https://striverun.app/?feedback) or public issues. Feedback is stored for the operator; a notification is separate and may fail. No response-time guarantee or independent security certification is claimed.
 
 ## Boundaries to preserve
 
