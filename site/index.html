@@ -532,7 +532,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 /* 390 px: every tap target at least 44px tall (fresh-eyes review, 25 Sep 2026). */
 @media(max-width:700px){.bar .mark,.feed-tabs a,.section-tabs a,.land-head a,.launch-more a{display:inline-flex;align-items:center;min-height:44px}input[type=checkbox]{width:22px;height:22px}label:has(input[type=checkbox]){min-height:44px}button,.act{min-height:44px}}
 
-.capture-welcome{padding:24px 0 26px;max-width:760px}.capture-welcome h2{font-size:clamp(25px,4vw,38px);letter-spacing:-.04em;margin:8px 0 12px}.capture-welcome>p{max-width:560px;line-height:1.55}.capture-steps{list-style:none;padding:0;margin:24px 0;display:flex;gap:18px;flex-wrap:wrap}.capture-steps li{display:flex;align-items:center;gap:8px;font-size:13px}.capture-steps b{display:grid;place-items:center;border:1px solid var(--blue);color:var(--blue);border-radius:50%;width:26px;height:26px}.capture-actions{display:flex;gap:10px;flex-wrap:wrap}.capture-terminal,.capture-sync,.advanced-connect{margin:12px 0}.capture-terminal>summary,.capture-sync>summary{padding:16px;cursor:pointer}.capture-welcome .hint{margin-top:14px}.loading-card{overflow:hidden}.capture-actions .act{transition:transform .16s ease,box-shadow .16s ease}.capture-actions .act:hover{transform:translateY(-2px);box-shadow:0 4px 0 rgba(37,99,235,.1)}.capture-actions .act:active{transform:translateY(0)}
+.capture-welcome{padding:24px 0 26px;max-width:760px}.capture-welcome h2{font-size:clamp(25px,4vw,38px);letter-spacing:-.04em;margin:8px 0 12px}.capture-welcome>p{max-width:560px;line-height:1.55}.capture-steps{list-style:none;padding:0;margin:24px 0;display:flex;gap:18px;flex-wrap:wrap}.capture-steps li{display:flex;align-items:center;gap:8px;font-size:13px}.capture-steps b{display:grid;place-items:center;border:1px solid var(--blue);color:var(--blue);border-radius:50%;width:26px;height:26px}.capture-actions{display:flex;gap:10px;flex-wrap:wrap}.capture-terminal,.capture-sync,.advanced-connect{margin:12px 0}.capture-terminal>summary,.capture-sync>summary,.advanced-connect>summary{box-sizing:border-box;min-height:52px;padding:16px;cursor:pointer;font-size:14px;line-height:20px}.capture-terminal[open]>summary,.capture-sync[open]>summary,.advanced-connect[open]>summary{border-bottom:1px solid var(--rule)}.capture-terminal>.pad,.capture-sync>.pad,.advanced-connect>.pad{padding:18px 16px}.sync-command{margin-top:12px}.sync-command>summary{cursor:pointer;padding:10px 0;font-size:13px}.sync-command .cmd{margin:8px 0}.sync-command .c{overflow-wrap:anywhere;white-space:normal}#app:has(.capture-welcome){padding-bottom:24px}.capture-welcome .hint{margin-top:14px}.loading-card{overflow:hidden}.capture-actions .act{transition:transform .16s ease,box-shadow .16s ease}.capture-actions .act:hover{transform:translateY(-2px);box-shadow:0 4px 0 rgba(37,99,235,.1)}.capture-actions .act:active{transform:translateY(0)}
 @media(prefers-reduced-motion:no-preference){
   .account-menu[open]>.account-panel{transform-origin:top right;animation:menu-in .14s ease-out both}
   .bar .right>.icon-button,.bar .right>.account-menu>summary,button,.act{transition:background-color .12s ease,color .12s ease,opacity .12s ease,transform .12s ease}
@@ -1540,9 +1540,9 @@ const ONE_LINE=h=>`uvx --from __CAPTURE_PACKAGE__ agentgrinder grind${h?' --harn
 const SYNC_LINE=t=>`uvx --from __CAPTURE_PACKAGE__ agentgrinder sync --install --site __ORIGIN__ --token ${t}`;
 function autoSyncHtml(){
   return `<section class="auto-sync" id="auto-sync" aria-labelledby="auto-sync-title">
-    <h2 id="auto-sync-title">Keep your next runs coming</h2>
-    <p>Optional: this uploads the last 7 days of sessions privately, then checks every 15 minutes. Turn it on only on your own computer. Every finished Claude Code, Cursor and Codex session then arrives in <a href="/?mine">My runs</a> as a private run, every 15 minutes. Only the counts leave the computer. Nothing is public until you publish it.</p>
-    <div id="auto-sync-body">${ME?`<button type="button" class="act primary" id="auto-sync-go">Turn on automatic sync</button>`:`<button type="button" class="act primary" data-signin>${signInLabel()} to turn it on</button>`}</div>
+    <h3 id="auto-sync-title">Automatic private imports</h3>
+    <p>On your own computer, import the last 7 days of Claude Code, Cursor and Codex sessions, then check every 15 minutes. Runs arrive privately in <a href="/?mine">My runs</a>. Setup starts only when you run the command.</p>
+    <div id="auto-sync-body">${ME?`<button type="button" class="act primary" id="auto-sync-go">Prepare automatic sync</button>`:`<button type="button" class="act primary" data-signin>${signInLabel()} to prepare sync</button>`}</div>
     <p class="hint" id="auto-sync-state" role="status" aria-live="polite"></p>
   </section>`;
 }
@@ -1556,9 +1556,10 @@ function wireAutoSync(root){
       const token=data&&typeof data.token==='string'?data.token:'';
       if(!token) throw new Error('No token came back. Try again.');
       const line=SYNC_LINE(token);
-      $('auto-sync-body').innerHTML=`<p><b>Run this once in a terminal on that computer.</b> It is shown once. It uploads the last 7 days of sessions as private runs, then checks every 15 minutes.</p>
-        <div class="cmd"><span class="c">${esc(line)}</span><button type="button" class="act" data-copy="${esc(line)}">Copy</button></div>
-        <p class="hint">Needs <a href="https://docs.astral.sh/uv/">uv</a>. Stop it any time with <code>agentgrinder sync --uninstall</code>. The token works for 30 days and uploads private runs only; revoke it under <a href="/?connect=auto">Connections</a>.</p>`;
+      $('auto-sync-body').innerHTML=`<p><b>Ready to install on your computer.</b> Copy and run this once. Keep it private: the command contains your upload token and is available only here.</p>
+        <button type="button" class="act primary" data-copy-sync data-copy="${esc(line)}">Copy install command</button>
+        <details class="sync-command"><summary>Show terminal command</summary><div class="cmd"><span class="c">${esc(line)}</span></div></details>
+        <p class="hint">Needs <a href="https://docs.astral.sh/uv/">uv</a>. Token expires after 30 days; <a href="/?connect=auto">revoke it in Connections</a>. To stop local sync, run <code>agentgrinder sync --uninstall</code>.</p>`;
       if(state) state.textContent='';
       wireConnectCopies($('auto-sync-body'));
     }catch(e){ go.disabled=false; if(state) state.textContent=(e&&e.message)||'The token could not be made. Try again.'; }
@@ -1567,8 +1568,6 @@ function wireAutoSync(root){
 function connectBodyHtml(){
   const capture=ONE_LINE('auto');
   const agentPrompt=`Open ${location.origin}/agents.md and help me preview this session on STRIVE. Keep it local until I choose to save it.`;
-  const hook='python3 -m agentgrinder hook install --harness cursor --open';
-  const mcp='python3 -m agentgrinder connect cursor --project /your/project --install';
   return `<section class="capture-welcome" aria-labelledby="capture-welcome-title">
       <span class="run-story-label">Your next stride</span><h2 id="capture-welcome-title">Bring your first run</h2>
       <p>Pick a session, save it privately, then add a photo and what happened. Choose who sees it.</p>
@@ -1583,10 +1582,7 @@ function connectBodyHtml(){
     </div></details>
     <details class="panel capture-sync"><summary>Optional: import future sessions automatically</summary><div class="pad">${autoSyncHtml()}</div></details>
     <details class="panel manual-post advanced-connect"><summary>Other import methods</summary><div class="pad">
-      <h3>Open a local preview when Cursor finishes</h3><div class="cmd"><span class="c">${esc(hook)}</span><button type="button" class="act" data-copy="${esc(hook)}">Copy Cursor hook</button></div>
-      <p class="hint">This older hook opens a local preview when a Cursor run ends. It does not upload or publish.</p>
-      <h3>Connect through MCP</h3><div class="cmd"><span class="c">${esc(mcp)}</span><button type="button" class="act" data-copy="${esc(mcp)}">Copy MCP setup</button></div>
-      <p class="hint">Replace /your/project with the project folder. Replace cursor with claude when needed.</p>
+      <p class="hint">Need an MCP connection or another agent setup? <a href="/agents.md">Read the agent setup guide</a>.</p>
       <h3>Import a session file manually</h3>${dropZoneHtml()}
       <p class="hint">Finder: press Cmd+Shift+G and paste the session folder. Claude Code: ${esc(AGENT_FILES[0][1])} · Cursor: ${esc(AGENT_FILES[1][1])} · Codex: ${esc(AGENT_FILES[2][1])}</p>
       <p class="hint"><a href="/agents.md">Agent setup and Grok transcript instructions</a></p>
@@ -1992,7 +1988,7 @@ function postComposerHtml({first=false}={}){
 async function viewPost(){
   setPrimarySection('post');
   frame(railHtml('post'),null);
-  $('app').innerHTML=`<div class="head"><h1>Add a run</h1><span class="meta">capture → preview → share</span></div>
+  $('app').innerHTML=`<div class="head"><h1>Add a run</h1></div>
     ${connectBodyHtml()}
     ${ME?'':'<div class="panel pad auth-empty"><h3>Sign in to save</h3><p>Sign in to save the run and choose who can read it.</p><button id="post-signin" class="act blue">'+signInLabel()+'</button></div>'}`;
   if(window.GrinderDropinUI) GrinderDropinUI.mount({privateFirst:true,post:token=>{history.pushState(null,'','/#import='+token);route();}});

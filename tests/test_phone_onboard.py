@@ -24,7 +24,7 @@ def test_one_page_auto_capture_with_advanced_import():
     assert "${dropZoneHtml()}" in body
     assert "const capture=ONE_LINE('auto')" in body
     assert "Other import methods" in body
-    assert "Connect through MCP" in body
+    assert "Read the agent setup guide" in body
     assert "uvx --from __CAPTURE_PACKAGE__ agentgrinder grind" in HTML
     for path in ("~/.claude/projects/", "~/.cursor/projects/", "~/.codex/sessions/"):
         assert path in HTML

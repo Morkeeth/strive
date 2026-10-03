@@ -18,7 +18,7 @@ def test_capture_is_primary_and_manual_import_is_advanced():
     connect = INDEX[INDEX.index("function connectBodyHtml()") : INDEX.index("function wireConnectCopies")]
     assert "Preview your latest session" in connect
     assert "Copy link for your agent" in connect
-    assert "Open a local preview when Cursor finishes" in connect
+    assert "Read the agent setup guide" in connect
     assert '<summary>Other import methods</summary>' in connect
     assert connect.index("Copy link for your agent") < connect.index("Import a session file manually")
     assert "<h2>Then</h2>" not in connect

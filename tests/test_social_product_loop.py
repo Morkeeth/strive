@@ -19,7 +19,8 @@ def test_post_page_exposes_priority_harnesses_and_private_preview():
     assert "docs/GROK-PUSH.md" in connect
     assert "${connectBodyHtml()}" in block
     assert "Capture from Cursor, Claude Code, Codex or Grok Bot" in composer
-    assert "capture → preview → share" in block
+    assert "capture → preview → share" not in block
+    assert "Add a run" in block
     assert "private until you choose" in INDEX
 
 
