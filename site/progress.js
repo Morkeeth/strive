@@ -66,7 +66,7 @@ window.GrinderProgress = function ({client: db, me, app, frame, status, signIn, 
       }
       function harnessOptions(){const select=$('history-filter').elements.harness, selected=select.value;select.innerHTML='<option value="">All harnesses</option>'+[...new Set(loaded.map(r=>r.harness).filter(Boolean))].sort().map(h=>`<option>${esc(h)}</option>`).join('');select.value=selected;}
       harnessOptions();render();bind('history-filter',async()=>render());
-      $('history-more').onclick=async()=>{const button=$('history-more');button.disabled=true;try{const next=await ownRuns(offset);if(!current())return;offset+=next.length;more=next.length===100;loaded=[...new Map([...loaded,...next].map(r=>[r.id,r])).values()];button.hidden=!more;harnessOptions();render()}catch(error){fail(error)}finally{button.disabled=false}};
+      $('history-more').onclick=async()=>{const button=$('history-more');button.disabled=true;try{const next=await ownRuns(offset);if(!current())return;offset+=next.length;more=next.length===100;loaded=[...new Map([...loaded,...next].map(r=>[r.id,r])).values()];button.hidden=!more;harnessOptions();render()}catch(error){if(current())fail(error)}finally{if(current())button.disabled=false}};
     } catch(error) {if(!current())return;$('progress-body').innerHTML='<p>Your runs could not load. Refresh to try again.</p>';fail(error);}
   }
   function snapshot(run) {return {...run,turns_typed:run.turns_typed??run.prompts};}

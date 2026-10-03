@@ -30,3 +30,15 @@ const late=w.GrinderProgress({client:delayed,me:()=>person,app:()=>w.document.qu
 const started=late.history();await new Promise(r=>setImmediate(r));person={id:'different'};pendingResolve({data:[run]});await started;
 assert.equal(w.document.querySelectorAll('.history-run').length,0,'old account response cannot populate current My runs');
 console.log('PASS historical return account switch does not render private old-account data');
+for(const transition of ['account','view']){
+ let finishPage,offset=0;const messages=[];person={id:'owner'};
+ const pages={from(table){return {select(){return this},eq(){return this},order(){return this},range(start){offset=start;return this},is(){return this},limit(){return this},then(resolve){if(table!=='runs')resolve({data:[]});else if(offset===0)resolve({data:Array.from({length:100},(_,i)=>({...run,id:String(i)}))});else finishPage=resolve;}}}};
+ const paged=w.GrinderProgress({client:pages,me:()=>person,app:()=>w.document.querySelector('#app'),frame(){},status(message){messages.push(message)}});
+ await paged.history();const pending=w.document.querySelector('#history-more').onclick();await new Promise(r=>setImmediate(r));
+ if(transition==='account')person={id:'new-account'};
+ w.document.querySelector('#app').innerHTML='<p>Next view</p>';
+ finishPage({data:null,error:{message:'Old private page failed'}});await pending;
+ assert.deepEqual(messages,[],transition+' transition must suppress stale pagination failure');
+ assert.equal(w.document.querySelector('#app').textContent,'Next view');
+}
+console.log('PASS delayed pagination rejection stays out of the next account/view');
