@@ -7,8 +7,8 @@ The defect this file pins, measured on a stock Mac 3 Sep 2026: the site's copy b
 that predates PEP 660. The `&&` chain meant the card never rendered. The tool then printed, as
 the remedy, the same `pip install -e ".[coach]"` that had just failed.
 
-These are contract tests over the strings, not over pip: they hold the line at "no install on the
-copy button, and no coach hint that does not name a venv".
+These are source contract tests. The copy command uses an isolated same-release uvx package,
+never an editable system-Python install. Coach setup still names its required virtual environment.
 """
 import os
 import re
@@ -26,11 +26,12 @@ def _install_cmd() -> str:
     return m.group(1)
 
 
-def test_the_copy_button_runs_from_the_clone_and_installs_nothing():
+def test_the_copy_button_uses_the_deployed_capture_package():
     cmd = _install_cmd()
     assert "pip install" not in cmd, cmd          # the command that fails on stock macOS python
-    assert "python3 -m agentgrinder grind" in cmd  # the path that works with no install
-    assert cmd.startswith("git clone https://github.com/Morkeeth/strive")
+    assert cmd == "uvx --from __CAPTURE_PACKAGE__ agentgrinder grind --harness auto"
+    assert "git+" not in cmd and "git clone" not in cmd
+    # Build/HTTP/hash and offline installed-package acceptance: test-agent-frontdoor.mjs.
 
 
 def test_the_copy_button_does_not_promise_the_coach_on_a_python_that_cannot_run_it():
