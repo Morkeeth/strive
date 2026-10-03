@@ -343,7 +343,7 @@
       snapshot.ridge_basis === "wall-time"
         ? "wall time"
         : snapshot.ridge_basis === "turn-order"
-          ? "turn order"
+          ? (snapshot.harness === "Grok Bot" && snapshot.trace_basis === "timestamps unavailable" ? "message order" : "turn order")
           : "call order";
     const peak = Math.max(0, ...values);
     const peakIndex = peak > 0 ? values.indexOf(peak) : -1;

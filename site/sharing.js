@@ -90,9 +90,9 @@ function routeInsight(route){
  if(!parts.length)return '';
  return parts[0]+parts.slice(1).map(part=>'. '+part.charAt(0).toUpperCase()+part.slice(1)).join('')+'.';
 }
-function ridgeBasisLabel(basis){
+function ridgeBasisLabel(basis,run){
  if(basis==='wall-time')return'wall time';
- if(basis==='turn-order')return'turn order';
+ if(basis==='turn-order')return run.harness==='Grok Bot'&&run.trace_basis==='timestamps unavailable'?'message order':'turn order';
  if(basis==='call-index')return'call order';
  return'unknown basis';
 }
@@ -101,7 +101,7 @@ function traceSeries(run){
  if(Array.isArray(ridge)&&ridge.length>=40&&ridge.length<=60
   &&ridge.every(v=>Number.isSafeInteger(v)&&v>=0)
   &&Array.isArray(workers)&&workers.length===ridge.length){
-  return {values:ridge,label:'Tool calls over '+ridgeBasisLabel(run.ridge_basis)};
+  return {values:ridge,label:'Tool calls over '+ridgeBasisLabel(run.ridge_basis,run)};
  }
  const rhythm=run.rhythm;
  if(Array.isArray(rhythm)&&rhythm.length>1&&rhythm.length<=10000
