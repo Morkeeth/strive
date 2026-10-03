@@ -62,6 +62,9 @@ for(const stage of ['lookup-auth','insert','audience-ok','audience-error','rig']
  if(stage==='lookup-auth')ctx.AUTH_GENERATION++;
  await go(b);finish();await tick();await tick();
  assert.equal(ctx.$('i_title').value,'Beta unsaved story',stage+' cannot hijack fresh preview');
+ assert.equal(w.location.hash,'#import='+b,stage+' must not navigate away');
+ assert.equal(JSON.parse(w.sessionStorage.getItem('ag_import_edits:'+a)).i_title,'Alpha unsaved story',stage+' retains original draft');
+ if(['insert','audience-ok','audience-error'].includes(stage))assert.equal(writes.filter(x=>x.table==='profiles').length,0,stage+' cannot write a newer profile');
  assert.ok(writes.filter(x=>x.measurement_revision).every(x=>x.measurement_revision==='a'.repeat(64)&&x.title==='Alpha unsaved story'),'insert stays source and draft bound');
  if(stage==='lookup-auth')assert.equal(writes.length,0);
 }
