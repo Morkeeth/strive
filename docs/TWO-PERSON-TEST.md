@@ -1,7 +1,7 @@
 # Two-person live test
 
 Use this checklist for Oscar and one consenting friend on
-[agentic-strava.vercel.app](https://agentic-strava.vercel.app). This is a product acceptance walk,
+[agentic-strava.vercel.app](https://striverun.app). This is a product acceptance walk,
 not permission to message someone or publish their session. Agree on the participant, session and
 audience before starting.
 

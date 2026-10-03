@@ -35,7 +35,7 @@ Ask the owner to identify the exact JSONL export already present on this bot’s
 cd ~/.agentgrinder/strive
 python3 templates/grokbot/post-agent-run/scripts/preview.py \
   /exact/path/to/selected-grokbot-export.jsonl \
-  --base-url https://agentic-strava.vercel.app
+  --base-url https://striverun.app
 ```
 
 The output repeats `selected_export`, says that the latest sitting in that selected export was

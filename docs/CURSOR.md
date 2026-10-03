@@ -56,7 +56,7 @@ argument:
 Now open that exact sitting as a private preview on the live app:
 
 ```sh
-AGENTGRINDER_URL=https://agentic-strava.vercel.app \
+AGENTGRINDER_URL=https://striverun.app \
 ~/.agentgrinder/venv/bin/agentgrinder grind \
   /exact/path/to/selected-cursor-session.jsonl \
   --harness cursor --pick 1 --push
@@ -103,7 +103,7 @@ The equivalent explicit-origin command is:
 ~/.agentgrinder/venv/bin/agentgrinder grind \
   /exact/path/to/selected-cursor-session.jsonl \
   --harness cursor --pick 1 --push \
-  --push-url https://agentic-strava.vercel.app
+  --push-url https://striverun.app
 ```
 
 The server can read only sessions on the computer where it runs. A Cloud Agent or Grok Bot cannot

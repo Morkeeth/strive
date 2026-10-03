@@ -1532,12 +1532,12 @@ async function shouldOnboard(){
 // commands: /?post (git clone ... grind --harness auto), /?onboard (the same inside a four-step
 // wizard) and, once signed in, a uvx line. Now: one page, fastest path first, one command per
 // agent, and the same drop zone as the landing. /?onboard and /?connect both land here.
-const ONE_LINE=h=>`uvx --from __CAPTURE_PACKAGE__ agentgrinder grind${h?' --harness '+h:''} --push`;
+const ONE_LINE=h=>`uvx --from __CAPTURE_PACKAGE__ agentgrinder grind${h?' --harness '+h:''} --push --push-url __ORIGIN__`;
 // AUTOMATIC SYNC (Oscar, 25 Sep 2026 evening: "the uploads is awful ... automatic fetch").
 // Signed in, one button issues a private Connect token (migration 007) and shows one line to run
 // once on the computer the agent runs on. From then on `agentgrinder sync` uploads every finished
 // Claude Code, Cursor and Codex session as a private run (agentgrinder/sync.py). No file picking.
-const SYNC_LINE=t=>`uvx --from __CAPTURE_PACKAGE__ agentgrinder sync --install --token ${t}`;
+const SYNC_LINE=t=>`uvx --from __CAPTURE_PACKAGE__ agentgrinder sync --install --site __ORIGIN__ --token ${t}`;
 function autoSyncHtml(){
   return `<section class="auto-sync" id="auto-sync" aria-labelledby="auto-sync-title">
     <h2 id="auto-sync-title">Keep your next runs coming</h2>

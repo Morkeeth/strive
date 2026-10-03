@@ -241,7 +241,7 @@ def main(argv=None) -> int:
     g.add_argument(
         "--push-url",
         default=None,
-        help="preview origin for --push (default: AGENTGRINDER_URL or https://agentic-strava.vercel.app; "
+        help="preview origin for --push (default: AGENTGRINDER_URL or https://striverun.app; "
              "a local UI is http://localhost:8000)",
     )
     g.add_argument("--no-series", action="store_true",

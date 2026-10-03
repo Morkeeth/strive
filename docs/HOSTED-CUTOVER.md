@@ -21,9 +21,11 @@ Create a separate Vercel project for this repository and set all three productio
 |---|---|
 | `AGENTGRINDER_SUPABASE_URL` | `https://<shared-project-ref>.supabase.co` |
 | `AGENTGRINDER_SUPABASE_ANON_KEY` | The project's public anon/publishable key; never a secret or service-role key |
-| `STRAVA_ORIGIN` | The approved HTTPS STRIVE origin, with no path, query or fragment |
+| `STRAVA_ORIGIN` | Production: `https://striverun.app`. Use the intended preview origin for a preview build. No path, query or fragment. |
 
 `npm run build` writes the first two values into the browser's `SB_URL` and `SB_KEY` constants. `SB_SCHEMA` is deliberately not configurable: it must remain `strava`.
+
+Changing a Vercel domain alias does not change this build variable. After updating Production `STRAVA_ORIGIN`, rebuild and deploy the reviewed commit. Verify `/agents.md`, `/llms.txt`, the canonical tag and `/capture/release.json` on `https://striverun.app`; capture package and upload/preview links must use that same origin. Keep an explicit localhost or preview origin for intentional local/preview builds. Do not change the shared Auth Site URL as part of this domain repair.
 
 The same deployment surface is pinned in these files:
 

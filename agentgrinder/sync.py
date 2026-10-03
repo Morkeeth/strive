@@ -32,7 +32,7 @@ from pathlib import Path
 
 from . import ingest
 
-DEFAULT_SITE = os.environ.get("STRIVE_URL", "https://agentic-strava.vercel.app")
+DEFAULT_SITE = os.environ.get("STRIVE_URL", "https://striverun.app")
 STATE_DIR = Path(os.environ.get("STRIVE_HOME", str(Path.home() / ".strive")))
 IDLE_SECONDS = 10 * 60
 SITTING_GAP = 30 * 60   # a run ends after 30 idle minutes, the same split as the card and the CLI
@@ -43,7 +43,7 @@ LABEL = "app.strive.sync"
 NAMESPACE = uuid.UUID("7d3f0a52-6d3c-4b7e-9a4f-2f0c6a1e5b11")
 UVX_SOURCE = "git+https://github.com/Morkeeth/strive"
 # The upload token only ever goes to these hosts, over HTTPS, with redirects refused.
-TRUSTED_HOSTS = {"agentic-strava.vercel.app"} | {
+TRUSTED_HOSTS = {"striverun.app", "agentic-strava.vercel.app"} | {
     h.strip().lower() for h in os.environ.get("STRIVE_TRUSTED_HOSTS", "").split(",") if h.strip()}
 
 
@@ -332,7 +332,7 @@ def add_parser(sub) -> None:
 
 
 def argparse_help_site() -> str:
-    return "STRIVE address (default https://agentic-strava.vercel.app)"
+    return "STRIVE address (default https://striverun.app)"
 
 
 def run_cli(args) -> int:

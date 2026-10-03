@@ -11,7 +11,7 @@ from .coach.experiment import public_experiment, public_text
 
 # The hosted app, so a stranger's --push opens a page that exists. A contributor running the
 # local UI sets AGENTGRINDER_URL=http://localhost:8000.
-DEFAULT_URL = os.environ.get("AGENTGRINDER_URL", "https://agentic-strava.vercel.app")
+DEFAULT_URL = os.environ.get("AGENTGRINDER_URL", "https://striverun.app")
 COMPRESS_AT_BYTES = 1500
 
 

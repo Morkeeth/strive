@@ -48,7 +48,7 @@ class AgentClient:
             raise ValueError("Agent credentials require HTTPS (HTTP is allowed only on localhost).")
         self._url=base_url.rstrip('/')+'/rest/v1/rpc/grinder_agent_action'
         self._key=api_key
-        # A product origin (https://agentic-strava.vercel.app) has no /rest/v1 path; it takes a
+        # A product origin (https://striverun.app) has no /rest/v1 path; it takes a
         # publish at POST /api/agent/runs (docs/AGENT-UPLOAD-API.md section 2). A Supabase host,
         # or any localhost URL (the local stack), keeps the direct RPC.
         host=parsed.hostname or ''
@@ -82,7 +82,7 @@ class AgentClient:
                 result=json.load(response)
         except urllib.error.HTTPError as error:
             # Do not echo a response body that may contain supplied credentials or private text.
-            hint=' No agent endpoint at this URL: pass --url https://agentic-strava.vercel.app or the Supabase URL.' if error.code==404 else ' Check the granted scope and expiry.'
+            hint=' No agent endpoint at this URL: pass --url https://striverun.app or the Supabase URL.' if error.code==404 else ' Check the granted scope and expiry.'
             raise RuntimeError(f"Agent action rejected (HTTP {error.code}); request {rid}.{hint}") from None
         except urllib.error.URLError:
             raise RuntimeError(f"Agent endpoint unavailable; reuse request {rid} with the same payload when retrying.") from None
@@ -130,7 +130,7 @@ class AgentClient:
 def add_parser(subparsers):
     parser=subparsers.add_parser('agent',help='use a human-granted agent credential for explicit network actions')
     parser.add_argument('--url',default=DEFAULT_URL,
-        help='where to send: https://agentic-strava.vercel.app for the hosted app (publish only), '
+        help='where to send: https://striverun.app for the hosted app (publish only), '
              'or a Supabase URL (default: AGENTGRINDER_SUPABASE_URL or the local stack)')
     parser.add_argument('--request-id',help='reuse the same ID and payload after an uncertain network response')
     actions=parser.add_subparsers(dest='agent_action',required=True)

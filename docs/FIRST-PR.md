@@ -22,6 +22,6 @@ Improve phone layout and make the project, caption and link to the output easy t
 
 Start: `site/index.html` (feed, Following and profile views), `site/social.js`.
 
-The hosted app at https://agentic-strava.vercel.app is new and its feed is mostly empty. Make the empty feed, empty Following list and empty profile explain what to do next. Success: a first visitor with no follows knows how to post a run or find a person. No database is needed; the local shell shows the same states. More starting points with files and done-when lines: [docs/ISSUES-TO-OPEN.md](ISSUES-TO-OPEN.md).
+The hosted app at https://striverun.app is new and its feed is mostly empty. Make the empty feed, empty Following list and empty profile explain what to do next. Success: a first visitor with no follows knows how to post a run or find a person. No database is needed; the local shell shows the same states. More starting points with files and done-when lines: [docs/ISSUES-TO-OPEN.md](ISSUES-TO-OPEN.md).
 
 Use a branch, show the changed path, and open a PR. Small copy/design fixes are welcome without an issue. The bot can implement; the contributor still reviews what it built.
