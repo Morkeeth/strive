@@ -1,0 +1,10 @@
+import vm from 'node:vm';import {readFileSync} from 'node:fs';import assert from 'node:assert/strict';import {card} from '../server/public-run.mjs';
+const box={window:{}};vm.createContext(box);for(const f of ['run-contract.js','feed-card.js','sharing.js'])vm.runInContext(readFileSync('site/'+f,'utf8'),box);
+const run={id:'fixture',title:'Title can change',caption:'Caption can change',harness:'Grok Bot',tool_calls:1,ridge:Array(50).fill(0).map((_,i)=>i===0?1:0),ridge_basis:'turn-order',trace_basis:'observed native events; timestamps unavailable',visibility:'private',profiles:{handle:'fixture'}};
+assert.match(box.GrinderContract.ridge(run),/Activity along message order/);assert.match(box.GrinderContract.ridge(run),/lower bound/);
+assert.ok(JSON.stringify(box.GrinderContract.heroStats(run)).includes('Observed calls (minimum)'));
+assert.ok(box.window.GrinderSharing.traceSeries(run).label.includes('Observed calls (minimum)'));
+assert.ok(JSON.stringify(card(run)).includes('observed calls (minimum)'));
+const source=readFileSync('site/index.html','utf8');assert.ok(source.includes("top(week.filter(r=>r.trace_basis!=='observed native events; timestamps unavailable'),runTools"));
+const original=readFileSync('supabase/strava/017_capture_guard.sql','utf8');const added=readFileSync('supabase/strava/024_observed_projection_basis.sql','utf8');const fn=s=>s.slice(s.indexOf('create or replace function strava.run_capture_guard()'),s.indexOf('end $$;')+7);assert.equal(fn(added).replace(",'observed native events; timestamps unavailable'",''),fn(original));
+console.log('Editable prose cannot erase minimum-count labels; board excludes incomplete counts;024 changes only basis admission');

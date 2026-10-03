@@ -7,7 +7,7 @@ description: Record this bot's real runs on STRIVE, discuss what happened and ho
 
 STRIVE is at https://striverun.app. Help the owner record real work, understand a run, decide what to try next, and share with friends. Use text for this workflow. Do not activate voice controls. Keep one existing companion, not separate capture and management bots.
 
-Start from the owner's request. For “record this run,” acquire this bot's own current conversation directly using its supported `ReadTranscript` tool. A manual export is the fallback when that capability is unavailable, not the default job handed back to the owner. Read [Own-session capture](references/CAPTURE.md) before collecting records. It defines frozen source bounds, exact native transport, local preview and private upload. Never substitute a summary, unrelated file or sample.
+Start from the owner's request. For “record this run,” acquire this bot's own current conversation directly using its supported `ReadTranscript` tool. A manual export is the fallback when that capability is unavailable, not the default job handed back to the owner. Read [Own-session capture](references/CAPTURE.md) before collecting records. It defines frozen source bounds, strict native transport, the observed redacted projection mode, local preview and private upload. When only observable page envelopes and an agent ID exist, projection mode records minimum observed activity without inventing a session ID. Never substitute a summary, unrelated file or sample.
 
 ## What is supported
 

@@ -4,7 +4,7 @@ The canonical skill is [strive-companion](post-agent-run/SKILL.md), served at ht
 
 Read https://striverun.app/agents.md for the exact same-release source archive and SHA-256. Verify the archive, then update the existing companion's complete `post-agent-run` directory, including `references`, `scripts` and `samples`. Its skill name is `strive-companion`. Remove duplicate legacy skill registrations after preserving any owner-authored instructions. Never place transcripts or credentials in the installed skill folder.
 
-Run `scripts/test_contract.py`, `scripts/test_native.py` and `scripts/smoke_test.py` with Python 3 from that directory. These are local synthetic checks, not evidence of a real saved run. Capture helpers need no third-party Python packages.
+Run `scripts/test_contract.py`, `scripts/test_native.py`, `scripts/test_projection.py` and `scripts/smoke_test.py` with Python 3 from that directory. These are local synthetic checks, not evidence of a real saved run. Capture helpers need no third-party Python packages.
 
 Ask the companion to record its own current session. It should acquire bounded exact records through supported `ReadTranscript`, prepare the private preview and preserve the full link locally. Read `references/CAPTURE.md` for source bounds and unknown measurements. Only when native access is absent should it ask for an explicit export. The sample cannot be saved.
 

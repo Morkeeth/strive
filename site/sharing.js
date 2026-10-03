@@ -26,7 +26,7 @@ function metricStrip(run){
  const cells=[
   ['Session',sessionSeconds(run)==null?null:duration(sessionSeconds(run))],
   ['Turns',run.prompts??run.turns_typed??null],
-  ['Tool calls',tools],
+  [run.trace_basis==='observed native events; timestamps unavailable'?'Observed calls (minimum)':'Tool calls',tools],
  ].filter(([,value])=>value!=null);
  return cells.map(([label,value])=>[label,String(value)]);
 }
@@ -55,7 +55,7 @@ function codeFacts(run){
  const contract=contractApi();
  const tools=contract&&contract.toolCallCount
   ?contract.toolCallCount(run):run.tool_calls;
- if(!facts.length&&tools!=null)facts.push(tools+' tool calls');
+ if(!facts.length&&tools!=null)facts.push(tools+(run.trace_basis==='observed native events; timestamps unavailable'?' observed calls (minimum)':' tool calls'));
  return facts;
 }
 function storyFacts(run){
@@ -92,7 +92,7 @@ function routeInsight(route){
 }
 function ridgeBasisLabel(basis,run){
  if(basis==='wall-time')return'wall time';
- if(basis==='turn-order')return run.harness==='Grok Bot'&&run.trace_basis==='timestamps unavailable'?'message order':'turn order';
+ if(basis==='turn-order')return run.harness==='Grok Bot'&&['timestamps unavailable','observed native events; timestamps unavailable'].includes(run.trace_basis)?'message order':'turn order';
  if(basis==='call-index')return'call order';
  return'unknown basis';
 }
@@ -101,7 +101,7 @@ function traceSeries(run){
  if(Array.isArray(ridge)&&ridge.length>=40&&ridge.length<=60
   &&ridge.every(v=>Number.isSafeInteger(v)&&v>=0)
   &&(workers==null||(Array.isArray(workers)&&workers.length===ridge.length))){
-  return {values:ridge,label:'Tool calls over '+ridgeBasisLabel(run.ridge_basis,run)};
+  return {values:ridge,label:(run.trace_basis==='observed native events; timestamps unavailable'?'Observed calls (minimum) over ':'Tool calls over ')+ridgeBasisLabel(run.ridge_basis,run)};
  }
  const rhythm=run.rhythm;
  if(Array.isArray(rhythm)&&rhythm.length>1&&rhythm.length<=10000

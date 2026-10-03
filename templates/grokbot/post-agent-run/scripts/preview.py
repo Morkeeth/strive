@@ -233,7 +233,68 @@ def parse_native(path, bounds):
     return metrics, receipt
 
 
+PROJECTION_BASIS = "observed native events; timestamps unavailable"
+PROJECTION_NOTE = "Observed tool requests from a redacted API projection: a lower bound, not a complete transcript count. Timing and human activity are unknown."
+
+
+def parse_projection(path, bounds):
+    required = {"agent_id", "conversation", "start_position", "end_position", "source", "content", "completeness"}
+    if (not isinstance(bounds, dict) or set(bounds) != required
+        or not isinstance(bounds["agent_id"], str) or not bounds["agent_id"].strip()
+        or bounds["conversation"] != "current" or bounds["source"] != "ReadTranscript"
+        or bounds["content"] != "redacted projection" or bounds["completeness"] != "not certified"):
+        raise ValueError("Projection requires actual agent context and explicit redacted, uncertified source basis.")
+    start, end = bounds["start_position"], bounds["end_position"]
+    if type(start) is not int or type(end) is not int or start < 0 or end < start:
+        raise ValueError("Invalid frozen projection bounds.")
+    selected, headers = {}, []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip(): continue
+        page = json.loads(line)
+        if not isinstance(page, dict) or set(page) != {"start_position", "end_position", "total", "order", "records"}:
+            raise ValueError("Projection page needs exact range, total, order and records.")
+        lo, hi, total = page["start_position"], page["end_position"], page["total"]
+        records, order = page["records"], page["order"]
+        if (any(type(x) is not int for x in [lo, hi, total]) or lo < 0 or hi < lo or hi >= total
+            or order not in ["oldest-first", "newest-first"] or not isinstance(records, list)
+            or len(records) != hi - lo + 1):
+            raise ValueError("Page range/count/order cannot establish record positions.")
+        headers.append({k:page[k] for k in ["start_position", "end_position", "total", "order"]})
+        for offset, record in enumerate(records):
+            position = lo + offset if order == "oldest-first" else hi - offset
+            if not isinstance(record, dict) or set(record) != {"role", "blocks"} or record["role"] not in ["user", "assistant", "tool"] or not isinstance(record["blocks"], list) or not record["blocks"]:
+                raise ValueError("Projection requires visible role and complete observable block envelopes.")
+            for block in record["blocks"]:
+                if not isinstance(block, dict): raise ValueError("Invalid projected block.")
+                kind = block.get("type")
+                allowed = {"text":{"type"}, "tool_use":{"type", "id", "name"}, "tool_result":{"type", "tool_use_id", "name"}}.get(kind)
+                if allowed is None or not set(block) <= allowed: raise ValueError("Only body-free observable block fields are accepted.")
+                if kind == "tool_use" and (record["role"] != "assistant" or any(not isinstance(block.get(k),str) or not block[k] for k in ["id","name"])):
+                    raise ValueError("Incomplete observed tool request envelope.")
+                if kind == "tool_result" and (record["role"] not in ["user","tool"] or not isinstance(block.get("tool_use_id"),str) or not block["tool_use_id"] or ("name" in block and not isinstance(block["name"],str))):
+                    raise ValueError("Incomplete observed tool result envelope.")
+            if start <= position <= end:
+                if position in selected and selected[position] != record: raise ValueError("Conflicting projected overlap.")
+                selected[position] = record
+    if len(selected) != end-start+1: raise ValueError("Frozen projection has gaps; complete the bounded read.")
+    rows = [{"position":p,"record":selected[p]} for p in sorted(selected)]
+    seen, ridge, calls, users = set(), [0]*50, 0, 0
+    for index,row in enumerate(rows):
+        users += row["record"]["role"] == "user"
+        for block in row["record"]["blocks"]:
+            if block["type"] != "tool_use": continue
+            if block["id"] in seen: raise ValueError("Duplicate observed tool request ID.")
+            seen.add(block["id"]); calls += 1; ridge[min(49,index*50//len(rows))] += 1
+    if not calls: raise ValueError("Projection has no observed tool requests for a supported activity trace.")
+    revision = hashlib.sha256(json.dumps({"parser":"strive-observable-projection-v1","bounds":bounds,"records":rows},sort_keys=True,separators=(",",":"),ensure_ascii=False).encode()).hexdigest()
+    metrics = {"schema_version":1,"measurement_revision":revision,"harness":"Grok Bot","activity_label":"observed bot activity","project":"session","tool_calls":calls,"ridge":ridge,"ridge_basis":"turn-order","trace_basis":PROJECTION_BASIS,"title":"Observed bot activity","caption":PROJECTION_NOTE}
+    receipt = {"source_context":{"agent_id":bounds["agent_id"],"conversation":"current"},"frozen_bounds":{"start_position":start,"end_position":end},"page_headers":headers,"recorded_messages":len(rows),"recorded_user_messages":users,"count_basis":"observed tool request envelopes, lower bound; hidden activity completeness not certified","source_basis":"observable redacted API projection, not stored raw transcript","unknown":["complete hidden activity","human-typed turns","start time","duration","workers","commits"]}
+    return metrics, receipt
+
+
 def public_metrics(path, format="tagged", bounds=None):
+    if format == "projection":
+        return parse_projection(path, bounds)[0]
     if format == "native":
         return parse_native(path, bounds)[0]
     if format != "tagged" or bounds is not None:
@@ -242,15 +303,15 @@ def public_metrics(path, format="tagged", bounds=None):
 
 
 def add_format_arguments(parser):
-    parser.add_argument("--format", choices=("tagged", "native"), default="tagged")
+    parser.add_argument("--format", choices=("tagged", "native", "projection"), default="tagged")
     parser.add_argument("--bounds", type=Path, help="native session identity and inclusive frozen positions JSON")
 
 
 def read_bounds(args):
-    if args.format == "native" and args.bounds is None:
-        raise ValueError("Native capture requires --bounds.")
-    if args.format != "native" and args.bounds is not None:
-        raise ValueError("--bounds is only valid with --format native.")
+    if args.format in ("native", "projection") and args.bounds is None:
+        raise ValueError("Native or projection capture requires --bounds.")
+    if args.format == "tagged" and args.bounds is not None:
+        raise ValueError("--bounds is only valid with --format native or projection.")
     return json.loads(args.bounds.read_text(encoding="utf-8")) if args.bounds else None
 
 
@@ -297,8 +358,8 @@ def main():
     try:
         bounds = read_bounds(args)
         native_receipt = None
-        if args.format == "native":
-            metrics, native_receipt = parse_native(args.export, bounds)
+        if args.format in ("native", "projection"):
+            metrics, native_receipt = (parse_projection if args.format == "projection" else parse_native)(args.export, bounds)
         else:
             metrics = public_metrics(args.export)
         preview_url = import_url(metrics, args.base_url)

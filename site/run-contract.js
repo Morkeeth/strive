@@ -1,6 +1,7 @@
 /* Shared browser boundary: a successful parse is not permission to store arbitrary fields. */
 (function (root) {
   "use strict";
+  const observedProjection = run => run?.trace_basis === "observed native events; timestamps unavailable";
   const counts = [
     "turns_typed",
     "tool_calls",
@@ -343,7 +344,7 @@
       snapshot.ridge_basis === "wall-time"
         ? "wall time"
         : snapshot.ridge_basis === "turn-order"
-          ? (snapshot.harness === "Grok Bot" && snapshot.trace_basis === "timestamps unavailable" ? "message order" : "turn order")
+          ? (snapshot.harness === "Grok Bot" && ["timestamps unavailable", "observed native events; timestamps unavailable"].includes(snapshot.trace_basis) ? "message order" : "turn order")
           : "call order";
     const peak = Math.max(0, ...values);
     const peakIndex = peak > 0 ? values.indexOf(peak) : -1;
@@ -366,10 +367,12 @@
         peakIndex,
         basis: snapshot.ridge_basis || "",
         basisLabel,
+        observedProjection: observedProjection(snapshot),
       }),
     );
     const startBin = peakIndex >= 0 ? peakIndex : 0;
     const help =
+      (observedProjection(snapshot) ? "Observed tool requests are a lower bound from a redacted source. " : "") +
       "Each activity slice is one measured step along " +
       basisLabel +
       (workers == null ? ". Worker activity was not recorded" : "") +
@@ -431,7 +434,7 @@
         const commitHere = (data.commits || []).includes(i);
         const bits = [];
         bits.push(`Activity slice ${i + 1} of ${values.length}`);
-        bits.push(`${tools} tool call${tools === 1 ? "" : "s"} in this slice`);
+        bits.push(`${data.observedProjection ? "at least " : ""}${tools} tool call${tools === 1 ? "" : "s"} in this slice`);
         if (workers) bits.push(`${workers} worker${workers === 1 ? "" : "s"}`);
         if (isPeak) bits.push(`peak activity ${data.peak}`);
         if (commitHere) bits.push("commit landmark");
@@ -806,7 +809,7 @@
     if (turns != null) add("Turns", turns);
     // Same source as /r/ and the share image: transcript count, else ridge_tool_calls.
     const tools = recordedCount(toolCallCount(run));
-    if (tools != null) add("Tool calls", tools);
+    if (tools != null) add(observedProjection(run) ? "Observed calls (minimum)" : "Tool calls", tools);
     // Route.stats only fills gaps the run row left empty.
     if (cells.length < 3 && routeOk && route.stats && typeof route.stats === "object") {
       const stats = route.stats;
@@ -1110,7 +1113,7 @@
       .join("");
     return `<div class="code-route-stops">${stopList}</div>` + harnessHtml(route);
   }
-  const api = { validate, message, trace, ridge, outcome, coverHtml, eventChip, heroStats, toolCallCount, codeRoute, codeRouteDetail, routeInsight, routeShape, mountRunMaps, sittingsComparable, headlineMetric, rejectPaths, projectLabel, tree };
+  const api = { observedProjection, validate, message, trace, ridge, outcome, coverHtml, eventChip, heroStats, toolCallCount, codeRoute, codeRouteDetail, routeInsight, routeShape, mountRunMaps, sittingsComparable, headlineMetric, rejectPaths, projectLabel, tree };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.GrinderContract = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

@@ -48,9 +48,9 @@ def upload_payload(export, title=None, caption=None, format="tagged", bounds=Non
         raise ValueError("This is the bundled sample. Upload a real export only.")
     payload = {k: metrics[k] for k in UPLOAD_FIELDS if k in metrics}
     # Preview and direct upload share the exact selected-source revision.
-    payload["title"] = title or "Grok Bot run"
-    if caption:
-        payload["caption"] = caption
+    payload["title"] = title or metrics.get("title") or "Grok Bot run"
+    if caption or metrics.get("caption"):
+        payload["caption"] = caption or metrics["caption"]
     return payload
 
 

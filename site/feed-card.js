@@ -66,6 +66,7 @@
     return h === "claude-agent" ? "Claude Code" : h;
   }
 
+  const observedProjection = r => r?.trace_basis === "observed native events; timestamps unavailable";
   function toolCalls(r) {
     const C = contract();
     return whole(C && C.toolCallCount ? C.toolCallCount(r) : r.tool_calls);
@@ -79,7 +80,7 @@
     const time = durationLabel(r.wall_time_s ?? r.duration_s);
     if (commits) return { n: thousands(commits), unit: commits === 1 ? "commit" : "commits", key: "commits" };
     if (files) return { n: thousands(files), unit: files === 1 ? "file changed" : "files changed", key: "files" };
-    if (tools) return { n: thousands(tools), unit: "tool calls", key: "tools" };
+    if (tools) return { n: thousands(tools), unit: observedProjection(r) ? "observed calls (minimum)" : "tool calls", key: "tools" };
     if (time) return { n: time, unit: "session", key: "time" };
     return null;
   }
@@ -95,7 +96,7 @@
     const turns = whole(r.prompts ?? r.turns_typed);
     const tools = toolCalls(r);
     add("turns", "Turns", turns);
-    add("tools", "Tool calls", tools ? thousands(tools) : null);
+    add("tools", observedProjection(r) ? "Observed calls (minimum)" : "Tool calls", tools ? thousands(tools) : null);
     add("commits", "Commits", whole(r.commits) || null);
     add("files", "Files", whole(r.files_touched) || null);
     return out;
