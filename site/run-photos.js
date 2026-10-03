@@ -1,6 +1,8 @@
 (function(root){
   "use strict";
   const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const disposers=new Set();
+  function disposeAll(){for(const dispose of [...disposers])dispose();}
   async function token(client){
     const result=await client?.auth?.getSession?.();
     return result?.data?.session?.access_token||null;
@@ -29,63 +31,85 @@
     const size=()=>{if(state.mode==='square')return [1200,1200];if(state.mode==='wide')return [1600,900];const scale=Math.min(1,1600/Math.max(image.naturalWidth,image.naturalHeight));return [Math.max(1,Math.round(image.naturalWidth*scale)),Math.max(1,Math.round(image.naturalHeight*scale))]};
     const paint=()=>{if(!image.naturalWidth)return;const base=Math.max(canvas.width/image.naturalWidth,canvas.height/image.naturalHeight),scale=base*state.zoom,w=image.naturalWidth*scale,h=image.naturalHeight*scale,maxX=Math.max(0,w-canvas.width),maxY=Math.max(0,h-canvas.height);ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(image,-maxX*state.x,-maxY*state.y,w,h)};
     const resize=()=>{const [width,height]=size();canvas.width=width;canvas.height=height;paint()};
-    image.onload=()=>{state.ready=true;resize();host.querySelector('[data-photo-upload]').disabled=false;URL.revokeObjectURL(url)};image.onerror=()=>{URL.revokeObjectURL(url);host.textContent='This image could not be opened.'};image.src=url;
+    let disposed=false;
+    const dispose=()=>{disposed=true;image.onload=null;image.onerror=null;URL.revokeObjectURL(url);host.innerHTML=''};
+    image.onload=()=>{if(disposed)return;state.ready=true;resize();host.querySelector('[data-photo-upload]').disabled=false;URL.revokeObjectURL(url)};image.onerror=()=>{URL.revokeObjectURL(url);host.textContent='This image could not be opened.'};image.src=url;
     host.querySelector('[data-photo-shape]').onchange=e=>{state.mode=e.target.value;state.zoom=1;host.querySelector('[data-photo-zoom]').value='1';resize()};
     for(const [name,key] of [['zoom','zoom'],['x','x'],['y','y']])host.querySelector(`[data-photo-${name}]`).oninput=e=>{state[key]=Number(e.target.value);paint()};
-    host.querySelector('[data-photo-cancel]').onclick=()=>{URL.revokeObjectURL(url);host.innerHTML=''};
+    host.querySelector('[data-photo-cancel]').onclick=dispose;
     host.querySelector('[data-photo-upload]').onclick=async()=>{
       const button=host.querySelector('[data-photo-upload]');
       button.disabled=true;
       try{
-        if(!state.ready)return;
+        if(disposed||!state.ready)return;
         const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.84));
-        if(blob)await onReady(blob);
+        if(blob&&!disposed)await onReady(blob);
       }finally{if(button.isConnected)button.disabled=false;}
     };
+    return dispose;
   }
-  async function mount({client,run,slot,owner,status}){
+  async function mount({client,run,slot,owner,status,isCurrent=()=>true}){
     if(!slot||!run?.id)return;
-    const objectUrls=[];
+    let active=true,cropDispose=null;
+    const controller=new AbortController(),objectUrls=[];
+    const current=()=>active&&isCurrent()&&slot.isConnected!==false;
+    const dispose=()=>{active=false;controller.abort();cropDispose?.();clearUrls();slot.innerHTML='';disposers.delete(dispose)};
+    disposers.add(dispose);
+    const request=async(path,json=false,options={})=>{
+      const h=await headers(client,json);
+      if(!current())return null;
+      return fetch(path,{...options,headers:h,signal:controller.signal});
+    };
     const clearUrls=()=>{while(objectUrls.length)URL.revokeObjectURL(objectUrls.pop())};
     async function load(){
-      clearUrls();slot.innerHTML='<p class="hint">Loading photos…</p>';
+      if(!current())return;
+      cropDispose?.();cropDispose=null;clearUrls();slot.innerHTML='<p class="hint">Loading photos…</p>';
       let res;
-      try{res=await fetch(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:await headers(client)});}catch(_){slot.innerHTML='<p class="hint">Photos could not load.</p>';return;}
-      if(!res.ok){slot.innerHTML=`<p class="hint">${esc(await responseMessage(res))}</p>`;return;}
-      const body=await res.json(), photos=Array.isArray(body)?body:(body.photos||[]);
+      try{res=await request(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`);}catch(_){if(current())slot.innerHTML='<p class="hint">Photos could not load.</p>';return;}
+      if(!current()||!res)return;
+      if(!res.ok){const message=await responseMessage(res);if(current())slot.innerHTML=`<p class="hint">${esc(message)}</p>`;return;}
+      const body=await res.json();if(!current())return;const photos=Array.isArray(body)?body:(body.photos||[]);
       const canAdd=owner&&photos.length<6;
       slot.innerHTML=`<section class="run-photos" aria-labelledby="run-photos-title"><div class="head"><h2 id="run-photos-title">Photos</h2><span class="meta">${photos.length} of 6</span></div><div class="run-photo-grid"></div>${canAdd?'<label class="photo-add">Add a photo<input data-photo-file type="file" accept="image/jpeg,image/png,image/webp"></label><p class="hint">Choose a JPEG, PNG or WebP.</p><div data-photo-editor></div>':owner?'<p class="hint">Six photos added. Remove one before adding another.</p>':''}</section>`;
       const grid=slot.querySelector('.run-photo-grid');
       for(const photo of photos){
-        try{const path=photoPath(photo);if(!path)continue;const imageRes=await fetch(path,{headers:await headers(client)});if(!imageRes.ok)continue;const url=URL.createObjectURL(await imageRes.blob());objectUrls.push(url);const item=document.createElement('figure');item.innerHTML=`<img src="${url}" alt="Run photo" loading="lazy">${owner?`<button type="button" class="ghost" data-photo-delete="${esc(path)}">Remove</button>`:''}`;grid.append(item);}catch(_){}
+        try{const path=photoPath(photo);if(!path)continue;const imageRes=await request(path);if(!current())return;if(!imageRes?.ok)continue;const blob=await imageRes.blob();if(!current())return;const url=URL.createObjectURL(blob);objectUrls.push(url);const item=document.createElement('figure');item.innerHTML=`<img src="${url}" alt="Run photo" loading="lazy">${owner?`<button type="button" class="ghost" data-photo-delete="${esc(path)}">Remove</button>`:''}`;grid.append(item);}catch(_){}
       }
+      if(!current())return;
       if(canAdd){
-        slot.querySelector('[data-photo-file]').onchange=e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>12*1024*1024){status('Choose an image smaller than 12 MB.',true);return;}cropper(file,slot.querySelector('[data-photo-editor]'),async blob=>{try{if(blob.size>3*1024*1024){status('The cropped image is still larger than 3 MB.',true);return;}const base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob)});const upload=await fetch('/api/run-photos',{method:'POST',headers:await headers(client,true),body:JSON.stringify({run_id:run.id,image_base64:base64})});if(!upload.ok){status(await responseMessage(upload),true);return;}status('Photo added.');await load();}catch(_){status('Photo upload could not reach STRIVE. Try again.',true);}});};
+        slot.querySelector('[data-photo-file]').onchange=e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>12*1024*1024){status('Choose an image smaller than 12 MB.',true);return;}cropDispose=cropper(file,slot.querySelector('[data-photo-editor]'),async blob=>{try{if(!current())return;if(blob.size>3*1024*1024){status('The cropped image is still larger than 3 MB.',true);return;}const base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob)});const upload=await request('/api/run-photos',true,{method:'POST',body:JSON.stringify({run_id:run.id,image_base64:base64})});if(!current()||!upload)return;if(!upload.ok){const message=await responseMessage(upload);if(current())status(message,true);return;}status('Photo added.');await load();}catch(_){if(current())status('Photo upload could not reach STRIVE. Try again.',true);}});};
       }
-      if(owner)slot.querySelectorAll('[data-photo-delete]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{const res=await fetch(button.dataset.photoDelete,{method:'DELETE',headers:await headers(client)});if(!res.ok){status(await responseMessage(res),true);return;}status('Photo removed.');await load();}catch(_){status('Photo removal could not reach STRIVE. Try again.',true);}finally{if(button.isConnected)button.disabled=false;}});
+      if(owner)slot.querySelectorAll('[data-photo-delete]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{const res=await request(button.dataset.photoDelete,false,{method:'DELETE'});if(!current()||!res)return;if(!res.ok){const message=await responseMessage(res);if(current())status(message,true);return;}status('Photo removed.');await load();}catch(_){if(current())status('Photo removal could not reach STRIVE. Try again.',true);}finally{if(button.isConnected)button.disabled=false;}});
     }
     await load();
+    return dispose;
   }
   async function mountCovers({client,root:host=document}){
+    let active=true;const controller=new AbortController(),urls=new Set(),images=new Set();
+    const dispose=()=>{active=false;controller.abort();for(const url of urls)URL.revokeObjectURL(url);urls.clear();for(const image of images)image.remove();disposers.delete(dispose)};
+    disposers.add(dispose);
     const cards=[...host.querySelectorAll('.fc[data-run-id]:not([data-photo-checked])')];
     await Promise.all(cards.map(async card=>{
       card.dataset.photoChecked='true';
       try{
         const runId=card.dataset.runId;
-        const list=await fetch(`/api/run-photos?run_id=${encodeURIComponent(runId)}`,{headers:await headers(client)});
-        if(!list.ok)return;
+        const listHeaders=await headers(client);if(!active||card.isConnected===false)return;
+        const list=await fetch(`/api/run-photos?run_id=${encodeURIComponent(runId)}`,{headers:listHeaders,signal:controller.signal});
+        if(!active||!list.ok)return;
         const payload=await list.json(), photo=payload?.photos?.[0];
-        const path=photoPath(photo);if(!path)return;
-        const imageRes=await fetch(path,{headers:await headers(client)});
-        if(!imageRes.ok)return;
-        const url=URL.createObjectURL(await imageRes.blob());
+        const path=photoPath(photo);if(!active||!path)return;
+        const imageHeaders=await headers(client);if(!active)return;
+        const imageRes=await fetch(path,{headers:imageHeaders,signal:controller.signal});
+        if(!active||!imageRes.ok)return;
+        const blob=await imageRes.blob();if(!active||card.isConnected===false)return;
+        const url=URL.createObjectURL(blob);urls.add(url);
         const image=document.createElement('img');
         image.className='run-photo-cover';image.src=url;image.alt='';image.loading='lazy';
-        image.onload=()=>URL.revokeObjectURL(url);
-        image.onerror=()=>URL.revokeObjectURL(url);
+        images.add(image);
+        image.onload=image.onerror=()=>{URL.revokeObjectURL(url);urls.delete(url)};
         card.querySelector('.fc-body')?.prepend(image);
       }catch(_){}
     }));
   }
-  root.StriveRunPhotos={mount,mountCovers};
+  root.StriveRunPhotos={mount,mountCovers,disposeAll};
 })(typeof window!=="undefined"?window:globalThis);

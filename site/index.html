@@ -757,6 +757,24 @@ const profileHandle=p=>GrinderAuth.present(p)?.handle||'';
 // A person who arrived from Responses keeps a way back even when the run is gone or private.
 function responseReturnLink(){try{return sessionStorage.getItem('ag_response_return')==='?inbox'?'<p class="response-return"><a class="act" href="/?inbox">Back to Notifications</a></p>':''}catch(_){return ''}}
 let ME=null, IDENTITY_SETUP=null, AUTH_USER=null;
+let AUTH_GENERATION=0, RUN_VIEW_GENERATION=0;
+// Invalidate synchronously, before any queued auth refresh or pending private request.
+function invalidatePrivateView(){
+  AUTH_GENERATION++;RUN_VIEW_GENERATION++;
+  ME=null;AUTH_USER=null;IDENTITY_SETUP=null;
+  window.StriveRunPhotos?.disposeAll?.();
+  if($('app'))$('app').innerHTML=skeletonCard();
+  if($('notifications-body'))$('notifications-body').innerHTML='';
+  if($('me'))$('me').innerHTML='';
+  if($('account-menu'))$('account-menu').hidden=true;
+}
+function handleAuthStateChange(event,session,refreshAndRoute){
+  if(event==='SIGNED_OUT'||event==='USER_UPDATED'||(event==='SIGNED_IN'&&session?.user?.id!==AUTH_USER?.id)){
+    invalidatePrivateView();
+    setTimeout(refreshAndRoute,0);
+  }
+}
+
 // The social feeds (home, Following, a club) draw the same feed card as the public feed.
 const social=GrinderSocial({client:sb,me:()=>ME,app:()=>$('app'),frame,status,signInGitHub:()=>signInWithGitHub(),
   renderRuns:async runs=>{noteTraces(runs);const ad=await ackData(runs);setTimeout(()=>{wireKudos();countUp()},0);return feedCards(runs,ad)}});
@@ -1825,15 +1843,20 @@ async function fairConfirmRun(id){
   try{const {data:{session}}=await sb.auth.getSession();const out=await StriveFair.confirm('run',id,session?.access_token);if(out?.confirmed)status('Free Lunch has confirmed your visit.');}catch(_){}
 }
 async function viewRun(id){
+  const generation=++RUN_VIEW_GENERATION, authGeneration=AUTH_GENERATION, profileId=ME?.id;
+  const current=()=>generation===RUN_VIEW_GENERATION&&authGeneration===AUTH_GENERATION&&profileId===ME?.id;
+  window.StriveRunPhotos?.disposeAll?.();
   const app=$('app');
   const q=new URLSearchParams(location.search);
   frame(railHtml(null),null); app.innerHTML=skeletonCard();
   const {data:r,error:runError}=await sb.from('runs').select('*, profiles!runs_profile_id_fkey(github_handle,name,rig,handle,display_name,avatar_url)').eq('id',id).single();
+  if(!current())return;
   if(runError&&runError.code!=='PGRST116'){app.innerHTML='<div class="empty">This run could not load. Please refresh to try again.</div>';return;}
   if(!r){ app.innerHTML='<div class="card"><div class="empty">This run is private or does not exist.</div></div>'+responseReturnLink(); return; }
   const mayOpen=typeof GrinderRunAccess==='object'&&GrinderRunAccess.viewerMayOpenRun
     ? await GrinderRunAccess.viewerMayOpenRun(r,{me:ME,client:sb})
     : r.visibility==='public'||(ME&&ME.id===r.profile_id);
+  if(!current())return;
   if(!mayOpen){
     app.innerHTML=`<div class="card"><div class="empty"><h3>This run is private on __BRAND__</h3><p>Sign in with a follow or close-friends relation to the builder, then open the shared run link again.</p><p class="cta"><button type="button" class="act blue" id="run-gate-signin">Sign in</button><a class="act" href="/">Home</a></p></div></div>`+responseReturnLink();
     const gate=$('run-gate-signin'); if(gate) gate.onclick=()=>showSignIn();
@@ -1841,7 +1864,9 @@ async function viewRun(id){
   }
   noteTraces([r]);
   const ad=await ackData([r]);
+  if(!current())return;
   const acks=await fetchAckList(id);
+  if(!current())return;
   const suggested=suggestAckReasons(r);
   const preselect=q.get('reason')&&ACK_REASONS[q.get('reason')]?q.get('reason'):suggested[0];
   const openAck=q.get('ack')==='1'&&ME&&!ad.mine.has(r.id)&&ME.id!==r.profile_id;
@@ -1861,7 +1886,8 @@ async function viewRun(id){
     +`<section id="grind-thread"></section><div class="head"><h2>Thanks</h2><span class="meta">${acks.length}</span></div><div class="panel">`+ackListHtml(acks)+`</div>`
     +`<section id="grind-feature"></section>`;
   const copyLink=$('run-copy-link');if(copyLink)copyLink.onclick=async()=>{try{const sharePath=r.visibility==='public'?'/r/'+r.id:'/?run='+r.id;await navigator.clipboard.writeText(location.origin+sharePath);copyLink.textContent='Link copied'}catch(_){status('Copy this page address to share your run.')}};
-  if(window.StriveRunPhotos) await StriveRunPhotos.mount({client:sb,run:r,slot:$('run-photos'),owner,status});
+  if(window.StriveRunPhotos) await StriveRunPhotos.mount({client:sb,run:r,slot:$('run-photos'),owner,status,isCurrent:current});
+  if(!current())return;
   if(ME?.id===r.profile_id){
     const controls=document.createElement('div');controls.className='panel reply-form';
     const availableVisuals=chosenRunHero(r,{codeRoute:GrinderContract.codeRoute(r),ridge:GrinderContract.ridge(r)})?.choices||[];
@@ -1875,7 +1901,9 @@ async function viewRun(id){
   wireKudos(); if(openAck){ const card=$('card-'+id); if(card) wireAckPicker(card,r,preselect); }
   if(q.get('ack')) history.replaceState(null,'',`/?run=${id}`);
   await social.thread(id,$('grind-thread'));
+  if(!current())return;
   await social.askControl(r,$('grind-thread'));
+  if(!current())return;
   await social.featureControl(r,$('grind-feature'));
   countUp();
 }
@@ -2296,8 +2324,9 @@ function viewIdentitySetup(){
 
 async function refreshAuth(){
   if(!auth)return;
+  const generation=AUTH_GENERATION;
   try{
-    const current=await auth.current();AUTH_USER=current.user||null;ME=current.profile;IDENTITY_SETUP=current.needsOnboarding?current:null;
+    const current=await auth.current();if(generation!==AUTH_GENERATION)return;AUTH_USER=current.user||null;ME=current.profile;IDENTITY_SETUP=current.needsOnboarding?current:null;
     $('me').innerHTML=ME?'<a href="'+GrinderAuth.present(ME).url+'">@'+esc(profileHandle(ME))+'</a>':'';
     const shown=ME?GrinderAuth.present(ME):null, navAvatar=$('nav-avatar');
     if(navAvatar){
@@ -2307,7 +2336,7 @@ async function refreshAuth(){
     $('account-menu').hidden=!current.user;$('auth').hidden=!!current.user;$('auth').textContent='Sign in';$('deletewrap').hidden=!ME;if($('delete-info'))$('delete-info').hidden=!!ME;
     $('mobile-product-nav').hidden=false;syncAuthNav();status('');
     if(social.refreshUnread) social.refreshUnread();
-  }catch(e){AUTH_USER=null;ME=null;IDENTITY_SETUP=null;status(e.detail?.message||'Sign-in could not be restored. Try again.',true);}
+  }catch(e){if(generation!==AUTH_GENERATION)return;AUTH_USER=null;ME=null;IDENTITY_SETUP=null;status(e.detail?.message||'Sign-in could not be restored. Try again.',true);}
 }
 
 // The publish payload survives the OAuth round trip in sessionStorage, because it cannot survive
@@ -2667,7 +2696,7 @@ function pageTitle(q){
   if(q.has('onboard')) return t('Connect your agent');
   return '__BRAND__ · __TAGLINE__';
 }
-async function route(){ account.recover(); try{document.title=pageTitle(new URLSearchParams(location.search))}catch(_){}
+async function route(){ RUN_VIEW_GENERATION++;window.StriveRunPhotos?.disposeAll?.();account.recover(); try{document.title=pageTitle(new URLSearchParams(location.search))}catch(_){}
   if(ME && social.refreshUnread) social.refreshUnread();
   if(IDENTITY_SETUP)return viewIdentitySetup();
   restoreImport();
@@ -2741,9 +2770,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     // Initial session loading and SIGNED_IN can arrive together. Finish one render
     // before another auth refresh can append controls to the same page.
     let authRefresh=Promise.resolve();
-    const refreshAndRoute=()=>{authRefresh=authRefresh.catch(()=>{}).then(async()=>{await refreshAuth();await route()});return authRefresh;};
+    const refreshAndRoute=()=>{authRefresh=authRefresh.catch(()=>{}).then(async()=>{const generation=AUTH_GENERATION;await refreshAuth();if(generation===AUTH_GENERATION)await route()});return authRefresh;};
     loadProviders().then(refreshAndRoute,refreshAndRoute);
-    sb.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'||event==='USER_UPDATED'||(event==='SIGNED_IN'&&session?.user?.id!==ME?.auth_uid))setTimeout(refreshAndRoute,0)});
+    sb.auth.onAuthStateChange((event,session)=>handleAuthStateChange(event,session,refreshAndRoute));
   } else route();
 });
 </script>
