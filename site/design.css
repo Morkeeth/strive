@@ -258,3 +258,11 @@ button,summary{touch-action:manipulation}
 .history-run .history-source h3{font-size:13px;line-height:1.5;overflow-wrap:anywhere}
 .history-run .history-source{min-width:0}
 .history-run>div{min-width:0}
+
+/* A quiet, reachable feedback entry on every routed view. */
+.roadmap-feedback{position:fixed;right:20px;bottom:max(16px,env(safe-area-inset-bottom));z-index:80}
+.feedback-launch{background:#fff;color:#171717;border:1px solid #bfc5cc;border-radius:24px;padding:11px 16px;box-shadow:0 3px 14px #00000010;font-size:13px;min-height:44px}
+.roadmap-feedback dialog{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;box-sizing:border-box;padding:24px;border:1px solid #d4d4d4;border-radius:16px;color:#171717;background:white}
+.roadmap-feedback dialog::backdrop{background:#0005}.roadmap-feedback header{display:flex;align-items:start;gap:16px}.roadmap-feedback h2{font-size:22px;line-height:1.2;margin:0}.feedback-close{margin-left:auto;min-width:44px;min-height:44px}.roadmap-feedback label{display:block;margin:16px 0}.roadmap-feedback textarea,.roadmap-feedback select{width:100%;box-sizing:border-box}.roadmap-feedback [role=status]{min-height:24px}.saved-run-reward{border-left:3px solid #2458ff;padding:10px 14px;background:#f1f5ff;color:#183fa9}.site-foot{padding-bottom:90px}
+@media(max-width:600px){.roadmap-feedback{right:12px;bottom:max(12px,env(safe-area-inset-bottom))}.roadmap-feedback dialog{padding:20px}}
+.roadmap-feedback{font-family:"IBM Plex Sans",Arial,sans-serif}.roadmap-feedback button,.roadmap-feedback textarea,.roadmap-feedback select{font:inherit}.roadmap-feedback p{font-size:14px;line-height:1.5}.roadmap-feedback .hint{color:#666}.roadmap-feedback textarea,.roadmap-feedback select{padding:10px;border:1px solid #ccc;border-radius:6px;background:white;color:#171717}.roadmap-feedback label{font-size:14px;line-height:1.6}.roadmap-feedback [type=submit]{background:#2458ff;color:white;border:0;border-radius:6px;min-height:44px;padding:10px 16px}.roadmap-feedback .feedback-close{background:white;border:1px solid #ddd;border-radius:6px}.roadmap-feedback :focus-visible{outline:2px solid #2458ff;outline-offset:3px}.roadmap-feedback button:disabled{opacity:.6}.saved-run-reward{font-family:"IBM Plex Sans",Arial,sans-serif}

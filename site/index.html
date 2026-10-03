@@ -596,6 +596,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/account.js"></script>
 <script src="/connect.js"></script>
 <script src="/feedback-wake.js"></script>
+<script src="/roadmap-feedback.js"></script>
 <script src="/challenges.js"></script>
 <script src="/practice-eligibility.js"></script>
 <script src="/practices.js"></script>
@@ -787,6 +788,7 @@ const profileHandle=p=>GrinderAuth.present(p)?.handle||'';
 // A person who arrived from Responses keeps a way back even when the run is gone or private.
 function responseReturnLink(){try{return sessionStorage.getItem('ag_response_return')==='?inbox'?'<p class="response-return"><a class="act" href="/?inbox">Back to Notifications</a></p>':''}catch(_){return ''}}
 let ME=null, IDENTITY_SETUP=null, AUTH_USER=null;
+const roadmapFeedback=StriveFeedback({client:sb,me:()=>ME,signIn:()=>showSignIn()});
 let AUTH_GENERATION=0, RUN_VIEW_GENERATION=0;
 // Invalidate synchronously, before any queued auth refresh or pending private request.
 function invalidatePrivateView(){
@@ -1927,6 +1929,7 @@ async function viewRun(id){
     controls.id='run-edit';controls.innerHTML='<h2>Edit your run</h2><p class="hint">Tell the story, add a photo, then choose who can see it.</p><div class="run-story-fields"><label>Title<input id="run-title" required maxlength="120"></label><label>Project<input id="run-project" maxlength="120"></label><label>What happened?<textarea id="run-caption" maxlength="280" rows="3"></textarea></label><label>Link to what was built (optional)<input id="run-output-url" type="url" maxlength="2048"></label></div><div id="run-editor-photos"></div><details class="run-presentation"><summary>Card appearance</summary>'+visualPicker+'<label class="pin-check"><input type="checkbox" id="run-pin"> Pin to my profile</label></details><label id="run-audience-label">Who can read this run<select id="run-audience"><option value="private">Only me - just you</option><option value="close_friends">Close friends - people on your private list</option><option value="link">Followers - followers and close friends</option><option value="public">Public - Feed and profile</option></select></label><div class="run-edit-actions"><button id="run-save">Save changes</button><button id="run-delete" class="ghost">Delete run</button></div>';
 
     $('grind-thread').before(controls);$('run-editor-photos').append($('run-photos'));$('run-title').value=r.title||'';$('run-pin').checked=!!r.pinned_at;$('run-project').value=r.project||'';$('run-caption').value=r.caption||r.note||'';$('run-output-url').value=r.output_url||'';$('run-audience').value=r.visibility==='anonymous'?'private':r.visibility;
+    void StriveSavedRuns({client:sb,slot:controls,current:()=>current()&&controls.isConnected});
     $('run-save').onclick=async()=>{const title=$('run-title').value.trim(),project=$('run-project').value.trim(),caption=$('run-caption').value.trim(),output=$('run-output-url').value.trim(),audience=$('run-audience').value,heroVisual=controls.querySelector('input[name="run-hero-visual"]:checked')?.value||suggestedVisual||null;if(!title){status('Add a title.',true);$('run-title').focus();return}if(output&&!safeOutputUrl(output)){status('The output link must start with http:// or https://.',true);return}if(!(await requireCloseFriendsForSave(audience)))return;const pin=$('run-pin').checked;const {error}=await sb.from('runs').update({title,project:project||null,hero_visual:heroVisual,caption:caption||null,output_url:output||null,visibility:audience,pinned_at:pin?(r.pinned_at||new Date().toISOString()):null}).eq('id',r.id);if(error){status(error.message,true);return}await viewRun(r.id)};
     $('run-delete').onclick=async()=>{if(!confirm('Delete this run and its discussion?'))return;const {error}=await sb.from('runs').delete().eq('id',r.id);if(error){status(error.message,true);return}history.replaceState(null,'','/?mine');viewMe()};
   }
@@ -2027,34 +2030,8 @@ async function viewExplore(){
 }
 
 function viewFeedback(){
-  setPrimarySection('');
-  frame(railHtml(''),null);
-  const app=$('app');
-  app.innerHTML=`<div class="head"><h1>Send feedback</h1><span class="meta">Early alpha</span></div>
-    <div class="panel pad feedback-panel">
-      ${ME?`<form id="feedback-form">
-        <label>Category<select id="feedback-category" required><option value="bug">Bug</option><option value="idea">Idea</option><option value="other">Other</option></select></label>
-        <label>Message<textarea id="feedback-message" required maxlength="2000" rows="7" placeholder="What happened, or what should __BRAND__ do next?"></textarea></label>
-        <p class="hint">Do not include credentials, private session text or source code.</p>
-        <button id="feedback-send" type="submit">Send feedback</button>
-        <p id="feedback-state" role="status"></p>
-      </form>`:`<h3>Sign in to send feedback</h3><p>Your feedback is saved with your profile so the team can act on it.</p><button id="feedback-signin" type="button" class="act blue">${signInLabel()}</button>`}
-    </div>`;
-  if(!ME){$('feedback-signin').onclick=()=>showSignIn();return}
-  const form=$('feedback-form'),message=$('feedback-message'),send=$('feedback-send'),state=$('feedback-state');
-  form.onsubmit=async event=>{
-    event.preventDefault();
-    const trimmedText=message.value.trim();
-    if(!trimmedText){state.textContent='Write a message first.';message.focus();return}
-    send.disabled=true;state.textContent='Sending…';
-    let error;
-    try{({error}=await sb.from('alpha_feedback').insert({profile_id:ME.id,category:$('feedback-category').value,message:trimmedText,page:location.pathname}))}
-    catch(unexpected){error=unexpected}
-    send.disabled=false;
-    if(error){state.textContent='Could not send. Your message is still here. Try again when you are ready.';return}
-    message.value='';state.textContent='Feedback saved. Thank you.';
-    if(window.GrinderFeedbackWake) void window.GrinderFeedbackWake(sb.auth);
-  };
+ frame(railHtml(''),null);$('app').innerHTML='<div class="head"><h1>Your feedback shapes STRIVE</h1></div><p>Ideas, bugs, small annoyances. We want to hear them.</p><button id="open-roadmap">Impact the roadmap or whine</button>';
+ $('open-roadmap').onclick=()=>roadmapFeedback.open();roadmapFeedback.open();
 }
 
 function wireComposer(){

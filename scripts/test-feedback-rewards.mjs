@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {bootDisposable,seedJourneyActors,seedCoachRun,CASEY,RILEY} from './disposable-supabase.mjs';
+const {db,as,anonymous,denied}=await bootDisposable();await seedJourneyActors(db);await as(CASEY);
+const id='aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa';
+const save=async(text='TEST DATA feedback survives reload')=>(await db.query('select strava.save_feedback($1,$2,$3) id',[id,'idea',text])).rows[0].id;
+const first=await save();assert.equal(await save(),first);
+await denied('select strava.save_feedback($1,$2,$3)',[id,'idea','changed under same key']);
+await denied('select * from strava.alpha_feedback');
+await denied('select strava.save_feedback(gen_random_uuid(),$1,$2)',['idea','x'.repeat(2001)]);
+await denied('select strava.save_feedback(gen_random_uuid(),$1,$2)',['idea','   ']);
+await anonymous();await denied('select * from strava.alpha_feedback');await denied('select strava.save_feedback($1,$2,$3)',[id,'idea','no']);
+await as(RILEY);await denied('select * from strava.alpha_feedback');
+await db.exec('reset role');const rows=await db.query('select id,message from strava.alpha_feedback');assert.equal(rows.rows.length,1);assert.equal(rows.rows[0].id,first);
+await as(CASEY);assert.equal((await db.query('select strava.saved_run_count() n')).rows[0].n,0);
+console.log(JSON.stringify({savedId:first,persistedRows:rows.rows.length,retrySameId:true,anonymousReadDenied:true,otherAccountReadDenied:true,oversizeDenied:true,blankDenied:true,zeroRuns:0}));
+await seedCoachRun(db,CASEY,'TEST DATA first','a'.repeat(64),"now()");await as(CASEY);assert.equal((await db.query('select strava.saved_run_count() n')).rows[0].n,1);
+await seedCoachRun(db,CASEY,'TEST DATA second','b'.repeat(64),"now()");await as(CASEY);assert.equal((await db.query('select strava.saved_run_count() n')).rows[0].n,2);console.log('PASS exact saved count 0 -> 1 -> 2');
+await db.close();
