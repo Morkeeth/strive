@@ -1,0 +1,11 @@
+import vm from 'node:vm';import {readFileSync} from 'node:fs';import assert from 'node:assert/strict';
+const delay=ms=>new Promise(r=>setTimeout(r,ms));let active=0,peak=0,queries=0;
+const slots=new Map();const element=id=>{if(!slots.has(id))slots.set(id,{innerHTML:'',isConnected:true,querySelectorAll:()=>[]});return slots.get(id)};
+const query=()=>new Proxy({}, {get:(t,k)=>k==='then'?async resolve=>{queries++;active++;peak=Math.max(peak,active);await delay(60);active--;resolve({data:[],error:null})}:()=>query()});
+const box={window:{GrinderFeed:{}},document:{getElementById:element},URLSearchParams,location:{search:''},setTimeout};vm.createContext(box);
+vm.runInContext(readFileSync(process.env.STRIVE_SOCIAL_SOURCE||'site/social.js','utf8'),box);
+const social=box.window.GrinderSocial({client:{from:query},me:()=>({id:'test'}),app:()=>element('app'),frame(){},status(){},renderRuns:async()=>'',railHtml:()=>'',feedTabs:()=>'',setPrimarySection(){}});
+const start=performance.now();await social.following({home:true});const elapsed=Math.round(performance.now()-start);
+if(!process.env.STRIVE_BASELINE)assert.equal(peak,2);
+assert.equal(queries,3);
+console.log(JSON.stringify({method:'actual social following function, empty mocked queries60ms each; no backend',elapsed_ms:elapsed,queries,peak_concurrent_queries:peak}));

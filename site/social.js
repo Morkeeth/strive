@@ -408,8 +408,12 @@ window.GrinderSocial = function ({
             "You follow nobody yet. Follow a builder from a run or a profile and their public runs land here. Following is deliberate: nobody is imported or followed automatically.",
             `<div class="cta"><a class="act blue" href="/?people">Find people</a><a class="act" href="/?post">Add a run</a></div>`,
           ) + '<div id="following-suggest"></div><div id="following-latest"></div>';
-        await suggestBuilders(byId("following-suggest"));
-        byId("following-latest").innerHTML = await latest("Recent public runs");
+        const suggestions = byId("following-suggest"), latestSlot = byId("following-latest");
+        // The feed must not wait for every suggested builder's Follow control.
+        await Promise.all([
+          suggestBuilders(suggestions),
+          latest("Recent public runs").then(html => { if(latestSlot.isConnected) latestSlot.innerHTML=html; }),
+        ]);
         return;
       }
       const followedIds = follows.map((f) => f.followed_id);

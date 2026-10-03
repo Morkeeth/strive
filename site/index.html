@@ -96,6 +96,9 @@ button.ghost:hover,.act:hover{background:var(--rule-2);border-color:var(--rule)}
 .community-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .community-grid a{display:block;padding:18px;border:1px solid var(--line, var(--rule));text-decoration:none;color:inherit;overflow-wrap:anywhere}
 .discovery-sources{margin:0 0 22px}.discovery-sources .community-grid a{background:var(--box)}.discovery-sources h2{font-size:14px;margin:0}.discovery-sources .hint{margin:4px 0 10px}
+#i_pub{min-width:160px}
+.discover-intro{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 20px;flex-wrap:wrap}.discover-intro h2{font-size:20px;margin:0}.discover-intro .hint{margin:6px 0 0}
+.discovery-sources{margin:24px 0;border-top:1px solid var(--rule);padding:16px 0}.discovery-sources>summary{cursor:pointer;font-size:14px;font-weight:500;min-height:28px}.discovery-links{display:grid;gap:0}.discovery-links a{padding:12px 0;border-bottom:1px solid var(--rule-2);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}.discovery-links span{font-size:12px;color:var(--soft)}
 @media(max-width:700px){.community-grid{grid-template-columns:1fr}}
 .bar .right{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--soft);white-space:nowrap}
 .bar .right .you{color:var(--ink);font-weight:500}
@@ -518,6 +521,13 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 @media(max-width:700px){.bar .mark,.feed-tabs a,.section-tabs a,.land-head a,.launch-more a{display:inline-flex;align-items:center;min-height:44px}input[type=checkbox]{width:22px;height:22px}label:has(input[type=checkbox]){min-height:44px}button,.act{min-height:44px}}
 
 .capture-welcome{padding:24px 0 26px;max-width:760px}.capture-welcome h2{font-size:clamp(25px,4vw,38px);letter-spacing:-.04em;margin:8px 0 12px}.capture-welcome>p{max-width:560px;line-height:1.55}.capture-steps{list-style:none;padding:0;margin:24px 0;display:flex;gap:18px;flex-wrap:wrap}.capture-steps li{display:flex;align-items:center;gap:8px;font-size:13px}.capture-steps b{display:grid;place-items:center;border:1px solid var(--blue);color:var(--blue);border-radius:50%;width:26px;height:26px}.capture-actions{display:flex;gap:10px;flex-wrap:wrap}.capture-terminal,.capture-sync,.advanced-connect{margin:12px 0}.capture-terminal>summary,.capture-sync>summary{padding:16px;cursor:pointer}.capture-welcome .hint{margin-top:14px}.loading-card{overflow:hidden}.capture-actions .act{transition:transform .16s ease,box-shadow .16s ease}.capture-actions .act:hover{transform:translateY(-2px);box-shadow:0 4px 0 rgba(37,99,235,.1)}.capture-actions .act:active{transform:translateY(0)}
+@media(prefers-reduced-motion:no-preference){
+  .account-menu[open]>.account-panel{transform-origin:top right;animation:menu-in .14s ease-out both}
+  .bar .right>.icon-button,.bar .right>.account-menu>summary,button,.act{transition:background-color .12s ease,color .12s ease,opacity .12s ease,transform .12s ease}
+  .bar .right>.icon-button:active,.bar .right>.account-menu>summary:active{transform:scale(.94)}
+  button[aria-busy=true]{opacity:.75}
+  @keyframes menu-in{from{opacity:0;transform:translateY(-3px) scale(.98)}to{opacity:1;transform:none}}
+}
 @media(prefers-reduced-motion:no-preference){.capture-welcome{animation:welcome-in .32s ease both}@keyframes welcome-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.fade{opacity:1}.capture-actions .act:hover{transform:none}}
 
@@ -655,7 +665,7 @@ function discoverySourcesHtml(){
     ['lablab','AI hackathons and teams','https://lablab.ai/'],
     ['ETHGlobal','Web3 hackathons','https://ethglobal.com/events']
   ];
-  return `<section class="discovery-sources" aria-labelledby="discovery-sources-title"><h2 id="discovery-sources-title">Suggested communities and competitions</h2><p class="hint">Official directories. Opening a link does not register you or join a community.</p><div class="community-grid">${sources.map(([name,about,url])=>`<a href="${url}" target="_blank" rel="noopener noreferrer"><strong>${name}</strong><p class="meta">${about}</p></a>`).join('')}</div></section>`;
+  return `<details class="discovery-sources"><summary>Find a community or your next build challenge</summary><p class="hint">Official directories. Opening a link does not register you or join a community.</p><nav class="discovery-links" aria-label="Communities and competitions">${sources.map(([name,about,url])=>`<a href="${url}" target="_blank" rel="noopener noreferrer"><strong>${name}</strong><span>${about}</span></a>`).join('')}</nav></details>`;
 }
 function myRunsTabs(active){
   return `<nav class="section-tabs" aria-label="My runs"><a href="/?mine" class="${active==='runs'?'on':''}" ${active==='runs'?'aria-current="page"':''}>My runs</a></nav>`;
@@ -1476,8 +1486,11 @@ function shareStatsProfile(R,T,harnesses){
 function countUp(){ document.querySelectorAll('[data-count]').forEach(el=>{
   const target=parseFloat(el.getAttribute('data-count')); if(isNaN(target)) return;
   const dec=el.dataset.dec!=null?parseInt(el.dataset.dec):(target%1!==0?1:0);
-  const dur=520, t0=performance.now();
-  function step(t){ const p=Math.min(1,(t-t0)/dur); const e=1-Math.pow(1-p,3);
+  if(el.dataset.counted===String(target))return;
+  el.dataset.counted=String(target);
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){el.textContent=target.toFixed(dec);return;}
+  const dur=180, t0=performance.now();
+  function step(t){ if(!el.isConnected)return; const p=Math.min(1,(t-t0)/dur); const e=1-Math.pow(1-p,3);
     el.textContent=(target*e).toFixed(dec); if(p<1) requestAnimationFrame(step); }
   requestAnimationFrame(step); }); }
 // a whole number gets a count-up; a composite like "3/7 · 43%" or a dash never does.
@@ -1984,15 +1997,16 @@ async function viewExplore(){
   const {data:runs,error}=await sb.from('runs').select('*, profiles!runs_profile_id_fkey(github_handle,name,rig,handle,display_name,avatar_url)').eq('visibility','public').order('created_at',{ascending:false}).limit(50);
   noteTraces(runs);
   if(error){status(error.message,true);return;}
-  const ad=await ackData(runs||[]);
   const R=runs||[];
-  const first=ME&&(await runCount())===0;
+  // Reactions and first-run eligibility are independent. Short feeds already show the slot.
+  const [ad, ownCount]=await Promise.all([ackData(R),ME&&R.length>=4?runCount():Promise.resolve(null)]);
+  const first=ownCount===0;
   frame(railHtml('discover',R), null);
   // The feed is the feed. A first-time poster gets the "Your run goes here" slot under the
   // cards, never a command line above them (25 Sep 2026).
-  app.innerHTML=feedTabs('discover')+discoverySourcesHtml()
+  app.innerHTML=feedTabs('discover')+'<div class="discover-intro"><div><h2>See what people are building</h2><p class="hint">Real runs, the work behind them, and the people to follow.</p></div><a class="act" href="/?people">Find builders</a></div>'
     +(R.length?feedCards(R,ad)+(R.length<4||first?GrinderFeed.nextSlot():'')
-      :'<div class="card"><div class="empty"><h3>Recent runs</h3><p>Public runs from builders show up here.</p><div class="cta"><a class="act blue" href="/?post">Post a run</a><a class="act" href="/?people">Find people</a></div></div></div>');
+      :'<div class="card"><div class="empty"><h3>Recent runs</h3><p>Public runs from builders show up here.</p><div class="cta"><a class="act blue" href="/?post">Post a run</a><a class="act" href="/?people">Find people</a></div></div></div>')+discoverySourcesHtml();
   wireKudos(); countUp();
 }
 
@@ -2483,6 +2497,7 @@ async function importRun(){
     if(output&&!safeOutputUrl(output)){status('The output link must start with http:// or https://.',true);return}
     if(!(await requireCloseFriendsForSave(audience)))return;
     const saveLabel=publishButton.textContent;
+    publishButton.style.minWidth=publishButton.getBoundingClientRect().width+'px';
     publishButton.disabled=true;publishButton.setAttribute('aria-busy','true');publishButton.innerHTML='<span class="spin" aria-hidden="true"></span>Saving…';
     const recover=$('i_recover'); recover.hidden=true; recover.innerHTML='';
     // The same capture saved twice is one run, not two. Only the capture's measurement
