@@ -100,6 +100,9 @@ button.ghost:hover,.act:hover{background:var(--rule-2);border-color:var(--rule)}
 .bar .right{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--soft);white-space:nowrap}
 .bar .right .you{color:var(--ink);font-weight:500}
 .bar .right button{padding:7px 12px}
+.bar .right>.icon-button,.bar .right>.account-menu>summary{box-sizing:border-box;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;flex:0 0 44px;display:grid;place-items:center}
+.bar .right>.account-menu{flex:0 0 44px;width:44px}
+.bar .right>.icon-button .nav-badge{position:absolute;right:0;top:0;margin:0}
 
 /* shell */
 .shell{max-width:1320px;margin:0 auto;padding:0 24px;display:grid;
@@ -776,9 +779,9 @@ function handleAuthStateChange(event,session,refreshAndRoute){
 }
 
 // The social feeds (home, Following, a club) draw the same feed card as the public feed.
-const social=GrinderSocial({client:sb,me:()=>ME,app:()=>$('app'),frame,status,signInGitHub:()=>signInWithGitHub(),
+const social=GrinderSocial({client:sb,me:()=>ME,app:()=>$('app'),frame,railHtml,feedTabs,setPrimarySection,status,signInGitHub:()=>signInWithGitHub(),
   renderRuns:async runs=>{noteTraces(runs);const ad=await ackData(runs);setTimeout(()=>{wireKudos();countUp()},0);return feedCards(runs,ad)}});
-const people=GrinderPeople({client:sb,me:()=>ME,app:()=>$('app'),frame,status,social,drawAvatar:avatar,renderRuns:async runs=>{noteTraces(runs);const ad=await ackData(runs);setTimeout(()=>{wireKudos();countUp()},0);return runs.map(r=>runCard(r,ad.mine.has(r.id),ad.counts[r.id])).join('')}});
+const people=GrinderPeople({client:sb,me:()=>ME,app:()=>$('app'),frame,railHtml,feedTabs,setPrimarySection,status,social,drawAvatar:avatar,renderRuns:async runs=>{noteTraces(runs);const ad=await ackData(runs);setTimeout(()=>{wireKudos();countUp()},0);return runs.map(r=>runCard(r,ad.mine.has(r.id),ad.counts[r.id])).join('')}});
 const practices=GrinderPractices({client:sb,me:()=>ME,app:()=>$('app'),frame,status});
 const progress=GrinderProgress({client:sb,me:()=>ME,app:()=>$('app'),frame,status,signIn:showSignIn,signInGitHub:()=>signInWithGitHub()});
 const challenges=GrinderChallenges({client:sb,me:()=>ME,app:()=>$('app'),frame,status});
@@ -786,7 +789,7 @@ const challenges=GrinderChallenges({client:sb,me:()=>ME,app:()=>$('app'),frame,s
 // Origin remains a post-sign-in repository connection, never an Auth provider.
 const originConnection=GrinderOrigin.create();
 const account=GrinderAccount({auth,me:()=>ME,app:()=>$('app'),frame,status,providersEnabled:PROVIDERS_ENABLED,origin:originConnection,signIn:showSignIn,onProfileChange:p=>{ME=p;refreshAuth();}});
-const connect=typeof GrinderConnect==='function'?GrinderConnect({db:sb,me:()=>ME,app:()=>$('app'),frame,status,signInGitHub:()=>signInWithGitHub(),signIn:showSignIn}):null;
+const connect=typeof GrinderConnect==='function'?GrinderConnect({db:sb,me:()=>ME,app:()=>$('app'),frame,railHtml,feedTabs,setPrimarySection,status,signInGitHub:()=>signInWithGitHub(),signIn:showSignIn}):null;
 
 // THE MARK IS THE GRIND, drawn small.
 //
@@ -1752,9 +1755,9 @@ function feedCards(runs,ad){
 // A stranger lands on what is going on, then people, then runs. Real rows only (site/home.js).
 async function viewLanding(){
   const app=$('app');
-  frame(railHtml('feed'),null,true);
+  frame(railHtml('feed'),null);
   setPrimarySection('feed');
-  app.innerHTML=landingHTML();
+  app.innerHTML=feedTabs('following')+landingHTML();
   const H=window.GrinderHome, now=Date.now();
   const data=H&&sb?await H.read(sb,now):{runs:null,clubs:null,events:null};
   const put=(id,html)=>{const el=$(id);if(el)el.innerHTML=html};
@@ -1977,7 +1980,7 @@ async function viewPost(){
 async function viewExplore(){
   const app=$('app');
   setPrimarySection('discover');
-  frame(railHtml('discover'),null); app.innerHTML=skeletonCard()+skeletonCard()+skeletonCard();
+  frame(railHtml('discover'),null); app.innerHTML=feedTabs('discover')+skeletonCard()+skeletonCard()+skeletonCard();
   const {data:runs,error}=await sb.from('runs').select('*, profiles!runs_profile_id_fkey(github_handle,name,rig,handle,display_name,avatar_url)').eq('visibility','public').order('created_at',{ascending:false}).limit(50);
   noteTraces(runs);
   if(error){status(error.message,true);return;}
