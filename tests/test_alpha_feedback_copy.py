@@ -39,7 +39,7 @@ def test_send_feedback_uses_the_authenticated_persisted_delivery_contract():
     assert ".select(" not in feedback
     assert 'maxlength="2000"' in feedback
     assert 'value="bug"' in feedback and 'value="idea"' in feedback and 'value="other"' in feedback
-    assert "Feedback sent. Thank you." in feedback
+    assert "Feedback saved. Thank you." in feedback
     assert "Your message is still here" in feedback
     assert "setTimeout" not in feedback
 

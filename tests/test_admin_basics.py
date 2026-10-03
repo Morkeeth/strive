@@ -25,7 +25,7 @@ def test_deletion_has_an_anchor_and_terms_link_clean_urls():
 def test_each_spa_page_sets_its_own_title():
     html = (SITE / "index.html").read_text()
     assert "document.title=pageTitle(new URLSearchParams(location.search))" in html
-    for label in ("'Activity highlights'", "'Add a run'", "'Find people'", "'Settings'"):
+    for label in ("'Leaderboard'", "'Add a run'", "'Find people'", "'Settings'"):
         assert label in html
 
 

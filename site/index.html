@@ -497,7 +497,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 .connect-then{margin-top:18px;padding-top:12px;border-top:1px solid var(--rule)}
 .connect-then h2{font-size:16px;margin:0 0 6px}
 .project-row a b{color:var(--ink)}
-.boards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:14px 0}
+.boards-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin:14px 0}
 @media(max-width:900px){.boards-grid{grid-template-columns:1fr}}
 .board{padding:14px 16px}
 .board-head h3{margin:0;font-size:15px}.board-head small{display:block;color:var(--soft);font-size:12px;margin:2px 0 8px}
@@ -513,6 +513,11 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 @media(max-width:700px){.proof-route{grid-template-columns:1fr 1fr}.proof-route>div:nth-child(n+3){margin-top:10px}}
 /* 390 px: every tap target at least 44px tall (fresh-eyes review, 25 Sep 2026). */
 @media(max-width:700px){.bar .mark,.feed-tabs a,.section-tabs a,.land-head a,.launch-more a{display:inline-flex;align-items:center;min-height:44px}input[type=checkbox]{width:22px;height:22px}label:has(input[type=checkbox]){min-height:44px}button,.act{min-height:44px}}
+
+.capture-welcome{padding:24px 0 26px;max-width:760px}.capture-welcome h2{font-size:clamp(25px,4vw,38px);letter-spacing:-.04em;margin:8px 0 12px}.capture-welcome>p{max-width:560px;line-height:1.55}.capture-steps{list-style:none;padding:0;margin:24px 0;display:flex;gap:18px;flex-wrap:wrap}.capture-steps li{display:flex;align-items:center;gap:8px;font-size:13px}.capture-steps b{display:grid;place-items:center;border:1px solid var(--blue);color:var(--blue);border-radius:50%;width:26px;height:26px}.capture-actions{display:flex;gap:10px;flex-wrap:wrap}.capture-terminal,.capture-sync,.advanced-connect{margin:12px 0}.capture-terminal>summary,.capture-sync>summary{padding:16px;cursor:pointer}.capture-welcome .hint{margin-top:14px}.loading-card{overflow:hidden}.capture-actions .act{transition:transform .16s ease,box-shadow .16s ease}.capture-actions .act:hover{transform:translateY(-2px);box-shadow:0 4px 0 rgba(37,99,235,.1)}.capture-actions .act:active{transform:translateY(0)}
+@media(prefers-reduced-motion:no-preference){.capture-welcome{animation:welcome-in .32s ease both}@keyframes welcome-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.fade{opacity:1}.capture-actions .act:hover{transform:none}}
+
 </style><link rel="stylesheet" href="/social.css"><link rel="stylesheet" href="/people.css"><link rel="stylesheet" href="/account.css"><link rel="stylesheet" href="/feed.css"><link rel="stylesheet" href="/dropin.css"><link rel="stylesheet" href="/home.css"><link rel="stylesheet" href="/run-photos.css">
 <script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};</script>
 <script defer src="/_vercel/insights/script.js"></script>
@@ -563,6 +568,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/origin.js"></script>
 <script src="/account.js"></script>
 <script src="/connect.js"></script>
+<script src="/feedback-wake.js"></script>
 <script src="/challenges.js"></script>
 <script src="/practice-eligibility.js"></script>
 <script src="/practices.js"></script>
@@ -628,7 +634,7 @@ function menuLinks(kind){
   if(!ME) return AUTH_USER
     ? `<a href="/?connect" role="menuitem">Connect your agent</a><a href="/?feedback" role="menuitem">Send feedback</a><button type="button" data-signout role="menuitem">Sign out</button>`
     : `<a href="/?connect" role="menuitem">Connect your agent</a><a href="/?feedback" role="menuitem">Send feedback</a><div class="menu-sep"></div><button type="button" class="menu-signin" data-signin role="menuitem">${signInLabel()}</button>`;
-  return `<a href="/?u=${encodeURIComponent(profileHandle(ME))}" role="menuitem">Profile</a><a href="/?account" role="menuitem">Settings</a><button type="button" data-signout role="menuitem">Sign out</button>`;
+  return `<a href="/?u=${encodeURIComponent(profileHandle(ME))}" role="menuitem">Profile</a><a href="/?account" role="menuitem">Settings</a><a href="/?connect" role="menuitem">Connect your agent</a><a href="/?feedback" role="menuitem">Send feedback</a><button type="button" data-signout role="menuitem">Sign out</button>`;
 }
 function syncAuthNav(){
   document.querySelectorAll('[data-auth="1"]').forEach(el=>{el.hidden=!ME});
@@ -636,7 +642,7 @@ function syncAuthNav(){
 }
 function feedTabs(active){
   const tab=(href,key,label)=>`<a href="${href}" class="${active===key?'on':''}" ${active===key?'aria-current="page"':''}>${label}</a>`;
-  return `<nav class="feed-tabs" aria-label="Feed filters">${tab('/?following','following','Following')}${tab('/?explore','discover','Discover')}${tab('/?people','people','Find people')}</nav>`;
+  return `<nav class="feed-tabs" aria-label="Feed filters">${tab('/?following','following','Following')}${tab('/?explore','discover','Discover')}${tab('/?people','people','Find people')}${tab('/?boards','boards','Leaderboard')}</nav>`;
 }
 function discoverySourcesHtml(){
   const sources=[
@@ -696,11 +702,11 @@ function sidePanels(runs,opts){
 }
 function skeletonCard(){
   const bx='<div class="bx"><span class="sk l" style="width:42px;height:7px"></span><span class="sk l" style="width:30px;height:15px"></span></div>';
-  return `<div class="card"><div class="runtop"><span class="av"></span><div style="flex:1">
+  return `<div class="card loading-card" role="status" aria-label="Loading runs"><span class="visually-hidden">Loading runs…</span><div aria-hidden="true"><div class="runtop"><span class="av"></span><div style="flex:1">
       <span class="sk l" style="width:110px"></span><span class="sk l" style="width:160px;height:7px"></span></div></div>
     <div style="padding:14px 16px 0"><span class="sk l" style="width:58%;height:12px"></span></div>
     <div class="boxes">${bx.repeat(5)}</div>
-    <div class="tw"><span class="sk" style="height:60px"></span></div></div>`;
+    <div class="tw"><span class="sk" style="height:60px"></span></div></div></div>`;
 }
 const status=(m,e)=>{const s=$('status');s.textContent=m||'';s.className=e?'err':'';};
 if(!window.supabase) status("Couldn't load, refresh.",true);
@@ -1484,8 +1490,8 @@ const ONE_LINE=h=>`uvx --from __CAPTURE_PACKAGE__ agentgrinder grind${h?' --harn
 const SYNC_LINE=t=>`uvx --from __CAPTURE_PACKAGE__ agentgrinder sync --install --token ${t}`;
 function autoSyncHtml(){
   return `<section class="auto-sync" id="auto-sync" aria-labelledby="auto-sync-title">
-    <h2 id="auto-sync-title">Automatic: your sessions arrive on their own</h2>
-    <p>Turn it on once, on the computer your agent runs on. Every finished Claude Code, Cursor and Codex session then arrives in <a href="/?mine">My runs</a> as a private run, every 15 minutes. Only the counts leave the computer. Nothing is public until you publish it.</p>
+    <h2 id="auto-sync-title">Keep your next runs coming</h2>
+    <p>Optional: this uploads the last 7 days of sessions privately, then checks every 15 minutes. Turn it on only on your own computer. Every finished Claude Code, Cursor and Codex session then arrives in <a href="/?mine">My runs</a> as a private run, every 15 minutes. Only the counts leave the computer. Nothing is public until you publish it.</p>
     <div id="auto-sync-body">${ME?`<button type="button" class="act primary" id="auto-sync-go">Turn on automatic sync</button>`:`<button type="button" class="act primary" data-signin>${signInLabel()} to turn it on</button>`}</div>
     <p class="hint" id="auto-sync-state" role="status" aria-live="polite"></p>
   </section>`;
@@ -1510,15 +1516,22 @@ function wireAutoSync(root){
 }
 function connectBodyHtml(){
   const capture=ONE_LINE('auto');
+  const agentPrompt=`Open ${location.origin}/agents.md and help me preview this session on STRIVE. Keep it local until I choose to save it.`;
   const hook='python3 -m agentgrinder hook install --harness cursor --open';
   const mcp='python3 -m agentgrinder connect cursor --project /your/project --install';
-  return `${autoSyncHtml()}<h2 class="connect-or">Or import one session now</h2>
-    <section class="ob-step"><h2>Import your latest session</h2>
-      <p class="connect-lead">Run this on the computer where you build. __BRAND__ finds the latest supported session and opens it privately for review.</p>
+  return `<section class="capture-welcome" aria-labelledby="capture-welcome-title">
+      <span class="run-story-label">Your next stride</span><h2 id="capture-welcome-title">You built it. Give it a run.</h2>
+      <p>Pick the work you want to remember. Add the picture and the story. Share it when you are ready.</p>
+      <ol class="capture-steps" aria-label="Your first run"><li><b>1</b><span>Preview your session</span></li><li><b>2</b><span>Add your story and photos</span></li><li><b>3</b><span>Choose who sees it</span></li></ol>
+      <div class="capture-actions"><button class="act blue" type="button" data-copy="${esc(agentPrompt)}">Copy for my agent</button><a class="act" href="/?post#drop-zone">Choose a session file</a></div>
+      <p class="hint">Grok or Cursor can start with <a href="/agents.md">this link</a>. The preview does not save or post anything.</p>
+    </section>
+    <details class="panel capture-terminal"><summary>Use a terminal instead</summary><div class="pad">
+      <h3>Preview your latest session</h3><p class="connect-lead">Run this on the computer where you build. Check the selected project and sitting in the terminal, then open the private preview link it prints.</p>
       <div class="cmd"><span class="c">${esc(capture)}</span><button type="button" class="act blue" data-copy="${esc(capture)}">Copy command</button></div>
-      <p class="hint">Works with Cursor, Claude Code and Codex. It sends measurements for the preview, never prompt text, code or file paths.</p></section>
-    <section class="ob-step"><h2>Imported session</h2><div id="latest-card-preview">${skeletonCard()}</div>
-      <p class="hint">Open it to edit the title, add an optional note and choose who can see it.</p></section>
+      <p class="hint">Uses uv and Python. Cursor, Claude Code and Codex are supported. The link contains measurements, never prompt text, code or file paths. <a href="/agents.md">Install and select an exact session</a>.</p>
+    </div></details>
+    <details class="panel capture-sync"><summary>Optional: import future sessions automatically</summary><div class="pad">${autoSyncHtml()}</div></details>
     <details class="panel manual-post advanced-connect"><summary>Other import methods</summary><div class="pad">
       <h3>Open a local preview when Cursor finishes</h3><div class="cmd"><span class="c">${esc(hook)}</span><button type="button" class="act" data-copy="${esc(hook)}">Copy Cursor hook</button></div>
       <p class="hint">This older hook opens a local preview when a Cursor run ends. It does not upload or publish.</p>
@@ -1526,19 +1539,19 @@ function connectBodyHtml(){
       <p class="hint">Replace /your/project with the project folder. Replace cursor with claude when needed.</p>
       <h3>Import a session file manually</h3>${dropZoneHtml()}
       <p class="hint">Finder: press Cmd+Shift+G and paste the session folder. Claude Code: ${esc(AGENT_FILES[0][1])} · Cursor: ${esc(AGENT_FILES[1][1])} · Codex: ${esc(AGENT_FILES[2][1])}</p>
-      <p class="hint"><a href="https://github.com/Morkeeth/strive/blob/main/docs/AGENT-UPLOAD-API.md">Agent upload API</a> · <a href="https://github.com/Morkeeth/strive/blob/main/docs/GROK-PUSH.md">Grok Bot export</a></p>
+      <p class="hint"><a href="/api/agent-upload">Agent upload API</a> · <a href="/agents.md">Grok Bot export</a></p>
     </div></details>`;
 }
 function wireConnectCopies(root){
   (root||document).querySelectorAll('[data-copy]').forEach(b=>{ if(b.dataset.wired) return; b.dataset.wired='1';
-    b.addEventListener('click',async()=>{const label=b.textContent;try{await navigator.clipboard.writeText(b.dataset.copy);b.textContent='Copied'}catch(_){b.textContent='Select and copy'}setTimeout(()=>b.textContent=label,1600)});});
+    b.addEventListener('click',async()=>{const label=b.textContent;try{await navigator.clipboard.writeText(b.dataset.copy);b.textContent='Copied ✓';b.setAttribute('aria-label','Copied to clipboard')}catch(_){b.textContent='Select and copy'}setTimeout(()=>{b.textContent=label;b.removeAttribute('aria-label')},1600)});});
 }
 async function viewConnect(){
   const q=new URLSearchParams(location.search);
   if(q.get('onboard')==='agent') return viewOnboardAgent();
   const app=$('app');
   frame(railHtml('post'),null);
-  app.innerHTML=`<div class="head"><h1>Connections</h1><span class="meta">Import sessions automatically</span></div>${connectBodyHtml()}`;
+  app.innerHTML=`<div class="head"><h1>Connect your agent</h1><span class="meta">Start with one run</span></div>${connectBodyHtml()}`;
   if(window.GrinderDropinUI) GrinderDropinUI.mount({post:token=>{history.pushState(null,'','/#import='+token);route();}});
   wireConnectCopies(app); wireAutoSync(app);
   await loadLatestCardPreview();
@@ -1675,7 +1688,7 @@ function landingHTML(){
     <section class="home-sec" id="home-clubs-section" aria-labelledby="h-clubs"><div class="land-head"><h2 id="h-clubs">Clubs</h2></div><div id="home-clubs"></div></section>
     <section class="home-sec" aria-labelledby="h-builders"><div class="land-head"><h2 id="h-builders">Builders to follow</h2><a href="/?people">Find people</a></div><div id="home-builders"></div></section>
     <section class="home-sec landing-feature" aria-labelledby="h-popular" id="landing-feature"><div class="land-head"><h2 id="h-popular">Popular runs</h2><a href="/?explore">See all</a></div><div id="landing-feature-body">${skeletonCard()}</div><p id="public-run-count" class="public-run-count" role="status"></p></section>
-    <section class="home-join"><h2>Post your own runs</h2><button type="button" class="act primary" data-signin>${signInLabel()} and build your profile</button></section>
+    <section class="home-join"><h2>Your work belongs here too.</h2><p>Start with a real session. Add your story and a photo, then choose who sees it.</p><a class="act blue" href="/?connect">Make my first run</a><button type="button" class="act primary" data-signin>${signInLabel()} and build your profile</button></section>
   </div>
   <div class="launch-more"><a href="https://github.com/Morkeeth/strive">GitHub ↗</a><a href="/methodology">How the numbers are made</a><a href="/?post">Add a run from a file</a><a href="${REAL_RUN}">A real run</a></div>`;
 }
@@ -1888,7 +1901,7 @@ function postComposerHtml({first=false}={}){
     <div class="up-top"><span class="t">Capture from Cursor, Claude Code, Codex or Grok Bot</span><span class="meta">local and private until you choose</span></div>
     <div class="cmd"><span class="c">${INSTALL_CMD}</span><button class="act" id="cp1">Copy</button></div>
     <div class="cmd"><span class="c">python3 -m agentgrinder grind --harness auto --push</span><span class="d">reads the freshest Cursor, Claude Code, Codex or imported Grok Bot session</span></div>
-    <div class="cmd"><span class="c"><span class="card-harness">Grok Bot</span> · use an explicitly selected export</span><a class="d" href="https://github.com/Morkeeth/strive/blob/main/docs/GROK-PUSH.md">Preview steps →</a></div>
+    <div class="cmd"><span class="c"><span class="card-harness">Grok Bot</span> · use an explicitly selected export</span><a class="d" href="/agents.md">Preview steps →</a></div>
     <div class="up-foot">The reader sends recorded counts and timing, never prompt text, code or file paths. You review every field before choosing an audience.</div>
   </div>`}
   <details class="panel manual-post">
@@ -1927,7 +1940,7 @@ async function viewPost(){
   // browser's own jump to the anchor has already missed it: scroll here, then drop the hash.
   if(location.hash==='#drop-zone'){
     const stage=$('drop-stage');
-    if(stage) stage.scrollIntoView({block:'nearest'});
+    if(stage){const details=stage.closest('details');if(details)details.open=true;stage.scrollIntoView({block:'nearest'});}
     history.replaceState(null,'','/?post');
   }
   if(!ME)$('post-signin').onclick=()=>showSignIn();
@@ -1978,7 +1991,8 @@ function viewFeedback(){
     catch(unexpected){error=unexpected}
     send.disabled=false;
     if(error){state.textContent='Could not send. Your message is still here. Try again when you are ready.';return}
-    message.value='';state.textContent='Feedback sent. Thank you.';
+    message.value='';state.textContent='Feedback saved. Thank you.';
+    if(window.GrinderFeedbackWake) void window.GrinderFeedbackWake(sb.auth);
   };
 }
 
@@ -2085,17 +2099,14 @@ function fmtSecs(secs){const m=Math.round(secs/60);return m<1?'<1m':m>=60?`${Mat
 // Monday 00:00 in the reader's time zone: the week a board counts.
 function weekStart(now=new Date()){const d=new Date(now);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d}
 
-// BOARDS (25 Sep 2026). Computed in the browser from public runs only, so every row is a run
-// anyone can open. Three lanes for this week and one for all time. An empty lane says so; it is
-// never filled with a sample. The "honest failure" lane is not a joke at anyone: it is the run
-// where the agent worked hardest and changed nothing, named as a fact the run itself recorded.
+// Public activity rankings. Every row links to its measured source run.
 const MARATHON_SECS=3*3600;
 function boardRow(r,i,value){const h=profileHandle(r.profiles||{});return `<div class="board-row"><span class="board-rank num">${i+1}</span><span class="board-what"><a href="/?run=${r.id}">${esc(GrinderFeed.titleOf(r))}</a><small>${h?`<a href="/?u=${encodeURIComponent(h)}">@${esc(h)}</a>`:'metrics only'} · ${esc(r.harness||'agent')}</small></span><span class="board-value num">${esc(value)}</span></div>`}
 function boardHtml(title,note,rows,empty){return `<section class="card board"><div class="board-head"><h3>${esc(title)}</h3><small>${esc(note)}</small></div>${rows.length?rows.map(([r,v],i)=>boardRow(r,i,v)).join(''):`<p class="board-empty">${esc(empty)}</p>`}</section>`}
 async function viewBoards(){
   const app=$('app'); frame(railHtml('feed'),null); setPrimarySection('feed'); app.innerHTML=skeletonCard()+skeletonCard();
   const since=weekStart();
-  const [{data:recent,error},{data:longRuns}]=await Promise.all([
+  const [{data:recent,error},{data:longRuns,error:longError}]=await Promise.all([
     sb.from('runs').select(PROJECT_SELECT).eq('visibility','public').order('created_at',{ascending:false}).limit(300),
     sb.from('runs').select(PROJECT_SELECT).eq('visibility','public').or(`wall_time_s.gte.${MARATHON_SECS},duration_s.gte.${MARATHON_SECS}`).order('wall_time_s',{ascending:false,nullsFirst:false}).order('duration_s',{ascending:false,nullsFirst:false}).limit(100)]);
   if(error){status(error.message,true);app.innerHTML='<div class="card"><div class="empty">Boards could not load.</div></div>';return;}
@@ -2104,20 +2115,15 @@ async function viewBoards(){
   const top=(list,score,fmt,n=5)=>list.map(r=>[r,score(r)]).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,n).map(([r,v])=>[r,fmt(v)]);
   const longest=top(week,runSeconds,fmtSecs);
   const tools=top(week,runTools,v=>`${v.toLocaleString()} calls`);
-  // The honest failure: the run recorded zero files changed (or, with files unknown, zero
-  // commits) and the most tool calls. Both numbers come from the run row.
-  const failures=week.filter(r=>(r.files_touched===0)||(r.files_touched==null&&r.commits===0)).map(r=>[r,runTools(r)]).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,5)
-    .map(([r,v])=>[r,`${v.toLocaleString()} calls, ${r.files_touched===0?'0 files changed':'0 commits'}`]);
   const marathon=top([...new Map((longRuns||[]).map(r=>[r.id,r])).values()].filter(r=>!typedOnlyRun(r)&&runSeconds(r)>=MARATHON_SECS),runSeconds,fmtSecs,10);
   const weekLabel=`${since.getDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][since.getMonth()]}`;
-  app.innerHTML=`<div class="head"><h1>Marathon and boards</h1><span class="meta">public runs only</span></div>
-    <p class="hint">Every row is a public run anyone can open. This week starts Monday ${esc(weekLabel)} in your time zone. Time on a run is the measured wall time, else the session length.</p>
+  app.innerHTML=`<div class="head"><h1>Leaderboard</h1><span class="meta">public runs only</span></div>
+    ${feedTabs('boards')}<p class="hint">Every row is a public run anyone can open. Activity counts are not a score for quality or human effort. Weekly rankings use the latest 300 public uploads, filtered by session start, so older uploads may be absent. This week starts Monday ${esc(weekLabel)} in your time zone. Time on a run is the measured wall time, else the session length.</p>
     <div class="boards-grid">
       ${boardHtml('Longest run this week','measured time, one run',longest,'No public run with a measured time this week yet.')}
       ${boardHtml('Most tool calls this week','one run, one count',tools,'No public run with tool calls this week yet.')}
-      ${boardHtml('Honest failure of the week','most tool calls with zero files changed. Runs that went nowhere count too',failures,'No run with zero files changed this week. Post the ugly one.')}
     </div>
-    ${boardHtml('Marathon, all time','public runs of 3 hours or more',marathon,'No public run of 3 hours or more yet. The first one goes here.')}
+    ${longError?'<section class="card"><h3>Long sessions</h3><p role="status">Long sessions could not load. Reload to try again.</p></section>':boardHtml('Long sessions','Up to 100 public runs of 3 hours or more, fetched by wall time then session length. This is a capped sample, not a complete all-time ranking.',marathon,'No public run of 3 hours or more in this sample yet.')}
     <p class="hint"><a href="/?post">Post a run</a> · <a href="/?projects">Projects</a> · <a href="/methodology">How the numbers are made</a></p>`;
 }
 
@@ -2646,7 +2652,7 @@ async function viewEvent(){
 const forum=GrinderForum({client:sb,app:()=>document.getElementById('app'),frame,status});
 
 // One title per page, in the same order route() checks the query, so the title names the page that opens.
-const PAGE_TITLES=[['example','Example'],['boards','Activity highlights'],['projects','Projects'],['project','Project'],['segment','Segment'],['post','Add a run'],['mine','My runs'],['people','Find people'],['account','Settings'],['feedback','Send feedback'],['connect','Connections'],['following','Following'],['inbox','Notifications'],['crews','Clubs'],['crew','Club'],['join','Join a club'],['agents','Agents'],['agent','Agent']];
+const PAGE_TITLES=[['example','Example'],['boards','Leaderboard'],['projects','Projects'],['project','Project'],['segment','Segment'],['post','Add a run'],['mine','My runs'],['people','Find people'],['account','Settings'],['feedback','Send feedback'],['connect','Connections'],['following','Following'],['inbox','Notifications'],['crews','Clubs'],['crew','Club'],['join','Join a club'],['agents','Agents'],['agent','Agent']];
 function pageTitle(q){
   const t=x=>x+' · __BRAND__';
   // Retired sections and legacy ?event= links are sent to Discover.

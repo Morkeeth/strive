@@ -15,7 +15,7 @@ def connect_body():
 def test_connect_leads_with_computer_capture():
     body = connect_body()
     assert "Run this on the computer where you build" in body
-    assert "opens it privately for review" in body
+    assert "open the private preview link it prints" in body
     assert "Copy command" in body
 
 
@@ -29,7 +29,7 @@ def test_one_page_auto_capture_with_advanced_import():
     for path in ("~/.claude/projects/", "~/.cursor/projects/", "~/.codex/sessions/"):
         assert path in HTML
     # No account for the card or the link; sign-in only to post. No email, no mailto.
-    assert "opens it privately for review" in body
+    assert "open the private preview link it prints" in body
     assert "mailto:" not in body and "signInWithOtp" not in body
     # Bots and unsupported agents have documented paths under Advanced.
     assert "docs/AGENT-UPLOAD-API.md" in body and "docs/GROK-PUSH.md" in body

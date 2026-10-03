@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {readFileSync} from 'node:fs';
+const html=readFileSync('site/index.html','utf8');
+const take=(start,end)=>html.slice(html.indexOf(start),html.indexOf(end,html.indexOf(start)));
+const context={ME:{id:'owner',handle:'fixture'},AUTH_USER:{id:'auth'},profileHandle:p=>p.handle,signInLabel:()=> 'Sign in',encodeURIComponent};
+vm.createContext(context);vm.runInContext(take('function menuLinks(', 'function syncAuthNav('),context);
+for(const state of [{id:'owner',handle:'fixture'},null]){context.ME=state;const menu=vm.runInContext('menuLinks()',context);assert.ok(menu.includes('/?feedback'));assert.ok(menu.includes('/?connect'));}
+assert.match(html,/prefers-reduced-motion:reduce/);
+assert.match(html,/aria-label="Loading runs"/);
+const body=take('function connectBodyHtml()', 'function wireConnectCopies(');
+assert.ok(body.indexOf('Copy for my agent')<body.indexOf('${autoSyncHtml()}'));
+assert.ok(!body.includes('opens it privately for review'));
+const feedback=take('function viewFeedback()', 'function wireComposer(');
+assert.ok(feedback.indexOf('GrinderFeedbackWake')>feedback.indexOf('if(error)'));
+const wake=readFileSync('site/feedback-wake.js','utf8');
+let calls=[];const box={window:{},fetch:async(...a)=>{calls.push(a);throw Error('offline')}};
+vm.createContext(box);vm.runInContext(wake,box);
+assert.equal(await box.window.GrinderFeedbackWake({getSession:async()=>({data:{session:{access_token:'local-test-token'}}})}),false);
+assert.equal(calls.length,1);assert.equal(calls[0][0],'/api/feedback-notifications');
+assert.equal(calls[0][1].method,'POST');assert.equal(calls[0][1].body,undefined);
+assert.equal(calls[0][1].headers.Authorization,'Bearer local-test-token');
+calls=[];await box.window.GrinderFeedbackWake({getSession:async()=>({data:{session:null}})});assert.equal(calls.length,0);
+console.log('Menu, capture-first flow, motion/loading and failed feedback wake checks pass');
