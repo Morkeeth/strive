@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import {bootDisposable,seedJourneyActors,CASEY,RILEY} from './disposable-supabase.mjs';
+const {db,as,anonymous}=await bootDisposable();await seedJourneyActors(db);
+await as(CASEY);
+const run=(await db.query("insert into strava.runs(profile_id,title,harness,schema_version,measurement_revision,trace_basis,rhythm) values($1,'TEST DATA cover','codex',1,repeat('a',64),'elapsed','[1]') returning id",[CASEY])).rows[0].id;
+const photos=(await db.query('insert into strava.run_photos(run_id,width,height,byte_size) values($1,100,100,100),($1,100,100,100) returning id',[run])).rows;
+const choose=id=>db.query('select strava.choose_run_cover($1,$2)',[run,id]);
+await choose(photos[1].id);assert.equal((await db.query('select id from strava.run_photos where is_cover')).rows[0].id,photos[1].id);
+await as(RILEY);await assert.rejects(choose(photos[0].id),/Run not found/);
+await anonymous();await assert.rejects(choose(photos[0].id),/permission denied/);
+await as(CASEY);await assert.rejects(choose('11111111-1111-4111-8111-111111111111'),/Photo not found/);
+assert.equal((await db.query('select id from strava.run_photos where is_cover')).rows[0].id,photos[1].id,'failed choice does not clear cover');
+await choose(photos[0].id);assert.equal((await db.query('select count(*) n from strava.run_photos where is_cover')).rows[0].n,1);
+await assert.rejects(db.query('update strava.run_photos set is_cover=true where run_id=$1',[run]),/permission denied/);
+await db.query('delete from strava.run_photos where id=$1',[photos[0].id]);assert.equal((await db.query('select count(*) n from strava.run_photos')).rows[0].n,1);
+await db.close();console.log('PASS cover choice: saved switch, owner-only, anonymous denied, absent-photo atomicity, direct update denied, deletion');
+// API rejects anonymous/wrong-owner/cross-run attempts before touching storage.
+const {runPhotos}=await import('../server/run-photos.mjs');
+const config={SB_URL:'https://local.invalid',SB_KEY:'public',STORAGE_KEY:'server'};
+let calls=[];
+const fetcher=async(url,options)=>{calls.push(url);if(url.endsWith('rpc/grinder_profile_id'))return new Response(JSON.stringify(CASEY));if(url.includes('/runs?'))return new Response('[]');throw new Error('unexpected access');};
+const target={run_id:run,photo_id:photos[1].id};
+assert.equal((await runPhotos({method:'PATCH',body:target},config,fetcher)).status,401);assert.equal(calls.length,0);
+assert.equal((await runPhotos({method:'PATCH',headers:{authorization:'Bearer test'},body:target},config,fetcher)).status,404);assert.ok(calls.every(x=>!x.includes('/storage/')));
+console.log('PASS cover API: auth and ownership precede storage access');

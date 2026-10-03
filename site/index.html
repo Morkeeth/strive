@@ -579,6 +579,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/run-contract.js"></script>
+<script src="/run-evidence.js"></script>
 <script src="/feed-card.js"></script>
 <script src="/dropin-parse.js"></script>
 <script src="/fair.js"></script>
@@ -1281,7 +1282,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
   const story=`${output?`<div class="run-output"><span>Output</span><a href="${esc(output)}" target="_blank" rel="noopener noreferrer">Open ${esc(ridgeOutput||'output')} ↗</a></div>`:''}
     ${storyFacts.length?`<dl class="run-story-facts">${storyFacts.join('')}</dl>`:''}
     ${declared()}`;
-  const recorded='<details class="run-evidence"><summary>How these numbers work</summary><p class="meta">Captured from the selected session. A zero is a recorded zero. Missing optional fields stay off the card.</p></details>';
+  const recorded=StriveEvidence.detail(r);
   const audienceNote=r.visibility==='link'?'<p class="meta run-audience-note">Followers. Signed-in followers and close friends can open it; it does not appear on the public profile or Feed.</p>':'';
   const agentChip=(!opts.preview&&r.source_actor_id&&!connectWrapperName(r.agent_name))
     ?`<div class="run-agent-chip">with <a href="/?agent=${encodeURIComponent(r.source_actor_id)}">${esc(r.agent_name)}</a>${r.harness?` · <span class="card-harness">${esc(r.harness)}</span>`:''}</div>`
@@ -1320,6 +1321,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     ${r.segment_id?`<div class="sub"><a href="/?segment=${encodeURIComponent(r.segment_id)}">Open segment leaderboard</a></div>`:''}
     ${visual}
     ${metricStrip()}
+    ${StriveEvidence.summary(r)}
     ${xudosTip}
     ${opts.preview?'<div class="foot"><span class="meta">Preview · not saved</span></div>':`<div class="foot run-social-actions"><span class="meta">${count||0} thanks${selfAck?' · your run':''}</span>
       <span class="acts">${ackBtn}${followSlot}<a class="act" href="/?share=1&run=${r.id}">Share</a><a class="act" href="/?run=${r.id}#grind-thread">Reply</a>${detailLink}</span></div>`}
@@ -1914,7 +1916,7 @@ async function viewRun(id){
     +`<section id="grind-thread"></section><div class="head"><h2>Thanks</h2><span class="meta">${acks.length}</span></div><div class="panel">`+ackListHtml(acks)+`</div>`
     +`<section id="grind-feature"></section>`;
   const copyLink=$('run-copy-link');if(copyLink)copyLink.onclick=async()=>{try{const sharePath=r.visibility==='public'?'/r/'+r.id:'/?run='+r.id;await navigator.clipboard.writeText(location.origin+sharePath);copyLink.textContent='Link copied'}catch(_){status('Copy this page address to share your run.')}};
-  if(window.StriveRunPhotos) await StriveRunPhotos.mount({client:sb,run:r,slot:$('run-photos'),owner,status,isCurrent:current});
+  if(window.StriveRunPhotos) await StriveRunPhotos.mount({client:sb,run:r,slot:$('run-photos'),owner,status,isCurrent:current,onChanged:async()=>{if(!current())return;const card=document.querySelector('[data-run-id="'+r.id+'"]');if(card){card.querySelectorAll('.run-photo-cover').forEach(image=>image.remove());delete card.dataset.photoChecked;await StriveRunPhotos.mountCovers({client:sb,root:document});}}});
   if(!current())return;
   if(ME?.id===r.profile_id){
     const controls=document.createElement('div');controls.className='panel run-editor';
@@ -2169,16 +2171,19 @@ async function viewBoards(){
     sb.from('runs').select(PROJECT_SELECT).eq('visibility','public').or(`wall_time_s.gte.${MARATHON_SECS},duration_s.gte.${MARATHON_SECS}`).order('wall_time_s',{ascending:false,nullsFirst:false}).order('duration_s',{ascending:false,nullsFirst:false}).limit(100)]);
   if(error){status(error.message,true);app.innerHTML='<div class="card"><div class="empty">Boards could not load.</div></div>';return;}
   const all=(recent||[]).filter(r=>!typedOnlyRun(r)); noteTraces(all);
-  const week=all.filter(r=>runStart(r)>=since.getTime());
+  const evidence=StriveEvidence.ranking(all,{since:since.getTime()});
+  const week=evidence.eligible;
   const top=(list,score,fmt,n=5)=>list.map(r=>[r,score(r)]).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,n).map(([r,v])=>[r,fmt(v)]);
   const longest=top(week,runSeconds,fmtSecs);
   const tools=top(week.filter(r=>r.trace_basis!=='observed native events; timestamps unavailable'),runTools,v=>`${v.toLocaleString()} calls`);
-  const marathon=top([...new Map((longRuns||[]).map(r=>[r.id,r])).values()].filter(r=>!typedOnlyRun(r)&&runSeconds(r)>=MARATHON_SECS),runSeconds,fmtSecs,10);
+  const longEvidence=StriveEvidence.ranking([...all,...(longRuns||[])]);
+  const marathon=top(longEvidence.eligible.filter(r=>runSeconds(r)>=MARATHON_SECS),runSeconds,fmtSecs,10);
   const weekLabel=`${since.getDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][since.getMonth()]}`;
-  app.innerHTML=`<div class="head"><h1>Leaderboard</h1><span class="meta">Public runs · ranked by recorded activity</span></div>
-    ${feedTabs('boards')}<details class="ranking-explainer"><summary>How ranking works</summary><p class="hint">Every row opens its public source run. Activity is not a score for quality or human effort. Incomplete observed counts are excluded from tool-call rankings. Weekly rankings use the latest 300 public uploads, filtered by session start, so older uploads may be absent. This week starts Monday ${esc(weekLabel)} in your time zone. Time is measured wall time, else session length.</p><p class="hint">Long sessions use up to 100 public runs of 3 hours or more, fetched by wall time then session length. This is a capped sample, not a complete all-time ranking.</p></details>
+  app.innerHTML=`<div class="head"><h1>Leaderboard</h1><span class="meta">Public runs · client-reported activity</span></div>
+    ${feedTabs('boards')}<details class="ranking-explainer"><summary>How ranking works</summary><p class="hint">Every row opens its public source run. These are client-reported captures, not independently verified scores. Activity is not quality or human effort. A hash does not prove a count.</p><p class="hint">Within this sample, repeated captures count once. Overlapping windows for the same account are left out, including parallel sessions; time is not added together. Missing session dates or durations and incomplete observations are not ranked. Session span may include idle time. Upload dates never stand in for session dates.</p><p class="hint">Weekly rankings inspect the latest 300 public uploads. This week starts Monday ${esc(weekLabel)} in your time zone. Long sessions inspect up to 100 additional rows. Duplicates or overlap outside those samples can be missed. Changed source claims can evade these checks; this is not an anti-cheat guarantee.</p></details>
+    ${evidence.excluded.length?`<p class="hint">${evidence.excluded.length} entries left out of this week’s comparison. <a href="/?feed">They can still tell a story in the feed.</a></p>`:''}
     <div class="boards-grid">
-      ${boardHtml('Longest run this week','measured time, one run',longest,'No public run with a measured time this week yet.')}
+      ${boardHtml('Longest run this week','reported session span, including idle',longest,'No comparable public session window this week yet.')}
       ${boardHtml('Most tool calls this week','one run, one count',tools,'No public run with tool calls this week yet.')}
     </div>
     ${longError?'<section class="card"><h3>Long sessions</h3><p role="status">Long sessions could not load. Reload to try again.</p></section>':boardHtml('Long sessions','Three hours or more · from the available sample',marathon,'No public run of 3 hours or more in this sample yet.')}

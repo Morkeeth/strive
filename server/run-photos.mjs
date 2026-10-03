@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const MAX_PHOTO_BYTES=3*1024*1024;
 const BUCKET='strive-run-photos';
-const fields='id,run_id,width,height,byte_size,created_at';
+const fields='id,run_id,width,height,byte_size,created_at,is_cover';
 export const PHOTO_HEADERS={'Cache-Control':'private, no-store, max-age=0',Vary:'Authorization','X-Content-Type-Options':'nosniff'};
 function result(status,body,headers={}) {return {status,body,headers:{...PHOTO_HEADERS,...headers}};}
 function present(p){return {...p,url:`/api/run-photos?id=${p.id}&run_id=${p.run_id}`};}
@@ -28,13 +28,13 @@ export async function sanitizePhoto(base64) {
 
 export async function runPhotos({method,headers={},query={},body},config,fetchImpl=fetch) {
  try {
-  if(!['GET','POST','DELETE'].includes(method)) return result(405,{error:'Use GET, POST or DELETE.'},{Allow:'GET, POST, DELETE'});
+  if(!['GET','POST','PATCH','DELETE'].includes(method)) return result(405,{error:'Use GET, POST, PATCH or DELETE.'},{Allow:'GET, POST, PATCH, DELETE'});
   if(!config.STORAGE_KEY) return result(503,{error:'Photo storage is not available yet.'});
   const bearer=String(headers.authorization||'');
   if(bearer && !/^Bearer [A-Za-z0-9._~-]+$/.test(bearer)) return result(401,{error:'Sign in again to manage photos.'});
   if(method!=='GET'&&!bearer) return result(401,{error:'Sign in to manage photos.'});
   if(method==='POST'&&Number(headers['content-length']||0)>4_200_000) return result(413,{error:'Resize this photo to under 3 MB first.'});
-  const runId=method==='POST'?body?.run_id:query.run_id;
+  const runId=['POST','PATCH'].includes(method)?body?.run_id:query.run_id;
   if(runId!==undefined&&!UUID.test(String(runId))) return result(400,{error:'Choose a saved run.'});
   if(method==='POST'&&!runId) return result(400,{error:'Save the session privately before adding photos.'});
   if(query.id!==undefined&&!UUID.test(String(query.id))) return result(400,{error:'Photo not found.'});
@@ -73,6 +73,14 @@ export async function runPhotos({method,headers={},query={},body},config,fetchIm
     body:JSON.stringify({object_name:path(p)}),cache:'no-store',signal:AbortSignal.timeout(15000)});
    if(!queued.ok) throw new Error('Photo cleanup could not be confirmed.');
   }
+  if(method==='PATCH') {
+   if(!runId||!UUID.test(String(body?.photo_id))) return result(400,{error:'Choose a saved photo for this run.'});
+   if(!await ownsRun(runId)) return result(404,{error:'Run not found.'});
+   try {
+    const chosen=await rows('rpc/choose_run_cover',{method:'POST',body:JSON.stringify({target_run:runId,target_photo:body.photo_id})});
+    return result(200,{cover_photo_id:chosen});
+   } catch {return result(404,{error:'This photo is not available on your run.'});}
+  }
   if(method==='POST') {
    // Reject invalid tokens and other people's runs before spending image-decoder resources.
    if(!await ownsRun(runId)) return result(404,{error:'Run not found.'});
@@ -102,7 +110,7 @@ export async function runPhotos({method,headers={},query={},body},config,fetchIm
    if(method==='DELETE'||!runId) return result(400,{error:'Choose a saved run or photo.'});
    const accessible=await rows('runs?select=id&id=eq.'+runId);
    if(!accessible.length) return result(404,{error:'Run not found.'});
-   const photos=await rows('run_photos?select='+fields+'&run_id=eq.'+runId+'&order=created_at.asc,id.asc');
+   const photos=await rows('run_photos?select='+fields+'&run_id=eq.'+runId+'&order=is_cover.desc,created_at.asc,id.asc');
    return result(200,{photos:photos.map(present)});
   }
   const found=await rows('run_photos?select='+fields+'&id=eq.'+query.id+(runId?'&run_id=eq.'+runId:''));

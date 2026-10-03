@@ -265,7 +265,7 @@ def achievement(r: dict):
     if secs and secs < 900 and commits is not None and commits >= 1:
         return {"key": "sprint", "label": "Sprint", "detail": "a commit in under 15 minutes"}
     if secs is not None and secs >= 3600:
-        return {"key": "deep-focus", "label": "Deep focus", "detail": "over an hour in one session"}
+        return {"key": "deep-focus", "label": "Long stretch", "detail": "over an hour between session timestamps"}
     if hour is not None and 5 <= hour < 7:
         return {"key": "early-bird", "label": "Early bird", "detail": "started before 07:00"}
     return None

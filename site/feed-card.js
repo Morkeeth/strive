@@ -8,6 +8,7 @@
    commits leads with commits and a run with only a session time leads with time. */
 (function (root) {
   "use strict";
+  const evidence=typeof module!=="undefined"&&module.exports?require("./run-evidence.js"):root.StriveEvidence;
   const esc = (s) =>
     String(s ?? "").replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c]));
   const whole = (v) => (Number.isFinite(v) && v >= 0 ? Math.round(v) : null);
@@ -125,7 +126,7 @@
     if (files >= 25) return { key: "wide-net", label: "Wide net", detail: `${thousands(files)} files changed` };
     if (turns >= 2 && tools && tools / turns >= 30) return { key: "delegator", label: "Delegator", detail: `${thousands(Math.round(tools / turns))} tool calls per prompt` };
     if (secs > 0 && secs < 900 && commits >= 1) return { key: "sprint", label: "Sprint", detail: "a commit in under 15 minutes" };
-    if (secs >= 3600) return { key: "deep-focus", label: "Deep focus", detail: "over an hour in one session" };
+    if (secs >= 3600) return { key: "deep-focus", label: "Long stretch", detail: "over an hour between session timestamps" };
     if (hour != null && hour >= 5 && hour < 7) return { key: "early-bird", label: "Early bird", detail: "started before 07:00" };
     return null;
   }
@@ -432,7 +433,7 @@
     <${tag} class="fc-title">${esc(titleOf(r))}</${tag}>
     ${r.caption || r.note ? `<p class="fc-cap">${esc(r.caption || r.note)}</p>` : ""}
     <div class="fc-numbers">${lead ? `<div class="fc-hero"><span class="fc-n num">${esc(lead.n)}</span><span class="fc-u">${esc(lead.unit)}</span></div>` : ""}${facts.length ? `<dl class="fc-stats">${facts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd class="num">${esc(v)}</dd></div>`).join("")}</dl>` : ""}</div>
-    ${observedProjection(r) ? '<p class="fc-source">Observed message order. Missing records may be omitted; distinct requests are a lower bound.</p>' : ""}${r.trace_basis === "typed-by-author" ? '<p class="fc-source">Typed by the author. No capture.</p>' : ""}${badge(r)}${heroVisual(r)}${strideHtml}
+    ${observedProjection(r) ? '<p class="fc-source">Observed message order. Missing records may be omitted; distinct requests are a lower bound.</p>' : ""}${r.trace_basis === "typed-by-author" ? '<p class="fc-source">Typed by the author. No capture.</p>' : ""}${evidence?evidence.summary(r):""}${badge(r)}${heroVisual(r)}${strideHtml}
   `;
     return `<article class="card fc"${preview ? "" : ` id="card-${id}" data-run-id="${id}"`}>
   <header class="fc-top">${faceHtml}<div class="fc-who">${who}<small>${meta}</small></div>${shipped}</header>
