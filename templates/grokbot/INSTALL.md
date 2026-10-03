@@ -21,7 +21,7 @@ Tell the existing companion:
 
 Use post-agent-run to prepare a private STRIVE preview of this current session. Find the current session's actual export through your environment's supported export or session-file feature. Verify its session identity and time range. Do not choose an unrelated newest file, infer a laptop path, or reconstruct messages from memory. If this environment does not expose an export, tell me exactly which access or export is missing. Use only the selected export, report its measured scope and unknowns, and prepare the full preview link in a local handoff file. Do not upload or publish.
 
-A supported export is JSONL with top-level `role` and `message`, user content containing `<timestamp>` and `<user_query>`, and assistant `tool_use` blocks. The helper chooses the latest sitting in that exact file, separating sittings on a gap of more than 30 minutes between timestamped user queries. A whole day or a collection of worker sessions is not the same object. Use an export restricted to the intended sitting if the latest sitting is not the one wanted. The source remains on the bot's computer.
+The older tagged export mode is JSONL with top-level `role` and `message`, user content containing `<timestamp>` and `<user_query>`, and assistant `tool_use` blocks. The helper chooses the latest sitting in that exact file, separating sittings on a gap of more than 30 minutes between timestamped user queries. A whole day or a collection of worker sessions is not the same object. Use an export restricted to the intended sitting if the latest sitting is not the one wanted. The source remains on the bot's computer.
 
 ```sh
 python3 /absolute/path/to/post-agent-run/scripts/preview.py \
@@ -53,3 +53,9 @@ Then, within the existing authorization, run the same command without `--dry-run
 ## Remaining real-use gate
 
 The existing companion previously reported installation and a smoke pass, without a token or observed real run. That is not proof of this updated kit. Verify the installed bytes, have that same bot select its own real export, inspect the preview, save one authorized private run, read it back after reload, add a reviewed photo and description, and verify the intended audience. Record installed, real preview, saved, image attached and shared separately. No new bot or duplicate account is needed.
+
+## Native ReadTranscript capture without timestamps
+
+The standalone skill now supports `--format native --bounds /exact/frozen-bounds.json` for exact native records without timestamp/user_query tags. Read post-agent-run/SKILL.md for the positional transport contract. Preserve actual stable positions and original records; freeze the inclusive selected window before capture, keep overlapping reads only when identical, and never add invented time tags. Use the same format and bounds on preview and upload. Run scripts/test_native.py alongside the existing offline checks.
+
+Native metrics count assistant tool_use requests. The local receipt labels user-role records as recorded user messages, not verified human turns. Public prompts, start time, duration, commits and workers remain absent; the map is message order, not wall time. Unsupported/partial input fails closed. A successful synthetic test does not prove this bot has read its real current session.

@@ -9,15 +9,16 @@ def test_legacy_runs_remain_readable_without_inventing_missing_counts():
     assert "claims_verified" not in exported
 
 
-@pytest.mark.parametrize("worker_bins", [None, [1] * 49, [0] * 49 + [-1], "corrupt"])
-def test_ridge_repairs_invalid_worker_bins(worker_bins):
+@pytest.mark.parametrize("worker_bins", [[1] * 49, [0] * 49 + [-1], "corrupt"])
+def test_ridge_rejects_invalid_worker_bins(worker_bins):
     run = {
         "ridge": [0] * 50,
         "ridge_basis": "wall-time",
         "worker_bins": worker_bins,
     }
 
-    assert validate_run(run)["worker_bins"] == [0] * 50
+    with pytest.raises(ValueError, match="worker_bins"):
+        validate_run(run)
 
 
 def test_ridge_preserves_valid_worker_bins():
@@ -78,3 +79,8 @@ def test_claude_grind_exports_measured_trace_basis_and_revision(tmp_path):
     # The reader divides its 610-second sitting into 90 elapsed-time buckets.
     assert [i for i, n in enumerate(exported['rhythm']) if n] == [2, 8, 47, 53]
     assert sum(exported['rhythm']) == exported['tool_calls'] == 4
+
+
+def test_unknown_worker_bins_stay_unknown():
+    run = {"ridge": [0] * 50, "ridge_basis": "wall-time", "worker_bins": None}
+    assert validate_run(run)["worker_bins"] is None

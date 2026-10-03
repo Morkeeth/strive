@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from preview import DEFAULT_URL, public_metrics  # noqa: E402
+from preview import DEFAULT_URL, public_metrics, add_format_arguments, read_bounds  # noqa: E402
 
 # The fields the STRIVE upload endpoint accepts from this adapter. Anything else stays local.
 UPLOAD_FIELDS = ("schema_version", "measurement_revision", "harness", "project", "turns_typed", "tool_calls", "started", "rhythm", "ridge",
@@ -42,8 +42,8 @@ def stored_result(result):
         return None
 
 
-def upload_payload(export, title=None, caption=None):
-    metrics = public_metrics(export)
+def upload_payload(export, title=None, caption=None, format="tagged", bounds=None):
+    metrics = public_metrics(export, format=format, bounds=bounds)
     if metrics.get("is_sample"):
         raise ValueError("This is the bundled sample. Upload a real export only.")
     payload = {k: metrics[k] for k in UPLOAD_FIELDS if k in metrics}
@@ -61,13 +61,14 @@ def main():
     parser.add_argument("--caption", help="owner-written caption, up to 280 characters")
     parser.add_argument("--base-url", default=DEFAULT_URL)
     parser.add_argument("--dry-run", action="store_true", help="print the exact payload and send nothing")
+    add_format_arguments(parser)
     args = parser.parse_args()
     url = urlsplit(args.base_url)
     local = url.hostname in ("localhost", "127.0.0.1", "::1")
     if not (url.scheme == "https" or (local and url.scheme == "http")) or url.path not in ("", "/") or url.query:
         parser.error("Use an HTTPS product origin, or HTTP localhost.")
     try:
-        payload = upload_payload(args.export, args.title, args.caption)
+        payload = upload_payload(args.export, args.title, args.caption, args.format, read_bounds(args))
     except (OSError, ValueError) as error:
         print(json.dumps({"status": "not uploaded", "error": str(error)}))
         return 1

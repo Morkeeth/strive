@@ -149,8 +149,107 @@ def parse_export(path):
     }
 
 
-def public_metrics(path):
+def parse_native(path, bounds):
+    """Frozen ReadTranscript positions, not invented timestamps or typed-human turns."""
+    if not isinstance(bounds, dict) or set(bounds) != {"session_id", "start_position", "end_position"}:
+        raise ValueError("Native capture needs session_id and inclusive start/end positions.")
+    start, end = bounds["start_position"], bounds["end_position"]
+    if (not isinstance(bounds["session_id"], str) or not bounds["session_id"].strip()
+        or type(start) is not int or type(end) is not int or start < 0 or end < start):
+        raise ValueError("Invalid native session bounds.")
+    selected = {}
+    with path.open(encoding="utf-8") as stream:
+        for line in stream:
+            if not line.strip():
+                continue
+            row = json.loads(line)  # Invalid/truncated JSON must never be skipped.
+            if not isinstance(row, dict) or set(row) != {"position", "record"}:
+                raise ValueError("Each native row needs position and exact record.")
+            position, record = row["position"], row["record"]
+            if type(position) is not int or not start <= position <= end:
+                raise ValueError("Native record outside the frozen bounds.")
+            if position in selected and selected[position] != record:
+                raise ValueError("Conflicting duplicate native position.")
+            selected[position] = record
+    if len(selected) != end - start + 1:
+        raise ValueError("Native capture has missing positions; finish the bounded read.")
+    rows = [{"position": pos, "record": selected[pos]} for pos in sorted(selected)]
+    users, calls, per_record, sample = 0, 0, [], False
+    tool_ids = set()
+    for row in rows:
+        record = row["record"]
+        if not isinstance(record, dict) or record.get("role") not in ("user", "assistant", "tool"):
+            raise ValueError("Unsupported native role or record.")
+        message = record.get("message")
+        content = message.get("content") if isinstance(message, dict) else None
+        if not isinstance(content, list) or not content:
+            raise ValueError("Native message must contain complete content blocks.")
+        users += record["role"] == "user"
+        sample = sample or record.get("agentgrinder_sample") is True
+        count = 0
+        for block in content:
+            if not isinstance(block, dict):
+                raise ValueError("Invalid native content block.")
+            kind = block.get("type")
+            if kind == "text":
+                if not isinstance(block.get("text"), str):
+                    raise ValueError("Incomplete native text block.")
+            elif kind == "tool_use":
+                if (record["role"] != "assistant" or not isinstance(block.get("id"), str)
+                    or not block["id"] or not isinstance(block.get("name"), str) or not block["name"]
+                    or not isinstance(block.get("input"), dict) or block["id"] in tool_ids):
+                    raise ValueError("Incomplete or ambiguous native tool request.")
+                tool_ids.add(block["id"])
+                count += 1
+            elif kind == "tool_result":
+                if (record["role"] not in ("user", "tool") or not isinstance(block.get("tool_use_id"), str)
+                    or not block["tool_use_id"] or not isinstance(block.get("content"), (str, list))):
+                    raise ValueError("Incomplete native tool result.")
+            else:
+                raise ValueError("Unsupported native content block; do not silently discard it.")
+        calls += count
+        per_record.append(count)
+    if not calls:
+        raise ValueError("Native capture has no observed tool requests for an activity trace.")
+    ridge = [0] * 50
+    for index, count in enumerate(per_record):
+        ridge[min(49, index * 50 // len(rows))] += count
+    identity = {"parser": "strive-grok-native-v1", "bounds": bounds, "records": rows}
+    revision = hashlib.sha256(json.dumps(identity, sort_keys=True,
+        separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+    metrics = {"schema_version": 1, "measurement_revision": revision,
+        "harness": "Grok Bot", "activity_label": "bot activity", "project": "session",
+        "tool_calls": calls, "ridge": ridge, "ridge_basis": "turn-order",
+        "trace_basis": "timestamps unavailable"}
+    if sample:
+        metrics["is_sample"] = True
+    receipt = {"selected_session": bounds["session_id"], "start_position": start,
+        "end_position": end, "recorded_messages": len(rows), "recorded_user_messages": users,
+        "count_basis": "recorded user-role messages, not verified human-typed turns; assistant tool_use blocks",
+        "unknown": ["start time", "duration", "human-typed turns", "successful commits", "worker activity"],
+        "ridge_basis_detail": "tool requests across chronological record positions; spacing is not elapsed time"}
+    return metrics, receipt
+
+
+def public_metrics(path, format="tagged", bounds=None):
+    if format == "native":
+        return parse_native(path, bounds)[0]
+    if format != "tagged" or bounds is not None:
+        raise ValueError("Use --format native with --bounds for native records.")
     return {key: value for key, value in parse_export(path).items() if value is not None}
+
+
+def add_format_arguments(parser):
+    parser.add_argument("--format", choices=("tagged", "native"), default="tagged")
+    parser.add_argument("--bounds", type=Path, help="native session identity and inclusive frozen positions JSON")
+
+
+def read_bounds(args):
+    if args.format == "native" and args.bounds is None:
+        raise ValueError("Native capture requires --bounds.")
+    if args.format != "native" and args.bounds is not None:
+        raise ValueError("--bounds is only valid with --format native.")
+    return json.loads(args.bounds.read_text(encoding="utf-8")) if args.bounds else None
 
 
 def import_url(metrics, base_url):
@@ -176,6 +275,7 @@ def main():
         type=Path,
         help="write the complete URL to this file instead of printing a long URL",
     )
+    add_format_arguments(parser)
     args = parser.parse_args()
     url = urlsplit(args.base_url)
     local = url.hostname in ("localhost", "127.0.0.1", "::1")
@@ -193,7 +293,12 @@ def main():
     if url.hostname == "agentgrinder.vercel.app":
         parser.error("Use the independent public-product origin, not the hackathon service.")
     try:
-        metrics = public_metrics(args.export)
+        bounds = read_bounds(args)
+        native_receipt = None
+        if args.format == "native":
+            metrics, native_receipt = parse_native(args.export, bounds)
+        else:
+            metrics = public_metrics(args.export)
         preview_url = import_url(metrics, args.base_url)
         receipt = {
             "status": "private preview; not posted",
@@ -201,6 +306,9 @@ def main():
             "selected_sitting": "latest sitting in selected export",
             "metrics": metrics,
         }
+        if native_receipt is not None:
+            receipt["selected_sitting"] = "explicit frozen native bounds; no timing-based split"
+            receipt["native_capture"] = native_receipt
         if args.handoff:
             args.handoff.parent.mkdir(parents=True, exist_ok=True)
             args.handoff.write_text(preview_url + "\n", encoding="utf-8")
@@ -208,8 +316,8 @@ def main():
         else:
             receipt["preview_url"] = preview_url
         print(json.dumps(receipt, indent=2))
-    except (OSError, ValueError):
-        parser.exit(1, "Could not read a supported Grok Bot sitting. Check the selected export.\n")
+    except (OSError, ValueError) as error:
+        parser.exit(1, "Could not read supported Grok Bot capture: " + str(error) + "\n")
 
 
 if __name__ == "__main__":

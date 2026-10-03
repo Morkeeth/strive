@@ -15,9 +15,17 @@ If this environment provides `ReadTranscript`, its no-ID call reads this convers
 
 Preserve returned records exactly in a private local JSONL file, then order them chronologically using their original stable positions. Keep user, assistant and tool records and their original content blocks. If the tool exposes text rather than a downloadable file, write the returned records as data; there is no assumed shell pipe or export endpoint. Deduplicate by original record identity/position, verify boundaries, sequence and role counts, and keep a local capture receipt. Do not echo the transcript in chat or upload it.
 
-Do not invent timestamps or wrap plain user text in fabricated `<timestamp>` or `<user_query>` tags. The parser below has a specific export contract. If the native tool's exact output does not meet it, report the format mismatch and stop before preview/upload; retain the bounded local source for an explicit adapter repair. If pagination has no stable boundary, report that rather than claiming a frozen capture.
+Do not invent timestamps or wrap plain user text in fabricated `<timestamp>` or `<user_query>` tags. Use native mode for the exact observed role/message/content shape. Keep one private JSONL row per returned position:
 
-The supported JSONL format has top-level `role` and `message`; user text contains `<timestamp>` and `<user_query>`; assistant content contains `tool_use` blocks. Select the actual export on this bot's computer. The helper uses its latest sitting, split on timestamped-query gaps greater than 30 minutes. Check that this is the requested sitting. It does not combine a whole day, other bots or worker logs. Freeze/export the requested window before capture so later conversation does not change its identity.
+```json
+{"position":10,"record":{"role":"user","message":{"content":[{"type":"text","text":"Example only, not a real session"}]}}}
+```
+
+`record` must be the unchanged returned object. `position` is its actual stable tool position, never a newly assigned sequence number. The example above illustrates transport only. A separate private bounds JSON contains `session_id` (actual conversation identity), `start_position` and `end_position` (inclusive integers). Freeze both bounds before the capture request. The helper sorts positions, deduplicates identical page overlap, and rejects missing positions, conflicting duplicates, malformed JSON and unsupported block types. If the tool uses sparse/unstable positions or hides records, stop and report that actual gap; do not fill it with invented rows.
+
+Native mode accepts user/assistant/tool records with text, tool_use and tool_result blocks. It counts assistant tool_use requests, not successful results. It reports recorded user-role messages only in the private receipt; these are not verified human-typed turns and never populate public prompts. The public ridge places tool requests across recorded message order, with no timing claim. Start, duration, human-typed turns, commits and workers remain unknown. A selected window with no tool requests is refused because it has no supported activity trace. It does not infer a sitting boundary without timestamps.
+
+The older tagged export mode remains available as the default: top-level role/message with actual `<timestamp>` and `<user_query>` in user text, and assistant tool_use blocks. That mode selects the latest sitting separated by timestamped-query gaps. Use it only when the source truly contains those tags, never to retrofit native records.
 
 ## Prepare privately
 
@@ -25,20 +33,21 @@ After installation or update, run:
 
 ```sh
 python3 /absolute/path/to/post-agent-run/scripts/test_contract.py
+python3 /absolute/path/to/post-agent-run/scripts/test_native.py
 python3 /absolute/path/to/post-agent-run/scripts/smoke_test.py
 ```
 
-These exercise labelled synthetic data only. The smoke test includes loopback fake servers, with no hosted calls. Then capture the selected real source:
+These exercise labelled synthetic data only. The smoke test includes loopback fake servers, with no hosted calls. For the native selected source, run:
 
 ```sh
 python3 /absolute/path/to/post-agent-run/scripts/preview.py \
-  /exact/path/to/current-session-export.jsonl \
-  --handoff /tmp/strive-preview-url.txt
+  /exact/path/to/current-session-export.jsonl --format native \
+  --bounds /exact/path/to/frozen-bounds.json --handoff /tmp/strive-preview-url.txt
 ```
 
-The helper makes no network request and writes the full `https://striverun.app/#import` URL. Confirm `selected_export`, the selected start and measured counts. Pass the handoff file to the browser, not a truncated chat hash. Raw prompts, replies, tool inputs/results and paths are absent from the import; the selected-source hash binds its identity without sending those records. The local selected-file receipt itself contains a path and stays private.
+The helper makes no network request and writes the full `https://striverun.app/#import` URL. Confirm `selected_export`, the frozen positions and measured counts. Native start time remains unknown. Pass the handoff file to the browser, not a truncated chat hash. Raw prompts, replies, tool inputs/results and paths are absent from the import; the selected-source hash binds its identity without sending those records. The local selected-file receipt itself contains a path and stays private.
 
-Report bot activity. The ridge has 50 turn-order bins, tool calls placed by the timestamped query they followed, and `ridge_basis: "turn-order"`. `worker_bins` contains zero additional workers because the adapter does not count worker activity. Timestamps establish query start and sitting boundaries, not tool-event timing. Duration, active human work, changed files and successful commits remain unknown. Never fill missing measurements.
+Report bot activity. Both modes use a turn-order ridge. Native mode uses recorded message order and `trace_basis: "timestamps unavailable"`; tagged mode uses timestamped query order. Native mode omits worker counts, prompts and start entirely. Neither measures elapsed tool timing. Never fill missing measurements.
 
 Preview and upload share one capture revision. The same selected records reuse it, but an expanded session is a different capture. This replaces an older metric-only revision; inspect any prior saved run before uploading the same historical source through the updated kit.
 
@@ -50,7 +59,8 @@ If the owner already authorized automatic private uploads and supplied a Connect
 
 ```sh
 python3 /absolute/path/to/post-agent-run/scripts/upload.py \
-  /exact/path/to/current-session-export.jsonl --dry-run
+  /exact/path/to/current-session-export.jsonl --format native \
+  --bounds /exact/path/to/frozen-bounds.json --dry-run
 ```
 
 Then run without `--dry-run` within that authorization. Optional `--title` and `--caption` accept reviewed text. Never print or persist the token. The helper refuses labelled samples and follows no redirect with the token. Repeating the same new-kit capture returns its existing run instead of duplicating it. Report the stored audience, including if an existing run's audience was changed by its owner later.
