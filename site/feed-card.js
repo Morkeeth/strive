@@ -8,6 +8,7 @@
    commits leads with commits and a run with only a session time leads with time. */
 (function (root) {
   "use strict";
+  const historical=typeof module!=="undefined"&&module.exports?require("./historical-import.js"):root.StriveHistory;
   const evidence=typeof module!=="undefined"&&module.exports?require("./run-evidence.js"):root.StriveEvidence;
   const esc = (s) =>
     String(s ?? "").replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -75,6 +76,7 @@
 
   // The one number, Strava's distance slot: the first measured, non-zero value wins.
   function headline(r) {
+    if(historical?.historical(r))return null;
     const commits = whole(r.commits);
     const files = whole(r.files_touched);
     const tools = toolCalls(r);
@@ -112,6 +114,7 @@
   }
 
   function achievement(r) {
+    if(historical?.historical(r))return null;
     if (r && r.trace_basis === "typed-by-author") return null;
     const secs = whole(r.wall_time_s ?? r.duration_s);
     const turns = whole(r.prompts ?? r.turns_typed);
@@ -297,6 +300,7 @@
     ].filter((entry) => entry[1]);
   }
   function heroVisual(r) {
+    if(historical?.historical(r))return historical.facts(r);
     const choices = heroChoices(r);
     const chosen = choices.find(([key]) => key === r.hero_visual) || choices[0];
     return chosen ? chosen[1] : "";

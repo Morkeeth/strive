@@ -579,6 +579,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/run-contract.js"></script>
+<script src="/historical-import.js"></script>
 <script src="/run-evidence.js"></script>
 <script src="/feed-card.js"></script>
 <script src="/dropin-parse.js"></script>
@@ -1303,7 +1304,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
   // document for scrapers until a visibility-safe /runs/{id}.json exists.
   const explore=exploreInner?`<details class="ridge-more run-explore" id="run-detail-${esc(r.id)}" data-run-detail="1"><summary>Explore this run</summary><div class="run-detail-body">${exploreInner}</div></details>`:'';
   const chosen=typedOnlyRun(r)?null:chosenRunHero(r,{codeRoute,ridge});
-  const visual=typedOnlyRun(r)?'<p class="meta run-source-note">Typed by the author. No capture.</p>':chosen?chosen.html:`<div class="run-signature">${GrinderContract.trace(r)}<span class="meta">${esc(r.trace_basis==='elapsed-agent-tool-calls'?'Agent tool requests · elapsed time':r.trace_basis==='elapsed'?'Session rhythm · elapsed time':r.trace_basis==='position'?'Session rhythm · event order':'Session rhythm · time basis unknown')}</span></div>`;
+  const visual=StriveHistory.historical(r)?StriveHistory.facts(r):typedOnlyRun(r)?'<p class="meta run-source-note">Typed by the author. No capture.</p>':chosen?chosen.html:`<div class="run-signature">${GrinderContract.trace(r)}<span class="meta">${esc(r.trace_basis==='elapsed-agent-tool-calls'?'Agent tool requests · elapsed time':r.trace_basis==='elapsed'?'Session rhythm · elapsed time':r.trace_basis==='position'?'Session rhythm · event order':'Session rhythm · time basis unknown')}</span></div>`;
   const followSlot=(!opts.preview&&!selfAck&&r.profile_id)
     ?`<span class="card-follow" data-profile="${esc(r.profile_id)}" data-handle="${esc(h)}" data-label="Follow"></span>`
     :'';
@@ -1585,7 +1586,7 @@ function connectBodyHtml(){
     <details class="panel capture-sync"><summary>Optional: import future sessions automatically</summary><div class="pad">${autoSyncHtml()}</div></details>
     <details class="panel manual-post advanced-connect"><summary>Other import methods</summary><div class="pad">
       <p class="hint">Need an MCP connection or another agent setup? <a href="/agents.md">Read the agent setup guide</a>.</p>
-      <h3>Import a session file manually</h3>${dropZoneHtml()}
+      <p><a href="/?history-import">Recover an older build from a history file</a></p><h3>Import a session file manually</h3>${dropZoneHtml()}
       <p class="hint">Finder: press Cmd+Shift+G and paste the session folder. Claude Code: ${esc(AGENT_FILES[0][1])} · Cursor: ${esc(AGENT_FILES[1][1])} · Codex: ${esc(AGENT_FILES[2][1])}</p>
       <p class="hint"><a href="/agents.md">Agent setup and Grok transcript instructions</a></p>
     </div></details>`;
@@ -2763,6 +2764,7 @@ async function route(){ RUN_VIEW_GENERATION++;window.StriveRunPhotos?.disposeAll
   if(q.has('projects'))return viewProjects();
   if(q.has('project'))return viewProject(q.get('project'));
   if(q.has('segment'))return GrinderSegments.mount({client:sb,id:q.get('segment'),slot:$('app'),frame,status});
+  if(q.has('history-import')){frame(railHtml('mine'),null);return StriveHistory.mount({slot:$('app'),client:sb,me:()=>ME,authGeneration:()=>AUTH_GENERATION,signIn:showSignIn,openRun:id=>{history.pushState(null,'','/?run='+encodeURIComponent(id));viewRun(id);},status});}
   if(q.has('post'))return viewPost();
   if(q.has('mine')){setPrimarySection('mine');return progress.history();}
   if(q.has('people')){setPrimarySection('discover');return people.discover(q.get('q')||'');}

@@ -73,3 +73,9 @@ STRIVE_CAPTURE_SOURCE=/absolute/path/to/session.jsonl STRIVE_CAPTURE_SITTING=3 n
 The session stays local; measurement state is in an in-memory SQLite database. Tests do not
 contact production. Hosted acceptance must separately exercise actual Storage bytes with owner,
 friend, unrelated signed-in reader and anonymous contexts, then revoke access and remove the photo.
+
+## Choosing the cover
+
+In Photos, use **Use as cover** on a saved photo. The other photos remain in the gallery. The selected cover is shown first on cards and public run pages, and the image keeps the crop you approved. If no explicit cover remains, the oldest remaining photo is used. Removing the cover does not delete the other photos.
+
+Only the run owner can choose its cover. The server checks ownership and the database changes the selection atomically. Photo access still follows the run's current audience.

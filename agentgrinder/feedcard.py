@@ -527,7 +527,7 @@ def card(r: dict, meta_extra: str = "", avatars: bool = False, url: str | None =
     facts = stats(r, lead)
     who = '<span class="fc-name">Anonymous builder</span>' if anon else f'<span class="fc-name">{esc(p["name"])}</span>'
     meta = " · ".join(x for x in [esc(harness_name(r)),
-                                  esc(when(r.get("created_at"))), esc(meta_extra) if meta_extra else ""] if x)
+                                  esc(when(r.get("started_at") or r.get("started")) or "Session date unknown"), esc(meta_extra) if meta_extra else ""] if x)
     shipped = ('<span class="fc-chip">Shipped</span>'
                if r.get("output_url") and re.match(r"^https://", str(r["output_url"]), re.I) else "")
     cap = r.get("caption") or r.get("note")
@@ -538,11 +538,13 @@ def card(r: dict, meta_extra: str = "", avatars: bool = False, url: str | None =
     cap_html = f'<p class="fc-cap">{esc(cap)}</p>' if cap else ""
     typed = r.get("trace_basis") == "typed-by-author"
     visual = '<p class="fc-source">Typed by the author. No capture.</p>' if typed else hero_visual(r)
+    source_label = {"typed-by-author": "Author’s account", "historical-reconstruction": "Historical reconstruction · client-reported", "observed native events; timestamps unavailable": "Observed bot activity"}.get(r.get("trace_basis"), "Imported · client-reported")
+    evidence = f'<p class="run-evidence-basis">{esc(source_label)}</p>'
     body = f"""
     <h1 class="fc-title">{esc(title_of(r))}</h1>
     {cap_html}
     <div class="fc-numbers">{hero}{dl}</div>
-    {badge(r)}{visual}{stride(r, url)}
+    {evidence}{badge(r)}{visual}{stride(r, url)}
   """
     return f"""<article class="card fc">
   <header class="fc-top">{face(r, avatars=avatars)}<div class="fc-who">{who}<small>{meta}</small></div>{shipped}</header>

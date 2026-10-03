@@ -7,7 +7,7 @@ const config=runtimeConfig();
 export const origin=config.ORIGIN;
 export const validId=id=>typeof id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const PUBLIC_RUN_FIELDS='id,created_at,title,caption,output_url,repo_url,receipts,shipped,artifact_url,image_url,hero_visual,project,harness,started_at,duration_s,wall_time_s,prompts,tool_calls,shell_calls,files_touched,artifacts_produced,commits,rhythm,route,trace_basis,measurement_revision,ridge,worker_bins,commit_bins,ridge_basis,ridge_wall_seconds,ridge_tool_calls,code_route,visibility,profiles!runs_profile_id_fkey(github_handle,handle,display_name)';
+const PUBLIC_RUN_FIELDS='id,created_at,title,caption,output_url,repo_url,receipts,shipped,artifact_url,image_url,hero_visual,project,harness,started_at,duration_s,wall_time_s,prompts,tool_calls,shell_calls,files_touched,artifacts_produced,commits,rhythm,route,trace_basis,measurement_revision,history_evidence,ridge,worker_bins,commit_bins,ridge_basis,ridge_wall_seconds,ridge_tool_calls,code_route,visibility,profiles!runs_profile_id_fkey(github_handle,handle,display_name)';
 export async function readPublic(id,fetcher=fetch){
  if(!validId(id))return null;
  const request=select=>{const query=new URLSearchParams({id:'eq.'+id,visibility:'eq.public',select,limit:'1'});return fetcher(config.SB_URL+'/rest/v1/runs?'+query,{headers:{apikey:config.SB_KEY,"Accept-Profile":config.SB_SCHEMA},cache:'no-store',signal:AbortSignal.timeout(8000)})};
@@ -365,7 +365,7 @@ export function card(run,opts={}){
     el('div',{style:{display:'flex',color:SOFT}},badge.detail)):null,
    map,
    drawing,
-   el('div',{style:{display:'flex',fontSize:15,color:SOFT,marginTop:'auto'}},run.trace_basis==='observed native events; timestamps unavailable'?'Missing records may be omitted; distinct requests are a lower bound.':'Counts describe activity, not result quality.')));
+   el('div',{style:{display:'flex',fontSize:15,color:SOFT,marginTop:'auto'}},Evidence.basis(run).label+' · '+(run.trace_basis==='observed native events; timestamps unavailable'?'Counts are a lower bound.':'Not independently verified.'))));
 }
 // THE HOME PAGE'S OWN CARD. Until now `/` carried no og: or twitter: tags at all, so a post that
 // sent a thousand people to the address showed them a bare link with no title, no description and

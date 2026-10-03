@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {JSDOM} from 'jsdom';
+import H from '../site/historical-import.js';
+const fixture={schema:'local-historical-recovery-v1',source:{full_transcript_recovered:false,contains_raw_prompt_text:false,rows:[{timestamp_ms:1700000000000,line_sha256:'a'.repeat(64)}]},observed_history:{unique_timestamped_entries:1},repo_evidence:{reachable_commits_in_utc_window:[],commit_count:0,frozen_head:'b'.repeat(40)}};
+const dom=new JSDOM('<main></main>'),slot=dom.window.document.querySelector('main');
+let person={id:'first'},generation=1,resolveLookup,inserted=false,opened=false;
+const lookup=new Promise(resolve=>{resolveLookup=resolve;});
+const query={select(){return this;},eq(){return this;},maybeSingle(){return lookup;},insert(){inserted=true;throw Error('Must not insert after account change');}};
+H.mount({slot,client:{from:()=>query},me:()=>person,authGeneration:()=>generation,signIn(){},openRun(){opened=true;},status(message){throw Error(message);}});
+const file=slot.querySelector('input[type=file]');
+Object.defineProperty(file,'files',{value:[{size:100,text:async()=>JSON.stringify(fixture)}]});
+await file.onchange();
+const pending=slot.querySelector('[data-history-save]').onclick();
+person={id:'second'};generation++;
+resolveLookup({data:null,error:null});await pending;
+assert.equal(inserted,false);assert.equal(opened,false);
+console.log('PASS history account transition: pending old-account lookup cannot insert or navigate');

@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import H from '../site/historical-import.js';
+import E from '../site/run-evidence.js';
+import Feed from '../site/feed-card.js';
+import {bootDisposable,seedJourneyActors,CASEY,RILEY} from './disposable-supabase.mjs';
+const fixture={schema:'local-historical-recovery-v1',source:{full_transcript_recovered:false,contains_raw_prompt_text:false,path:'/private/canary',rows:[{timestamp_ms:1700000000000,line_sha256:'a'.repeat(64),project:'/private/canary'}]},observed_history:{unique_timestamped_entries:1},repo_evidence:{reachable_commits_in_utc_window:[{sha:'b'.repeat(40)}],commit_count:1,frozen_head:'b'.repeat(40)},draft_copy:{title:'Recovered build'}};
+const run=await H.prepare(fixture);
+assert.ok(!JSON.stringify(run).includes('/private/canary'));assert.equal(run.duration_s,undefined);assert.equal(run.commits,undefined);assert.equal(run.tool_calls,undefined);assert.equal(run.history_evidence.repo_commits,1);
+assert.deepEqual(await H.prepare({...fixture,draft_copy:{title:'Edited story'}}).then(x=>x.measurement_revision),run.measurement_revision);
+await assert.rejects(H.prepare({...fixture,observed_history:{unique_timestamped_entries:200}}),/count/);
+assert.equal(E.ranking([{...run,id:'r',profile_id:'p',visibility:'public'}]).eligible.length,0);
+assert.equal(Feed.achievement(run),null);assert.equal(Feed.headline(run),null);assert.match(Feed.card(run,{preview:true}),/Recovered build history/);
+const {db,as,anonymous}=await bootDisposable();await seedJourneyActors(db);await as(CASEY);
+const insert=async(extra={})=>{const data={...run,profile_id:CASEY,...extra};const keys=Object.keys(data);return db.query('insert into strava.runs('+keys.join(',')+') values('+keys.map((_,i)=>'$'+(i+1)).join(',')+') returning id',keys.map(k=>typeof data[k]==='object'&&data[k]!==null?JSON.stringify(data[k]):data[k]));};
+const id=(await insert()).rows[0].id;
+await assert.rejects(insert(),/duplicate key/);
+await assert.rejects(insert({measurement_revision:'e'.repeat(64)}),/duplicate key/);
+for(const extra of [{duration_s:238424},{tool_calls:500},{commits:96},{harness:'Claude Code'},{visibility:'public'},{history_evidence:{...run.history_evidence,raw_prompt:'private'}}])await assert.rejects(insert({...extra,measurement_revision:'c'.repeat(64)}));
+await assert.rejects(db.query("update strava.runs set trace_basis='elapsed',duration_s=100 where id=$1",[id]),/cannot be edited/);
+await as(RILEY);assert.equal((await db.query('select id from strava.runs where id=$1',[id])).rows.length,0);
+await assert.rejects(insert({measurement_revision:'c'.repeat(64)}),/row-level security/);
+await anonymous();assert.equal((await db.query('select id from strava.runs where id=$1',[id])).rows.length,0);
+await as(CASEY);await db.query("update strava.runs set title='Reviewed story',visibility='public' where id=$1",[id]);
+await anonymous();assert.equal((await db.query('select history_evidence from strava.runs where id=$1',[id])).rows[0].history_evidence.history_entries,1);
+await db.close();
+if(process.env.STRIVE_HISTORY_MANIFEST){const real=await H.prepare(JSON.parse(readFileSync(process.env.STRIVE_HISTORY_MANIFEST,'utf8')));console.log('Real recovery manifest: '+JSON.stringify({history_entries:real.history_evidence.history_entries,repo_commits:real.history_evidence.repo_commits,session_metrics_absent:real.duration_s===undefined&&real.tool_calls===undefined}));}
+console.log('PASS historical import: allowlisted summary, stable repeat, source counts, no ranking/achievement, private-first, ownership and immutable evidence');
