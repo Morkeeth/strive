@@ -13,7 +13,9 @@ assert.match(render(run,false),/Grok Bot · Posted today/);
 assert.match(render({...run,created_at:null},false),/Session date unknown/);
 assert.match(render({...run,started_at:new Date().toISOString()},true),/Grok Bot · Today/);
 for(const basis of ['timestamps unavailable','complete']) {
- assert.match(render({...run,trace_basis:basis},true),/Grok Bot · Today/);
+ assert.match(render({...run,trace_basis:basis},true),/Grok Bot · Session date unknown/);
  assert.match(render({...run,trace_basis:basis},false),/Grok Bot · Today/);
 }
 console.log('Actual feed-card render distinguishes unknown observed-session date from posting time; other capture formats unchanged.');
+
+assert.doesNotMatch(render({...run,harness:"Codex",started_at:"2026-01-02T18:28:10.832+00:00"},true),/Codex · Today/);

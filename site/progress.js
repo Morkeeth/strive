@@ -10,7 +10,7 @@ window.GrinderProgress = function ({client: db, me, app, frame, status, signIn, 
     if(run.prompts!=null) bits.push(esc(run.prompts)+' typed turns');
     if(run.artifacts_produced!=null) bits.push(esc(run.artifacts_produced)+' artifacts');
     if(run.commits!=null) bits.push(esc(run.commits)+' commits');
-    if(run.tool_calls!=null && !bits.length) bits.push(esc(run.tool_calls)+' tool calls');
+    if(run.tool_calls!=null && !bits.length) bits.push(esc(run.tool_calls)+(GrinderContract.observedProjection(run)?' observed distinct tool requests (minimum)':' tool calls'));
     return bits;
   }
   const title = run => run.title || 'Untitled run';
@@ -37,7 +37,7 @@ window.GrinderProgress = function ({client: db, me, app, frame, status, signIn, 
     const wrapper=!String(run.agent_name||'').trim()||/^connect$/i.test(String(run.agent_name).trim());
     const via=run.source_actor_id&&wrapper?' · via Connect':'';
     const session=esc(run.harness || 'Coding agent');
-    return `<article class="history-run"><div class="history-trace">${GrinderContract.trace(run)}</div><div><small><span class="card-harness">${session}</span>${via} · ${esc(audience(run))}</small><h2><a href="/?run=${run.id}">${esc(title(run))}</a></h2>${when?`<p>${esc(when)}</p>`:''}${bits.length?`<div class="history-counts">${bits.map(b=>`<span>${b}</span>`).join('')}</div>`:''}${run.visibility==='private'?`<p class="history-share"><a href="/?run=${run.id}">Preview and choose who can see it</a></p>`:''}</div></article>`;
+    return `<article class="history-run"><div class="history-trace">${GrinderContract.trace(run)}</div><div><small><span class="card-harness">${session}</span>${via} · ${esc(audience(run))}</small><h2><a href="/?run=${run.id}">${esc(title(run))}</a></h2>${when?`<p>${esc(when)}</p>`:''}${GrinderContract.observedProjection(run)?'<p class="meta">Observed message order · lower bound</p>':''}${bits.length?`<div class="history-counts">${bits.map(b=>`<span>${b}</span>`).join('')}</div>`:''}${run.visibility==='private'?`<p class="history-share"><a href="/?run=${run.id}">Preview and choose who can see it</a></p>`:''}</div></article>`;
   }
   async function historyView() {
     if(!start('My runs','runs'))return;

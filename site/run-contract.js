@@ -281,7 +281,10 @@
       : text;
   }
   function trace(snapshot) {
-    const values = snapshot?.rhythm;
+    const valid = values => Array.isArray(values) && values.length > 0 && values.length <= 10000 && values.every(v => Number.isFinite(v) && v >= 0);
+    const fromRidge = !valid(snapshot?.rhythm) && Array.isArray(snapshot?.ridge) && snapshot.ridge.length >= 40 && snapshot.ridge.length <= 60 && snapshot.ridge.every(v => Number.isSafeInteger(v) && v >= 0);
+    const values = fromRidge ? snapshot.ridge : snapshot?.rhythm;
+    const label = observedProjection(snapshot) ? "Observed tool requests over observed message order; lower bound" : fromRidge && snapshot.harness === "Grok Bot" && snapshot.trace_basis === "timestamps unavailable" ? "Tool requests over message order" : "Recorded session activity";
     if (
       !Array.isArray(values) ||
       !values.length ||
@@ -297,7 +300,7 @@
         )
         .join(" ");
     return (
-      '<svg viewBox="0 0 240 72" role="img" aria-label="Recorded session rhythm" style="display:block;width:100%;color:var(--blue)"><polyline points="' +
+      '<svg viewBox="0 0 240 72" role="img" aria-label="' + label + '" style="display:block;width:100%;color:var(--blue)"><polyline points="' +
       points +
       '" stroke="currentColor" fill="none" stroke-width="2"/></svg>'
     );

@@ -410,10 +410,10 @@
     // Partial observations have no measured event date. Creation time is only a posting date.
     const sourceDate = r.started_at || r.started;
     const posted = when(r.created_at);
-    const dateLabel = observedProjection(r)
-      ? (preview ? (when(sourceDate) || "Session date unknown")
-        : (posted ? `Posted ${/^(Today|Yesterday)$/.test(posted) ? posted.toLowerCase() : posted}` : "Session date unknown"))
-      : posted;
+    const dateLabel = preview ? (when(sourceDate) || "Session date unknown")
+      : observedProjection(r)
+        ? (posted ? `Posted ${/^(Today|Yesterday)$/.test(posted) ? posted.toLowerCase() : posted}` : "Session date unknown")
+        : posted;
     const meta = [esc(harnessName(r)), esc(dateLabel), opts.metaExtra ? esc(opts.metaExtra) : ""].filter(Boolean).join(" · ");
     const kudos = preview
       ? `<span class="fc-act" aria-label="Send thanks">${KUDOS_ICON}</span>`

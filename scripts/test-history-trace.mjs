@@ -1,0 +1,10 @@
+import vm from 'node:vm';import {readFileSync} from 'node:fs';import assert from 'node:assert/strict';
+const box={window:{},console};vm.createContext(box);vm.runInContext(readFileSync('site/run-contract.js','utf8'),box);
+const trace=box.GrinderContract.trace;
+const observed={harness:'Grok Bot',ridge:Array(40).fill(2),ridge_basis:'turn-order',trace_basis:'observed native events; timestamps unavailable'};
+assert.match(trace(observed),/<svg/);assert.match(trace(observed),/observed message order/);assert.match(trace(observed),/lower bound/);assert.doesNotMatch(trace(observed),/elapsed|wall time/);
+assert.match(trace({...observed,trace_basis:'timestamps unavailable'}),/message order/);
+assert.match(trace({rhythm:[0,2,1],trace_basis:'elapsed'}),/<svg/);
+for(const bad of [{},{ridge:[1,2]},{ridge:Array(40).fill(-1)},{ridge:Array(40).fill(NaN)}])assert.match(trace(bad),/Trace unavailable/);
+assert.match(trace({...observed,rhythm:[]}),/<svg/);
+console.log('Compact history trace supports recorded ridge without invented time or missing data');
