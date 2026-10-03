@@ -1,5 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
+<link rel="alternate" type="text/markdown" href="/agents.md" title="STRIVE agent instructions">
+<link rel="describedby" type="application/json" href="/.well-known/agent-grinder.json">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>__BRAND__ · __TAGLINE__</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -543,7 +545,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
   <main class="main" id="app"></main>
   <aside class="side" id="side"></aside>
 </div>
-<footer class="site-foot"><span class="site-foot-line">Your agent runs, shared on your terms.</span><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/?feedback">Send feedback</a><a href="/privacy#deletion" id="delete-info">Delete your data</a><span id="deletewrap" hidden><a href="/?account#danger" id="delete">Delete my __BRAND__ profile</a></span></footer>
+<footer class="site-foot"><span class="site-foot-line">Your agent runs, shared on your terms.</span><a href="/agents.md">For agents</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/?feedback">Send feedback</a><a href="/privacy#deletion" id="delete-info">Delete your data</a><span id="deletewrap" hidden><a href="/?account#danger" id="delete">Delete my __BRAND__ profile</a></span></footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/run-contract.js"></script>
@@ -624,8 +626,8 @@ const REAL_RUN='/r/3afa89e7-aff5-488d-bec3-da36196b8c5e';
 const RETIRED=['community','forum','challenges','challenge','practices','practice','experiments','experiment','rigs','rigversion','progress','comparison','pitch','claim'];
 function menuLinks(kind){
   if(!ME) return AUTH_USER
-    ? `<a href="/?connect" role="menuitem">Connect your agent</a><button type="button" data-signout role="menuitem">Sign out</button>`
-    : `<a href="/?connect" role="menuitem">Connect your agent</a><div class="menu-sep"></div><button type="button" class="menu-signin" data-signin role="menuitem">${signInLabel()}</button>`;
+    ? `<a href="/?connect" role="menuitem">Connect your agent</a><a href="/?feedback" role="menuitem">Send feedback</a><button type="button" data-signout role="menuitem">Sign out</button>`
+    : `<a href="/?connect" role="menuitem">Connect your agent</a><a href="/?feedback" role="menuitem">Send feedback</a><div class="menu-sep"></div><button type="button" class="menu-signin" data-signin role="menuitem">${signInLabel()}</button>`;
   return `<a href="/?u=${encodeURIComponent(profileHandle(ME))}" role="menuitem">Profile</a><a href="/?account" role="menuitem">Settings</a><button type="button" data-signout role="menuitem">Sign out</button>`;
 }
 function syncAuthNav(){
@@ -1474,12 +1476,12 @@ async function shouldOnboard(){
 // commands: /?post (git clone ... grind --harness auto), /?onboard (the same inside a four-step
 // wizard) and, once signed in, a uvx line. Now: one page, fastest path first, one command per
 // agent, and the same drop zone as the landing. /?onboard and /?connect both land here.
-const ONE_LINE=h=>`uvx --from git+https://github.com/Morkeeth/strive agentgrinder grind${h?' --harness '+h:''} --push`;
+const ONE_LINE=h=>`uvx --from __CAPTURE_PACKAGE__ agentgrinder grind${h?' --harness '+h:''} --push`;
 // AUTOMATIC SYNC (Oscar, 25 Sep 2026 evening: "the uploads is awful ... automatic fetch").
 // Signed in, one button issues a private Connect token (migration 007) and shows one line to run
 // once on the computer the agent runs on. From then on `agentgrinder sync` uploads every finished
 // Claude Code, Cursor and Codex session as a private run (agentgrinder/sync.py). No file picking.
-const SYNC_LINE=t=>`uvx --from git+https://github.com/Morkeeth/strive agentgrinder sync --install --token ${t}`;
+const SYNC_LINE=t=>`uvx --from __CAPTURE_PACKAGE__ agentgrinder sync --install --token ${t}`;
 function autoSyncHtml(){
   return `<section class="auto-sync" id="auto-sync" aria-labelledby="auto-sync-title">
     <h2 id="auto-sync-title">Automatic: your sessions arrive on their own</h2>
@@ -1632,7 +1634,7 @@ function howItWorks(){
 // with exit 1, so the first thing anyone did from this page failed. There is no install in the
 // line any more, because the package needs none: it runs from the clone on the python macOS
 // already has. The coach is a second, honest line - it needs Python 3.10 or newer, and says so.
-const INSTALL_CMD="git clone https://github.com/Morkeeth/strive && cd strive && python3 -m agentgrinder grind --harness auto";
+const INSTALL_CMD="uvx --from __CAPTURE_PACKAGE__ agentgrinder grind --harness auto";
 // The first-run door: one line that installs nothing globally and needs no clone. Its --push
 // defaults to the hosted app (agentgrinder/push.py), so the printed link opens a real page.
 const COACH_CMD='python3.12 -m venv .venv && .venv/bin/pip install -e ".[coach]" && .venv/bin/agentgrinder grind --coach';

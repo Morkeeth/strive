@@ -9,6 +9,14 @@ This directory is a standalone Python 3 kit. Keep its scripts and samples togeth
 
 For “capture this session,” use the current environment's supported session export or session-file capability and verify the current session identity. This is permission to prepare that session locally. Do not guess a person's laptop path or select the newest unrelated file. If the environment has no export capability or no readable session file, state that exact gap and request the export. Do not reconstruct a transcript from memory or convert a status summary into fake events.
 
+### Current-conversation transcript tool
+
+If this environment provides `ReadTranscript`, its no-ID call reads this conversation. Do not assume a session file already exists. Freeze the upper bound immediately before the capture request, using the tool's stable message positions. Read only that bounded requested sitting, not the entire account history. The observed interface returns newest-first pages, accepts `before=position` and at most 200 records per page, and its total grows as reads occur. Do not chase the growing total or include the capture conversation in its own result.
+
+Preserve returned records exactly in a private local JSONL file, then order them chronologically using their original stable positions. Keep user, assistant and tool records and their original content blocks. If the tool exposes text rather than a downloadable file, write the returned records as data; there is no assumed shell pipe or export endpoint. Deduplicate by original record identity/position, verify boundaries, sequence and role counts, and keep a local capture receipt. Do not echo the transcript in chat or upload it.
+
+Do not invent timestamps or wrap plain user text in fabricated `<timestamp>` or `<user_query>` tags. The parser below has a specific export contract. If the native tool's exact output does not meet it, report the format mismatch and stop before preview/upload; retain the bounded local source for an explicit adapter repair. If pagination has no stable boundary, report that rather than claiming a frozen capture.
+
 The supported JSONL format has top-level `role` and `message`; user text contains `<timestamp>` and `<user_query>`; assistant content contains `tool_use` blocks. Select the actual export on this bot's computer. The helper uses its latest sitting, split on timestamped-query gaps greater than 30 minutes. Check that this is the requested sitting. It does not combine a whole day, other bots or worker logs. Freeze/export the requested window before capture so later conversation does not change its identity.
 
 ## Prepare privately

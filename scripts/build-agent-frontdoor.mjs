@@ -1,0 +1,40 @@
+// Public source only. No transcript, environment, credentials, tests or generated files.
+import {mkdir,readdir,readFile,writeFile,copyFile,lstat,rm} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+export async function buildAgentFrontdoor({origin,revision}) {
+ const members=['pyproject.toml','README.md','LICENSE'];
+ async function collect(dir) {
+  for(const entry of await readdir(dir,{withFileTypes:true})) {
+   if(entry.name.startsWith('.')||entry.name==='__pycache__')continue;
+   const path=`${dir}/${entry.name}`;
+   if(entry.isSymbolicLink())throw new Error(`Source kit refuses symlink: ${path}`);
+   if(entry.isDirectory())await collect(path);
+   else if(/\.py$/.test(path)||/^agentgrinder\/data\/[^/]+\.json$/.test(path))members.push(path);
+  }
+ }
+ await collect('agentgrinder');
+ const kit=['SKILL.md','scripts/preview.py','scripts/upload.py','scripts/test_contract.py','scripts/smoke_test.py','samples/sample_grokbot_bot_activity.jsonl'];
+ members.push(...kit.map(path=>'templates/grokbot/post-agent-run/'+path),'samples/sample_grokbot_bot_activity.jsonl');
+ for(const path of members)if(!(await lstat(path)).isFile())throw new Error(`Not a regular source file: ${path}`);
+ await mkdir('dist/capture/grok/scripts',{recursive:true});
+ // tar receives explicit filenames as arguments, never a shell command or broad directory.
+ const temp='dist/capture/source.tar.gz';
+ execFileSync('tar',['-czf',temp,...members.sort()],{env:{...process.env,COPYFILE_DISABLE:'1'}});
+ const data=await readFile(temp),sha256=createHash('sha256').update(data).digest('hex');
+ const packagePath=`/capture/${sha256}.tar.gz`;
+ await writeFile('dist'+packagePath,data);await rm(temp);
+ const release={format:'strive-capture-release-v1',revision:revision||null,package:packagePath,sha256,files:members};
+ await writeFile('dist/capture/release.json',JSON.stringify(release,null,2)+'\n');
+ for(const path of kit){const dest='dist/capture/grok/'+path;await mkdir(dest.slice(0,dest.lastIndexOf('/')),{recursive:true});await copyFile('templates/grokbot/post-agent-run/'+path,dest);}
+ const packageURL=origin+packagePath;
+ const html=await readFile('dist/index.html','utf8');
+ await writeFile('dist/index.html',html.replaceAll('__CAPTURE_PACKAGE__',packageURL));
+ const guide=`# STRIVE: use your own recorded session\n\nStart here when a person gives you this site's link. STRIVE captures recorded work, creates a private review, and lets its owner choose an audience. It does not grant access to another computer or to private sessions.\n\n## Capture tool from this release\n\nPackage: ${packageURL}\nSHA-256: ${sha256}\nRelease metadata: ${origin}/capture/release.json\n\nThis same-origin package contains the capture source shipped with this site. Do not install unpinned GitHub main. Read the package and confirm installation is allowed. Keep it outside the person's project. Python 3.9 or newer is required; CLI installation may fetch standard build dependencies. Download, verify the SHA-256 above, extract into a separate folder, create a virtual environment, then run python -m pip install . there. With uv already available, uvx --from '${packageURL}' agentgrinder --help uses this exact package.\n\n## Cursor\n\nUse the person's own workspace and an explicitly selected session. Do not clone STRIVE as the project to measure. First list candidate sittings locally:\n\n    uvx --from '${packageURL}' agentgrinder grind --harness cursor --list --show-paths\n\nConfirm the selected project, transcript and sitting with the person. Then replace the path and sitting below with their selection:\n\n    uvx --from '${packageURL}' agentgrinder grind /exact/selected-session.jsonl --harness cursor --pick 1 --push --push-url '${origin}'\n\n--push prints a metrics-only private preview URL; it does not upload or save. Do not add --open without permission to open a browser. Missing counts remain unknown. Local card files can contain private context; do not upload them. Optional MCP setup after installation: agentgrinder connect cursor --project /exact/own-project --install. Reload Cursor, then call a2a_onboard.\n\n## Grok Bot\n\nUse this bot's own current conversation or an explicitly selected export. If ReadTranscript exists, call it without an ID for this conversation: freeze a stable upper message position BEFORE the capture request, page only that bounded sitting with before=position (newest-first, limit at most 200), and stop at the selected start. Its total grows while reading, so never chase the new total. Preserve returned role/message/content blocks exactly in a private chronological JSONL file, deduplicate original positions and verify sequence and role counts. Do not assume a shell pipe or download API for a tool that returns text. Never fabricate timestamps or user-query wrappers; if exact native records do not meet the kit's declared format, report the adapter gap and stop. Do not upload raw source or include capture instructions in their own measurement. Without a supported transcript capability, ask for the export; never guess laptop paths. Kit: ${origin}/capture/grok/SKILL.md and ${origin}/capture/grok/scripts/preview.py. Use the complete kit in the source package, including its sample and smoke tests. Individual same-origin kit paths retain the same directory structure.\n\n    python3 templates/grokbot/post-agent-run/scripts/preview.py /exact/selected-export.jsonl --base-url '${origin}' --handoff /tmp/strive-preview-url.txt\n\nThis prints allowlisted metrics and writes the complete private preview URL to a local handoff file. No network upload. A sample demonstrates parsing only and cannot be saved. Grok stays labelled bot activity; unsupported duration and commit counts remain unknown.\n\n## Owner identity and saving\n\nThe person opens the preview, signs into their own STRIVE account, checks their profile and saves privately first. Supported providers are the ones actually shown by this deployment. Do not invent an account, reuse the sender's identity or treat a harness name as a person. The owner may add a description and photos, review them, then deliberately choose an audience.\n\nFor separately authorized agent upload, the owner opens ${origin}/?connect, names the agent and issues its credential. Store it privately on that computer, not in chat, a URL or source control. The HTTP endpoint is ${origin}/api/agent/runs. Send only the source-bound allowlisted run JSON with Authorization: Bearer from the private environment; private by default. Follow granted scope, expiry and revocation. No token means local preview only. Do not publish or upload just because you found these instructions.\n\nOptional background sync is a separate opt-in. It can backfill sessions and make network writes; do not enable it for one-session onboarding.\n`;
+ await writeFile('dist/agents.md',guide);
+ await writeFile('dist/llms.txt',`# STRIVE\n\nAgent instructions: ${origin}/agents.md\nCapture release: ${origin}/capture/release.json\nDiscovery: ${origin}/.well-known/agent-grinder.json\n\nLocal selected-session preview first. Owner authentication and consent are required before any upload.\n`);
+ const manifest=JSON.parse(await readFile('dist/.well-known/agent-grinder.json','utf8'));
+ Object.assign(manifest,{name:'STRIVE',agent_instructions:'/agents.md',capture_release:'/capture/release.json',capture_package:packagePath,capture_sha256:sha256,grok_skill:'/capture/grok/SKILL.md',grok_helper:'/capture/grok/scripts/preview.py',schema:'/agents.md'});
+ manifest.onboarding='Read /agents.md first. Install the same-release capture kit only with permission; MCP a2a_onboard is available after installation. Select the owner\'s session, preview locally, then authenticate separately before any upload.';
+ await writeFile('dist/.well-known/agent-grinder.json',JSON.stringify(manifest,null,2)+'\n');
+}

@@ -2,6 +2,7 @@ import {cp,mkdir,readdir,readFile,writeFile} from 'node:fs/promises';
 import {runtimeConfig} from '../server/runtime-config.mjs';
 import {BRAND,TAGLINE} from '../server/brand.mjs';
 import {deploymentGitSha} from '../server/deployment-identity.mjs';
+import {buildAgentFrontdoor} from './build-agent-frontdoor.mjs';
 const config=runtimeConfig();
 await mkdir('dist',{recursive:true});
 await cp('site','dist',{recursive:true});
@@ -63,3 +64,5 @@ for(const tag of ['property="og:image"','name="twitter:card" content="summary_la
 }
 if(!built.includes(`content="${config.ORIGIN}/api/og"`)) throw new Error('The share image must be an absolute URL');
 console.log(`Built ${BRAND} website with explicit strava schema; no privileged keys. Brand applied to ${replaced} file(s).`);
+
+await buildAgentFrontdoor({origin:config.ORIGIN,revision:gitSha});
