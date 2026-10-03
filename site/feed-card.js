@@ -55,7 +55,7 @@
       !t || /(^|·\s*)-?Users-\S/.test(t) || /(^|·\s*)-?home-[a-z0-9_]+(\s*·|$)/.test(t) ||
       /(^|·\s*)(Cursor|Claude Code|Claude|Codex|Grok Bot|Agent) sitting$/i.test(t) || /^(untitled run|a run|agent run)$/i.test(t);
     if (!generic) return t;
-    const day = dayOf(r.started_at || r.started || r.created_at);
+    const day = dayOf(r.started_at || r.started || (observedProjection(r) ? null : r.created_at));
     return `${harnessName(r) || "Agent"} session${day ? `, ${day}` : ""}`;
   }
 
@@ -407,7 +407,14 @@
       : preview
       ? `<span class="fc-name">${esc(p.name)}</span>`
       : `<a class="fc-name" href="/?u=${encodeURIComponent(p.handle)}">${esc(p.name)}</a>`;
-    const meta = [esc(harnessName(r)), esc(when(r.created_at)), opts.metaExtra ? esc(opts.metaExtra) : ""].filter(Boolean).join(" · ");
+    // Partial observations have no measured event date. Creation time is only a posting date.
+    const sourceDate = r.started_at || r.started;
+    const posted = when(r.created_at);
+    const dateLabel = observedProjection(r)
+      ? (preview ? (when(sourceDate) || "Session date unknown")
+        : (posted ? `Posted ${/^(Today|Yesterday)$/.test(posted) ? posted.toLowerCase() : posted}` : "Session date unknown"))
+      : posted;
+    const meta = [esc(harnessName(r)), esc(dateLabel), opts.metaExtra ? esc(opts.metaExtra) : ""].filter(Boolean).join(" · ");
     const kudos = preview
       ? `<span class="fc-act" aria-label="Send thanks">${KUDOS_ICON}</span>`
       : page
