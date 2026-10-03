@@ -19,6 +19,12 @@ if(process.env.AGENTGRINDER_X_SIGNIN==='1') {
  if(!html.includes(marker)) throw new Error('Missing PROVIDERS_ENABLED marker');
  html=html.replace(marker,'const PROVIDERS_ENABLED=["github","x"];');
 }
+// Enable only after delivery from the configured custom SMTP sender has been verified.
+if(process.env.STRIVE_EMAIL_SIGNIN==='1') {
+ const marker='const EMAIL_SIGNIN_READY=false;';
+ if(!html.includes(marker)) throw new Error('Missing email readiness marker');
+ html=html.replace(marker,'const EMAIL_SIGNIN_READY=true;');
+}
 const gitSha=deploymentGitSha();
 if(gitSha) {
  const title='<title>__BRAND__ · __TAGLINE__</title>';

@@ -80,3 +80,9 @@ The first command fails if a browser/server/CLI/agent schema pin or required `Ac
 - [ ] Confirm Grinder still works and no Grinder data, function or Auth trigger changed.
 
 Report local, tested, hosted and used separately. A green dry run is not a deployment or real-user receipt.
+
+## Email sign-in and project scope (3 October)
+
+After custom SMTP is configured and a real non-team address receives a sign-in link, set `STRIVE_EMAIL_SIGNIN=1` for the website build. The browser also checks that Supabase reports the email provider enabled. The default remains off; email-provider enablement alone is not delivery evidence. `AGENTGRINDER_X_SIGNIN=1` remains independent. Origin remains a repository connection, not a consumer sign-in provider.
+
+`/?projects` now shows the authenticated account's own projects, including private runs. `/?projects&scope=public` is the shared public directory. Signed-out visitors only see public projects. A delayed personal response is discarded if the account changes before it arrives.

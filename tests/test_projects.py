@@ -17,14 +17,14 @@ def test_preview_and_composer_take_a_repository_link():
     assert "function safeRepoUrl(value)" in INDEX and "/^https:/.test(url)" in INDEX
 
 
-def test_project_page_and_list_are_routed_and_public_only():
+def test_project_page_and_list_are_routed_with_explicit_account_scope():
     assert "if(q.has('projects'))return viewProjects();" in INDEX
     assert "if(q.has('project'))return viewProject(q.get('project'));" in INDEX
     page = INDEX[INDEX.index("async function viewProject(name)") : INDEX.index("async function viewProjects()")]
     assert ".eq('project',name).eq('visibility','public')" in page
-    assert ".eq('project',name).eq('profile_id',ME.id)" in page  # the owner sees their own too
+    assert ".eq('project',name).eq('profile_id',profileId)" in page  # the owner sees their own too
     lst = INDEX[INDEX.index("async function viewProjects()") : INDEX.index("async function viewProfile(handle)")]
-    assert ".eq('visibility','public').not('project','is',null)" in lst
+    assert "query=mine?query.eq('profile_id',profileId):query.eq('visibility','public')" in lst
     rail = INDEX[INDEX.index("function railHtml"):INDEX.index("function setPrimarySection")]
     assert "Projects" not in rail  # preserved as a deep link, not primary navigation
 
@@ -32,5 +32,5 @@ def test_project_page_and_list_are_routed_and_public_only():
 def test_cards_and_profile_link_to_the_project():
     assert "function projectLinkHtml(r)" in INDEX
     assert "opts.preview?esc(project):projectLinkHtml(r)" in INDEX
-    assert "profileProjectsHtml(R)" in INDEX
+    assert "profileProjectsHtml(R,mine)" in INDEX
     assert 'class="profile-project"' in INDEX

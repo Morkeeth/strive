@@ -721,12 +721,14 @@ function grinderFetch(input, options={}){
 }
 const sb=window.supabase&&window.supabase.createClient(SB_URL,SB_KEY,{db:{schema:SB_SCHEMA},auth:{storageKey:"agentic-strava-auth"},global:{fetch:grinderFetch}});
 const auth=sb?GrinderAuth.create({client:sb,redirectTo:location.origin+'/'}):null;
-// Email sign-in is off until Supabase has a custom SMTP sender: the built-in sender allows only a few mails an hour.
-// To turn it back on, add "email" here. The sign-in dialog and the onboarding copy follow this list.
+// Email sign-in is off until a custom SMTP sender can deliver to intended users.
+// After verifying custom SMTP delivery, build with STRIVE_EMAIL_SIGNIN=1.
+// The runtime settings probe must also confirm that the email provider is enabled.
 // X joins the list at load when Supabase Auth reports the X provider enabled (25 Sep 2026), so
 // the button appears the moment the provider is switched on, with no redeploy. GitHub is always
 // offered; the settings call failing or timing out changes nothing.
 const PROVIDERS_ENABLED=["github"];
+const EMAIL_SIGNIN_READY=false;
 async function loadProviders(){
   if(!SB_URL||!SB_KEY||/127\.0\.0\.1|localhost/.test(SB_URL)) return PROVIDERS_ENABLED;
   try{
@@ -737,11 +739,12 @@ async function loadProviders(){
     // mutated in place because GrinderAccount holds a reference to it.
     const ext=s&&s.external||{};
     if((ext.x===true||ext.twitter===true)&&!PROVIDERS_ENABLED.includes('x')) PROVIDERS_ENABLED.push('x');
+    if(EMAIL_SIGNIN_READY&&ext.email===true&&!PROVIDERS_ENABLED.includes('email')) PROVIDERS_ENABLED.push('email');
   }catch(_){}
   return PROVIDERS_ENABLED;
 }
 const providerLabel=p=>p==='x'?'X':p==='github'?'GitHub':p;
-const signInLabel=()=>PROVIDERS_ENABLED.includes('x')?'Sign in with GitHub or X':'Sign in with GitHub';
+const signInLabel=()=>PROVIDERS_ENABLED.includes('email')?(PROVIDERS_ENABLED.includes('x')?'Sign in with GitHub, X or email':'Sign in with GitHub or email'):(PROVIDERS_ENABLED.includes('x')?'Sign in with GitHub or X':'Sign in with GitHub');
 const profileHandle=p=>GrinderAuth.present(p)?.handle||'';
 // A person who arrived from Responses keeps a way back even when the run is gone or private.
 function responseReturnLink(){try{return sessionStorage.getItem('ag_response_return')==='?inbox'?'<p class="response-return"><a class="act" href="/?inbox">Back to Notifications</a></p>':''}catch(_){return ''}}
@@ -1131,7 +1134,7 @@ function projectForSave(captured,typed){
 function projectLinkHtml(r){
   const label=GrinderContract.projectLabel(r.project); if(!label) return '';
   const repo=r.repo_url&&safeOutputUrl(r.repo_url);
-  return `<a href="/?project=${encodeURIComponent(r.project)}">${esc(label)}</a>${repo?` · <a href="${esc(repo)}" target="_blank" rel="noopener noreferrer">repo ↗</a>`:''}`;
+  return `<a href="/?project=${encodeURIComponent(r.project)}&scope=${ME&&ME.id===r.profile_id?'mine':'public'}">${esc(label)}</a>${repo?` · <a href="${esc(repo)}" target="_blank" rel="noopener noreferrer">repo ↗</a>`:''}`;
 }
 // THE LABEL ABOVE THE TITLE (25 Sep 2026, "REAL for shitty runs"). "Achieved" printed on every
 // card, including a run that changed nothing. Now it prints only when the run recorded an
@@ -2146,36 +2149,48 @@ function projectTotals(R){
 async function viewProject(name){
   const app=$('app'); frame(railHtml('project'),null); setPrimarySection('projects'); app.innerHTML=skeletonCard();
   if(!name){return viewProjects();}
-  const {data:pub,error}=await sb.from('runs').select(PROJECT_SELECT).eq('project',name).eq('visibility','public').order('created_at',{ascending:false}).limit(100);
+  const profileId=ME?.id;
+  const projectScope=new URLSearchParams(location.search).get('scope');
+  const mine=!!profileId&&projectScope==='mine';
+  const {data:pub,error}=mine?{data:[],error:null}:await sb.from('runs').select(PROJECT_SELECT).eq('project',name).eq('visibility','public').order('created_at',{ascending:false}).limit(100);
   if(error){status(error.message,true);app.innerHTML='<div class="card"><div class="empty">This project could not load.</div></div>';return;}
   let R=pub||[];
-  if(ME){const {data:mine}=await sb.from('runs').select(PROJECT_SELECT).eq('project',name).eq('profile_id',ME.id).order('created_at',{ascending:false}).limit(100);
+  if(mine){const {data:mine,error:mineError}=await sb.from('runs').select(PROJECT_SELECT).eq('project',name).eq('profile_id',profileId).order('created_at',{ascending:false}).limit(100);
+    if(ME?.id!==profileId)return viewProject(name);
+    if(mineError){status(mineError.message,true);app.innerHTML='<div class="card"><div class="empty">Your project could not load. Please try again.</div></div>';return;}
     const seen=new Set(R.map(r=>r.id)); for(const r of mine||[]) if(!seen.has(r.id)) R.push(r); R.sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));}
   noteTraces(R);
   const label=GrinderContract.projectLabel(name)||name;
   const repos=R.map(r=>r.repo_url&&safeOutputUrl(r.repo_url)).filter(Boolean);
   const repo=repos.sort((a,b)=>repos.filter(v=>v===b).length-repos.filter(v=>v===a).length)[0]||null;
-  const T=projectTotals(R.filter(r=>r.visibility==='public'));
+  const T=projectTotals(mine?R:R.filter(r=>r.visibility==='public'));
   const ad=await ackData(R);
-  app.innerHTML=`<div class="phero"><div><p class="meta">PROJECT</p><h1>${esc(label)}</h1><div class="h">${repo?`<a href="${esc(repo)}" target="_blank" rel="noopener noreferrer">${esc(repo.replace(/^https:\/\//,''))} ↗</a>`:'no repository link yet'}</div></div></div>
-    <div class="ptotals num"><div><div class="k">Public runs</div><div class="v" data-count="${T.runs}">0</div></div><div><div class="k">Builders</div><div class="v" data-count="${T.builders}">0</div></div><div><div class="k">Tool calls</div><div class="v" data-count="${T.tool_calls}">0</div></div><div><div class="k">Commits</div><div class="v" data-count="${T.commits}">0</div></div></div>
-    <div class="head"><h2>Runs on this project</h2><span class="meta">${R.length||'none yet'}</span></div>
-    ${R.length?R.map(r=>runCard(r,ad.mine.has(r.id),ad.counts[r.id])).join(''):`<div class="card"><div class="empty"><h3>No public runs on this project yet</h3><p>Post a run, type this project name in the preview, choose Public.</p><div class="cta"><a class="act blue" href="/?post">Post a run</a><a class="act" href="/?projects">All projects</a></div></div></div>`}
+  if(ME?.id!==profileId)return viewProject(name);
+  app.innerHTML=`<div class="phero"><div><p class="meta">${mine?'MY PROJECT':'PUBLIC PROJECT'}</p><h1>${esc(label)}</h1><div class="h">${repo?`<a href="${esc(repo)}" target="_blank" rel="noopener noreferrer">${esc(repo.replace(/^https:\/\//,''))} ↗</a>`:'no repository link yet'}</div></div></div>
+    <div class="ptotals num"><div><div class="k">${mine?'Your runs':'Public runs'}</div><div class="v" data-count="${T.runs}">0</div></div><div><div class="k">Builders</div><div class="v" data-count="${T.builders}">0</div></div><div><div class="k">Tool calls</div><div class="v" data-count="${T.tool_calls}">0</div></div><div><div class="k">Commits</div><div class="v" data-count="${T.commits}">0</div></div></div>
+    <div class="head"><h2>${mine?'Your runs on this project':'Runs on this project'}</h2><span class="meta">${R.length||'none yet'}</span></div>
+    ${R.length?R.map(r=>runCard(r,ad.mine.has(r.id),ad.counts[r.id])).join(''):`<div class="card"><div class="empty"><h3>${mine?'No saved runs on this project yet':'No public runs on this project yet'}</h3><p>${mine?'Save a session with this project name.':'Post a run, name the project and choose Public.'}</p><div class="cta"><a class="act blue" href="/?post">Post a run</a><a class="act" href="/?projects">All projects</a></div></div></div>`}
     <p class="hint"><a href="/?projects">All projects</a></p>`;
   wireKudos(); countUp();
 }
 async function viewProjects(){
   const app=$('app'); frame(railHtml('projects'),null); setPrimarySection('projects'); app.innerHTML=skeletonCard();
-  const {data:runs,error}=await sb.from('runs').select('project,repo_url,profile_id,tool_calls,ridge_tool_calls,commits,created_at').eq('visibility','public').not('project','is',null).order('created_at',{ascending:false}).limit(500);
+  const profileId=ME?.id;
+  const mine=!!profileId&&new URLSearchParams(location.search).get('scope')!=='public';
+  let query=sb.from('runs').select('project,repo_url,profile_id,tool_calls,ridge_tool_calls,commits,created_at');
+  query=mine?query.eq('profile_id',profileId):query.eq('visibility','public');
+  const {data:runs,error}=await query.not('project','is',null).order('created_at',{ascending:false}).limit(500);
+  if(mine&&ME?.id!==profileId)return viewProjects();
   if(error){status(error.message,true);app.innerHTML='<div class="card"><div class="empty">Projects could not load.</div></div>';return;}
   const by=new Map();
   for(const r of runs||[]){ if(!GrinderContract.projectLabel(r.project)) continue; const v=by.get(r.project)||{name:r.project,runs:[],latest:r.created_at}; v.runs.push(r); by.set(r.project,v); }
   const list=[...by.values()].sort((a,b)=>b.runs.length-a.runs.length||String(b.latest).localeCompare(String(a.latest)));
-  app.innerHTML=`<div class="head"><h1>Projects</h1><span class="meta">${list.length||'none yet'}</span></div>
-    <p class="hint">Every project with at least one public run. A run joins a project when its author names it in the preview.</p>
+  app.innerHTML=`<div class="head"><h1>${mine?'My projects':'Public projects'}</h1><span class="meta">${list.length||'none yet'}</span></div>
+    ${ME?`<nav aria-label="Project scope"><a href="/?projects" ${mine?'aria-current="page"':''}>My projects</a> · <a href="/?projects&scope=public" ${!mine?'aria-current="page"':''}>Public projects</a></nav>`:''}
+    <p class="hint">${mine?'Projects from your saved runs, including private work.':'Projects shared publicly by all builders.'}</p>
     ${list.length?`<div class="card">${list.map(v=>{const T=projectTotals(v.runs);const repo=v.runs.map(r=>r.repo_url&&safeOutputUrl(r.repo_url)).find(Boolean);
-      return `<div class="p-row project-row"><span><a href="/?project=${encodeURIComponent(v.name)}"><b>${esc(GrinderContract.projectLabel(v.name))}</b></a>${repo?` <a class="meta" href="${esc(repo)}" target="_blank" rel="noopener noreferrer">repo ↗</a>`:''}</span><span class="v num">${T.runs} run${T.runs===1?'':'s'} · ${T.builders} builder${T.builders===1?'':'s'} · ${T.tool_calls} tool calls</span></div>`}).join('')}</div>`
-      :`<div class="card"><div class="empty"><h3>No projects yet</h3><p>The first public run that names its project starts the list.</p><div class="cta"><a class="act blue" href="/?post">Post a run</a></div></div></div>`}`;
+      return `<div class="p-row project-row"><span><a href="/?project=${encodeURIComponent(v.name)}&scope=${mine?'mine':'public'}"><b>${esc(GrinderContract.projectLabel(v.name))}</b></a>${repo?` <a class="meta" href="${esc(repo)}" target="_blank" rel="noopener noreferrer">repo ↗</a>`:''}</span><span class="v num">${T.runs} run${T.runs===1?'':'s'} · ${T.builders} builder${T.builders===1?'':'s'} · ${T.tool_calls} tool calls</span></div>`}).join('')}</div>`
+      :`<div class="card"><div class="empty"><h3>${mine?'No projects saved yet':'No public projects yet'}</h3><p>${mine?'Save a session to see its project here.':'A public run that names its project starts this list.'}</p><div class="cta"><a class="act blue" href="/?post">Post a run</a></div></div></div>`}`;
 }
 function toolLogoHtml(name){
   const raw=String(name||''), key=raw.toLowerCase();
@@ -2183,12 +2198,12 @@ function toolLogoHtml(name){
   const mark=label==='Cursor'?'◩':label==='Claude Code'?'✳':label==='Codex'?'◎':label==='Grok Bot'?'𝕏':label==='Astra'?'✦':'•';
   return `<span class="tool-chip"><span class="tool-mark" aria-hidden="true">${mark}</span>${esc(label)}</span>`;
 }
-function profileProjectsHtml(runs){
+function profileProjectsHtml(runs,mine=false){
   const groups=new Map();
   for(const r of runs||[]){const name=GrinderContract.projectLabel(r.project);if(!name)continue;const g=groups.get(r.project)||{key:r.project,name,runs:0,commits:0,tools:0,latest:r.created_at};g.runs++;g.commits+=r.commits||0;g.tools+=r.tool_calls||r.ridge_tool_calls||0;if(String(r.created_at)>String(g.latest))g.latest=r.created_at;groups.set(r.project,g)}
   const rows=[...groups.values()].sort((a,b)=>String(b.latest).localeCompare(String(a.latest))).slice(0,6);if(!rows.length)return '';
   const max=Math.max(...rows.map(r=>r.runs),1);
-  return `<section aria-labelledby="profile-projects-title"><div class="head"><h2 id="profile-projects-title">Projects</h2><span class="meta">${groups.size} active</span></div><div class="profile-projects">${rows.map(p=>`<a class="profile-project" href="/?project=${encodeURIComponent(p.key)}"><h3>${esc(p.name)}</h3><div class="project-facts"><span>${p.runs} run${p.runs===1?'':'s'}</span>${p.commits?`<span>${p.commits} commit${p.commits===1?'':'s'}</span>`:''}${p.tools?`<span>${p.tools} tool calls</span>`:''}</div><div class="project-load" aria-hidden="true"><span style="width:${Math.max(10,Math.round(p.runs/max*100))}%"></span></div></a>`).join('')}</div></section>`;
+  return `<section aria-labelledby="profile-projects-title"><div class="head"><h2 id="profile-projects-title">Projects</h2><span class="meta">${groups.size} active</span></div><div class="profile-projects">${rows.map(p=>`<a class="profile-project" href="/?project=${encodeURIComponent(p.key)}&scope=${mine?'mine':'public'}"><h3>${esc(p.name)}</h3><div class="project-facts"><span>${p.runs} run${p.runs===1?'':'s'}</span>${p.commits?`<span>${p.commits} commit${p.commits===1?'':'s'}</span>`:''}${p.tools?`<span>${p.tools} tool calls</span>`:''}</div><div class="project-load" aria-hidden="true"><span style="width:${Math.max(10,Math.round(p.runs/max*100))}%"></span></div></a>`).join('')}</div></section>`;
 }
 async function viewProfile(handle){
   const app=$('app');
@@ -2217,7 +2232,7 @@ async function viewProfile(handle){
   app.innerHTML=`<div class="phero">${!isAgentProfile(prof)&&window.GrinderFeed?.face?GrinderFeed.face({profiles:prof},56):avatar(handle,{size:36,agent:isAgentProfile(prof)})}
       <div><h1>${esc(prof.display_name||prof.name||handle)}</h1><div class="h">@${esc(handle)}</div>${profileLinksHtml(prof,mine)}</div>${mine?'<div class="profile-actions"><button id="edit-profile-open" class="ghost">Edit profile</button></div>':''}</div>
     <div id="social-follow" class="social-follow"></div>
-    ${profileProjectsHtml(R)}
+    ${profileProjectsHtml(R,mine)}
     ${setup?`<div class="head"><h2>Tools</h2></div><div class="profile-tools">${setup}</div>`:''}
     ${heatmapSvg(R)}
     ${mine?`<dialog id="profile-edit-dialog" class="profile-edit-dialog"><div class="dialog-head"><h2>Edit profile</h2><button id="edit-profile-close" class="icon-button" type="button" aria-label="Close">×</button></div><div class="dialog-body"><label>Name<input id="e_name" maxlength="60" value="${esc(prof.display_name||prof.name||'')}"><span class="hint">Shown beside your runs. It does not need to be unique.</span></label><label>__BRAND__ username<input id="e_handle" maxlength="40" value="${esc(handle)}"><span class="hint">Your unique @username and profile link.</span></label>${prof.github_handle?`<div class="profile-photo-choice"><img src="https://github.com/${encodeURIComponent(prof.github_handle)}.png?size=160" alt=""><div><button id="use-github-photo" type="button" class="ghost">Use GitHub photo</button><p class="hint">From your linked GitHub account. This does not change your __BRAND__ username.</p></div></div>`:'<p class="hint">Your linked GitHub account is managed in Settings. Any legacy X username is shown only as an unverified social link.</p>'}<button id="savep">Save profile</button><div id="linked-accounts"><p class="meta">Linked accounts and profile deletion are in <a href="/?account">Settings</a>.</p></div></div></dialog>`:''}
