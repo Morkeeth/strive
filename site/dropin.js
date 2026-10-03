@@ -89,6 +89,7 @@
     setError("");
     const zone = $("drop-zone"), progress = $("drop-progress");
     if (!file) return;
+    if (/^image\//.test(file.type||"") || /\.(jpe?g|png|webp|gif|heic)$/i.test(file.name||"")) { setError("This picker reads a session file. Add photos after saving a run, or open an existing run in My runs."); return; }
     zone.classList.add("reading");
     const started = performance.now();
     try {
@@ -104,6 +105,25 @@
     }
     zone.classList.remove("reading");
     root.__dropinTimings = { readMs: Math.round(performance.now() - started) };
+    if (opts.privateFirst) {
+      try {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const prefix = new TextEncoder().encode("strive-browser-file-v1\0");
+        const source = new Uint8Array(prefix.length + bytes.length);source.set(prefix);source.set(bytes,prefix.length);
+        const digest = await crypto.subtle.digest("SHA-256",source);
+        const measurement_revision = Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,"0")).join("");
+        const metrics={schema_version:1,measurement_revision,harness:run.harness,
+          turns_typed:run.turns_typed,tool_calls:run.tool_calls,files_touched:run.files_touched,
+          started:typeof run.started==='string'?run.started:null,
+          rhythm:run.line||run.rhythm,trace_basis:'position'};
+        // The browser parser counts command mentions as commits and compresses idle gaps.
+        // Neither proves successful commits or elapsed duration. Keep those fields unknown.
+        GrinderContract.validate(metrics);
+        const token=encodeURIComponent(btoa(JSON.stringify(metrics)));
+        if(opts.post)opts.post(token);else location.href='/#import='+token;
+      } catch(error) { run=null;setError(error?.message||"This session could not be prepared. Try the agent capture link."); }
+      return;
+    }
     showResult();
   }
 

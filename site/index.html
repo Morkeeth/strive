@@ -271,6 +271,18 @@ a.act{display:inline-block;text-decoration:none}
 .pad{padding:14px 16px}
 .panel .pad h3{margin:0 0 8px}
 
+
+/* Saved-run editor owns its spacing; discussion forms use a different layout. */
+#run-edit.run-editor{padding:24px;display:grid;gap:18px;margin:18px 0}
+#run-edit h2,#run-edit p{margin:0}#run-edit label{font-size:13px;margin:0;color:var(--ink)}
+#run-edit input:not([type=checkbox]):not([type=radio]),#run-edit textarea,#run-edit select{display:block;margin:7px 0 0;box-sizing:border-box;min-height:44px}
+#run-edit .run-story-fields{display:grid;gap:16px}#run-edit textarea{resize:vertical;min-height:90px}
+#run-edit #run-editor-photos{border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:18px 0}
+#run-edit .run-photos{margin:0}#run-edit .run-photos .head{margin:0 0 12px;padding:0}
+#run-edit .run-presentation summary{cursor:pointer;font-size:13px}#run-edit .pin-check{margin-top:12px}
+#run-edit .run-edit-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}#run-edit .run-edit-actions button{min-height:44px}
+@media(max-width:560px){#run-edit.run-editor{padding:18px;gap:16px}#run-edit .run-edit-actions{display:grid;grid-template-columns:1fr}#run-edit .run-edit-actions button{width:100%}}
+
 /* forms */
 label{display:block;font-size:11px;color:var(--dim);margin:0 0 5px}
 input,textarea,select{width:100%;font:inherit;font-size:13px;background:var(--box);color:var(--ink);
@@ -1555,10 +1567,10 @@ function connectBodyHtml(){
   const mcp='python3 -m agentgrinder connect cursor --project /your/project --install';
   return `<section class="capture-welcome" aria-labelledby="capture-welcome-title">
       <span class="run-story-label">Your next stride</span><h2 id="capture-welcome-title">Bring your first run</h2>
-      <p>Pick a session. Add a photo and what happened. Choose who sees it.</p>
+      <p>Pick a session, save it privately, then add a photo and what happened. Choose who sees it.</p>
       <ol class="capture-steps" aria-label="Your first run"><li><b>1</b><span>Preview your session</span></li><li><b>2</b><span>Add your story and photos</span></li><li><b>3</b><span>Choose who sees it</span></li></ol>
-      <div class="capture-actions"><button class="act blue" type="button" data-copy="${esc(agentPrompt)}">Copy link for your agent</button><a class="act" href="/?post#drop-zone">Choose a session file</a></div>
-      <p class="hint">Grok or Cursor can start with <a href="/agents.md">this link</a>. The preview does not save or post anything.</p>
+      <div class="capture-actions"><button class="act blue" type="button" data-copy="${esc(agentPrompt)}">Copy link for your agent</button><button class="act" type="button" data-choose-session>Choose a session file</button></div>
+      <p class="hint">Grok or Cursor can start with <a href="/agents.md">this link</a>. Photos go on a saved run. <a href="/?mine">Add a photo to an existing run</a>.</p>
     </section>
     <details class="panel capture-terminal"><summary>Use a terminal instead</summary><div class="pad">
       <h3>Preview your latest session</h3><p class="connect-lead">Run this on the computer where you build. Check the selected project and sitting in the terminal, then open the private preview link it prints.</p>
@@ -1577,6 +1589,7 @@ function connectBodyHtml(){
     </div></details>`;
 }
 function wireConnectCopies(root){
+  (root||document).querySelectorAll('[data-choose-session]').forEach(button=>{button.onclick=()=>{const input=$('drop-file');if(!input)return;const details=input.closest('details');if(details)details.open=true;input.value='';input.click();};});
   (root||document).querySelectorAll('[data-copy]').forEach(b=>{ if(b.dataset.wired) return; b.dataset.wired='1';
     b.addEventListener('click',async()=>{const label=b.textContent;try{await navigator.clipboard.writeText(b.dataset.copy);b.textContent='Copied ✓';b.setAttribute('aria-label','Copied to clipboard')}catch(_){b.textContent='Select and copy'}setTimeout(()=>{b.textContent=label;b.removeAttribute('aria-label')},1600)});});
 }
@@ -1586,7 +1599,7 @@ async function viewConnect(){
   const app=$('app');
   frame(railHtml('post'),null);
   app.innerHTML=`<div class="head"><h1>Connect your agent</h1><span class="meta">Start with one run</span></div>${connectBodyHtml()}`;
-  if(window.GrinderDropinUI) GrinderDropinUI.mount({post:token=>{history.pushState(null,'','/#import='+token);route();}});
+  if(window.GrinderDropinUI) GrinderDropinUI.mount({privateFirst:true,post:token=>{history.pushState(null,'','/#import='+token);route();}});
   wireConnectCopies(app); wireAutoSync(app);
   await loadLatestCardPreview();
 }
@@ -1905,12 +1918,13 @@ async function viewRun(id){
   if(window.StriveRunPhotos) await StriveRunPhotos.mount({client:sb,run:r,slot:$('run-photos'),owner,status,isCurrent:current});
   if(!current())return;
   if(ME?.id===r.profile_id){
-    const controls=document.createElement('div');controls.className='panel reply-form';
+    const controls=document.createElement('div');controls.className='panel run-editor';
     const availableVisuals=chosenRunHero(r,{codeRoute:GrinderContract.codeRoute(r),ridge:GrinderContract.ridge(r)})?.choices||[];
     const suggestedVisual=availableVisuals.find(v=>v[0]===r.hero_visual)?.[0]||availableVisuals[0]?.[0]||'';
     const visualPicker=availableVisuals.length>1?`<fieldset><legend>Card visual</legend><p class="hint">Suggested from this run. Choose one.</p><div class="visual-choice">${availableVisuals.map(([key,label])=>`<label><input type="radio" name="run-hero-visual" value="${key}" ${key===suggestedVisual?'checked':''}> ${esc(label)}</label>`).join('')}</div></fieldset>`:'';
-    controls.id='run-edit';controls.innerHTML='<h2>Edit your post</h2><label>Title<input id="run-title" required maxlength="120"></label><label>Project<input id="run-project" maxlength="120"></label>'+visualPicker+'<label class="pin-check"><input type="checkbox" id="run-pin"> Pin to my profile</label><label>Short caption<textarea id="run-caption" maxlength="280"></textarea></label><label>Link to what was built (optional)<input id="run-output-url" type="url" maxlength="2048"></label><label id="run-audience-label">Who can read this run<select id="run-audience"><option value="private">Only me - just you</option><option value="close_friends">Close friends - people on your private list</option><option value="link">Followers - followers and close friends</option><option value="public">Public - Feed and profile</option></select></label><button id="run-save">Save changes</button><button id="run-delete" class="ghost">Delete run</button>';
-    $('grind-thread').before(controls);$('run-title').value=r.title||'';$('run-pin').checked=!!r.pinned_at;$('run-project').value=r.project||'';$('run-caption').value=r.caption||r.note||'';$('run-output-url').value=r.output_url||'';$('run-audience').value=r.visibility==='anonymous'?'private':r.visibility;
+    controls.id='run-edit';controls.innerHTML='<h2>Edit your run</h2><p class="hint">Tell the story, add a photo, then choose who can see it.</p><div class="run-story-fields"><label>Title<input id="run-title" required maxlength="120"></label><label>Project<input id="run-project" maxlength="120"></label><label>What happened?<textarea id="run-caption" maxlength="280" rows="3"></textarea></label><label>Link to what was built (optional)<input id="run-output-url" type="url" maxlength="2048"></label></div><div id="run-editor-photos"></div><details class="run-presentation"><summary>Card appearance</summary>'+visualPicker+'<label class="pin-check"><input type="checkbox" id="run-pin"> Pin to my profile</label></details><label id="run-audience-label">Who can read this run<select id="run-audience"><option value="private">Only me - just you</option><option value="close_friends">Close friends - people on your private list</option><option value="link">Followers - followers and close friends</option><option value="public">Public - Feed and profile</option></select></label><div class="run-edit-actions"><button id="run-save">Save changes</button><button id="run-delete" class="ghost">Delete run</button></div>';
+
+    $('grind-thread').before(controls);$('run-editor-photos').append($('run-photos'));$('run-title').value=r.title||'';$('run-pin').checked=!!r.pinned_at;$('run-project').value=r.project||'';$('run-caption').value=r.caption||r.note||'';$('run-output-url').value=r.output_url||'';$('run-audience').value=r.visibility==='anonymous'?'private':r.visibility;
     $('run-save').onclick=async()=>{const title=$('run-title').value.trim(),project=$('run-project').value.trim(),caption=$('run-caption').value.trim(),output=$('run-output-url').value.trim(),audience=$('run-audience').value,heroVisual=controls.querySelector('input[name="run-hero-visual"]:checked')?.value||suggestedVisual||null;if(!title){status('Add a title.',true);$('run-title').focus();return}if(output&&!safeOutputUrl(output)){status('The output link must start with http:// or https://.',true);return}if(!(await requireCloseFriendsForSave(audience)))return;const pin=$('run-pin').checked;const {error}=await sb.from('runs').update({title,project:project||null,hero_visual:heroVisual,caption:caption||null,output_url:output||null,visibility:audience,pinned_at:pin?(r.pinned_at||new Date().toISOString()):null}).eq('id',r.id);if(error){status(error.message,true);return}await viewRun(r.id)};
     $('run-delete').onclick=async()=>{if(!confirm('Delete this run and its discussion?'))return;const {error}=await sb.from('runs').delete().eq('id',r.id);if(error){status(error.message,true);return}history.replaceState(null,'','/?mine');viewMe()};
   }
@@ -1977,7 +1991,7 @@ async function viewPost(){
   $('app').innerHTML=`<div class="head"><h1>Add a run</h1><span class="meta">capture → preview → share</span></div>
     ${connectBodyHtml()}
     ${ME?'':'<div class="panel pad auth-empty"><h3>Sign in to save</h3><p>Sign in to save the run and choose who can read it.</p><button id="post-signin" class="act blue">'+signInLabel()+'</button></div>'}`;
-  if(window.GrinderDropinUI) GrinderDropinUI.mount({post:token=>{history.pushState(null,'','/#import='+token);route();}});
+  if(window.GrinderDropinUI) GrinderDropinUI.mount({privateFirst:true,post:token=>{history.pushState(null,'','/#import='+token);route();}});
   wireConnectCopies($('app')); wireAutoSync($('app'));
   await loadLatestCardPreview();
   // A /l/ page's ask links to /#drop-zone. The page is drawn by script after load, so the
@@ -2435,11 +2449,11 @@ async function importRun(){
     <label>Audience<select id="i_vis" required><option value="private" selected>Only me</option><option value="close_friends">Close friends</option><option value="link">Followers</option><option value="public">Public feed and profile</option></select></label>
     <p class="hint">The run stays private unless you choose another audience and save.</p>
     <button id="i_pub" ${sample?'disabled':''}>${sample?'Sample - preview only':(ME?'Save run':'Sign in to save')}</button>
+    <p class="hint">Add photos after saving this run privately. The saved run opens with its photo picker.</p>
     <details class="preview-details"><summary>Edit details</summary>
       <label>Project<input id="i_project" maxlength="80" value="${esc(capturedProject||'')}" placeholder="Project name"></label>
       <label>Repository link<input id="i_repo" type="url" maxlength="2048" value="${esc(run.repo_url||'')}" placeholder="https://github.com/you/project"></label>
       <label>Output link<input id="i_output_url" type="url" maxlength="2048" value="${esc(run.artifact_url||'')}" placeholder="https://…"></label>
-      <p class="hint">Add up to six photos after saving this run.</p>
       <details><summary>Recorded session data</summary>
         <p class="hint export-contents">Counts, timing and the activity trace are imported. Prompts, code and file paths are not.</p>
         <div class="panel">${rows.map(r=>`<div class="p-row"><span>${r[0]}</span><span class="v"><b>${esc(String(r[1]))}</b></span></div>`).join('')}</div>
