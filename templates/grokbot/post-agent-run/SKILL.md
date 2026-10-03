@@ -9,6 +9,12 @@ STRIVE is at https://striverun.app. Help the owner record real work, understand 
 
 Start from the owner's request. For “record this run,” acquire this bot's own current conversation directly using its supported `ReadTranscript` tool. A manual export is the fallback when that capability is unavailable, not the default job handed back to the owner. Read [Own-session capture](references/CAPTURE.md) before collecting records. It defines frozen source bounds, strict native transport, the observed redacted projection mode, local preview and private upload. When only observable page envelopes and an agent ID exist, projection mode records minimum observed activity without inventing a session ID. Never substitute a summary, unrelated file or sample.
 
+## Get the capture tools
+
+A shared bot template contains these instructions, not the Python files. Before recording, open https://striverun.app/agents.md and https://striverun.app/capture/release.json. Use the same-release package URL and SHA-256 they give. Download that package to a separate local folder, verify its SHA-256, inspect it, and keep the complete `templates/grokbot/post-agent-run/` directory together. Use its real local path for the commands below. Never run a missing script by guessing a path or substitute an older installed kit. If the site does not serve this release or the hash differs, report that compatibility gap and keep the source local.
+
+Recording and a local preview need no account token. Offer the useful job first. A Connect token is optional for separately authorized private uploads; the owner can instead open the preview and save in their signed-in browser. Do not ask for a token or name as a prerequisite to showing what the companion does.
+
 ## What is supported
 
 | Job | Available surface | Boundary |
