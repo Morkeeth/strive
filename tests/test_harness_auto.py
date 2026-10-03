@@ -72,7 +72,7 @@ def test_a_cursor_only_machine_gets_a_card_from_the_advertised_one_liner(tmp_pat
 
 def test_cursor_list_identifies_project_source_and_sittings(tmp_path):
     home = cursor_home(tmp_path / "home")
-    proc = run_grind(home, tmp_path, "--harness", "cursor", "--list", "--show-paths")
+    proc = run_grind(home, tmp_path, str(next(home.glob(".cursor/projects/*/agent-transcripts/*/*.jsonl"))), "--harness", "cursor", "--list", "--show-paths")
     assert proc.returncode == 0, proc.stdout + proc.stderr
     receipt = json.loads(proc.stdout)
     assert receipt[0]["selected_session"]["harness"] == "cursor"
@@ -126,3 +126,25 @@ def test_asking_for_claude_explicitly_still_reads_claude(tmp_path):
     # auto must pick the same SITTING as the explicit claude path, not silently switch to the last
     for k in ("turns_typed", "tool_calls", "files_touched", "commits", "started", "ended"):
         assert a[k] == e[k], k
+
+
+def test_cursor_discovery_lists_all_sources_without_reading_bodies(tmp_path):
+    home = cursor_home(tmp_path / "home")
+    older = next(home.glob(".cursor/projects/*/agent-transcripts/*/*.jsonl"))
+    newer = home / ".cursor/projects/Users-alice-code-other/agent-transcripts/bbbb/t.jsonl"
+    newer.parent.mkdir(parents=True)
+    # Discovery must not parse content, even an invalid transcript is a selectable file.
+    newer.write_text("PRIVATE_CANARY not valid JSON")
+    os.utime(older, (100,100)); os.utime(newer, (200,200))
+    proc = run_grind(home, tmp_path, "--harness", "cursor", "--list", "--show-paths")
+    assert proc.returncode == 0, proc.stderr
+    result = json.loads(proc.stdout)
+    assert result["kind"] == "cursor-transcript-candidates"
+    assert [r["source"] for r in result["candidates"]] == [str(newer), str(older)]
+    assert {r["project"] for r in result["candidates"]} == {"code-other", "code-myapp"}
+    assert "PRIVATE_CANARY" not in proc.stdout
+    assert "--list" in result["next"] and "exact" in result["next"]
+    hidden = run_grind(home, tmp_path, "--harness", "cursor", "--list")
+    assert str(home) not in hidden.stdout
+    assert "--show-paths" in json.loads(hidden.stdout)["next"]
+    assert not (tmp_path / "card.html").exists()

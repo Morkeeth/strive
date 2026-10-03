@@ -77,11 +77,15 @@ One-time use is complete without persistence. If the owner wants a reusable comp
 
 ## Cursor
 
-Use the person's own workspace, not a clone of STRIVE as the project to measure. Python 3.9 or newer is required. With uv already available, these commands run the pinned capture CLI; dependency installation may occur. Confirm this tool execution is permitted. First list local candidate sittings:
+Use the person's own workspace, not a clone of STRIVE as the project to measure. Python 3.9 or newer is required. With uv already available, these commands run the pinned capture CLI; dependency installation may occur. Confirm this tool execution is permitted. First list supported transcript candidates across workspaces. This reads filesystem metadata only, not transcript bodies or Cursor databases. Modified time is not session start; the latest file is not necessarily the intended workspace:
 
     uvx --from '${packageURL}' agentgrinder grind --harness cursor --list --show-paths
 
-Confirm the selected project, transcript and sitting with the person, then replace the example path and sitting:
+Confirm the intended project and exact transcript path from that local list. Then inspect only that transcript's sittings:
+
+    uvx --from '${packageURL}' agentgrinder grind /exact/selected-session.jsonl --harness cursor --list --show-paths
+
+This second command parses the selected transcript locally and prints sitting metadata, not raw messages. Confirm the sitting, then replace the example path and sitting:
 
     uvx --from '${packageURL}' agentgrinder grind /exact/selected-session.jsonl --harness cursor --pick 1 --push --push-url '${origin}'
 

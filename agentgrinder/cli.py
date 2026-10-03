@@ -210,7 +210,7 @@ def main(argv=None) -> int:
     g.add_argument(
         "--list",
         action="store_true",
-        help="show the selected transcript, project, and its sittings; do not render or open anything",
+        help="Cursor without a path: list transcript candidates across workspaces; with a path: list its sittings. No render or browser.",
     )
     g.add_argument("--gap", type=int, default=30,
                    help="minutes of total idle that end a grind (default 30)")
@@ -768,6 +768,8 @@ def _grind(args) -> int:
             args.session = auto_path
 
     if harness == "cursor":
+        if args.list and not args.session:
+            return _list_cursor_sources(args.show_paths)
         from .ingest import parse_cursor_session, latest_cursor_session
         path = args.session or latest_cursor_session()
         if not path:
@@ -968,6 +970,41 @@ def _grind(args) -> int:
             _BROWSER.open(out.resolve().as_uri())
     return 0
 
+
+
+def _list_cursor_sources(show_paths=False):
+    """Inventory supported files without opening transcripts or optional Cursor stores."""
+    import glob
+    import os
+    from datetime import datetime, timezone
+    from .ingest import CURSOR_GLOB, project_label
+    candidates = []
+    skipped = 0
+    for source in glob.glob(os.path.expanduser(CURSOR_GLOB)):
+        path = Path(source)
+        try:
+            if path.is_symlink() or not path.is_file():
+                skipped += 1
+                continue
+            modified = path.stat().st_mtime
+        except OSError:
+            skipped += 1
+            continue
+        candidates.append({
+            "project": project_label(path.parents[2].name),
+            "source": str(path.absolute()) if show_paths else str(path.relative_to(path.parents[2])),
+            "source_path_hidden": not show_paths,
+            "file_modified": datetime.fromtimestamp(modified, timezone.utc).isoformat(),
+        })
+    candidates.sort(key=lambda row: (row["file_modified"], row["project"], row["source"]), reverse=True)
+    print(json.dumps({
+        "kind": "cursor-transcript-candidates", "harness": "cursor",
+        "searched": CURSOR_GLOB, "candidates": candidates, "skipped_files": skipped,
+        "basis": "Filesystem metadata only. Modified time is not session start or proof of active workspace. Source content has not been validated.",
+        "next": ("Confirm a project and exact source path, then run grind /exact/source.jsonl --harness cursor --list to select a sitting before --pick N."
+                 if show_paths else "Rerun with --show-paths locally to obtain exact selectable paths, then list sittings for the chosen source."),
+    }, indent=2))
+    return 0
 
 
 def _list_native_selection(path, harness, groups, parser, show_paths=False):
