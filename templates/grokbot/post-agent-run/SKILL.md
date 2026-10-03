@@ -1,88 +1,50 @@
 ---
 name: post-agent-run
-description: Turn an explicitly selected Grok Bot export into a private STRIVE card preview, or save it as a private run with the owner's Connect token. Use when the owner wants to capture a real agent run. With explicit owner authorization and a Connect token, upload metrics directly as a private run. Otherwise prepare a preview and stop before Save run for owner review. Never automatically publish.
+description: Capture this Grok Bot's own current session or an explicitly selected Grok Bot JSONL export as a private STRIVE preview. Supports an authorized private save with a Connect token. Use for real session capture and run preparation, not invented activity or automatic public posting.
 ---
 
-This directory is the complete STRIVE Grok Bot kit. It needs Python 3 and no parent repository,
-package install or third-party dependency.
+This directory is a standalone Python 3 kit. Keep its scripts and samples together. Use the existing STRIVE companion; installing this skill does not require creating another bot.
 
-Select the actual JSONL export on this bot's computer. Do not assume access to a person's laptop,
-guess a private path, choose the newest file without owner review, or invent an export. If no
-export is available, explain what the owner must provide. The bundled sample is testing data only.
+## Obtain the actual session
 
-First verify this isolated install:
+For “capture this session,” use the current environment's supported session export or session-file capability and verify the current session identity. This is permission to prepare that session locally. Do not guess a person's laptop path or select the newest unrelated file. If the environment has no export capability or no readable session file, state that exact gap and request the export. Do not reconstruct a transcript from memory or convert a status summary into fake events.
+
+The supported JSONL format has top-level `role` and `message`; user text contains `<timestamp>` and `<user_query>`; assistant content contains `tool_use` blocks. Select the actual export on this bot's computer. The helper uses its latest sitting, split on timestamped-query gaps greater than 30 minutes. Check that this is the requested sitting. It does not combine a whole day, other bots or worker logs. Freeze/export the requested window before capture so later conversation does not change its identity.
+
+## Prepare privately
+
+After installation or update, run:
 
 ```sh
+python3 /absolute/path/to/post-agent-run/scripts/test_contract.py
 python3 /absolute/path/to/post-agent-run/scripts/smoke_test.py
 ```
 
-With explicit owner authorization for automatic private uploads and `STRIVE_AGENT_TOKEN` set,
-follow **Automatic private upload** below. Otherwise use the manual preview path and stop before
-**Save run**. A token alone is not authorization.
-
-## Manual preview
-
-Prepare a real private preview. STRIVE at `https://striverun.app` is the default:
+These exercise labelled synthetic data only. The smoke test includes loopback fake servers, with no hosted calls. Then capture the selected real source:
 
 ```sh
 python3 /absolute/path/to/post-agent-run/scripts/preview.py \
-  /exact/path/to/selected-grokbot-export.jsonl
-```
-
-Confirm the `selected_export` receipt before opening the returned hosted `#import` URL. The helper
-performs no network request and prints only the selected-file receipt, allowlisted measurements
-and private import URL. It does not publish or save.
-
-Grok Bot activity stays labelled `bot activity`. Typed-turn timestamps establish the start and
-sitting boundary only. They do not timestamp tool events, so duration stays NULL. The ridge is
-drawn in turn order: 50 bins, tool calls placed by the typed turn they followed, with
-`ridge_basis: "turn-order"`. It makes no wall-time claim. File writes and completed commits stay
-unknown when the export cannot establish them. Never invent missing metrics.
-
-Long `#import` hashes can be truncated in bot or chat output. In that case, create an exact browser
-handoff without printing the URL:
-
-```sh
-python3 /absolute/path/to/post-agent-run/scripts/preview.py \
-  /exact/path/to/selected-grokbot-export.jsonl \
+  /exact/path/to/current-session-export.jsonl \
   --handoff /tmp/strive-preview-url.txt
 ```
 
-Pass that file directly to the browser workflow. Do not reconstruct a truncated hash. This
-adapter always sends `worker_bins` with its ridge (all zero, because the export shows one bot).
+The helper makes no network request and writes the full `https://striverun.app/#import` URL. Confirm `selected_export`, the selected start and measured counts. Pass the handoff file to the browser, not a truncated chat hash. Raw prompts, replies, tool inputs/results and paths are absent from the import; the selected-source hash binds its identity without sending those records. The local selected-file receipt itself contains a path and stays private.
 
-## Automatic private upload
+Report bot activity. The ridge has 50 turn-order bins, tool calls placed by the timestamped query they followed, and `ridge_basis: "turn-order"`. `worker_bins` contains zero additional workers because the adapter does not count worker activity. Timestamps establish query start and sitting boundaries, not tool-event timing. Duration, active human work, changed files and successful commits remain unknown. Never fill missing measurements.
 
-If the owner explicitly authorized automatic private uploads, created a token with **Connect**
-on STRIVE and set it as `STRIVE_AGENT_TOKEN`, the bot can save the selected run directly as a
-private run. This path does not require a separate manual **Save run** approval:
+Preview and upload share one capture revision. The same selected records reuse it, but an expanded session is a different capture. This replaces an older metric-only revision; inspect any prior saved run before uploading the same historical source through the updated kit.
+
+## Save and add context
+
+Draft a short title and description from verified outcomes or owner-provided text. Do not quote private prompts, invent success, or treat tool counts as work quality. Review the card, correct signed-in account, domain and audience. A preview request does not authorize saving or publishing.
+
+If the owner already authorized automatic private uploads and supplied a Connect token through `STRIVE_AGENT_TOKEN`, inspect the exact payload first:
 
 ```sh
 python3 /absolute/path/to/post-agent-run/scripts/upload.py \
-  /exact/path/to/selected-grokbot-export.jsonl --dry-run
-python3 /absolute/path/to/post-agent-run/scripts/upload.py \
-  /exact/path/to/selected-grokbot-export.jsonl
+  /exact/path/to/current-session-export.jsonl --dry-run
 ```
 
-Run `--dry-run` first and check the payload: metrics only, no prompt or reply text. The token can
-only save private runs, so this never publishes. The helper refuses the bundled sample. Running it
-again for the same export returns the run already saved (`"status": "already saved"`), never a
-duplicate. Report the `visibility` the server returned. Never print or store the token.
+Then run without `--dry-run` within that authorization. Optional `--title` and `--caption` accept reviewed text. Never print or persist the token. The helper refuses labelled samples and follows no redirect with the token. Repeating the same new-kit capture returns its existing run instead of duplicating it. Report the stored audience, including if an existing run's audience was changed by its owner later.
 
-## Manual save decision
-
-When automatic private upload is not authorized or no Connect token is available, show the
-preview card privately. Ask the owner to write the title, short caption and optional output link.
-Do not derive them from private prompt text. Stop before **Save run**. A request to capture,
-prepare or open a preview is not permission to save or publish.
-
-The owner must review the exact card, signed-in account, destination and audience, then make the
-save decision. Never choose an audience or press **Save run**.
-
-## Verify the saved run
-
-After a manual save or an authorized automatic private upload, verify the actual run URL and
-audience. Automatic private upload is never permission to publish or change the audience. Never
-bypass denied permissions, switch identities or retry an uncertain write without checking whether
-it happened. Report prepared, saved and independently visible separately. Do not automatically ACK, reply, follow, invite or send
-messages.
+Without private-upload authorization or a token, show the preview and stop before **Save run**. Images use the saved run's Add photos flow, not this uploader. After an authorized save, verify the actual run, description and audience after reload. Do not change audience, post publicly, send a message, follow or reply without the applicable authorization. Distinguish installed, previewed, saved, image attached and shared.

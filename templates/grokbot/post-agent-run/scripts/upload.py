@@ -4,7 +4,6 @@ Needs STRIVE_AGENT_TOKEN, the token the owner created with Connect on STRIVE. Th
 only publish private runs. Only allowlisted metrics travel: no prompt, reply or file text.
 """
 import argparse
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -18,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from preview import DEFAULT_URL, public_metrics  # noqa: E402
 
 # The fields the STRIVE upload endpoint accepts from this adapter. Anything else stays local.
-UPLOAD_FIELDS = ("harness", "project", "turns_typed", "tool_calls", "started", "rhythm", "ridge",
+UPLOAD_FIELDS = ("schema_version", "measurement_revision", "harness", "project", "turns_typed", "tool_calls", "started", "rhythm", "ridge",
                  "ridge_basis", "worker_bins", "commit_bins", "trace_basis")
 
 
@@ -48,10 +47,7 @@ def upload_payload(export, title=None, caption=None):
     if metrics.get("is_sample"):
         raise ValueError("This is the bundled sample. Upload a real export only.")
     payload = {k: metrics[k] for k in UPLOAD_FIELDS if k in metrics}
-    payload["schema_version"] = 1
-    # Same export, same sitting, same revision. A retry returns the run already saved.
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-    payload["measurement_revision"] = hashlib.sha256(canonical).hexdigest()
+    # Preview and direct upload share the exact selected-source revision.
     payload["title"] = title or "Grok Bot run"
     if caption:
         payload["caption"] = caption

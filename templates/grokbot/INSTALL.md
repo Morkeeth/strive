@@ -1,117 +1,55 @@
-# STRIVE Grok Bot publish kit
+# STRIVE Grok Bot companion kit
 
-Status: preview source on `codex/strive-launch-integration-20261002`, not yet a released marketplace template. Installing or running the labelled sample does not prove that a second
-bot used a real export or that an owner saved a post.
+Update the existing STRIVE companion with this local kit. Do not create another bot or reinstall from an old branch. The kit contains `post-agent-run` and `manage-strive`; each is a standalone skill folder. Python 3 is the only runtime dependency for capture. A marketplace manifest and a native Grok session-export API have not been verified.
 
-## Choose the unit you need
+## Install or update from the supplied folder
 
-- `post-agent-run` prepares and uploads one owner-selected real Grok Bot run. Keep its scripts and samples together.
-- `manage-strive` guides safe account and run management in the signed-in STRIVE website. It is a standalone `SKILL.md` and does not grant upload or database access.
+Copy `post-agent-run/` into the bot's skill directory, replacing that skill's previous scripts and instructions together. Keep its `samples/` directory. If the bot already has `manage-strive`, compare its instructions before replacing it; this update does not require a new management skill or a new account. Never put credentials or session exports into either skill folder.
 
-Install either unit on its own. Install both when the bot must capture a run and then help the owner manage it.
-
-## Install `post-agent-run`
-
-The `post-agent-run` directory is a complete, standard-library-only install unit:
-
-```text
-post-agent-run/
-├── SKILL.md
-├── samples/sample_grokbot_bot_activity.jsonl
-└── scripts/
-    ├── preview.py
-    ├── upload.py
-    └── smoke_test.py
-```
-
-No `strive` parent checkout is required at runtime. To copy only this directory into
-a bot workflow, replace `DEST` with that workflow's skill directory and run this one command:
+Run from any directory:
 
 ```sh
-DEST="$HOME/bot-workflow/post-agent-run"; TMP="$(mktemp -d)"; \
-git clone --branch codex/strive-launch-integration-20261002 --depth 1 --filter=blob:none --sparse https://github.com/Morkeeth/strive.git "$TMP" && \
-git -C "$TMP" sparse-checkout set templates/grokbot/post-agent-run && \
-mkdir -p "$DEST" && cp -R "$TMP/templates/grokbot/post-agent-run/." "$DEST/" && \
-rm -rf "$TMP"
-```
-
-Install `post-agent-run/SKILL.md` through the current Grok Bot skill interface and keep the
-directory intact. This kit has no verified marketplace manifest.
-
-## Install `manage-strive`
-
-Copy only the companion unit into the bot workflow:
-
-```sh
-DEST="$HOME/bot-workflow/manage-strive"; TMP="$(mktemp -d)"; \
-git clone --branch codex/strive-launch-integration-20261002 --depth 1 --filter=blob:none --sparse https://github.com/Morkeeth/strive.git "$TMP" && \
-git -C "$TMP" sparse-checkout set templates/grokbot/manage-strive && \
-mkdir -p "$DEST" && cp -R "$TMP/templates/grokbot/manage-strive/." "$DEST/" && \
-rm -rf "$TMP"
-```
-
-Install `manage-strive/SKILL.md` through the current Grok Bot skill interface. Confirm that the installed description says it manages a STRIVE owner's account and does not claim deployment, database or service-role access.
-
-The reusable skill must not contain credentials, transcripts or account-specific paths. The
-owner selects the exact export, public-facing text, signed-in account, destination and audience.
-
-## Verify the isolated install
-
-Run the bundled smoke check from any working directory:
-
-```sh
+python3 /absolute/path/to/post-agent-run/scripts/test_contract.py
 python3 /absolute/path/to/post-agent-run/scripts/smoke_test.py
 ```
 
-It runs the bundled labelled sample, decodes the hosted import, and asserts that no duration or
-ridge was fabricated. The expected result starts with `PASS`. The sample cannot be saved as a
-real run.
+The contract checks are offline. The smoke test uses labelled sample data and loopback-only fake HTTP servers. It makes no hosted request. Its sample result is not a real saved run.
 
-## Preview one selected real export
+## Capture this bot's own current session
 
-The default preview destination is STRIVE at `https://striverun.app`:
+Tell the existing companion:
 
-```sh
-python3 /absolute/path/to/post-agent-run/scripts/preview.py \
-  /exact/path/to/selected-grokbot-export.jsonl
-```
+Use post-agent-run to prepare a private STRIVE preview of this current session. Find the current session's actual export through your environment's supported export or session-file feature. Verify its session identity and time range. Do not choose an unrelated newest file, infer a laptop path, or reconstruct messages from memory. If this environment does not expose an export, tell me exactly which access or export is missing. Use only the selected export, report its measured scope and unknowns, and prepare the full preview link in a local handoff file. Do not upload or publish.
 
-1. Confirm `selected_export` is the file the owner selected.
-2. Check the allowlisted counts against the export. Duration, files touched, completed commits
-   and ridge remain unknown when the export does not establish them.
-3. Open the returned hosted `#import` URL.
-4. Review the white card and blue trace, account, destination and all unknown fields.
-5. Stop before **Save run**. The owner writes the title and caption, chooses the audience, and
-   decides whether to save.
-
-The helper makes no network request and performs no social write. It never exports prompt text,
-tool inputs, tool results or paths.
-
-## Avoid a truncated import hash
-
-Long `#import` hashes can be truncated by bot or chat output. Write the complete URL directly to a
-handoff file:
+A supported export is JSONL with top-level `role` and `message`, user content containing `<timestamp>` and `<user_query>`, and assistant `tool_use` blocks. The helper chooses the latest sitting in that exact file, separating sittings on a gap of more than 30 minutes between timestamped user queries. A whole day or a collection of worker sessions is not the same object. Use an export restricted to the intended sitting if the latest sitting is not the one wanted. The source remains on the bot's computer.
 
 ```sh
 python3 /absolute/path/to/post-agent-run/scripts/preview.py \
-  /exact/path/to/selected-grokbot-export.jsonl \
+  /exact/path/to/current-session-export.jsonl \
   --handoff /tmp/strive-preview-url.txt
 ```
 
-Pass `/tmp/strive-preview-url.txt` directly to the browser workflow instead of copying a printed
-hash. For adapters that carry a ridge but omit `worker_bins`, wait for
-[worker bin default PR #42](https://github.com/Morkeeth/strive/pull/42) before relying
-on that import. This Grok kit does not invent a ridge or worker bins.
+Check the selected-file receipt, start, typed-turn count and tool-call count against that export. Open the complete handoff file through the bot's browser capability rather than reconstructing a printed hash. The helper makes no network request. The default destination is `https://striverun.app`; opening a preview is a later browser action.
 
-For local kit development only, pass `--base-url http://localhost:8000` to a separately running
-STRIVE development server. Never use the hackathon service or repository.
+## What the card can prove
 
-Report milestones separately:
+The adapter reports bot activity. It carries a measured 50-bin turn-order tool ridge and zero additional-worker bins, not a wall-time trace. Typed-query timestamps establish the start and sitting boundary. They do not timestamp tool calls, so duration, active human time, completed commits and changed files remain unknown. The current application supports this ridge without waiting for an old pending change.
 
-- **Installed:** a second bot can invoke this copied skill and helper.
-- **Used:** that bot previewed an explicitly selected real export.
-- **Published:** the owner deliberately saved an approved post to the approved account and
-  audience.
+Preview and direct upload now use the same source-bound capture revision and schema version. Different exports with equal totals no longer collapse into one identity. This revision changes from the older metric-only adapter. If the same run was already saved by an old kit, inspect that saved run before using the new helper to avoid a historical duplicate. New repeated captures of the same selected records reuse the same revision; adding later records changes the captured object.
 
-Do not infer one milestone from another. Do not automatically save, ACK, reply, follow, invite or
-send messages.
+## Save privately only when authorized
+
+Without an existing private-upload authorization and Connect token, review the preview and stop before **Save run**. Confirm the correct STRIVE account and domain. A bot installation, a token, or a request for a preview is not a public-post instruction.
+
+For an explicitly authorized private upload, the owner supplies `STRIVE_AGENT_TOKEN` through the environment. Never print or copy it into a prompt, skill or handoff. First inspect the exact payload without sending:
+
+```sh
+python3 /absolute/path/to/post-agent-run/scripts/upload.py \
+  /exact/path/to/current-session-export.jsonl --dry-run
+```
+
+Then, within the existing authorization, run the same command without `--dry-run`. Optional `--title` and `--caption` carry reviewed text. It uses `/api/agent/runs` and saves privately. The upload helper refuses labelled samples. Images are added through the saved run's photo flow; neither script uploads photos. Changes to audience and a message to Eric require their own authorization.
+
+## Remaining real-use gate
+
+The existing companion previously reported installation and a smoke pass, without a token or observed real run. That is not proof of this updated kit. Verify the installed bytes, have that same bot select its own real export, inspect the preview, save one authorized private run, read it back after reload, add a reviewed photo and description, and verify the intended audience. Record installed, real preview, saved, image attached and shared separately. No new bot or duplicate account is needed.

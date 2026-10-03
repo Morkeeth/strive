@@ -1,6 +1,7 @@
 """Prepare a private STRIVE Grok run preview with only the Python standard library."""
 import argparse
 import base64
+import hashlib
 from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
@@ -124,7 +125,14 @@ def parse_export(path):
     ridge = [0] * 50
     for index, count in enumerate(tools_per_turn):
         ridge[min(49, index * 50 // typed)] += count
+    # Bind identity to selected source records, not metric totals. Distinct sessions
+    # can have identical totals; no private record text leaves this hash.
+    identity = {"parser": "strive-grok-standalone-v2", "records": sitting}
+    revision = hashlib.sha256(json.dumps(identity, sort_keys=True,
+        separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
     return {
+        "schema_version": 1,
+        "measurement_revision": revision,
         "harness": "Grok Bot",
         "is_sample": True if sample else None,
         "activity_label": "bot activity",
