@@ -17,6 +17,11 @@ assert.ok(guide.includes(release.package));
 assert.ok(!guide.includes('github.com/Morkeeth/strive'));
 assert.match(guide,/explicitly selected/);
 assert.match(guide,/does not upload/);
+assert.match(guide,/--format native --bounds/);
+assert.ok(release.files.includes('templates/grokbot/post-agent-run/scripts/test_native.py'));
+const archiveFiles=execFileSync('tar',['-tzf','dist'+release.package],{encoding:'utf8'}).split('\n');
+assert.ok(archiveFiles.includes('templates/grokbot/post-agent-run/scripts/test_native.py'));
+assert.ok(archiveFiles.every(path=>!/(^|\/)(\.env|sessions|trace\.db|SOURCE-RECEIPT)/.test(path)));
 for(const path of ['/capture/grok/SKILL.md','/capture/grok/scripts/preview.py'])assert.ok((await readFile('dist'+path)).length);
 assert.match(html,/role="menuitem"[^>]*href="\/\?feedback"|href="\/\?feedback"[^>]*role="menuitem"/);
 console.log('Front door, same-release archive hash and Grok kit pass');
@@ -26,7 +31,7 @@ const server=createServer(async(req,res)=>{try{const path=new URL(req.url,'http:
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 try {
  const base=`http://127.0.0.1:${server.address().port}`;
- for(const path of ['/', '/agents.md','/llms.txt','/.well-known/agent-grinder.json','/capture/release.json',release.package,'/capture/grok/SKILL.md','/capture/grok/scripts/preview.py','/capture/grok/scripts/upload.py','/capture/grok/scripts/test_contract.py','/capture/grok/scripts/smoke_test.py','/capture/grok/samples/sample_grokbot_bot_activity.jsonl']) {
+ for(const path of ['/', '/agents.md','/llms.txt','/.well-known/agent-grinder.json','/capture/release.json',release.package,'/capture/grok/SKILL.md','/capture/grok/scripts/preview.py','/capture/grok/scripts/upload.py','/capture/grok/scripts/test_contract.py','/capture/grok/scripts/test_native.py','/capture/grok/scripts/smoke_test.py','/capture/grok/samples/sample_grokbot_bot_activity.jsonl']) {
   const response=await fetch(base+path);assert.equal(response.status,200,path);assert.ok((await response.arrayBuffer()).byteLength,path);
  }
  const response=await fetch(base+release.package);
