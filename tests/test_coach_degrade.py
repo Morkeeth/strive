@@ -38,7 +38,9 @@ def test_cursor_and_codex_coach_reports_supported_activity_without_inventing_cla
     pytest.importorskip('strands')
     monkeypatch.setenv('PYTHONPATH',os.pathsep.join(sys.path))
     for harness,home in [('cursor',cursor_home),('codex',codex_home)]:
-        proc=run_grind(home(tmp_path/harness),tmp_path,'--coach','--json')
+        fixture_home = home(tmp_path/harness)
+        selected = [str(next(fixture_home.glob('.cursor/projects/*/agent-transcripts/*/*.jsonl')))] if harness == 'cursor' else []
+        proc=run_grind(fixture_home,tmp_path,*selected,'--coach','--json')
         assert proc.returncode==0,proc.stdout+proc.stderr
         run=json.loads(proc.stdout)
         assert run['coach_tool_calls']==2
@@ -48,7 +50,9 @@ def test_cursor_and_codex_coach_reports_supported_activity_without_inventing_cla
 
 def test_cursor_without_coach_is_still_a_clean_exit_zero_and_no_false_alarm(tmp_path):
     """A red light that is always on is not a check. No --coach, no banner."""
-    proc = run_grind(cursor_home(tmp_path / "home"), tmp_path)
+    home = cursor_home(tmp_path / "home")
+    selected = str(next(home.glob(".cursor/projects/*/agent-transcripts/*/*.jsonl")))
+    proc = run_grind(home, tmp_path, selected, "--harness", "cursor")
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "DEGRADED" not in proc.stdout
 

@@ -63,16 +63,21 @@ def test_the_default_is_auto_not_claude():
     assert 'default="auto"' in line, line
 
 
-def test_a_cursor_only_machine_gets_a_card_from_the_advertised_one_liner(tmp_path):
+def test_a_cursor_only_machine_requires_source_choice_before_card(tmp_path):
     proc = run_grind(cursor_home(tmp_path / "home"), tmp_path)
-    assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert "auto -> cursor" in proc.stderr
-    assert (tmp_path / "card.html").exists()
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "Select your Cursor transcript explicitly" in proc.stderr
+    assert not (tmp_path / "card.html").exists()
 
 
 def test_cursor_list_identifies_project_source_and_sittings(tmp_path):
     home = cursor_home(tmp_path / "home")
     proc = run_grind(home, tmp_path, str(next(home.glob(".cursor/projects/*/agent-transcripts/*/*.jsonl"))), "--harness", "cursor", "--list", "--show-paths")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    discovery = json.loads(proc.stdout)
+    assert discovery["total"] == 1
+    source = discovery["candidates"][0]["source"]
+    proc = run_grind(home, tmp_path, source, "--harness", "cursor", "--list", "--show-paths")
     assert proc.returncode == 0, proc.stdout + proc.stderr
     receipt = json.loads(proc.stdout)
     assert receipt[0]["selected_session"]["harness"] == "cursor"
@@ -139,8 +144,8 @@ def test_cursor_discovery_lists_all_sources_without_reading_bodies(tmp_path):
     proc = run_grind(home, tmp_path, "--harness", "cursor", "--list", "--show-paths")
     assert proc.returncode == 0, proc.stderr
     result = json.loads(proc.stdout)
-    assert result["kind"] == "cursor-transcript-candidates"
-    assert [r["source"] for r in result["candidates"]] == [str(newer), str(older)]
+    assert result["total"] == 2 and result["limit"] == 20
+    assert [r["source"] for r in result["candidates"]] == [str(newer.resolve()), str(older.resolve())]
     assert {r["project"] for r in result["candidates"]} == {"code-other", "code-myapp"}
     assert "PRIVATE_CANARY" not in proc.stdout
     assert "--list" in result["next"] and "exact" in result["next"]

@@ -203,15 +203,19 @@ def main(argv=None) -> int:
     g.add_argument(
         "session",
         nargs="?",
-        help="explicit transcript/export .jsonl (default: freshest supported session on this machine)",
+        help="explicit transcript/export .jsonl (Cursor requires a selected path; use --list first)",
     )
     g.add_argument("--pick", type=int, default=None,
                    help="which sitting in that transcript (-1 = the last, 1 = the first)")
     g.add_argument(
         "--list",
         action="store_true",
-        help="Cursor without a path: list transcript candidates across workspaces; with a path: list its sittings. No render or browser.",
+        help="list Cursor transcript candidates when no path is given, otherwise list that transcript's sittings; no render or upload",
     )
+    g.add_argument("--list-limit", type=int, default=20,
+                   help="Cursor discovery page size, 1 to 100 (default 20)")
+    g.add_argument("--list-offset", type=int, default=0,
+                   help="Cursor discovery offset (default 0); capture always uses an exact path")
     g.add_argument("--gap", type=int, default=30,
                    help="minutes of total idle that end a grind (default 30)")
     # The name on the card. Default None: identity.resolve reads the account this machine is
@@ -744,6 +748,10 @@ def _grind(args) -> int:
     """
     from .solo import parse_solo, latest_grind, human_sittings
     from .solocard import render_solo_card
+    explicit_source = bool(args.session)
+
+    if args.harness == "cursor" and not explicit_source and args.list:
+        return _list_cursor_sources(args.list_limit, args.list_offset, args.show_paths)
 
     if args.session and not Path(args.session).exists():
         print(f"no such transcript: {args.session}"); return 1
@@ -768,10 +776,16 @@ def _grind(args) -> int:
             args.session = auto_path
 
     if harness == "cursor":
-        if args.list and not args.session:
-            return _list_cursor_sources(args.show_paths)
         from .ingest import parse_cursor_session, latest_cursor_session
-        path = args.session or latest_cursor_session()
+        if not explicit_source:
+            if args.list:
+                return _list_cursor_sources(args.list_limit, args.list_offset, args.show_paths)
+            if not latest_cursor_session():
+                print(no_session_message("cursor")); return 1
+            print("Select your Cursor transcript explicitly. Run grind --harness cursor --list --show-paths, "
+                  "then grind /exact/selected-session.jsonl --harness cursor --list to choose its sitting.", file=sys.stderr)
+            return 1
+        path = args.session
         if not path:
             print(no_session_message("cursor")); return 1
         from .contract import capture_digest
@@ -972,37 +986,38 @@ def _grind(args) -> int:
 
 
 
-def _list_cursor_sources(show_paths=False):
-    """Inventory supported files without opening transcripts or optional Cursor stores."""
+def _list_cursor_sources(limit, offset, show_paths=False):
+    """Discover files only: no transcript bodies, SQLite stores or inferred ownership."""
     import glob
     import os
     from datetime import datetime, timezone
     from .ingest import CURSOR_GLOB, project_label
+    if not 1 <= limit <= 100 or offset < 0:
+        print("Use --list-limit 1..100 and --list-offset 0 or greater.", file=sys.stderr)
+        return 1
     candidates = []
-    skipped = 0
-    for source in glob.glob(os.path.expanduser(CURSOR_GLOB)):
-        path = Path(source)
+    for raw in glob.glob(os.path.expanduser(CURSOR_GLOB)):
+        path = Path(raw)
         try:
-            if path.is_symlink() or not path.is_file():
-                skipped += 1
-                continue
-            modified = path.stat().st_mtime
+            stat = path.stat()
         except OSError:
-            skipped += 1
-            continue
-        candidates.append({
-            "project": project_label(path.parents[2].name),
-            "source": str(path.absolute()) if show_paths else str(path.relative_to(path.parents[2])),
-            "source_path_hidden": not show_paths,
-            "file_modified": datetime.fromtimestamp(modified, timezone.utc).isoformat(),
-        })
-    candidates.sort(key=lambda row: (row["file_modified"], row["project"], row["source"]), reverse=True)
+            continue  # A transcript may disappear while Cursor cleans up.
+        if path.is_file():
+            candidates.append((stat.st_mtime, str(path.resolve()), stat.st_size, path.parents[2].name))
+    candidates.sort(key=lambda row: (-row[0], row[1]))
+    rows = [{
+        "harness": "cursor",
+        "project": project_label(project) or None,
+        "source": source if show_paths else Path(source).name,
+        "source_path_hidden": not show_paths,
+        "modified": datetime.fromtimestamp(mtime, timezone.utc).isoformat(),
+        "bytes": size,
+    } for mtime, source, size, project in candidates[offset:offset + limit]]
     print(json.dumps({
-        "kind": "cursor-transcript-candidates", "harness": "cursor",
-        "searched": CURSOR_GLOB, "candidates": candidates, "skipped_files": skipped,
-        "basis": "Filesystem metadata only. Modified time is not session start or proof of active workspace. Source content has not been validated.",
-        "next": ("Confirm a project and exact source path, then run grind /exact/source.jsonl --harness cursor --list to select a sitting before --pick N."
-                 if show_paths else "Rerun with --show-paths locally to obtain exact selectable paths, then list sittings for the chosen source."),
+        "candidates": rows, "total": len(candidates), "offset": offset,
+        "limit": limit, "next_offset": offset + limit if offset + limit < len(candidates) else None,
+        "next": "Confirm your project and exact transcript path; rerun that path with --harness cursor --list "
+                "to choose a sitting. Use --show-paths to reveal local paths. Modified time is not session ownership.",
     }, indent=2))
     return 0
 
