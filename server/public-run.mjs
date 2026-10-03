@@ -181,7 +181,7 @@ const ridgeSeries=run=>{
  const values=run.ridge,workers=run.worker_bins;
  if(!Array.isArray(values)||values.length<40||values.length>60)return null;
  if(!values.every(v=>Number.isInteger(v)&&v>=0))return null;
- if(!Array.isArray(workers)||workers.length!==values.length)return null;
+ if(workers!=null&&(!Array.isArray(workers)||workers.length!==values.length||!workers.every(v=>Number.isSafeInteger(v)&&v>=0)))return null;
  return{values,label:'Agent ridge',filled:true};
 };
 const series=run=>{

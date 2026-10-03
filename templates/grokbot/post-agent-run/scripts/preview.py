@@ -203,7 +203,9 @@ def parse_native(path, bounds):
                 count += 1
             elif kind == "tool_result":
                 if (record["role"] not in ("user", "tool") or not isinstance(block.get("tool_use_id"), str)
-                    or not block["tool_use_id"] or not isinstance(block.get("content"), (str, list))):
+                    or not block["tool_use_id"]
+                    or ("content" in block) == ("result" in block)
+                    or not isinstance(block.get("result") if "result" in block else block.get("content"), (str, list, dict))):
                     raise ValueError("Incomplete native tool result.")
             else:
                 raise ValueError("Unsupported native content block; do not silently discard it.")

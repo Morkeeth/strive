@@ -20,6 +20,16 @@ class NativeContract(unittest.TestCase):
   self.assertEqual(m['trace_basis'],'timestamps unavailable');self.assertEqual(m['ridge_basis'],'turn-order')
   for k in ['turns_typed','started','duration_s','wall_time_s','recorded_user_messages']:self.assertNotIn(k,m)
   self.assertNotIn('PRIVATE',json.dumps(m))
+ def test_native_tool_result_forms_preserve_payload_without_interpreting_it(self):
+  expected=self.measure()
+  for result in ['raw result', {'status':'opaque'}, [{'type':'text','text':'opaque'}]]:
+   rows=copy.deepcopy(self.rows);block=rows[2]['record']['message']['content'][0];del block['content'];block['result']=result
+   measured=self.measure(rows);self.assertEqual(measured['tool_calls'],expected['tool_calls']);self.assertEqual(measured['ridge'],expected['ridge'])
+  for result in [None, True, 7]:
+   rows=copy.deepcopy(self.rows);block=rows[2]['record']['message']['content'][0];del block['content'];block['result']=result
+   with self.assertRaises(ValueError):self.measure(rows)
+  rows=copy.deepcopy(self.rows);rows[2]['record']['message']['content'][0]['result']='ambiguous'
+  with self.assertRaises(ValueError):self.measure(rows)
  def test_order_duplicate_overlap_and_source_identity(self):
   a=self.measure();self.assertEqual(a,self.measure(list(reversed(self.rows))+[self.rows[1]]))
   rows=copy.deepcopy(self.rows);rows[0]['record']['message']['content'][0]['text']='different'
