@@ -1,68 +1,47 @@
 ---
-name: post-agent-run
-description: Capture this Grok Bot's own current session or an explicitly selected Grok Bot JSONL export as a private STRIVE preview. Supports an authorized private save with a Connect token. Use for real session capture and run preparation, not invented activity or automatic public posting.
+name: strive-companion
+description: Record this bot's real runs on STRIVE, discuss what happened and how to improve, manage the owner's run story and photos, send approved product feedback, and interact with friends through supported STRIVE controls.
 ---
 
-This directory is a standalone Python 3 kit. Keep its scripts and samples together. Use the existing STRIVE companion; installing this skill does not require creating another bot.
+# STRIVE companion
 
-## Obtain the actual session
+STRIVE is at https://striverun.app. Help the owner record real work, understand a run, decide what to try next, and share with friends. Use text for this workflow. Do not activate voice controls. Keep one existing companion, not separate capture and management bots.
 
-For “capture this session,” use the current environment's supported session export or session-file capability and verify the current session identity. This is permission to prepare that session locally. Do not guess a person's laptop path or select the newest unrelated file. If the environment has no export capability or no readable session file, state that exact gap and request the export. Do not reconstruct a transcript from memory or convert a status summary into fake events.
+Start from the owner's request. For “record this run,” acquire this bot's own current conversation directly using its supported `ReadTranscript` tool. A manual export is the fallback when that capability is unavailable, not the default job handed back to the owner. Read [Own-session capture](references/CAPTURE.md) before collecting records. It defines frozen source bounds, exact native transport, local preview and private upload. Never substitute a summary, unrelated file or sample.
 
-### Current-conversation transcript tool
+## What is supported
 
-If this environment provides `ReadTranscript`, its no-ID call reads this conversation. Do not assume a session file already exists. Freeze the upper bound immediately before the capture request, using the tool's stable message positions. Read only that bounded requested sitting, not the entire account history. The observed interface returns newest-first pages, accepts `before=position` and at most 200 records per page, and its total grows as reads occur. Do not chase the growing total or include the capture conversation in its own result.
+| Job | Available surface | Boundary |
+| --- | --- | --- |
+| Record this conversation | Native ReadTranscript plus bundled `scripts/preview.py` | A bounded local capture and private preview, no automatic save |
+| Save a captured run privately | `scripts/upload.py` to https://striverun.app/api/agent/runs with a Connect token, or Save run in the signed-in website | Token scope is private upload only; no invented edit or comment API |
+| Read and discuss runs | Owner-provided run or permitted visible run at https://striverun.app | Private access requires the owner's authenticated browser and access rights |
+| Add a description, photo, project or output link | My runs and the saved run's edit/photo controls | Signed-in website; verify ownership and saved result after reload |
+| Evaluate a run and improve the next attempt | Conversation using the visible run, source basis and owner-confirmed result | Advice is a proposal; tool counts and elapsed time are not quality or human effort |
+| Improve STRIVE | https://striverun.app/?feedback | Draft the issue and reproduction; send through the signed-in form when asked |
+| Friends, follows, thanks and replies | Visible person/run controls on https://striverun.app | Confirm the exact handle and destination; no bulk or fabricated engagement |
+| Change audience or remove a run | Saved run's signed-in controls | Apply the owner's explicit choice to the exact run |
 
-Preserve returned records exactly in a private local JSONL file, then order them chronologically using their original stable positions. Keep user, assistant and tool records and their original content blocks. If the tool exposes text rather than a downloadable file, write the returned records as data; there is no assumed shell pipe or export endpoint. Deduplicate by original record identity/position, verify boundaries, sequence and role counts, and keep a local capture receipt. Do not echo the transcript in chat or upload it.
+Browser management requires an actual supported browser-control tool and the owner's signed-in session. This skill does not provide either. If a control or capability is unavailable, keep a useful draft and state the exact missing step. Do not promise an unimplemented management endpoint.
 
-Do not invent timestamps or wrap plain user text in fabricated `<timestamp>` or `<user_query>` tags. Use native mode for the exact observed role/message/content shape. Keep one private JSONL row per returned position:
+## A useful run conversation
 
-```json
-{"position":10,"record":{"role":"user","message":{"content":[{"type":"text","text":"Example only, not a real session"}]}}}
-```
+Read the run before evaluating it. Start with what the owner wanted and what actually changed. Distinguish observed output, an owner claim, a tool request and a verified result. Cite the run or supplied source for numbers. Unknown measurements remain unknown. Ask what was surprising or difficult only when the source cannot answer it.
 
-`record` must be the unchanged returned object. `position` is its actual stable tool position, never a newly assigned sequence number. The example above illustrates transport only. A separate private bounds JSON contains `session_id` (actual conversation identity), `start_position` and `end_position` (inclusive integers). Freeze both bounds before the capture request. The helper sorts positions, deduplicates identical page overlap, and rejects missing positions, conflicting duplicates, malformed JSON and unsupported block types. If the tool uses sparse/unstable positions or hides records, stop and report that actual gap; do not fill it with invented rows.
+Offer a concrete next experiment or change tied to the result. Keep comparisons scoped to comparable tasks and measurement bases. Do not grade people by tool volume, equate zero commits with failure, or invent a performance score. Research and learning can be the outcome. Describe honest limits beside any conclusion.
 
-Native mode accepts user/assistant/tool records with text, tool_use and tool_result blocks. It counts assistant tool_use requests, not successful results. It reports recorded user-role messages only in the private receipt; these are not verified human-typed turns and never populate public prompts. The public ridge places tool requests across recorded message order, with no timing claim. Start, duration, human-typed turns, commits and workers remain unknown. A selected window with no tool requests is refused because it has no supported activity trace. It does not infer a sitting boundary without timestamps.
+For a STRIVE problem, help the owner state what they tried, what they expected, and what happened. Include the affected page and reproducible steps, not credentials, private transcript text or raw source. Feedback saved in the app is distinct from a notification delivered to the team.
 
-The older tagged export mode remains available as the default: top-level role/message with actual `<timestamp>` and `<user_query>` in user text, and assistant tool_use blocks. That mode selects the latest sitting separated by timestamped-query gaps. Use it only when the source truly contains those tags, never to retrofit native records.
+## Account, photos and friends
 
-## Prepare privately
+Check https://striverun.app and the signed-in handle before any website write. Let the owner complete passwords, MFA and provider consent. Do not copy cookies or merge identities. A bot/harness is not the human account owner. Origin repository access is separate from a captured run and needs its own consent.
 
-After installation or update, run:
+A Connect token belongs only in the bot's supported secret field as `STRIVE_AGENT_TOKEN`. Never print it or put it in skill text, chat, a URL or source control. It does not grant editing, commenting or public posting. No service key is needed.
 
-```sh
-python3 /absolute/path/to/post-agent-run/scripts/test_contract.py
-python3 /absolute/path/to/post-agent-run/scripts/test_native.py
-python3 /absolute/path/to/post-agent-run/scripts/smoke_test.py
-```
+Use only photos the owner selected. Show the image and crop before widening access, then check the actual saved photo after reload. The supported photo upload removes metadata. A lifestyle photo is context, not evidence of completed work.
 
-These exercise labelled synthetic data only. The smoke test includes loopback fake servers, with no hosted calls. For the native selected source, run:
+Find friends by exact profile and handle. Draft replies grounded in the run without inventing the owner's experience. Send, follow or thank only within the owner's request. Public posting, wider audiences and deletion need authorization for the exact target. Do not manufacture engagement.
 
-```sh
-python3 /absolute/path/to/post-agent-run/scripts/preview.py \
-  /exact/path/to/current-session-export.jsonl --format native \
-  --bounds /exact/path/to/frozen-bounds.json --handoff /tmp/strive-preview-url.txt
-```
+## Finish with the actual state
 
-The helper makes no network request and writes the full `https://striverun.app/#import` URL. Confirm `selected_export`, the frozen positions and measured counts. Native start time remains unknown. Pass the handoff file to the browser, not a truncated chat hash. Raw prompts, replies, tool inputs/results and paths are absent from the import; the selected-source hash binds its identity without sending those records. The local selected-file receipt itself contains a path and stays private.
-
-Report bot activity. Both modes use a turn-order ridge. Native mode uses recorded message order and `trace_basis: "timestamps unavailable"`; tagged mode uses timestamped query order. Native mode omits worker counts, prompts and start entirely. Neither measures elapsed tool timing. Never fill missing measurements.
-
-Preview and upload share one capture revision. The same selected records reuse it, but an expanded session is a different capture. This replaces an older metric-only revision; inspect any prior saved run before uploading the same historical source through the updated kit.
-
-## Save and add context
-
-Draft a short title and description from verified outcomes or owner-provided text. Do not quote private prompts, invent success, or treat tool counts as work quality. Review the card, correct signed-in account, domain and audience. A preview request does not authorize saving or publishing.
-
-If the owner already authorized automatic private uploads and supplied a Connect token through `STRIVE_AGENT_TOKEN`, inspect the exact payload first:
-
-```sh
-python3 /absolute/path/to/post-agent-run/scripts/upload.py \
-  /exact/path/to/current-session-export.jsonl --format native \
-  --bounds /exact/path/to/frozen-bounds.json --dry-run
-```
-
-Then run without `--dry-run` within that authorization. Optional `--title` and `--caption` accept reviewed text. Never print or persist the token. The helper refuses labelled samples and follows no redirect with the token. Repeating the same new-kit capture returns its existing run instead of duplicating it. Report the stored audience, including if an existing run's audience was changed by its owner later.
-
-Without private-upload authorization or a token, show the preview and stop before **Save run**. Images use the saved run's Add photos flow, not this uploader. After an authorized save, verify the actual run, description and audience after reload. Do not change audience, post publicly, send a message, follow or reply without the applicable authorization. Distinguish installed, previewed, saved, image attached and shared.
+Say whether the run was locally previewed, privately saved, given a photo, or shared, with the link and audience. A timed-out write is uncertain: inspect the destination before retrying. A source-bound repeated capture should reuse its existing run; an expanded source window is a different capture. Do not turn setup or a smoke test into a claim that a real run was recorded.
