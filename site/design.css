@@ -252,3 +252,9 @@ button,summary{touch-action:manipulation}
 .site-foot a:hover{color:var(--ink)}
 .site-foot-line{flex-basis:100%;padding-top:8px}
 .site-foot [hidden]{display:none}
+
+/* A saved photo and recovered source summary remain recognizable on the return visit. */
+.history-visual .run-photo-cover{width:100%;height:auto;max-height:180px;object-fit:contain;margin:0 0 8px}
+.history-run .history-source h3{font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.history-run .history-source{min-width:0}
+.history-run>div{min-width:0}

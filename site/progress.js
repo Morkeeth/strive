@@ -36,28 +36,38 @@ window.GrinderProgress = function ({client: db, me, app, frame, status, signIn, 
     const bits=countBits(run);
     const wrapper=!String(run.agent_name||'').trim()||/^connect$/i.test(String(run.agent_name).trim());
     const via=run.source_actor_id&&wrapper?' · via Connect':'';
-    const session=esc(run.harness || 'Coding agent');
-    return `<article class="history-run"><div class="history-trace">${GrinderContract.trace(run)}</div><div><small><span class="card-harness">${session}</span>${via} · ${esc(audience(run))}</small><h2><a href="/?run=${run.id}">${esc(title(run))}</a></h2>${when?`<p>${esc(when)}</p>`:''}${GrinderContract.observedProjection(run)?'<p class="meta">Observed message order · lower bound</p>':''}${bits.length?`<div class="history-counts">${bits.map(b=>`<span>${b}</span>`).join('')}</div>`:''}${run.visibility==='private'?`<p class="history-share"><a href="/?run=${run.id}">Preview and choose who can see it</a></p>`:''}</div></article>`;
+    const recovered=window.StriveHistory?.historical(run);
+    const session=esc(recovered?'Historical reconstruction':run.harness || 'Coding agent');
+    const visual=recovered?'':GrinderContract.trace(run);
+    const historyFacts=recovered?StriveHistory.facts(run):'';
+    return `<article class="history-run" data-run-id="${esc(run.id)}"><div class="history-trace history-visual">${visual}</div><div><small><span class="card-harness">${session}</span>${via} · ${esc(audience(run))}</small><h2><a href="/?run=${run.id}">${esc(title(run))}</a></h2>${window.StriveEvidence?StriveEvidence.summary(run):''}${historyFacts}${when?`<p>${esc(when)}</p>`:''}${GrinderContract.observedProjection(run)?'<p class="meta">Observed message order · lower bound</p>':''}${bits.length?`<div class="history-counts">${bits.map(b=>`<span>${b}</span>`).join('')}</div>`:''}${run.visibility==='private'?`<p class="history-share"><a href="/?run=${run.id}">Preview and choose who can see it</a></p>`:''}</div></article>`;
   }
   async function historyView() {
+    window.StriveRunPhotos?.disposeAll?.();
     if(!start('My runs','runs'))return;
+    const viewer=me().id,body=$('progress-body');
+    const current=()=>me()?.id===viewer&&body.isConnected&&$('progress-body')===body;
     try {
-      let loaded=await ownRuns(); let offset=loaded.length, more=loaded.length===100;
+      let loaded=await ownRuns(); if(!current())return;let offset=loaded.length, more=loaded.length===100;
       const noteResult=await Promise.allSettled([
         rows(db.from('grinder_notifications').select('id,kind,run_id,created_at').eq('recipient_id',me().id).is('read_at',null).order('created_at',{ascending:false}).limit(3))
       ]);
+      if(!current())return;
       const notes=noteResult[0].status==='fulfilled'?noteResult[0].value:[];
       $('progress-body').innerHTML=`${notes.length?`<section class="panel reply-form"><h2>Responses to your work</h2>${notes.map(n=>`<p><a href="${n.run_id?'/?run='+n.run_id:'/?inbox'}">${esc(n.kind==='ack'?'Thanks on your run':n.kind==='reply'?'A reply on your run':'A new follower')}</a><br><small>${esc(date(n.created_at))}</small></p>`).join('')}<a href="/?inbox">Open Responses</a></section>`:""}<div class="cta"><a class="act blue" href="/?post">Post a run</a></div><form id="history-filter" class="history-filters"><label>Find a run<input name="query" type="search" placeholder="Title or project"></label><label>Harness<select name="harness" aria-label="Harness"><option value="">All harnesses</option></select></label><label>Audience<select name="audience" aria-label="Audience"><option value="">All audiences</option><option value="private">Only me</option><option value="link">Followers</option><option value="public">Public</option><option value="crew">Crew members</option></select></label><button type="submit">Find runs</button></form><p id="history-count" class="meta"></p><div id="history-list"></div><button id="history-more" class="act" ${more?'':'hidden'}>Load older runs</button><p><a href="/?post">Post another run</a></p>`;
       function render() {
+        if(!current())return;
+        window.StriveRunPhotos?.disposeAll?.();
         const f=$('history-filter').elements;
         const filtered=loaded.filter(r=>(!f.query.value || [r.title,r.project].join(' ').toLowerCase().includes(f.query.value.toLowerCase()))&&(!f.harness.value||r.harness===f.harness.value)&&(!f.audience.value||(f.audience.value==='crew'?r.crew_shared:r.visibility===f.audience.value)));
         $('history-count').textContent=`${filtered.length} shown · ${loaded.length} loaded${more?' · older runs available':''}`;
         $('history-list').innerHTML=filtered.map(runTile).join('')||`<div class="panel reply-form"><h2>${loaded.length?'No matching runs':'Your first run starts private'}</h2><p>${loaded.length?'Change the filters or load older runs.':'Connect an agent for automatic Only-me upload, or capture a session and choose an audience. Private uploads appear here. Choose Public to add one to the feed.'}</p>${loaded.length?'':'<div class="cta"><a class="act blue" href="/?connect">Connect an agent</a><a class="act" href="/?post">Post a run</a><a class="act" href="https://github.com/Morkeeth/strive/blob/main/docs/GROK-PUSH.md">Grok Bot push guide</a></div>'}</div>`;
+        window.StriveRunPhotos?.mountCovers({client:db,root:$('history-list')});
       }
       function harnessOptions(){const select=$('history-filter').elements.harness, selected=select.value;select.innerHTML='<option value="">All harnesses</option>'+[...new Set(loaded.map(r=>r.harness).filter(Boolean))].sort().map(h=>`<option>${esc(h)}</option>`).join('');select.value=selected;}
       harnessOptions();render();bind('history-filter',async()=>render());
-      $('history-more').onclick=async()=>{const button=$('history-more');button.disabled=true;try{const next=await ownRuns(offset);offset+=next.length;more=next.length===100;loaded=[...new Map([...loaded,...next].map(r=>[r.id,r])).values()];button.hidden=!more;harnessOptions();render()}catch(error){fail(error)}finally{button.disabled=false}};
-    } catch(error) {$('progress-body').innerHTML='<p>Your runs could not load. Refresh to try again.</p>';fail(error);}
+      $('history-more').onclick=async()=>{const button=$('history-more');button.disabled=true;try{const next=await ownRuns(offset);if(!current())return;offset+=next.length;more=next.length===100;loaded=[...new Map([...loaded,...next].map(r=>[r.id,r])).values()];button.hidden=!more;harnessOptions();render()}catch(error){fail(error)}finally{button.disabled=false}};
+    } catch(error) {if(!current())return;$('progress-body').innerHTML='<p>Your runs could not load. Refresh to try again.</p>';fail(error);}
   }
   function snapshot(run) {return {...run,turns_typed:run.turns_typed??run.prompts};}
   function comparisonHTML(before, after, limitations) {
