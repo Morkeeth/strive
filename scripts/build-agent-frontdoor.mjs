@@ -81,6 +81,12 @@ Use the person's own workspace, not a clone of STRIVE as the project to measure.
 
     uvx --from '${packageURL}' agentgrinder grind --harness cursor --list --show-paths
 
+No-path --list returns a candidates object with total, offset, limit and next_offset, not a list of sittings. The default page contains at most 20 candidates. If next_offset is not null, request that offset; for example, the next default page is:
+
+    uvx --from '${packageURL}' agentgrinder grind --harness cursor --list --show-paths --list-offset 20
+
+Repeat using the returned next_offset until the intended source appears. Optional --list-limit accepts 1 through 100. File names without --show-paths are not selectable full paths. Capture requires an explicit exact path, including when auto detection finds Cursor; no-path --push is refused.
+
 Confirm the intended project and exact transcript path from that local list. Then inspect only that transcript's sittings:
 
     uvx --from '${packageURL}' agentgrinder grind /exact/selected-session.jsonl --harness cursor --list --show-paths

@@ -998,6 +998,8 @@ def _list_cursor_sources(limit, offset, show_paths=False):
     candidates = []
     for raw in glob.glob(os.path.expanduser(CURSOR_GLOB)):
         path = Path(raw)
+        if path.is_symlink():
+            continue
         try:
             stat = path.stat()
         except OSError:
@@ -1014,6 +1016,7 @@ def _list_cursor_sources(limit, offset, show_paths=False):
         "bytes": size,
     } for mtime, source, size, project in candidates[offset:offset + limit]]
     print(json.dumps({
+        "basis": "Filesystem metadata only. Modified time is not session start or active workspace. Source content has not been validated.",
         "candidates": rows, "total": len(candidates), "offset": offset,
         "limit": limit, "next_offset": offset + limit if offset + limit < len(candidates) else None,
         "next": "Confirm your project and exact transcript path; rerun that path with --harness cursor --list "

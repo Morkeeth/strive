@@ -72,7 +72,7 @@ def test_a_cursor_only_machine_requires_source_choice_before_card(tmp_path):
 
 def test_cursor_list_identifies_project_source_and_sittings(tmp_path):
     home = cursor_home(tmp_path / "home")
-    proc = run_grind(home, tmp_path, str(next(home.glob(".cursor/projects/*/agent-transcripts/*/*.jsonl"))), "--harness", "cursor", "--list", "--show-paths")
+    proc = run_grind(home, tmp_path, "--harness", "cursor", "--list", "--show-paths")
     assert proc.returncode == 0, proc.stdout + proc.stderr
     discovery = json.loads(proc.stdout)
     assert discovery["total"] == 1
