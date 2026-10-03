@@ -17,10 +17,10 @@ def test_global_shell_has_no_privacy_slogan_or_more_drawer():
 def test_capture_is_primary_and_manual_import_is_advanced():
     connect = INDEX[INDEX.index("function connectBodyHtml()") : INDEX.index("function wireConnectCopies")]
     assert "Preview your latest session" in connect
-    assert "Copy for my agent" in connect
+    assert "Copy link for your agent" in connect
     assert "Open a local preview when Cursor finishes" in connect
     assert '<summary>Other import methods</summary>' in connect
-    assert connect.index("Copy for my agent") < connect.index("Import a session file manually")
+    assert connect.index("Copy link for your agent") < connect.index("Import a session file manually")
     assert "<h2>Then</h2>" not in connect
     assert "Post a run without a Cursor export" not in INDEX
 

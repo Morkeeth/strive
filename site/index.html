@@ -298,8 +298,8 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 .identity-preview-avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;background:var(--blue);color:white;font-size:15px;font-weight:650;letter-spacing:-.03em}
 .identity-preview-copy{min-width:0}.identity-preview-copy strong,.identity-preview-copy span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.identity-preview-copy strong{font-size:14px}.identity-preview-copy span{color:var(--soft);font-size:13px;margin-top:2px}
 .identity-preview-private{margin-left:auto;color:var(--dim);font-size:11px;white-space:nowrap}
-.identity-form{padding:20px 24px 24px}.identity-form label{font-size:12px;color:var(--ink);font-weight:550}.identity-form input{margin-top:7px;font-size:15px;padding:11px 12px}.identity-form .hint{font-weight:400}.identity-form button{width:100%;margin-top:4px}.identity-foot{margin:12px 0 0;text-align:center;color:var(--dim);font-size:11px}
-@media(max-width:560px){.identity-intro{padding:22px 18px 16px}.identity-preview{margin:16px 18px 0}.identity-form{padding:18px}.identity-preview-private{display:none}}
+.identity-welcome .identity-form{padding:20px 24px 24px}.identity-form label{font-size:12px;color:var(--ink);font-weight:550}.identity-form input{margin-top:7px;font-size:15px;padding:11px 12px}.identity-form .hint{font-weight:400}.identity-form button{width:100%;margin-top:4px}.identity-foot{margin:12px 0 0;text-align:center;color:var(--dim);font-size:11px}
+@media(max-width:560px){.identity-intro{padding:22px 18px 16px}.identity-preview{margin:16px 18px 0}.identity-welcome .identity-form{padding:18px}.identity-preview-private{display:none}}
 .steps{display:flex;gap:5px;margin:0 0 18px}
 .steps span{flex:1;height:2px;background:var(--rule)}
 .steps span.on,.steps span.done{background:var(--blue)}
@@ -1520,10 +1520,10 @@ function connectBodyHtml(){
   const hook='python3 -m agentgrinder hook install --harness cursor --open';
   const mcp='python3 -m agentgrinder connect cursor --project /your/project --install';
   return `<section class="capture-welcome" aria-labelledby="capture-welcome-title">
-      <span class="run-story-label">Your next stride</span><h2 id="capture-welcome-title">You built it. Give it a run.</h2>
-      <p>Pick the work you want to remember. Add the picture and the story. Share it when you are ready.</p>
+      <span class="run-story-label">Your next stride</span><h2 id="capture-welcome-title">Bring your first run</h2>
+      <p>Pick a session. Add a photo and what happened. Choose who sees it.</p>
       <ol class="capture-steps" aria-label="Your first run"><li><b>1</b><span>Preview your session</span></li><li><b>2</b><span>Add your story and photos</span></li><li><b>3</b><span>Choose who sees it</span></li></ol>
-      <div class="capture-actions"><button class="act blue" type="button" data-copy="${esc(agentPrompt)}">Copy for my agent</button><a class="act" href="/?post#drop-zone">Choose a session file</a></div>
+      <div class="capture-actions"><button class="act blue" type="button" data-copy="${esc(agentPrompt)}">Copy link for your agent</button><a class="act" href="/?post#drop-zone">Choose a session file</a></div>
       <p class="hint">Grok or Cursor can start with <a href="/agents.md">this link</a>. The preview does not save or post anything.</p>
     </section>
     <details class="panel capture-terminal"><summary>Use a terminal instead</summary><div class="pad">
@@ -2117,13 +2117,13 @@ async function viewBoards(){
   const tools=top(week,runTools,v=>`${v.toLocaleString()} calls`);
   const marathon=top([...new Map((longRuns||[]).map(r=>[r.id,r])).values()].filter(r=>!typedOnlyRun(r)&&runSeconds(r)>=MARATHON_SECS),runSeconds,fmtSecs,10);
   const weekLabel=`${since.getDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][since.getMonth()]}`;
-  app.innerHTML=`<div class="head"><h1>Leaderboard</h1><span class="meta">public runs only</span></div>
-    ${feedTabs('boards')}<p class="hint">Every row is a public run anyone can open. Activity counts are not a score for quality or human effort. Weekly rankings use the latest 300 public uploads, filtered by session start, so older uploads may be absent. This week starts Monday ${esc(weekLabel)} in your time zone. Time on a run is the measured wall time, else the session length.</p>
+  app.innerHTML=`<div class="head"><h1>Leaderboard</h1><span class="meta">Public runs · ranked by recorded activity</span></div>
+    ${feedTabs('boards')}<details class="ranking-explainer"><summary>How ranking works</summary><p class="hint">Every row opens its public source run. Activity is not a score for quality or human effort. Weekly rankings use the latest 300 public uploads, filtered by session start, so older uploads may be absent. This week starts Monday ${esc(weekLabel)} in your time zone. Time is measured wall time, else session length.</p><p class="hint">Long sessions use up to 100 public runs of 3 hours or more, fetched by wall time then session length. This is a capped sample, not a complete all-time ranking.</p></details>
     <div class="boards-grid">
       ${boardHtml('Longest run this week','measured time, one run',longest,'No public run with a measured time this week yet.')}
       ${boardHtml('Most tool calls this week','one run, one count',tools,'No public run with tool calls this week yet.')}
     </div>
-    ${longError?'<section class="card"><h3>Long sessions</h3><p role="status">Long sessions could not load. Reload to try again.</p></section>':boardHtml('Long sessions','Up to 100 public runs of 3 hours or more, fetched by wall time then session length. This is a capped sample, not a complete all-time ranking.',marathon,'No public run of 3 hours or more in this sample yet.')}
+    ${longError?'<section class="card"><h3>Long sessions</h3><p role="status">Long sessions could not load. Reload to try again.</p></section>':boardHtml('Long sessions','Three hours or more · from the available sample',marathon,'No public run of 3 hours or more in this sample yet.')}
     <p class="hint"><a href="/?post">Post a run</a> · <a href="/?projects">Projects</a> · <a href="/methodology">How the numbers are made</a></p>`;
 }
 

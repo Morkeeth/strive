@@ -31,7 +31,7 @@ with sync_playwright() as p:
    assert page.locator('#app').inner_text().strip(),name
    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),(name,width,'overflow')
    if name=='connect':
-    page.get_by_role('button',name='Copy for my agent').click();assert '/agents.md' in page.evaluate('window.fixtureCopied');assert page.get_by_text('Copied ✓',exact=True).count()
+    page.get_by_role('button',name='Copy link for your agent').click();assert '/agents.md' in page.evaluate('window.fixtureCopied');assert page.get_by_text('Copied ✓',exact=True).count()
     assert page.locator('.capture-welcome').is_visible()
    if name=='boards':assert page.get_by_role('heading',name='Leaderboard',exact=True).is_visible();assert 'Honest failure' not in page.locator('#app').inner_text()
    if name=='feedback':

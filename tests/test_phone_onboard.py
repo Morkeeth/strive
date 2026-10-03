@@ -32,7 +32,7 @@ def test_one_page_auto_capture_with_advanced_import():
     assert "open the private preview link it prints" in body
     assert "mailto:" not in body and "signInWithOtp" not in body
     # Bots and unsupported agents have documented paths under Advanced.
-    assert "docs/AGENT-UPLOAD-API.md" in body and "docs/GROK-PUSH.md" in body
+    assert 'href="/agents.md"' in body and "Agent setup and Grok transcript instructions" in body
 
 
 def test_onboard_and_connect_and_post_are_the_same_page():

@@ -9,7 +9,7 @@ for(const state of [{id:'owner',handle:'fixture'},null]){context.ME=state;const 
 assert.match(html,/prefers-reduced-motion:reduce/);
 assert.match(html,/aria-label="Loading runs"/);
 const body=take('function connectBodyHtml()', 'function wireConnectCopies(');
-assert.ok(body.indexOf('Copy for my agent')<body.indexOf('${autoSyncHtml()}'));
+assert.ok(body.indexOf('Copy link for your agent')<body.indexOf('${autoSyncHtml()}'));
 assert.ok(!body.includes('opens it privately for review'));
 const feedback=take('function viewFeedback()', 'function wireComposer(');
 assert.ok(feedback.indexOf('GrinderFeedbackWake')>feedback.indexOf('if(error)'));
