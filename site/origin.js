@@ -2,7 +2,7 @@
  * sign-in; it is not an Auth provider and never participates in account matching.
  *
  * No Origin application is registered today, so the shipped controller has no connector and
- * the Account page shows no Origin panel at all. A reviewed connector can later implement
+ * the Account page explains that the connection is unavailable. A reviewed connector can later implement
  * connect/disconnect without changing the account or identity contracts.
  */
 (function (root, factory) {
@@ -13,7 +13,8 @@
     String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
   function state({ signedIn, configured, connections = [], outcome = null, error = null } = {}) {
-    if (!signedIn || !configured) return { kind: "hidden", connections: [] };
+    if (!signedIn) return { kind: "hidden", connections: [] };
+    if (!configured) return { kind: "unavailable", connections: [] };
     if (outcome === "cancelled") return { kind: "cancelled", connections };
     if (error) return { kind: "error", connections, message: String(error.message || error) };
     if (outcome === "disconnected") return { kind: "disconnected", connections };
@@ -23,6 +24,10 @@
 
   function html(value) {
     if (!value || value.kind === "hidden") return "";
+    if (value.kind === "unavailable") return `<section class="card pad account-section" id="origin-connection" aria-labelledby="origin-title"><h2 id="origin-title">Origin repositories</h2>
+      <p>Origin repository connection is not available on this service yet. It is separate from signing in to STRIVE.</p>
+      <p class="account-hint">No Origin repository access has been granted here. You can still record a local session with the capture tool.</p>
+      <div class="account-actions"><a class="act" href="/?feedback">Request Origin connection</a><a class="act" href="/?post">Record a session</a></div></section>`;
     const rows = (value.connections || []).map((connection) => {
       const name = connection.repository || connection.name || "Selected repository";
       const remove = value.kind === "connected"

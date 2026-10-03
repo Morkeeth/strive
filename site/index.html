@@ -767,17 +767,20 @@ async function loadProviders(){
   try{
     const r=await fetch(SB_URL+'/auth/v1/settings',{headers:{apikey:SB_KEY},signal:AbortSignal.timeout(2500)});
     const s=r.ok?await r.json():null;
-    // GoTrue reports the X / Twitter provider under the key "twitter" (probed 25 Sep 2026: the
-    // settings body has no "x" key). Either spelling switches the button on. The array is
-    // mutated in place because GrinderAccount holds a reference to it.
+    // Use the enabled Auth identifier unchanged: x and legacy twitter are different endpoints.
+    // The array is mutated in place because GrinderAccount holds a reference to it.
     const ext=s&&s.external||{};
-    if((ext.x===true||ext.twitter===true)&&!PROVIDERS_ENABLED.includes('x')) PROVIDERS_ENABLED.push('x');
+    const xProvider=ext.x===true?'x':ext.twitter===true?'twitter':null;
+    if(typeof ext.x==='boolean'||typeof ext.twitter==='boolean'){
+      for(let i=PROVIDERS_ENABLED.length-1;i>=0;i--)if(['x','twitter'].includes(PROVIDERS_ENABLED[i]))PROVIDERS_ENABLED.splice(i,1);
+    }
+    if(xProvider&&!PROVIDERS_ENABLED.includes(xProvider)) PROVIDERS_ENABLED.push(xProvider);
     if(EMAIL_SIGNIN_READY&&ext.email===true&&!PROVIDERS_ENABLED.includes('email')) PROVIDERS_ENABLED.push('email');
   }catch(_){}
   return PROVIDERS_ENABLED;
 }
-const providerLabel=p=>p==='x'?'X':p==='github'?'GitHub':p;
-const signInLabel=()=>PROVIDERS_ENABLED.includes('email')?(PROVIDERS_ENABLED.includes('x')?'Sign in with GitHub, X or email':'Sign in with GitHub or email'):(PROVIDERS_ENABLED.includes('x')?'Sign in with GitHub or X':'Sign in with GitHub');
+const providerLabel=p=>(p==='x'||p==='twitter')?'X':p==='github'?'GitHub':p;
+const signInLabel=()=>PROVIDERS_ENABLED.includes('email')?((PROVIDERS_ENABLED.includes('x')||PROVIDERS_ENABLED.includes('twitter'))?'Sign in with GitHub, X or email':'Sign in with GitHub or email'):((PROVIDERS_ENABLED.includes('x')||PROVIDERS_ENABLED.includes('twitter'))?'Sign in with GitHub or X':'Sign in with GitHub');
 const profileHandle=p=>GrinderAuth.present(p)?.handle||'';
 // A person who arrived from Responses keeps a way back even when the run is gone or private.
 function responseReturnLink(){try{return sessionStorage.getItem('ag_response_return')==='?inbox'?'<p class="response-return"><a class="act" href="/?inbox">Back to Notifications</a></p>':''}catch(_){return ''}}
@@ -792,6 +795,7 @@ function invalidatePrivateView(){
   if($('notifications-body'))$('notifications-body').innerHTML='';
   if($('me'))$('me').innerHTML='';
   if($('account-menu'))$('account-menu').hidden=true;
+  if($('nav-avatar'))$('nav-avatar').outerHTML='<span id="nav-avatar" class="profile-fallback">ME</span>';
 }
 function handleAuthStateChange(event,session,refreshAndRoute){
   if(event==='SIGNED_OUT'||event==='USER_UPDATED'||(event==='SIGNED_IN'&&session?.user?.id!==AUTH_USER?.id)){
@@ -810,7 +814,7 @@ const challenges=GrinderChallenges({client:sb,me:()=>ME,app:()=>$('app'),frame,s
 // No connector is supplied until an Origin application and callback are registered and reviewed.
 // Origin remains a post-sign-in repository connection, never an Auth provider.
 const originConnection=GrinderOrigin.create();
-const account=GrinderAccount({auth,me:()=>ME,app:()=>$('app'),frame,status,providersEnabled:PROVIDERS_ENABLED,origin:originConnection,signIn:showSignIn,onProfileChange:p=>{ME=p;refreshAuth();}});
+const account=GrinderAccount({auth,me:()=>ME,authGeneration:()=>AUTH_GENERATION,app:()=>$('app'),frame,status,providersEnabled:PROVIDERS_ENABLED,origin:originConnection,signIn:showSignIn,onProfileChange:p=>{ME=p;refreshAuth();}});
 const connect=typeof GrinderConnect==='function'?GrinderConnect({db:sb,me:()=>ME,app:()=>$('app'),frame,railHtml,feedTabs,setPrimarySection,status,signInGitHub:()=>signInWithGitHub(),signIn:showSignIn}):null;
 
 // THE MARK IS THE GRIND, drawn small.
@@ -2143,7 +2147,7 @@ function profileLinksHtml(prof,mine){
   if(L.x) parts.push(`<a href="${esc(L.x.url)}" target="_blank" rel="noopener noreferrer">X @${esc(L.x.handle)} (unverified)</a>`);
   if(mine){
     if(!L.github) parts.push('<a href="/?account">Link GitHub</a>');
-    if(!L.x&&PROVIDERS_ENABLED.includes('x')) parts.push('<a href="/?account">Link X</a>');
+    if(!L.x&&(PROVIDERS_ENABLED.includes('x')||PROVIDERS_ENABLED.includes('twitter'))) parts.push('<a href="/?account">Link X</a>');
   }
   return parts.length?`<div class="p-links">${parts.join(' · ')}</div>`:'';
 }
@@ -2337,7 +2341,7 @@ function showSignIn(opts={}){
   const explanation=stranger
     ?'Sign in to cheer this run or follow the builder. You will return here after signing in. Nothing posts until you choose.'
     :'Sign in to keep your profile and responses connected. You will return to this preview or social action.';
-  dialog.innerHTML='<h2 id="signin-title">'+title+'</h2><p id="signin-explanation">'+explanation+'</p><p class="hint">Closing or cancelling sign-in posts nothing and changes no audience.</p>'+PROVIDERS_ENABLED.filter(p=>p==='github'||p==='x').map(p=>'<button data-provider="'+p+'">Continue with '+providerLabel(p)+'</button>').join('')+(PROVIDERS_ENABLED.includes('email')?'<form id="signin-email" class="reply-form"><label>Email<input name="email" type="email" autocomplete="email" required></label><p>Your email stays out of your public profile.</p><button>Send a sign-in link</button></form>':'')+'<p id="signin-state" role="status"></p><button class="ghost" id="signin-close">Close</button>';
+  dialog.innerHTML='<h2 id="signin-title">'+title+'</h2><p id="signin-explanation">'+explanation+'</p><p class="hint">Closing or cancelling sign-in posts nothing and changes no audience.</p>'+PROVIDERS_ENABLED.filter(p=>p==='github'||p==='x'||p==='twitter').map(p=>'<button data-provider="'+p+'">Continue with '+providerLabel(p)+'</button>').join('')+(PROVIDERS_ENABLED.includes('email')?'<form id="signin-email" class="reply-form"><label>Email<input name="email" type="email" autocomplete="email" required></label><p>Your email stays out of your public profile.</p><button>Send a sign-in link</button></form>':'')+'<p id="signin-state" role="status"></p><button class="ghost" id="signin-close">Close</button>';
   document.body.append(dialog);dialog.showModal();$('signin-close').onclick=()=>dialog.close();
   dialog.querySelectorAll('[data-provider]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{await auth.signIn(button.dataset.provider,{returnTo:location.search})}catch(e){$('signin-state').textContent=e.detail?.message||'Sign-in could not start. Try again.';button.disabled=false}});
   if($('signin-email'))$('signin-email').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,button=f.querySelector('button');button.disabled=true;try{await auth.signIn('email',{email:f.elements.email.value,returnTo:location.search});$('signin-state').textContent='Check your email for the sign-in link. Keep this tab open to return to your draft.'}catch(e){$('signin-state').textContent=e.detail?.message||'Sign-in could not connect. Try again.'}finally{button.disabled=false}};
@@ -2359,10 +2363,11 @@ async function refreshAuth(){
   try{
     const current=await auth.current();if(generation!==AUTH_GENERATION)return;AUTH_USER=current.user||null;ME=current.profile;IDENTITY_SETUP=current.needsOnboarding?current:null;
     $('me').innerHTML=ME?'<a href="'+GrinderAuth.present(ME).url+'">@'+esc(profileHandle(ME))+'</a>':'';
-    const shown=ME?GrinderAuth.present(ME):null, navAvatar=$('nav-avatar');
+    const shown=ME?GrinderAuth.present(ME,AUTH_USER):null, navAvatar=$('nav-avatar');
     if(navAvatar){
-      if(shown?.avatar_url) navAvatar.outerHTML=`<img id="nav-avatar" src="${esc(shown.avatar_url)}" alt="" referrerpolicy="no-referrer">`;
-      else { navAvatar.outerHTML=`<span id="nav-avatar" class="profile-fallback">${esc((shown?.display_name||shown?.handle||'ME').slice(0,2).toUpperCase())}</span>`; }
+      navAvatar.outerHTML=ME&&window.GrinderFeed?.face
+        ? `<span id="nav-avatar">${GrinderFeed.face({profiles:{...ME,avatar_url:shown?.avatar_url}},30)}</span>`
+        : `<span id="nav-avatar" class="profile-fallback">${esc((shown?.display_name||shown?.handle||'ME').slice(0,2).toUpperCase())}</span>`;
     }
     $('account-menu').hidden=!current.user;$('auth').hidden=!!current.user;$('auth').textContent='Sign in';$('deletewrap').hidden=!ME;if($('delete-info'))$('delete-info').hidden=!!ME;
     $('mobile-product-nav').hidden=false;syncAuthNav();status('');

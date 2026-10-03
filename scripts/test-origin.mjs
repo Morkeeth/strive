@@ -9,9 +9,10 @@ assert.equal(Origin.state({ signedIn: false, configured: true }).kind, "hidden")
 assert.equal(Origin.html(Origin.state({ signedIn: false, configured: true })), "", "Origin is absent before STRIVE sign-in");
 
 const unconfigured = Origin.state({ signedIn: true, configured: false });
-assert.equal(unconfigured.kind, "hidden", "no connector means no Origin panel");
-assert.equal(Origin.html(unconfigured), "", "Origin panel is absent until a connector exists");
-assert.equal(Origin.create().html(), "", "shipped controller without a connector renders nothing");
+assert.equal(unconfigured.kind, "unavailable", "no connector means honest unavailability");
+assert.match(Origin.html(unconfigured), /not available/);
+assert.doesNotMatch(Origin.html(unconfigured), /data-origin-connect/);
+assert.match(Origin.create().html(), /Request Origin connection/);
 let markup;
 
 assert.equal(Origin.state({ signedIn: true, configured: true }).kind, "connect");
@@ -48,4 +49,4 @@ state = await failed.connect();
 assert.equal(state.kind, "error");
 assert.match(state.message, /Invalid installation receipt/);
 
-console.log("PASS Origin: hidden without sign-in or connector, connect, cancel, error, connected and disconnect states");
+console.log("PASS Origin: hidden without sign-in, honest unavailable connector, connect, cancel, error, connected and disconnect states");

@@ -22,7 +22,7 @@
     { id: "x", label: "X", kind: "oauth" },
     { id: "email", label: "Email link", kind: "otp" },
   ]);
-  const OAUTH = new Set(["github", "x"]);
+  const OAUTH = new Set(["github", "x", "twitter"]);
   const HANDLE_RE = /^[a-z0-9]([a-z0-9_-]{0,38}[a-z0-9])?$/;
   const HANDLE_KEYS = ["user_name", "preferred_username", "screen_name", "username", "login"];
   const NAME_KEYS = ["full_name", "name", "display_name"];
@@ -117,7 +117,7 @@
   }
 
   // Presentation contract. profile.id is stable; handle/display_name fall back to legacy columns.
-  function present(p) {
+  function present(p, user = null) {
     if (!p) return null;
     const handle = str(p.handle) || str(p.github_handle) || "";
     const display_name = str(p.display_name) || str(p.name) || (handle ? "@" + handle : "A builder");
@@ -125,7 +125,9 @@
       id: p.id,
       handle,
       display_name,
-      avatar_url: normalizeAvatarUrl(p.avatar_url),
+      avatar_url: normalizeAvatarUrl(p.avatar_url)
+        || (/^[A-Za-z0-9-]{1,39}$/.test(str(p.github_handle)) ? "https://github.com/" + p.github_handle + ".png?size=160" : null)
+        || (p.auth_uid && p.auth_uid === user?.id ? suggest(user).avatar_url : null),
       legacy: !str(p.handle),
       url: handle ? "/?u=" + encodeURIComponent(handle) : "/",
     };

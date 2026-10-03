@@ -9,11 +9,12 @@
  * sign-in that was started and never finished. The draft a person was posting stays put.
  *
  * Presentation only. Every write goes through site/auth.js, every rule is enforced by the
- * strava schema and Supabase Auth. No Cursor or Origin login exists, so none is drawn here.
+ * strava schema and Supabase Auth. Origin repository availability is shown separately from sign-in methods.
  */
 window.GrinderAccount = function ({
   auth,
   me,
+  authGeneration,
   app,
   frame,
   status,
@@ -27,7 +28,7 @@ window.GrinderAccount = function ({
     String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const byId = (id) => document.getElementById(id);
   const enabled = () => (Array.isArray(providersEnabled) ? providersEnabled : ["github", "email"]);
-  const label = (provider) => (window.GrinderAuth?.providers || []).find((p) => p.id === provider)?.label || provider;
+  const label = (provider) => (window.GrinderAuth?.providers || []).find((p) => p.id === (provider === "twitter" ? "x" : provider))?.label || provider;
   const present = (p) => (window.GrinderAuth ? window.GrinderAuth.present(p) : null);
   const mount = () => (typeof app === "function" ? app() : app) || byId("app");
   const say = (m, bad) => { if (typeof status === "function") status(m, bad); };
@@ -82,24 +83,25 @@ window.GrinderAccount = function ({
         : `<button type="button" class="act" data-unlink="${esc(i.id)}" aria-label="Unlink ${esc(label(i.provider))}">Unlink</button>`;
       return `<li class="account-identity"><div><strong>${esc(label(i.provider))}</strong> <span class="account-hint">${esc(who)}</span></div>${unlink}</li>`;
     });
-    const linked = new Set(ids.map((i) => i.provider));
+    const linked = new Set(ids.map((i) => i.provider === "twitter" ? "x" : i.provider));
     const offers = (window.GrinderAuth?.providers || [])
       .filter((p) => p.kind === "oauth" && !linked.has(p.id))
-      .map((p) =>
-        enabled().includes(p.id)
-          ? `<button type="button" class="act" data-link="${esc(p.id)}">Link ${esc(p.label)}</button>`
-          : `<span class="account-hint">${esc(p.label)} sign-in is not available on this service yet.</span>`,
-      );
+      .map((p) => {
+        const provider = p.id === "x" && !enabled().includes("x") && enabled().includes("twitter") ? "twitter" : p.id;
+        return enabled().includes(provider)
+          ? `<button type="button" class="act" data-link="${esc(provider)}">Link ${esc(p.label)}</button>`
+          : `<span class="account-hint">${esc(p.label)} sign-in is not available on this service yet. <a href="/?feedback">Ask for this connection</a>.</span>`;
+      });
     return `<ul class="account-identities">${rows.join("") || '<li class="account-hint">No sign-in methods were returned. Reload to try again.</li>'}</ul>${
       offers.length ? `<div class="account-actions">${offers.join("")}</div>` : ""
-    }<p class="account-hint">Linking adds another way into the same profile. It never merges two profiles. Repository connection for Cursor is a separate planned feature, not a login.</p>`;
+    }<p class="account-hint">Linking adds another way into the same profile. It never merges two profiles. Origin repository access is separate from sign-in and is shown below.</p>`;
   }
 
   function panelHtml(profile, ids, recovered, pend, user) {
     const p = present(profile);
     return `<div class="account" id="account-body">${recoveryHtml(recovered, pend, user)}
       <section class="card pad account-section"><h1>Settings</h1>
-        <p class="account-lead">Your STRIVE username is <a id="account-lead-handle" href="${esc(p.url)}">@${esc(p.handle)}</a>. GitHub is a separate linked account. X sign-in is unavailable.</p>
+        <p class="account-lead">Your STRIVE username is <a id="account-lead-handle" href="${esc(p.url)}">@${esc(p.handle)}</a>. Manage GitHub and X below as linked accounts; they do not change your STRIVE username.</p>
         <form id="account-profile" class="account-form" novalidate>
           <label for="account-name">Name</label>
           <input id="account-name" name="display_name" autocomplete="nickname" maxlength="60" value="${esc(profile.display_name || profile.name || "")}">
@@ -110,7 +112,7 @@ window.GrinderAccount = function ({
           <p id="account-profile-state" class="account-state" role="status" aria-live="polite"></p>
           <div class="account-actions"><button type="submit" id="account-save">Save</button></div>
         </form></section>
-      <section class="card pad account-section" aria-labelledby="account-methods-title"><h2 id="account-methods-title">Sign-in methods</h2>
+      <section class="card pad account-section" aria-labelledby="account-methods-title"><h2 id="account-methods-title">Linked accounts</h2>
         <div id="account-identities">${identitiesHtml(ids)}</div>
         <p id="account-identities-state" class="account-state" role="status" aria-live="polite"></p></section>
       ${origin ? origin.html({ signedIn: true }) : ""}
@@ -138,6 +140,10 @@ window.GrinderAccount = function ({
   async function view() {
     const root = mount();
     if (!root) return;
+    const profileId=typeof me==='function'?me()?.id:null;
+    const generation=typeof authGeneration==='function'?authGeneration():null;
+    const isCurrent=()=>profileId===(typeof me==='function'?me()?.id:null)
+      && generation===(typeof authGeneration==='function'?authGeneration():null);
     if (typeof frame === "function") frame(null, null);
     if (!auth) {
       root.innerHTML = '<section class="account card pad"><h1>Settings</h1><p>Settings are unavailable. Reload the page.</p></section>';
@@ -150,11 +156,13 @@ window.GrinderAccount = function ({
     const deleted = takeDeleted();
     let current;
     try { current = await auth.current(); }
-    catch (e) { root.innerHTML = signedOutHtml(recovered, pend, deleted); say(e.detail?.message || "Sign-in could not be restored. Try again.", true); wireSignedOut(); return; }
+    catch (e) { if(!isCurrent())return;root.innerHTML = signedOutHtml(recovered, pend, deleted); say(e.detail?.message || "Sign-in could not be restored. Try again.", true); wireSignedOut(); return; }
+    if(!isCurrent())return;
     if (!current.user) { root.innerHTML = signedOutHtml(recovered, pend, deleted); wireSignedOut(); return; }
     // The stored session is a snapshot; the linked-method list is read from Auth each time.
     let ids = current.identities || [];
     try { ids = await auth.identities(); } catch (_) {}
+    if(!isCurrent())return;
     // A later successful sign-in or link makes an old failure notice wrong. Drop it.
     if (settled(recovered, current.user, ids)) { dropRecovered(); recovered = null; }
     if (!current.profile) { root.innerHTML = onboardingHtml(recovered, pend, current.user); wireCommon(); return; }
@@ -162,8 +170,9 @@ window.GrinderAccount = function ({
     // A GitHub or X identity on the Auth user fills the matching profile column once, if empty.
     const wantsSync = ids.some((i) => (i.provider === "github" && !profile.github_handle) || ((i.provider === "x" || i.provider === "twitter") && !profile.x_handle));
     if (wantsSync) {
-      try { profile = (await (auth.syncProviderHandles || auth.syncGithubHandle)()) || profile; if (typeof onProfileChange === "function") onProfileChange(profile); } catch (_) {}
+      try { profile = (await (auth.syncProviderHandles || auth.syncGithubHandle)()) || profile; if(!isCurrent())return;if (typeof onProfileChange === "function") onProfileChange(profile); } catch (_) {}
     }
+    if(!isCurrent())return;
     root.innerHTML = panelHtml(profile, ids, recovered, pend, current.user);
     wireCommon();
     wirePanel(profile);
