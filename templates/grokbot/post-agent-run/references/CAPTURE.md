@@ -10,6 +10,46 @@ For “capture this session,” use the current environment's supported `ReadTra
 
 If this environment provides `ReadTranscript`, its no-ID call reads this conversation. Do not assume a session file already exists. Freeze the upper bound immediately before the capture request, using the tool's stable message positions. Read only that bounded requested sitting, not the entire account history. The observed interface returns newest-first pages, accepts `before=position` and at most 200 records per page, and its total grows as reads occur. Do not chase the growing total or include the capture conversation in its own result.
 
+### Choose the transport from actual capabilities
+
+Use projection when the tool returns an actual agent ID and page envelopes but no conversation identity. The `session_id` input selects another conversation; it is not a returned session identity. Use native only when the actual session ID, exact records and stable positions are available. Never relabel an agent ID or invent identity. Inspect actual responses before claiming body redaction. Without either supported shape, request an explicitly selected compatible export or report the exact access gap.
+
+One-time capture uses the extracted helpers directly. No pip install, CLI installation or skill write is required. Optional companion persistence is documented at https://striverun.app/capture/grok/INSTALL.md.
+
+## Observable redacted projection
+
+Use `--format projection` when ReadTranscript preserves visible role and block envelopes but shortens text/input/result bodies and supplies no session ID. This captures the API's observable projection, not the stored raw transcript. It counts only observed tool-use envelopes. Hidden activity completeness is not certified, so the recorded count is a lower bound, even when every visible page is accounted for.
+
+Write one JSONL object per actual returned page. Copy the inclusive range, reported total and actual record order from the response. Example shape only:
+
+```json
+{"start_position":0,"end_position":2,"total":195,"order":"oldest-first","records":[{"role":"user","blocks":[{"type":"text"}]},{"role":"assistant","blocks":[{"type":"tool_use","id":"actual-tool-id","name":"actual-tool-name"}]},{"role":"tool","blocks":[{"type":"tool_result","tool_use_id":"actual-tool-id"}]}]}
+```
+
+Omit all bodies, including text, input and result. Preserve every observable block boundary and its actual tool ID/name. A result name is optional. Do not summarize several blocks into one, invent IDs or discard a visible block. The helper permits only these envelope fields. If an unsupported block is visible, report its type instead of silently omitting it.
+
+The number of records must equal the inclusive page range. Only then may the helper derive positions from the documented page sequence. `order` must reflect the actual response ordering, not an assumption. If a page says one range but its body exposes fewer records, retry a smaller bounded page; do not derive indices from a truncated list. Identical overlap is allowed; conflicting overlap or missing frozen positions fails. Page totals may grow but do not expand the selected window to chase them. Boundary pages can extend outside the window; the helper validates their whole range/count before selecting the frozen positions.
+
+Bounds JSON must contain exactly:
+
+```json
+{"agent_id":"actual-agent-id","conversation":"current","start_position":0,"end_position":131,"source":"ReadTranscript","content":"redacted projection","completeness":"not certified"}
+```
+
+Use the actual agent ID and frozen positions, not these example values. The source hash binds that context and the selected observable records. With no session identity available, it does not certify uniqueness across distinct conversations on the same agent. Inspect the prior run before retrying and do not claim a complete stored-session identity.
+
+```sh
+python3 /absolute/path/to/post-agent-run/scripts/preview.py \
+  /exact/path/to/observable-pages.jsonl --format projection \
+  --bounds /exact/path/to/frozen-bounds.json --handoff /tmp/strive-preview-url.txt
+```
+
+The preview says “Observed bot activity” and records `trace_basis: "observed native events; timestamps unavailable"`. Cards and share images label the counts as observed minimums; the tool-call leaderboard excludes them. The private receipt states the source context, page headers and uncertainty. Human prompts, start, duration, workers and commits remain absent. No raw text is read by this mode or uploaded. A source with no observed tool requests cannot produce a supported trace.
+
+For an authorized private save, use the same source, bounds and `--format projection` with `scripts/upload.py --dry-run`, inspect the payload, then remove `--dry-run` only within the owner's authorization. Editable titles and descriptions cannot remove the persisted observation basis. This mode requires a deployment that admits that basis; a rejection is a compatibility failure, not permission to relabel it as a complete capture.
+
+## Native records: actual session identity required
+
 Preserve the observable records returned by the API exactly in a private local JSONL file, then order them chronologically using their original stable positions. Keep user, assistant and tool records and their original content blocks. If the tool exposes text rather than a downloadable file, write the returned records as data; there is no assumed shell pipe or export endpoint. Deduplicate by original record identity/position, verify boundaries, sequence and role counts, and keep a local capture receipt. Do not echo the transcript in chat or upload it.
 
 Do not invent timestamps or wrap plain user text in fabricated `<timestamp>` or `<user_query>` tags. Use native mode for the exact observed role/message/content shape. Keep one private JSONL row per returned position:
@@ -20,7 +60,7 @@ Do not invent timestamps or wrap plain user text in fabricated `<timestamp>` or 
 
 The API may return a redacted projection rather than the stored raw transcript. Do not claim to have recovered hidden text. Redaction of a tool input/result body is different from omission of a tool-use envelope: counts require complete roles, positions and tool-use block boundaries, not private prose. If block presence itself is hidden, no complete tool-request count is available. Do not request unredacted private bodies merely to measure activity.
 
-The strict native helper requires actual session identity and exact native records. For the observed ReadTranscript interface that exposes only an agent ID and page headers, use the **observable projection mode** below. Never relabel an agent ID as a session ID.
+The strict native helper requires actual session identity and exact native records. For the observed ReadTranscript interface that exposes only an agent ID and page headers, use the **observable projection mode** above. Never relabel an agent ID as a session ID.
 
 
 `record` must be the unchanged returned object. `position` is its actual stable tool position, never a newly assigned sequence number. The example above illustrates transport only. A separate private bounds JSON contains `session_id` (actual conversation identity), `start_position` and `end_position` (inclusive integers). Freeze both bounds before the capture request. The helper sorts positions, deduplicates identical page overlap, and rejects missing positions, conflicting duplicates, malformed JSON and unsupported block types. If the tool uses sparse/unstable positions or hides records, stop and report that actual gap; do not fill it with invented rows.
@@ -31,7 +71,7 @@ The older tagged export mode remains available as the default: top-level role/me
 
 ## Prepare privately
 
-After installation or update, run:
+After extracting the verified same-release kit, run:
 
 ```sh
 python3 /absolute/path/to/post-agent-run/scripts/test_contract.py
@@ -67,39 +107,7 @@ python3 /absolute/path/to/post-agent-run/scripts/upload.py \
 
 Then run without `--dry-run` within that authorization. Optional `--title` and `--caption` accept reviewed text. Never print or persist the token. The helper refuses labelled samples and follows no redirect with the token. Repeating the same new-kit capture returns its existing run instead of duplicating it. Report the stored audience, including if an existing run's audience was changed by its owner later.
 
-Without private-upload authorization or a token, show the preview and stop before **Save run**. Images use the saved run's Add photos flow, not this uploader. After an authorized save, verify the actual run, description and audience after reload. Do not change audience, post publicly, send a message, follow or reply without the applicable authorization. Distinguish installed, previewed, saved, image attached and shared.
-
-## Observable redacted projection
-
-Use `--format projection` when ReadTranscript preserves visible role and block envelopes but shortens text/input/result bodies and supplies no session ID. This captures the API's observable projection, not the stored raw transcript. It counts only observed tool-use envelopes. Hidden activity completeness is not certified, so the recorded count is a lower bound, even when every visible page is accounted for.
-
-Write one JSONL object per actual returned page. Copy the inclusive range, reported total and actual record order from the response. Example shape only:
-
-```json
-{"start_position":0,"end_position":2,"total":195,"order":"oldest-first","records":[{"role":"user","blocks":[{"type":"text"}]},{"role":"assistant","blocks":[{"type":"tool_use","id":"actual-tool-id","name":"actual-tool-name"}]},{"role":"tool","blocks":[{"type":"tool_result","tool_use_id":"actual-tool-id"}]}]}
-```
-
-Omit all bodies, including text, input and result. Preserve every observable block boundary and its actual tool ID/name. A result name is optional. Do not summarize several blocks into one, invent IDs or discard a visible block. The helper permits only these envelope fields. If an unsupported block is visible, report its type instead of silently omitting it.
-
-The number of records must equal the inclusive page range. Only then may the helper derive positions from the documented page sequence. `order` must reflect the actual response ordering, not an assumption. If a page says one range but its body exposes fewer records, retry a smaller bounded page; do not derive indices from a truncated list. Identical overlap is allowed; conflicting overlap or missing frozen positions fails. Page totals may grow but do not expand the selected window to chase them. Boundary pages can extend outside the window; the helper validates their whole range/count before selecting the frozen positions.
-
-Bounds JSON must contain exactly:
-
-```json
-{"agent_id":"actual-agent-id","conversation":"current","start_position":0,"end_position":131,"source":"ReadTranscript","content":"redacted projection","completeness":"not certified"}
-```
-
-Use the actual agent ID and frozen positions, not these example values. The source hash binds that context and the selected observable records. With no session identity available, it does not certify uniqueness across distinct conversations on the same agent. Inspect the prior run before retrying and do not claim a complete stored-session identity.
-
-```sh
-python3 /absolute/path/to/post-agent-run/scripts/preview.py \
-  /exact/path/to/observable-pages.jsonl --format projection \
-  --bounds /exact/path/to/frozen-bounds.json --handoff /tmp/strive-preview-url.txt
-```
-
-The preview says “Observed bot activity” and records `trace_basis: "observed native events; timestamps unavailable"`. Cards and share images label the counts as observed minimums; the tool-call leaderboard excludes them. The private receipt states the source context, page headers and uncertainty. Human prompts, start, duration, workers and commits remain absent. No raw text is read by this mode or uploaded. A source with no observed tool requests cannot produce a supported trace.
-
-For an authorized private save, use the same source, bounds and `--format projection` with `scripts/upload.py --dry-run`, inspect the payload, then remove `--dry-run` only within the owner's authorization. Editable titles and descriptions cannot remove the persisted observation basis. This mode requires a deployment that admits that basis; a rejection is a compatibility failure, not permission to relabel it as a complete capture.
+Without a token, offer the preview for the owner's signed-in website save flow. Without save authorization, stop before **Save run**. A token is not required for an authorized browser save. Images use the saved run's Add photos flow, not this uploader. After an authorized save, verify the actual run, description and audience after reload. Do not change audience, post publicly, send a message, follow or reply without the applicable authorization. Distinguish installed, previewed, saved, image attached and shared.
 
 ## Explicit incomplete observation
 

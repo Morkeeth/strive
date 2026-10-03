@@ -1,11 +1,23 @@
-# One STRIVE companion
+# Use the STRIVE companion once, or keep it
 
-The canonical skill is [strive-companion](post-agent-run/SKILL.md), served at https://striverun.app/capture/grok/SKILL.md. It records real runs, discusses results and improvements, helps with photos and descriptions, collects product feedback, and supports owner-requested interactions with friends. Text only. The historical folder name `post-agent-run` remains for script compatibility; `manage-strive` is only an alias, not a second job or bot.
+The canonical [strive-companion](https://striverun.app/capture/grok/SKILL.md) records real runs, discusses results, helps with photos and descriptions, gathers approved feedback and supports owner-requested interactions with friends. Use text, not voice.
 
-Read https://striverun.app/agents.md for the exact same-release source archive and SHA-256. Verify the archive, then update the existing companion's complete `post-agent-run` directory, including `references`, `scripts` and `samples`. Its skill name is `strive-companion`. Remove duplicate legacy skill registrations after preserving any owner-authored instructions. Never place transcripts or credentials in the installed skill folder.
+## One-time use: no installation
 
-Run `scripts/test_contract.py`, `scripts/test_native.py`, `scripts/test_projection.py` and `scripts/smoke_test.py` with Python 3 from that directory. These are local synthetic checks, not evidence of a real saved run. Capture helpers need no third-party Python packages.
+Read https://striverun.app/agents.md and its linked SKILL.md. Download the exact same-release archive, verify its stated SHA-256, inspect it and extract it to a separate local folder. Keep `templates/grokbot/post-agent-run/` complete, including references, scripts and samples. Python 3 helpers need no third-party packages, pip install, CLI installation or skill write.
 
-Ask the companion to record its own current session. It should acquire bounded exact records through supported `ReadTranscript`, prepare the private preview and preserve the full link locally. Read `references/CAPTURE.md` for source bounds and unknown measurements. Only when native access is absent should it ask for an explicit export. The sample cannot be saved.
+Read `references/CAPTURE.md` before collecting source. Choose projection for the observed agent-ID/page-envelope interface; choose native only with an actual session identity and exact records. Use supported own-conversation access first, an explicitly selected export if that access is absent. Never invent identity or source. Run `scripts/preview.py` with the actual mode, source and frozen bounds. Preview stays local and needs no token. Samples cannot be saved.
 
-Private save requires authorization and either the owner's signed-in website or a Connect upload token stored in the supported secret field. Description, photos, friends, replies and feedback use the actual signed-in website controls. No management API or browser capability is supplied by installing this kit. Check the real saved run after reload, then add selected photos and deliberately choose its audience. Installation, preview, private save and public sharing are separate outcomes.
+The bundled contract, native, projection and smoke tests exercise synthetic data locally, not a real saved run.
+
+## Optional reusable companion
+
+Only if the owner wants persistence, use the client's supported skill-save action, if actually available. Read the canonical SKILL.md frontmatter for its name (`strive-companion`) and description. The reviewed Grok client invokes saved skills through `/` or `@`; no separate import button or installation API has been established. If your client lacks skill saving, continue one-time use and state that limit.
+
+Keep one existing companion. Preserve owner-authored instructions when updating it; do not automatically delete other skills. The historical `post-agent-run` directory is retained for helper compatibility, and `manage-strive` is an alias. Saving instructions does not supply Python files: obtain the verified complete kit when needed. Never store transcripts or credentials in the skill folder.
+
+## Preview, save and share are separate
+
+A token is optional. An authorized owner can open the preview and save through their signed-in website. Separately authorized private agent upload uses a Connect token in the supported secret environment and the bundled upload helper. Installing or saving a skill grants neither browser access nor account authorization.
+
+Descriptions, photos, friends, replies and feedback use actual signed-in website controls. Check the saved run and audience after reload. Public sharing requires the owner's deliberate choice. No guessed management API is supplied by this kit.

@@ -9,9 +9,15 @@ STRIVE is at https://striverun.app. Help the owner record real work, understand 
 
 Start from the owner's request. For “record this run,” acquire this bot's own current conversation directly using its supported `ReadTranscript` tool. A manual export is the fallback when that capability is unavailable, not the default job handed back to the owner. Read [Own-session capture](references/CAPTURE.md) before collecting records. It defines frozen source bounds, strict native transport, the observed redacted projection mode, local preview and private upload. When only observable page envelopes and an agent ID exist, projection mode records minimum observed activity without inventing a session ID. Strict capture refuses gaps; an explicit projection-only partial mode can record an incomplete observation with missing positions disclosed and no invented activity. Never substitute a summary, unrelated file or sample.
 
+## Choose the source capability first
+
+An actual agent ID and ReadTranscript page envelopes without a returned session identity use projection mode. An actual session ID with exact native records and stable positions uses native mode. The tool's session_id input is a selector, not evidence of a returned identity. Inspect actual responses before claiming redaction. Never invent identity to satisfy a parser. Read the reference for the selected transport before collecting source.
+
 ## Get the capture tools
 
 A shared bot template contains these instructions, not the Python files. Before recording, open https://striverun.app/agents.md and https://striverun.app/capture/release.json. Use the same-release package URL and SHA-256 they give. Download that package to a separate local folder, verify its SHA-256, inspect it, and keep the complete `templates/grokbot/post-agent-run/` directory together. Use its real local path for the commands below. Never run a missing script by guessing a path or substitute an older installed kit. If the site does not serve this release or the hash differs, report that compatibility gap and keep the source local.
+
+One-time use needs no pip install, CLI installation or skill write. Run the extracted standalone Python 3 helper directly. Optional reusable companion persistence is documented at https://striverun.app/capture/grok/INSTALL.md; use only an actually supported skill-save action.
 
 Recording and a local preview need no account token. Offer the useful job first. A Connect token is optional for separately authorized private uploads; the owner can instead open the preview and save in their signed-in browser. Do not ask for a token or name as a prerequisite to showing what the companion does.
 
@@ -19,7 +25,7 @@ Recording and a local preview need no account token. Offer the useful job first.
 
 | Job | Available surface | Boundary |
 | --- | --- | --- |
-| Record this conversation | Native ReadTranscript plus bundled `scripts/preview.py` | A bounded local capture and private preview, no automatic save |
+| Record this conversation | Supported ReadTranscript projection or native records plus bundled `scripts/preview.py` | A bounded local capture and private preview, no automatic save |
 | Save a captured run privately | `scripts/upload.py` to https://striverun.app/api/agent/runs with a Connect token, or Save run in the signed-in website | Token scope is private upload only; no invented edit or comment API |
 | Read and discuss runs | Owner-provided run or permitted visible run at https://striverun.app | Private access requires the owner's authenticated browser and access rights |
 | Add a description, photo, project or output link | My runs and the saved run's edit/photo controls | Signed-in website; verify ownership and saved result after reload |

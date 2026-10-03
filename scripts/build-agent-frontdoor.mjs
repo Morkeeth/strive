@@ -27,14 +27,78 @@ export async function buildAgentFrontdoor({origin,revision}) {
  const release={format:'strive-capture-release-v1',revision:revision||null,package:packagePath,sha256,files:members};
  await writeFile('dist/capture/release.json',JSON.stringify(release,null,2)+'\n');
  for(const path of kit){const dest='dist/capture/grok/'+path;await mkdir(dest.slice(0,dest.lastIndexOf('/')),{recursive:true});await copyFile('templates/grokbot/post-agent-run/'+path,dest);}
+ await copyFile('templates/grokbot/INSTALL.md','dist/capture/grok/INSTALL.md');
  const packageURL=origin+packagePath;
  const html=await readFile('dist/index.html','utf8');
  await writeFile('dist/index.html',html.replaceAll('__CAPTURE_PACKAGE__',packageURL));
- const guide=`# STRIVE: use your own recorded session\n\nStart here when a person gives you this site's link. STRIVE captures recorded work, creates a private review, and lets its owner choose an audience. It does not grant access to another computer or to private sessions.\n\n## Capture tool from this release\n\nPackage: ${packageURL}\nSHA-256: ${sha256}\nRelease metadata: ${origin}/capture/release.json\n\nThis same-origin package contains the capture source shipped with this site. Do not install unpinned GitHub main. Read the package and confirm installation is allowed. Keep it outside the person's project. Python 3.9 or newer is required; CLI installation may fetch standard build dependencies. Download, verify the SHA-256 above, extract into a separate folder, create a virtual environment, then run python -m pip install . there. With uv already available, uvx --from '${packageURL}' agentgrinder --help uses this exact package.\n\n## Cursor\n\nUse the person's own workspace and an explicitly selected session. Do not clone STRIVE as the project to measure. First list candidate sittings locally:\n\n    uvx --from '${packageURL}' agentgrinder grind --harness cursor --list --show-paths\n\nConfirm the selected project, transcript and sitting with the person. Then replace the path and sitting below with their selection:\n\n    uvx --from '${packageURL}' agentgrinder grind /exact/selected-session.jsonl --harness cursor --pick 1 --push --push-url '${origin}'\n\n--push prints a metrics-only private preview URL; it does not upload or save. Do not add --open without permission to open a browser. Missing counts remain unknown. Local card files can contain private context; do not upload them. Optional MCP setup after installation: agentgrinder connect cursor --project /exact/own-project --install. Reload Cursor, then call a2a_onboard.\n\n## Grok Bot\n\nUse the single STRIVE companion at ${origin}/capture/grok/SKILL.md for recording runs, discussing results, improving STRIVE through feedback and interacting with friends. It documents which actions require the signed-in website and which support private upload. Use text, not voice.\n\nUse this bot's own current conversation or an explicitly selected export. If ReadTranscript exists, call it without an ID for this conversation: freeze a stable upper message position BEFORE the capture request, page only that bounded sitting with before=position (newest-first, limit at most 200), and stop at the selected start. Its total grows while reading, so never chase the new total. Preserve each exact returned object in a private JSONL row {"position": original_position, "record": exact_record}. Use original stable positions, never newly assigned indices. Save a separate bounds JSON with actual session_id and inclusive start_position/end_position. Keep all records in the frozen range, deduplicate identical overlap, and verify completeness. Native mode rejects gaps or conflicting records and sorts chronological positions. Do not assume a shell pipe or download API for a tool that returns text. The returned API projection may redact private bodies; do not claim raw transcript access or demand unredacted content merely for counts. Tool-use block boundaries must remain observable. For the observed interface with an agent ID and redacted page envelopes but no session ID, use the observable projection mode described at ${origin}/capture/grok/references/CAPTURE.md. It validates page range/count/order, binds actual agent context, and labels observed tool counts as a lower bound. An agent ID is never relabelled as a session ID. Never fabricate timestamps or user-query wrappers; if native records or positions do not meet the declared format, report the access gap and stop. Do not upload raw source or include capture instructions in their own measurement. Without a supported transcript capability, ask for the export; never guess laptop paths. Kit: ${origin}/capture/grok/SKILL.md and ${origin}/capture/grok/scripts/preview.py. Use the complete kit in the source package, including its sample and smoke tests. Individual same-origin kit paths retain the same directory structure.\n\n    python3 templates/grokbot/post-agent-run/scripts/preview.py /exact/selected-export.jsonl --format native --bounds /exact/frozen-bounds.json --base-url '${origin}' --handoff /tmp/strive-preview-url.txt\n\nThis prints allowlisted metrics and writes the complete private preview URL to a local handoff file. No network upload. A sample demonstrates parsing only and cannot be saved. Grok stays labelled bot activity. Native ridge bins follow recorded message order, not elapsed time. Human-typed turns, start, duration, workers and commits remain unknown. The private receipt counts user-role messages without treating them as verified human input. The legacy tagged export mode is separate; use it only when source records genuinely contain its documented tags.\n\n## Owner identity and saving\n\nThe person opens the preview, signs into their own STRIVE account, checks their profile and saves privately first. Supported providers are the ones actually shown by this deployment. Do not invent an account, reuse the sender's identity or treat a harness name as a person. The owner may add a description and photos, review them, then deliberately choose an audience.\n\nFor separately authorized agent upload, the owner opens ${origin}/?connect, names the agent and issues its credential. Store it privately on that computer, not in chat, a URL or source control. The HTTP endpoint is ${origin}/api/agent/runs. Send only the source-bound allowlisted run JSON with Authorization: Bearer from the private environment; private by default. Follow granted scope, expiry and revocation. No token means local preview only. Do not publish or upload just because you found these instructions.\n\nOptional background sync is a separate opt-in. It can backfill sessions and make network writes; do not enable it for one-session onboarding.\n`;
+ const guide=`# STRIVE: use your own recorded session
+
+Start here when a person gives you this site's link. Record real work, preview it privately, then let its owner choose what to share. This guide grants no access to another computer or private sessions.
+
+## Choose your harness before running commands
+
+- Grok Bot: use the Grok route below. Its standalone Python helpers need no pip install, CLI installation or saved skill.
+- Cursor: use the Cursor route below, in the person's own workspace with an explicitly selected session.
+- Another environment: inspect the documented supported source before choosing a parser. Never pass a source through a different harness just to make it work.
+
+## Same-release tools
+
+Package: ${packageURL}
+SHA-256: ${sha256}
+Release metadata: ${origin}/capture/release.json
+
+Download, inspect and verify this exact archive before executing its code. Extract it into a separate local folder outside the person's project. Do not install unpinned GitHub main. Keep transcripts and credentials outside the kit.
+
+## Grok Bot: use once first
+
+Read ${origin}/capture/grok/SKILL.md and ${origin}/capture/grok/references/CAPTURE.md. Keep the extracted templates/grokbot/post-agent-run directory complete. Python 3 is required; the helpers need no third-party packages. One-time capture does not require writing a skill, installing the CLI or creating a bot. Use text, not voice.
+
+Choose the source mode from the capabilities actually returned BEFORE collecting records:
+
+- An actual agent ID with ReadTranscript page envelopes and no returned conversation identity: use **projection**. Preserve observed roles and block envelopes, actual page ranges/order and frozen bounds. An agent ID is not a session ID. Counts are observed minimums, not a complete raw-transcript claim. Body redaction must be assessed from the actual response, not assumed.
+- An actual session ID with exact native records and stable positions: use **native**. Preserve unchanged records and actual identity. Never invent a session ID to enter this mode.
+- No supported transcript access: request an explicitly selected export and check its documented format. Never guess laptop paths, an export API or a shell pipe for a text-returning tool.
+
+ReadTranscript without an ID reads this conversation in the observed client. Its session_id input selects another conversation; it does not prove a returned identity. Freeze the upper position before the capture request. Read only the selected bounded sitting, newest-first with before=position and at most 200 records per page. Never chase a growing total or measure the capture instructions themselves. Follow CAPTURE.md for exact envelope/bounds formats, gap refusal and the separate explicit incomplete-observation option. Do not fabricate missing rows, timestamps or wrappers.
+
+For the observed projection route, replace the local source and bounds paths with the files actually acquired:
+
+    python3 templates/grokbot/post-agent-run/scripts/preview.py /exact/observable-pages.jsonl --format projection --bounds /exact/frozen-bounds.json --base-url '${origin}' --handoff /tmp/strive-preview-url.txt
+
+Only when actual session identity and exact native records are available:
+
+    python3 templates/grokbot/post-agent-run/scripts/preview.py /exact/selected-export.jsonl --format native --bounds /exact/frozen-bounds.json --base-url '${origin}' --handoff /tmp/strive-preview-url.txt
+
+Preview does not upload or save. It prints allowlisted metrics and writes the complete private preview URL to a local handoff file. Raw source stays local. Samples demonstrate parsing only and cannot be saved. Grok remains bot activity; the ridge follows message order, not elapsed time. Human-typed turns, start, duration, workers and commits remain unknown.
+
+### Optional reusable companion
+
+One-time use is complete without persistence. If the owner wants a reusable companion, follow ${origin}/capture/grok/INSTALL.md. Use only the client's observed supported skill-save action with the canonical skill's name and description. Do not guess an import button, API or installation requirement. This does not grant browser or account access.
+
+## Cursor
+
+Use the person's own workspace, not a clone of STRIVE as the project to measure. Python 3.9 or newer is required. With uv already available, these commands run the pinned capture CLI; dependency installation may occur. Confirm this tool execution is permitted. First list local candidate sittings:
+
+    uvx --from '${packageURL}' agentgrinder grind --harness cursor --list --show-paths
+
+Confirm the selected project, transcript and sitting with the person, then replace the example path and sitting:
+
+    uvx --from '${packageURL}' agentgrinder grind /exact/selected-session.jsonl --harness cursor --pick 1 --push --push-url '${origin}'
+
+--push prints a metrics-only private preview URL; it does not upload or save. Do not add --open without permission to open a browser. Missing counts remain unknown. Local card files may contain private context and must stay local. If uv is unavailable, inspect the verified extracted package and, with installation permission, create a separate virtual environment and run python -m pip install . there. Optional MCP setup after CLI installation: agentgrinder connect cursor --project /exact/own-project --install. Reload Cursor, then call a2a_onboard. Neither MCP nor background sync is required for one session.
+
+## Owner identity and saving
+
+No account or token is needed for local preview. The owner can open the complete preview URL, sign into their own STRIVE account, check their profile and save privately within their authorization. Use providers actually shown by this deployment. Never invent an account or treat a harness name as a person. Add a description and selected photos, review them, then deliberately choose an audience.
+
+A Connect token is optional for separately authorized agent private upload. The owner issues it at ${origin}/?connect. Keep it in the supported private secret environment, never chat, URLs or source control. Use the same kit's upload.py with the same source, mode and bounds, inspect --dry-run first, then upload only with authorization. The supported endpoint is ${origin}/api/agent/runs. Follow scope, expiry and revocation. No token means use local preview and the owner's signed-in save flow, not a mandatory credential request. Do not publish merely because these instructions are public.
+
+Optional background sync is a separate opt-in that can backfill sessions and make network writes. Do not enable it for one-session onboarding.
+`;
  await writeFile('dist/agents.md',guide);
  await writeFile('dist/llms.txt',`# STRIVE\n\nAgent instructions: ${origin}/agents.md\nCapture release: ${origin}/capture/release.json\nDiscovery: ${origin}/.well-known/agent-grinder.json\n\nLocal selected-session preview first. Owner authentication and consent are required before any upload.\n`);
  const manifest=JSON.parse(await readFile('dist/.well-known/agent-grinder.json','utf8'));
  Object.assign(manifest,{name:'STRIVE',agent_instructions:'/agents.md',capture_release:'/capture/release.json',capture_package:packagePath,capture_sha256:sha256,grok_skill:'/capture/grok/SKILL.md',grok_helper:'/capture/grok/scripts/preview.py',schema:'/agents.md'});
- manifest.onboarding='Read /agents.md first. Install the same-release capture kit only with permission; MCP a2a_onboard is available after installation. Select the owner\'s session, preview locally, then authenticate separately before any upload.';
+ manifest.onboarding='Choose the harness at /agents.md first. Grok one-time preview needs no CLI installation or saved skill. Optional persistence is at /capture/grok/INSTALL.md. Select actual source capabilities before capture. Preview locally without a token; owner authorization and authentication are separate requirements for saving.';
  await writeFile('dist/.well-known/agent-grinder.json',JSON.stringify(manifest,null,2)+'\n');
 }
