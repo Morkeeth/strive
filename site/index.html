@@ -1726,11 +1726,10 @@ function playStrip(){
     if(st) st.textContent = i===steps.length-1 ? x.querySelector('.o').textContent : x.querySelector('.n').textContent; },320+i*520));
 }
 function landingHTML(){
-  // THE SIGNED-OUT HOME (Oscar, 25 Sep 23:1x): what is going on first (this week, clubs, events),
-  // then builders to find, then the most popular runs, then sign in. site/home.js draws the rows;
-  // every one is real, and an empty section says so in one line.
+  // Explain one real session and offer capture before the community and public runs.
+  // Keep the approved personality and source-backed community rows.
   return `<div class="home">
-    <section class="home-hero"><h1>Strava is for people who ran. <i>__BRAND__</i> is for people who didn't.</h1></section>
+    <section class="home-hero"><h1>Strava is for people who ran. <i>__BRAND__</i> is for people who didn't.</h1><p class="home-explanation">A run is one real session with your coding agent. See its activity map, add your story and a photo, and follow what your friends are building.</p><a class="act blue home-first-run" href="/?connect">Bring one session</a><p class="home-private">Preview it first. Save it privately. Share when you choose.</p></section>
     <section class="home-sec" id="home-week-section" aria-labelledby="h-week"><div class="land-head"><h2 id="h-week">This week</h2></div><div id="home-week">${'<div class="wk-skel"></div>'}</div><div id="home-events"></div></section>
     <section class="home-sec" id="home-clubs-section" aria-labelledby="h-clubs"><div class="land-head"><h2 id="h-clubs">Clubs</h2></div><div id="home-clubs"></div></section>
     <section class="home-sec" aria-labelledby="h-builders"><div class="land-head"><h2 id="h-builders">Builders to follow</h2><a href="/?people">Find people</a></div><div id="home-builders"></div></section>
