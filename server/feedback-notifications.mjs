@@ -35,7 +35,11 @@ export async function deliverFeedback(config,fetchImpl=fetch,{profileId=null}={}
    body:JSON.stringify(body),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(5000)});
   if(!r.ok)throw new Error('Feedback '+name+' request failed.');return r.json();
  };
- const rows=await rpc('feedback_notification_claim',{p_limit:profileId?1:10,p_profile_id:profileId});
+ // Claim + four (ping, acknowledgement) pairs have at most 45s of network waits.
+ // The Vercel function has a 60s cap. The immediate owner wake claims only one.
+ const limit=profileId?1:4;
+ const rows=await rpc('feedback_notification_claim',{p_limit:limit,p_profile_id:profileId});
+ if(!Array.isArray(rows)||rows.length>limit)throw new Error('Invalid feedback recovery batch.');
  let delivered=0,retry=0;
  for(const row of rows){
   if(!UUID.test(row.feedback_id)||!UUID.test(row.lease_token)||!['bug','idea','other'].includes(row.category))throw new Error('Invalid private notification record.');

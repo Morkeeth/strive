@@ -2,7 +2,16 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
   "outputDirectory": "dist",
-  "crons": [{"path":"/api/photo-cleanup","schedule":"0 3 * * *"}],
+  "crons": [
+    {
+      "path": "/api/photo-cleanup",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/feedback-notifications",
+      "schedule": "0 4 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/proof/:id",
@@ -56,5 +65,10 @@
         }
       ]
     }
-  ]
+  ],
+  "functions": {
+    "api/feedback-notifications.js": {
+      "maxDuration": 60
+    }
+  }
 }

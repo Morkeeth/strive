@@ -24,7 +24,8 @@ try{
  calls=[];await handler({method:'POST',headers:{authorization:'Bearer bad-session'}},res);assert.equal(status,401);assert.equal(calls.length,1);
  calls=[];await handler({method:'POST',headers:{authorization:'Bearer good-session'},body:{destination:'https://evil.test',profile_id:'victim'}},res);assert.equal(status,200);
  const claim=calls.find(c=>c.url.endsWith('/feedback_notification_claim'));assert.deepEqual(JSON.parse(claim.opts.body),{p_limit:1,p_profile_id:owner});assert.equal(claim.opts.headers.Authorization,'Bearer test-service-only');assert.ok(!JSON.stringify(calls).includes('evil.test'));assert.deepEqual(body,{delivered:0,retry:0});
- calls=[];await handler({method:'GET',headers:{authorization:'Bearer test-cron'}},res);assert.equal(status,200);assert.deepEqual(JSON.parse(calls[0].opts.body),{p_limit:10,p_profile_id:null});
+ const savedSecret=process.env.CRON_SECRET;delete process.env.CRON_SECRET;calls=[];await handler({method:'GET',headers:{authorization:'Bearer test-cron'}},res);assert.equal(status,401);assert.equal(calls.length,0);process.env.CRON_SECRET=savedSecret;
+ calls=[];await handler({method:'GET',headers:{authorization:'Bearer test-cron'}},res);assert.equal(status,200);assert.deepEqual(JSON.parse(calls[0].opts.body),{p_limit:4,p_profile_id:null});
  delete process.env.STRIVE_FEEDBACK_WEBHOOK_URL;calls=[];await handler({method:'POST',headers:{authorization:'Bearer good-session'}},res);assert.equal(status,503);assert.equal(calls.length,1);assert.match(body.error,/stored feedback is unchanged/);assert.ok(!JSON.stringify(body).includes('test-service'));
 }finally{globalThis.fetch=prior;}
 console.log('PASS: cron auth, JWT-bound immediate wake, owner-only claim, body cannot set destination, missing setup preserves stored feedback');
