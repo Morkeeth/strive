@@ -182,7 +182,7 @@ const ridgeSeries=run=>{
  if(!Array.isArray(values)||values.length<40||values.length>60)return null;
  if(!values.every(v=>Number.isInteger(v)&&v>=0))return null;
  if(workers!=null&&(!Array.isArray(workers)||workers.length!==values.length||!workers.every(v=>Number.isSafeInteger(v)&&v>=0)))return null;
- return{values,label:'Agent ridge',filled:true};
+ return{values,label:run.trace_basis==='observed native events; timestamps unavailable'?'Observed message order':'Agent ridge',filled:true};
 };
 const series=run=>{
  const ridge=ridgeSeries(run);
@@ -364,7 +364,7 @@ export function card(run,opts={}){
     el('div',{style:{display:'flex',color:SOFT}},badge.detail)):null,
    map,
    drawing,
-   el('div',{style:{display:'flex',fontSize:15,color:SOFT,marginTop:'auto'}},'Counts describe activity, not result quality.')));
+   el('div',{style:{display:'flex',fontSize:15,color:SOFT,marginTop:'auto'}},run.trace_basis==='observed native events; timestamps unavailable'?'Missing records may be omitted; distinct requests are a lower bound.':'Counts describe activity, not result quality.')));
 }
 // THE HOME PAGE'S OWN CARD. Until now `/` carried no og: or twitter: tags at all, so a post that
 // sent a thousand people to the address showed them a bare link with no title, no description and

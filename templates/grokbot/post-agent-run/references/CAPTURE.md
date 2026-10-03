@@ -100,3 +100,22 @@ python3 /absolute/path/to/post-agent-run/scripts/preview.py \
 The preview says “Observed bot activity” and records `trace_basis: "observed native events; timestamps unavailable"`. Cards and share images label the counts as observed minimums; the tool-call leaderboard excludes them. The private receipt states the source context, page headers and uncertainty. Human prompts, start, duration, workers and commits remain absent. No raw text is read by this mode or uploaded. A source with no observed tool requests cannot produce a supported trace.
 
 For an authorized private save, use the same source, bounds and `--format projection` with `scripts/upload.py --dry-run`, inspect the payload, then remove `--dry-run` only within the owner's authorization. Editable titles and descriptions cannot remove the persisted observation basis. This mode requires a deployment that admits that basis; a rejection is a compatibility failure, not permission to relabel it as a complete capture.
+
+## Explicit incomplete observation
+
+Strict projection capture still refuses missing frozen positions and duplicate tool request IDs. If bounded retries cannot expose particular records, preserve that failure. With the owner's request to record the available observation, `--allow-missing-positions` is an explicit projection-only alternative:
+
+```sh
+python3 /absolute/path/to/post-agent-run/scripts/preview.py \
+  /exact/path/to/observable-pages.jsonl --format projection \
+  --bounds /exact/path/to/frozen-bounds.json --allow-missing-positions \
+  --handoff /tmp/strive-preview-url.txt
+```
+
+This option never accepts a page whose declared range and returned record count disagree. Save only complete, correctly ranged observable pages; absent source positions remain absent. It does not accept malformed envelopes, conflicting overlaps or fabricated rows. The local receipt lists original observed positions, missing positions and any exact duplicate request positions. No session ID is invented.
+
+Within this opt-in mode, the same tool ID and identical tool-name envelope seen again is counted once, at its first observed position. A conflicting reuse still fails. The count is **observed distinct tool requests (minimum)**. Duplicate records remain in the source hash. Missing positions also enter that hash, so a later fuller retrieval is a different capture and should be reviewed before saving another run.
+
+The ridge follows **observed message order**. It compacts out missing records; it never draws an absent source interval as zero activity. The persisted observation basis makes cards and share images disclose “Missing records may be omitted; distinct requests are a lower bound,” even if the title or caption is edited. It remains excluded from tool-call rankings. Timing, human turns, workers and commits remain unknown.
+
+For a separately authorized private save, pass the same explicit option to `scripts/upload.py`, first with `--dry-run`. Inspect the source scope and gap receipt before saving. This is an incomplete observation of the current bot conversation, not a full transcript export or a claim that all activity was observed.

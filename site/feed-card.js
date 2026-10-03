@@ -425,7 +425,7 @@
     <${tag} class="fc-title">${esc(titleOf(r))}</${tag}>
     ${r.caption || r.note ? `<p class="fc-cap">${esc(r.caption || r.note)}</p>` : ""}
     <div class="fc-numbers">${lead ? `<div class="fc-hero"><span class="fc-n num">${esc(lead.n)}</span><span class="fc-u">${esc(lead.unit)}</span></div>` : ""}${facts.length ? `<dl class="fc-stats">${facts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd class="num">${esc(v)}</dd></div>`).join("")}</dl>` : ""}</div>
-    ${r.trace_basis === "typed-by-author" ? '<p class="fc-source">Typed by the author. No capture.</p>' : ""}${badge(r)}${heroVisual(r)}${strideHtml}
+    ${observedProjection(r) ? '<p class="fc-source">Observed message order. Missing records may be omitted; distinct requests are a lower bound.</p>' : ""}${r.trace_basis === "typed-by-author" ? '<p class="fc-source">Typed by the author. No capture.</p>' : ""}${badge(r)}${heroVisual(r)}${strideHtml}
   `;
     return `<article class="card fc"${preview ? "" : ` id="card-${id}" data-run-id="${id}"`}>
   <header class="fc-top">${faceHtml}<div class="fc-who">${who}<small>${meta}</small></div>${shipped}</header>

@@ -42,8 +42,8 @@ def stored_result(result):
         return None
 
 
-def upload_payload(export, title=None, caption=None, format="tagged", bounds=None):
-    metrics = public_metrics(export, format=format, bounds=bounds)
+def upload_payload(export, title=None, caption=None, format="tagged", bounds=None, allow_missing_positions=False):
+    metrics = public_metrics(export, format=format, bounds=bounds, allow_missing_positions=allow_missing_positions)
     if metrics.get("is_sample"):
         raise ValueError("This is the bundled sample. Upload a real export only.")
     payload = {k: metrics[k] for k in UPLOAD_FIELDS if k in metrics}
@@ -68,7 +68,7 @@ def main():
     if not (url.scheme == "https" or (local and url.scheme == "http")) or url.path not in ("", "/") or url.query:
         parser.error("Use an HTTPS product origin, or HTTP localhost.")
     try:
-        payload = upload_payload(args.export, args.title, args.caption, args.format, read_bounds(args))
+        payload = upload_payload(args.export, args.title, args.caption, args.format, read_bounds(args), args.allow_missing_positions)
     except (OSError, ValueError) as error:
         print(json.dumps({"status": "not uploaded", "error": str(error)}))
         return 1

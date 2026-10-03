@@ -26,6 +26,30 @@ class ProjectionContract(unittest.TestCase):
   p=copy.deepcopy(self.page);p['start_position']=1;p['end_position']=3;variants.append(p)
   for p in variants:
    with self.assertRaises(ValueError):self.capture([p])
+ def test_partial_mode_is_explicit_and_gaps_are_not_zero_bins(self):
+  left=copy.deepcopy(self.page);left['end_position']=0;left['records']=left['records'][:1]
+  right=copy.deepcopy(self.page);right['start_position']=2;right['records']=[copy.deepcopy(self.page['records'][1])]
+  self.path.write_text('\n'.join(json.dumps(p) for p in [left,right]))
+  with self.assertRaises(ValueError):parse_projection(self.path,self.bounds)
+  m,r=parse_projection(self.path,self.bounds,allow_missing_positions=True)
+  self.assertEqual(r['missing_positions'],[1]);self.assertEqual(r['observed_positions'],[0,2])
+  self.assertEqual(r['ridge_basis_detail'],'observed message order; missing positions omitted, not zero activity')
+  self.assertEqual(m['ridge'][25],1) # second of two observed records, not third of three source positions
+  self.assertEqual(sum(m['ridge']),1)
+  complete,_=self.capture();self.assertNotEqual(m['measurement_revision'],complete['measurement_revision'])
+  from preview import public_metrics
+  with self.assertRaises(ValueError):public_metrics(self.path,format='native',bounds=self.bounds,allow_missing_positions=True)
+  p=upload_payload(self.path,format='projection',bounds=self.bounds,allow_missing_positions=True)
+  self.assertEqual(p['trace_basis'],m['trace_basis'])
+ def test_partial_deduplicates_exact_request_ids_but_rejects_conflicts(self):
+  page=copy.deepcopy(self.page);page['records'][2]={'role':'assistant','blocks':copy.deepcopy(page['records'][1]['blocks'])}
+  self.path.write_text(json.dumps(page))
+  with self.assertRaises(ValueError):parse_projection(self.path,self.bounds)
+  m,r=parse_projection(self.path,self.bounds,allow_missing_positions=True)
+  self.assertEqual(m['tool_calls'],1);self.assertEqual(r['duplicate_request_positions'],[{'first_position':1,'duplicate_position':2}])
+  page['records'][2]['blocks'][0]['name']='different'
+  self.path.write_text(json.dumps(page))
+  with self.assertRaises(ValueError):parse_projection(self.path,self.bounds,allow_missing_positions=True)
  def test_conflicting_overlap_and_duplicate_requests_refused(self):
   p=copy.deepcopy(self.page);p['records'][0]['role']='assistant'
   with self.assertRaises(ValueError):self.capture([self.page,p])

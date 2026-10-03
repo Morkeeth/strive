@@ -340,7 +340,7 @@
       .map((v) => `<line class="ridge-commit" x1="${x(v).toFixed(1)}" y1="${base}" x2="${x(v).toFixed(1)}" y2="${base - 10}"/>`)
       .join("");
     // Output chips stay off the plot unless a measured bin places them. output_url alone is not a timed landmark.
-    const basisLabel =
+    const basisLabel = observedProjection(snapshot) ? "observed message order" :
       snapshot.ridge_basis === "wall-time"
         ? "wall time"
         : snapshot.ridge_basis === "turn-order"
@@ -372,7 +372,7 @@
     );
     const startBin = peakIndex >= 0 ? peakIndex : 0;
     const help =
-      (observedProjection(snapshot) ? "Observed tool requests are a lower bound from a redacted source. " : "") +
+      (observedProjection(snapshot) ? "Observed distinct tool requests are a lower bound from a redacted source. Missing records may be omitted; they are not zero activity. " : "") +
       "Each activity slice is one measured step along " +
       basisLabel +
       (workers == null ? ". Worker activity was not recorded" : "") +

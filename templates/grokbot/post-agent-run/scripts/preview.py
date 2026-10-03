@@ -234,10 +234,10 @@ def parse_native(path, bounds):
 
 
 PROJECTION_BASIS = "observed native events; timestamps unavailable"
-PROJECTION_NOTE = "Observed tool requests from a redacted API projection: a lower bound, not a complete transcript count. Timing and human activity are unknown."
+PROJECTION_NOTE = "Observed distinct tool requests from a redacted API projection: a lower bound, not a complete transcript count. Timing and human activity are unknown."
 
 
-def parse_projection(path, bounds):
+def parse_projection(path, bounds, allow_missing_positions=False):
     required = {"agent_id", "conversation", "start_position", "end_position", "source", "content", "completeness"}
     if (not isinstance(bounds, dict) or set(bounds) != required
         or not isinstance(bounds["agent_id"], str) or not bounds["agent_id"].strip()
@@ -276,25 +276,37 @@ def parse_projection(path, bounds):
             if start <= position <= end:
                 if position in selected and selected[position] != record: raise ValueError("Conflicting projected overlap.")
                 selected[position] = record
-    if len(selected) != end-start+1: raise ValueError("Frozen projection has gaps; complete the bounded read.")
+    missing = [p for p in range(start,end+1) if p not in selected]
+    if missing and not allow_missing_positions: raise ValueError("Frozen projection has gaps; complete the bounded read or explicitly opt into incomplete observation.")
     rows = [{"position":p,"record":selected[p]} for p in sorted(selected)]
-    seen, ridge, calls, users = set(), [0]*50, 0, 0
+    seen, ridge, calls, users, duplicates = {}, [0]*50, 0, 0, []
     for index,row in enumerate(rows):
         users += row["record"]["role"] == "user"
         for block in row["record"]["blocks"]:
             if block["type"] != "tool_use": continue
-            if block["id"] in seen: raise ValueError("Duplicate observed tool request ID.")
-            seen.add(block["id"]); calls += 1; ridge[min(49,index*50//len(rows))] += 1
+            if block["id"] in seen:
+                first_position, first_block = seen[block["id"]]
+                if not allow_missing_positions or block != first_block:
+                    raise ValueError("Duplicate or conflicting observed tool request ID.")
+                duplicates.append({"first_position":first_position,"duplicate_position":row["position"]})
+                continue
+            seen[block["id"]] = (row["position"],block)
+            calls += 1; ridge[min(49,index*50//len(rows))] += 1
     if not calls: raise ValueError("Projection has no observed tool requests for a supported activity trace.")
-    revision = hashlib.sha256(json.dumps({"parser":"strive-observable-projection-v1","bounds":bounds,"records":rows},sort_keys=True,separators=(",",":"),ensure_ascii=False).encode()).hexdigest()
+    revision = hashlib.sha256(json.dumps({"parser":"strive-observable-projection-v1","bounds":bounds,"records":rows,**({"missing_positions":missing} if missing else {})},sort_keys=True,separators=(",",":"),ensure_ascii=False).encode()).hexdigest()
     metrics = {"schema_version":1,"measurement_revision":revision,"harness":"Grok Bot","activity_label":"observed bot activity","project":"session","tool_calls":calls,"ridge":ridge,"ridge_basis":"turn-order","trace_basis":PROJECTION_BASIS,"title":"Observed bot activity","caption":PROJECTION_NOTE}
-    receipt = {"source_context":{"agent_id":bounds["agent_id"],"conversation":"current"},"frozen_bounds":{"start_position":start,"end_position":end},"page_headers":headers,"recorded_messages":len(rows),"recorded_user_messages":users,"count_basis":"observed tool request envelopes, lower bound; hidden activity completeness not certified","source_basis":"observable redacted API projection, not stored raw transcript","unknown":["complete hidden activity","human-typed turns","start time","duration","workers","commits"]}
+    if missing:
+        metrics["title"] = "Observed bot activity (incomplete)"
+        metrics["caption"] = "Incomplete observation: missing records are omitted. Distinct tool requests are a lower bound; timing and human activity are unknown."
+    receipt = {"source_context":{"agent_id":bounds["agent_id"],"conversation":"current"},"frozen_bounds":{"start_position":start,"end_position":end},"duplicate_request_positions":duplicates,"count_unit":"distinct observed tool request IDs; exact repeated envelopes counted once in partial mode","page_headers":headers,"observed_positions":sorted(selected),"missing_positions":missing,"selected_positions_complete":not missing,"ridge_basis_detail":"observed message order; missing positions omitted, not zero activity","recorded_messages":len(rows),"recorded_user_messages":users,"count_basis":"observed tool request envelopes, lower bound; hidden activity completeness not certified","source_basis":"observable redacted API projection, not stored raw transcript","unknown":["complete hidden activity","human-typed turns","start time","duration","workers","commits"]}
     return metrics, receipt
 
 
-def public_metrics(path, format="tagged", bounds=None):
+def public_metrics(path, format="tagged", bounds=None, allow_missing_positions=False):
+    if allow_missing_positions and format != "projection":
+        raise ValueError("Missing-position opt-in is only valid for observable projection mode.")
     if format == "projection":
-        return parse_projection(path, bounds)[0]
+        return parse_projection(path, bounds, allow_missing_positions=allow_missing_positions)[0]
     if format == "native":
         return parse_native(path, bounds)[0]
     if format != "tagged" or bounds is not None:
@@ -304,10 +316,13 @@ def public_metrics(path, format="tagged", bounds=None):
 
 def add_format_arguments(parser):
     parser.add_argument("--format", choices=("tagged", "native", "projection"), default="tagged")
+    parser.add_argument("--allow-missing-positions", action="store_true", help="projection only: explicitly capture incomplete observed records; gaps stay unknown")
     parser.add_argument("--bounds", type=Path, help="native session identity and inclusive frozen positions JSON")
 
 
 def read_bounds(args):
+    if args.allow_missing_positions and args.format != "projection":
+        raise ValueError("--allow-missing-positions is only valid with --format projection.")
     if args.format in ("native", "projection") and args.bounds is None:
         raise ValueError("Native or projection capture requires --bounds.")
     if args.format == "tagged" and args.bounds is not None:
@@ -359,7 +374,7 @@ def main():
         bounds = read_bounds(args)
         native_receipt = None
         if args.format in ("native", "projection"):
-            metrics, native_receipt = (parse_projection if args.format == "projection" else parse_native)(args.export, bounds)
+            metrics, native_receipt = parse_projection(args.export, bounds, allow_missing_positions=args.allow_missing_positions) if args.format == "projection" else parse_native(args.export, bounds)
         else:
             metrics = public_metrics(args.export)
         preview_url = import_url(metrics, args.base_url)

@@ -91,6 +91,7 @@ function routeInsight(route){
  return parts[0]+parts.slice(1).map(part=>'. '+part.charAt(0).toUpperCase()+part.slice(1)).join('')+'.';
 }
 function ridgeBasisLabel(basis,run){
+ if(run.trace_basis==='observed native events; timestamps unavailable')return'observed message order';
  if(basis==='wall-time')return'wall time';
  if(basis==='turn-order')return run.harness==='Grok Bot'&&['timestamps unavailable','observed native events; timestamps unavailable'].includes(run.trace_basis)?'message order':'turn order';
  if(basis==='call-index')return'call order';
@@ -169,6 +170,7 @@ function mount({run,slot,status,moment=null,review=null}){
  }else{
   const trace=traceSeries(run),values=trace?.values;ctx.strokeStyle='#123cff';ctx.lineWidth=4;if(trace){const max=Math.max(...values)||1;ctx.beginPath();values.forEach((v,i)=>{const x=64+i/(values.length-1)*952,y=560-v/max*105;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()}else{ctx.fillStyle='#666';ctx.font='24px sans-serif';ctx.fillText('Trace unavailable',64,520)}
   ctx.fillStyle='#666';ctx.font='17px sans-serif';ctx.fillText(traceSeries(run)?.label||'Session activity · time basis unknown',64,592);
+  if(run.trace_basis==='observed native events; timestamps unavailable')ctx.fillText('Missing records may be omitted; distinct requests are a lower bound.',64,612);
  }
   const hasRoute=route&&!route.unavailable&&Array.isArray(route.projects)&&Array.isArray(route.stops)&&route.projects.length&&route.stops.length;
  if(!hasRoute){
