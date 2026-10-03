@@ -2173,16 +2173,15 @@ async function viewBoards(){
   if(error){status(error.message,true);app.innerHTML='<div class="card"><div class="empty">Boards could not load.</div></div>';return;}
   const all=(recent||[]).filter(r=>!typedOnlyRun(r)); noteTraces(all);
   const evidence=StriveEvidence.ranking(all,{since:since.getTime()});
-  const week=evidence.eligible;
   const top=(list,score,fmt,n=5)=>list.map(r=>[r,score(r)]).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,n).map(([r,v])=>[r,fmt(v)]);
-  const longest=top(week,runSeconds,fmtSecs);
-  const tools=top(week.filter(r=>r.trace_basis!=='observed native events; timestamps unavailable'),runTools,v=>`${v.toLocaleString()} calls`);
+  const longest=top(evidence.durationEligible,runSeconds,fmtSecs);
+  const tools=top(evidence.toolsEligible,runTools,v=>`${v.toLocaleString()} calls`);
   const longEvidence=StriveEvidence.ranking([...all,...(longRuns||[])]);
-  const marathon=top(longEvidence.eligible.filter(r=>runSeconds(r)>=MARATHON_SECS),runSeconds,fmtSecs,10);
+  const marathon=top(longEvidence.durationEligible.filter(r=>runSeconds(r)>=MARATHON_SECS),runSeconds,fmtSecs,10);
   const weekLabel=`${since.getDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][since.getMonth()]}`;
   app.innerHTML=`<div class="head"><h1>Leaderboard</h1><span class="meta">Public runs · client-reported activity</span></div>
-    ${feedTabs('boards')}<details class="ranking-explainer"><summary>How ranking works</summary><p class="hint">Every row opens its public source run. These are client-reported captures, not independently verified scores. Activity is not quality or human effort. A hash does not prove a count.</p><p class="hint">Within this sample, repeated captures count once. Overlapping windows for the same account are left out, including parallel sessions; time is not added together. Missing session dates or durations and incomplete observations are not ranked. Session span may include idle time. Upload dates never stand in for session dates.</p><p class="hint">Weekly rankings inspect the latest 300 public uploads. This week starts Monday ${esc(weekLabel)} in your time zone. Long sessions inspect up to 100 additional rows. Duplicates or overlap outside those samples can be missed. Changed source claims can evade these checks; this is not an anti-cheat guarantee.</p></details>
-    ${evidence.excluded.length?`<p class="hint">${evidence.excluded.length} entries left out of this week’s comparison. <a href="/?feed">They can still tell a story in the feed.</a></p>`:''}
+    ${feedTabs('boards')}<details class="ranking-explainer"><summary>How ranking works</summary><p class="hint">Every row opens its public source run. These are client-reported captures, not independently verified scores. Activity is not quality or human effort. A hash does not prove a count.</p><p class="hint">Within this sample, repeated run IDs and exact capture references count once per account. Parallel sessions and matching counts remain separate. Session times are never added into human work hours. A complete tool count can rank without duration when its session date is known. Duration rankings require timestamp-based session spans; unknown dates and incomplete observations stay outside weekly comparisons. Session span may include idle time. Upload dates never stand in for session dates.</p><p class="hint">Weekly rankings inspect the latest 300 public uploads. This week starts Monday ${esc(weekLabel)} in your time zone. Long sessions inspect up to 100 additional rows. Repeated references outside those samples can be missed. Changed source claims can evade these checks; this is not an anti-cheat guarantee.</p></details>
+    ${evidence.excluded.length?`<p class="hint">${evidence.excluded.length} ${evidence.excluded.length===1?'entry':'entries'} left out of this week’s comparison. <a href="/?feed">They can still tell a story in the feed.</a></p>`:''}
     <div class="boards-grid">
       ${boardHtml('Longest run this week','reported session span, including idle',longest,'No comparable public session window this week yet.')}
       ${boardHtml('Most tool calls this week','one run, one count',tools,'No public run with tool calls this week yet.')}

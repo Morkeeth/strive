@@ -2,7 +2,7 @@
 
 Local CLI, browser and bot captures are imported, client-reported measurements. A source hash identifies submitted data and helps with repeat imports. It does not independently prove that events happened or that the task succeeded. A photo or output link does not change this basis.
 
-The activity board remains a comparison of reported sessions. It checks its bounded public sample for repeated references and identical measurement signatures, then leaves out overlapping windows from the same account. This also excludes legitimate parallel sessions from that comparison. Missing clocks and incomplete observed counts stay outside the ranking. Session spans can include idle time; they are not human work hours. No upload date substitutes for a session date. Changed source claims can evade these checks. There is no independently verified category or anti-cheat guarantee.
+The activity board remains a comparison of reported sessions. It deduplicates exact run IDs and same-account capture references within its bounded public sample. Matching counters and overlapping windows do not establish duplicate identity: legitimate parallel sessions remain separate. Duration comparisons require an explicit timestamp-based source and a valid session span. Complete tool counts can rank without a duration when a source date is available. Unknown dates and incomplete observed counts stay outside weekly comparisons. Session spans can include idle time; they are not human work hours. No upload date substitutes for a session date. Changed source claims can evade these checks. There is no independently verified category or anti-cheat guarantee.
 
 ## Recovering an older build
 

@@ -538,7 +538,7 @@ def card(r: dict, meta_extra: str = "", avatars: bool = False, url: str | None =
     cap_html = f'<p class="fc-cap">{esc(cap)}</p>' if cap else ""
     typed = r.get("trace_basis") == "typed-by-author"
     visual = '<p class="fc-source">Typed by the author. No capture.</p>' if typed else hero_visual(r)
-    source_label = {"typed-by-author": "Author’s account", "historical-reconstruction": "Historical reconstruction · client-reported", "observed native events; timestamps unavailable": "Observed bot activity"}.get(r.get("trace_basis"), "Imported · client-reported")
+    source_label = {"typed-by-author": "Author’s account", "historical-reconstruction": "Historical reconstruction · client-reported", "observed native events; timestamps unavailable": "Imported · client-reported · observed subset"}.get(r.get("trace_basis"), "Imported · client-reported")
     evidence = f'<p class="run-evidence-basis">{esc(source_label)}</p>'
     body = f"""
     <h1 class="fc-title">{esc(title_of(r))}</h1>
