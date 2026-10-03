@@ -2399,9 +2399,14 @@ async function decodeImportPayload(payload){
 }
 
 async function importRun(){
+  const generation=RUN_VIEW_GENERATION,authGeneration=AUTH_GENERATION;
   const m=location.hash.match(/import=([^&]+)/); if(!m) return false;
+  const current=()=>generation===RUN_VIEW_GENERATION&&authGeneration===AUTH_GENERATION&&location.hash.match(/import=([^&]+)/)?.[1]===m[1];
+  const draftKey='ag_import_edits:'+m[1];
+  $('app').innerHTML=skeletonCard();
   try{document.title='Preview a run · __BRAND__'}catch(_){}
-  let run; try{ run=await decodeImportPayload(m[1]); }catch(error){ frame(typeof railHtml==='function'?railHtml(null):null,null); $('app').innerHTML='<div class="card"><h2>This import link could not be read</h2><p>'+esc(error.importCompatibility?error.message:'The session data on this link could not be read, usually because the address was cut when it was copied. Nothing was posted. Import the session again to open a fresh preview.')+'</p><p><a href="/?post">How to import a session</a></p></div>'; return true; }
+  let run; try{ run=await decodeImportPayload(m[1]); }catch(error){ if(!current())return true; frame(typeof railHtml==='function'?railHtml(null):null,null); $('app').innerHTML='<div class="card"><h2>This import link could not be read</h2><p>'+esc(error.importCompatibility?error.message:'The session data on this link could not be read, usually because the address was cut when it was copied. Nothing was posted. Import the session again to open a fresh preview.')+'</p><p><a href="/?post">How to import a session</a></p></div>'; return true; }
+  if(!current())return true;
   try{ GrinderContract.validate(run); }
   catch(error){ frame(typeof railHtml==='function'?railHtml(null):null,null); $('app').innerHTML='<div class="card"><h2>This session could not be imported</h2><p>'+esc(error.message)+'</p></div>'; return true; }
   if(typeof GrinderContract==='object' && GrinderContract.rejectPaths){
@@ -2468,8 +2473,8 @@ async function importRun(){
     `;
   const editFields=['i_title','i_project','i_repo','i_caption','i_output_url','i_stack','i_vis'];
   let savedImportEdits=null;
-  try{const saved=JSON.parse(sessionStorage.getItem('ag_import_edits')||'null');if(saved?.token===m[1]){savedImportEdits=saved;for(const key of editFields)if(typeof saved[key]==='string')$(key).value=saved[key];$('i_share_rig').checked=!!saved.shareRig}}catch(_){}
-  function saveImportEdits(){try{sessionStorage.setItem('ag_import_edits',JSON.stringify({token:m[1],...Object.fromEntries(editFields.map(key=>[key,$(key).value])),shareRig:$('i_share_rig').checked}))}catch(_){}}
+  try{const saved=JSON.parse(sessionStorage.getItem(draftKey)||sessionStorage.getItem('ag_import_edits')||'null');if(saved?.token===m[1]){savedImportEdits=saved;for(const key of editFields)if(typeof saved[key]==='string')$(key).value=saved[key];$('i_share_rig').checked=!!saved.shareRig}}catch(_){}
+  function saveImportEdits(){try{sessionStorage.setItem(draftKey,JSON.stringify({token:m[1],...Object.fromEntries(editFields.map(key=>[key,$(key).value])),shareRig:$('i_share_rig').checked}))}catch(_){}}
   function paintImportPreview(){
     // Signed out there is no account to show: the neutral label and its initial, never a
     // made-up GitHub login. The title starts from receipt-backed output or basic session facts.
@@ -2492,8 +2497,10 @@ async function importRun(){
     $('import-card-preview').innerHTML=GrinderFeed.card(preview,{preview:true});
   }
   editFields.forEach(key=>$(key).addEventListener('input',()=>{saveImportEdits();paintImportPreview()}));
+  $('i_share_rig').addEventListener('change',saveImportEdits);
   paintImportPreview();
   $('i_pub').addEventListener('click',async()=>{
+    if(!current())return;
     if(sample){status('Samples are preview-only. Capture your own session to save a run.',true);return;}
     saveImportEdits();
     const publishButton=$('i_pub');
@@ -2509,7 +2516,7 @@ async function importRun(){
     const caption=$('i_caption').value.trim(),output=$('i_output_url').value.trim(),audience=$('i_vis').value;
     if(!$('i_title').value.trim()||!audience){status('Add a title and choose who can see the run.',true);return}
     if(output&&!safeOutputUrl(output)){status('The output link must start with http:// or https://.',true);return}
-    if(!(await requireCloseFriendsForSave(audience)))return;
+    if(!(await requireCloseFriendsForSave(audience))||!current())return;
     const saveLabel=publishButton.textContent;
     publishButton.style.minWidth=publishButton.getBoundingClientRect().width+'px';
     publishButton.disabled=true;publishButton.setAttribute('aria-busy','true');publishButton.innerHTML='<span class="spin" aria-hidden="true"></span>Saving…';
@@ -2522,12 +2529,14 @@ async function importRun(){
     const dedupe=run.measurement_revision?{measurement_revision:run.measurement_revision}:null;
     async function existingRun(){ if(!dedupe) return null; let q=sb.from('runs').select('id,visibility').eq('profile_id',ME.id); for(const [k,v] of Object.entries(dedupe)) q=q.eq(k,v); const {data,error}=await q.order('created_at',{ascending:true}).limit(1); if(error) throw error; return (data&&data[0])||null; }
     function openExisting(prior){
-      try{sessionStorage.removeItem('ag_import');sessionStorage.removeItem('ag_import_edits')}catch(_){}
+      if(!current())return;
+      try{sessionStorage.removeItem('ag_import');sessionStorage.removeItem(draftKey)}catch(_){}
       history.replaceState(null,'','/?run='+prior.id);
       status('This session was already saved as a run ('+audienceLabel(prior.visibility)+'). Opening it. Your note was not applied; edit the run if you want to keep it.');
       return viewRun(prior.id);
     }
     function showRecovery(error){
+      if(!current())return;
       const text=String(error?.message||error||'');
       const offline=/failed to fetch|networkerror|load failed|network request failed|fetch failed/i.test(text);
       const why=offline?'The service could not be reached.':(typeof GrinderContract==='object'&&GrinderContract.message?GrinderContract.message(error):text)||'The save did not complete.';
@@ -2539,6 +2548,7 @@ async function importRun(){
     try{
     let prior=null;
     try{ prior=await existingRun(); }catch(lookupError){ showRecovery(lookupError); return; }
+    if(!current())return;
     if(prior){ await openExisting(prior); return; }
     const base={profile_id:ME.id,title:$('i_title').value||'Untitled run',
       project:editedProject(),model:run.model||null,segment_id:run.segment_id||null,
@@ -2576,13 +2586,15 @@ async function importRun(){
     // clears it. A typed value that is not a link is never saved as text.
     {const typedRepo=($('i_repo')?.value||'').trim(); const repo=safeRepoUrl(typedRepo); if(repo) coach.repo_url=repo; else delete coach.repo_url;}
     let {data:published,error}=await sb.from('runs').insert({...base,...coach}).select('id').single();
+    if(!current())return;
     if(error&&error.code==='23505'){ let again=null; try{again=await existingRun()}catch(_){} if(again){ await openExisting(again); return; } }
     if(error){showRecovery(error);return;}
     let savedAudience='private';
     if(audience!=='private'){
       const {error:audienceError}=await sb.from('runs').update({visibility:audience}).eq('id',published.id).eq('profile_id',ME.id);
+      if(!current())return;
       if(audienceError){
-        try{sessionStorage.removeItem('ag_import');sessionStorage.removeItem('ag_import_edits')}catch(_){}
+        try{sessionStorage.removeItem('ag_import');sessionStorage.removeItem(draftKey)}catch(_){}
         history.replaceState(null,'','/?run='+published.id);
         status('The run was saved for Only me, but the audience change failed. Choose the audience again from the run.',true);
         await viewRun(published.id);
@@ -2601,7 +2613,8 @@ async function importRun(){
       const {error:rigError}=await sb.from('profiles').update({rig}).eq('id',ME.id);
       if(rigError) throw rigError;
     }catch(_){ rigNote=' Your rig counts and notes were not updated; edit them from your profile.'; }
-    try{localStorage.setItem('ag_onboard_done','1');sessionStorage.removeItem('ag_import');sessionStorage.removeItem('ag_import_edits')}catch(_){}
+    if(!current())return;
+    try{localStorage.setItem('ag_onboard_done','1');sessionStorage.removeItem('ag_import');sessionStorage.removeItem(draftKey)}catch(_){}
     history.replaceState(null,'','/?run='+published.id);fairConfirmRun(published.id);status((savedAudience==='private'?'Saved for Only me. Change the audience when you deliberately want to share.':savedAudience==='close_friends'?'Saved for Close friends. Copy its link for someone on your list.':savedAudience==='link'?'Saved for Followers. Signed-in followers and close friends can read it.':'Saved to Public feed and profile. Copy the public link or open the shared post.')+rigNote);
     await viewRun(published.id);
     }catch(unexpected){showRecovery(unexpected)}finally{publishButton.disabled=false;publishButton.removeAttribute('aria-busy');if(publishButton.isConnected)publishButton.textContent=saveLabel}
@@ -2775,6 +2788,13 @@ async function route(){ RUN_VIEW_GENERATION++;window.StriveRunPhotos?.disposeAll
   // feed and the ask to sign in and build a profile. Adding a run is /?post.
   if(ME) return social.following({home:true});
   return viewLanding(); }
+
+// Import links can change only the fragment, without a document load. Ordinary
+// section anchors must not remount a run or discard its edit controls.
+window.addEventListener('hashchange',event=>{
+  const token=url=>new URL(url).hash.match(/import=([^&]+)/)?.[1]||null;
+  if(token(event.oldURL)!==token(event.newURL))void route();
+});
 
 document.addEventListener('DOMContentLoaded',()=>{
   $('app').innerHTML=skeletonCard();
