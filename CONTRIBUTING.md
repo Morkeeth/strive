@@ -23,16 +23,19 @@ git switch -c improve-run-card
 
 If you already have repository write access, clone the main repository and create a branch there instead. Never commit directly to `main` for a contribution.
 
-Python 3.9+ is required; Node 20+ runs the JavaScript checks. On Windows, use `py -3` if `python3` is unavailable.
+Python 3.9+ is required; Node 22 runs the JavaScript checks. On Windows, use `py -3` if `python3` is unavailable.
 
 ```sh
 python3 scripts/dev.py setup
+npm ci
 python3 scripts/dev.py serve
 ```
 
-Open http://127.0.0.1:8000. `setup` installs test dependencies in `.venv`; it does not alter global Python. `serve` needs only Python. Use `python3 scripts/dev.py serve --port 8001` if port 8000 is busy. Stop it with Ctrl+C. The capture commands (`grind --push`, `login`, `share`) open the hosted app by default. Set `AGENTGRINDER_URL=http://localhost:8000` to send them to this local UI instead.
+Open http://127.0.0.1:8000. `setup` installs test dependencies in `.venv`; it does not alter global Python. `serve` needs only Python. Use `python3 scripts/dev.py serve --port 8001` if port 8000 is busy. Stop it with Ctrl+C. Capture prints a preview link; the CLI opens a browser only with `--open`. Set `AGENTGRINDER_URL=http://localhost:8000` to target this static UI. A preview is not a database save. `npm ci` installs the website and disposable-test dependencies from the lockfile.
 
-This local server is the UI with no database behind it. The hosted app at https://agentic-strava.vercel.app has sign-in, posting and replies; a local checkout does not connect to it. You can work on layouts, docs, local capture and tests now. To test sign-in, posting and replies locally you need your own database, set up as described below. The inherited coaching fixture at `/?example` is development material, outside the product’s main flow.
+This local server is the UI with no database behind it. The hosted app at https://striverun.app has sign-in, posting and replies; a local checkout does not connect to it. You can work on layouts, docs, local capture and tests now. To test sign-in, posting and replies locally you need your own database, set up as described below. The inherited coaching fixture at `/?example` is development material, outside the product’s main flow.
+
+The same-release capture archive linked by https://striverun.app/agents.md is for running the CLI and companion. It does not include the full website, `scripts/dev.py`, or backend test harness. Clone the full repository for contributor work.
 
 ## Work in Cursor
 
@@ -46,7 +49,7 @@ Read AGENTS.md, PRODUCT.md and CONTRIBUTING.md. Inspect the implementation for t
 
 ## Work with Grok Bot
 
-Give the bot your fork or branch, the selected issue and [docs/GROK-BOT.md](docs/GROK-BOT.md). Ask it to make a PR with a short explanation and screenshots for UI work. It can use the same terminal commands as a person.
+Give the bot your fork or branch, the selected issue and [docs/GROK-BOT.md](docs/GROK-BOT.md). The user-facing [STRIVE companion](templates/grokbot/INSTALL.md) is one skill for capture and management; installing it alone does not provision development access. Ask it to make a PR with a short explanation and screenshots for UI work. It can use the same terminal commands as a person.
 
 Its cloud computer does not have your laptop’s sessions. Use safe sample data or explicitly provided exports. Do not grant production access merely to work on the UI.
 
@@ -59,6 +62,16 @@ python3 scripts/dev.py check
 ```
 
 This runs targeted Cursor-reader tests, MCP launch/onboarding checks and JavaScript syntax checks. It does not test every inherited feature or prove hosted behaviour. Add or run focused tests when you change behaviour; documentation-only changes need working links and accurate commands, not unrelated test runs.
+
+For capture, photo, feedback or database changes, install Node 22 dependencies with `npm ci`, then run the relevant focused checks. For example:
+
+```sh
+npm run test:launch
+node scripts/test-grok-native-admission.mjs
+node scripts/test-feedback-notifications.mjs
+```
+
+These use disposable or mocked services; they do not prove a hosted deployment. Never point test users or synthetic records at production.
 
 For UI changes, open the changed path at desktop and phone widths. Check keyboard access, readable text, loading/empty/error states and the action the user came to complete. For social or privacy changes, test the relevant access rules using disposable data.
 
@@ -87,9 +100,13 @@ Keep the PR focused. If review asks for changes, push to the same branch. A main
 
 ## Separate website, shared database project
 
-The production website is a separate Vercel project (https://agentic-strava.vercel.app). It shares the existing Supabase project using only a dedicated `strava` schema and shared Auth. For local end-to-end checks, `node scripts/disposable-supabase.mjs --serve` starts an isolated disposable database with labelled test data; the `scripts/check-*.py` walks use it. There is no command that provisions a hosted project of your own. Follow [release setup](docs/PUBLIC-RELEASE-SETUP.md); do not apply the inherited public-schema migration command to that project. Generate and review the Strava bootstrap with `python3 scripts/prepare-strava-database.py`. Configure browser constants in `site/index.html`, server values in `server/public-config.json`, and origin in `server/public-run.mjs`. CLI/MCP clients accept `AGENTGRINDER_URL`, `AGENTGRINDER_SUPABASE_URL` and `AGENTGRINDER_SUPABASE_ANON_KEY`.
+The production website is a separate Vercel project (https://striverun.app). It shares the existing Supabase project using only a dedicated `strava` schema and shared Auth. For local end-to-end checks, `node scripts/disposable-supabase.mjs --serve` starts an isolated disposable database with labelled test data; the `scripts/check-*.py` walks use it. There is no command that provisions a hosted project of your own. Follow [release setup](docs/PUBLIC-RELEASE-SETUP.md); do not apply the inherited public-schema migration command to that project. Generate and review the Strava bootstrap with `python3 scripts/prepare-strava-database.py`. Read `server/runtime-config.mjs` and [release setup](docs/PUBLIC-RELEASE-SETUP.md) for environment configuration. Do not paste credentials into checked-in browser constants or public configuration. CLI/MCP clients accept `AGENTGRINDER_URL`, `AGENTGRINDER_SUPABASE_URL` and `AGENTGRINDER_SUPABASE_ANON_KEY`.
 
 The checked-in `local-development-only` key is not a working credential. Do not reuse the hackathon database, accounts or deployment. A maintainer coordinates production configuration and releases. Do not publish a development database or test users as real adoption.
+
+## Feedback and sensitive reports
+
+The signed-in [feedback form](https://striverun.app/?feedback) is for private product feedback. Saving the message and notifying a maintainer are separate outcomes. Public implementation discussion belongs in issues or PRs. Do not attach private transcripts to either surface. Read [SECURITY.md](SECURITY.md) before reporting a vulnerability; do not assume GitHub has private reporting enabled.
 
 ## Working together
 

@@ -1,0 +1,14 @@
+# STRIVE privacy
+
+Read the user-facing [privacy notice](https://striverun.app/privacy); its source is [site/privacy.html](site/privacy.html). This document maps the implementation for contributors. It does not claim that a particular checkout is deployed or that every operational control has been verified in production.
+
+- **Local source:** transcript files and private capture receipts stay on the capture machine. Public export uses an allowlist. Local rendered cards can contain more context than the share payload, so do not attach them to issues without reviewing them. Optional model review and background sync have their own network behavior; they are not part of a basic local preview.
+- **Saved runs:** source-bound measurements plus owner-entered descriptions, links, audience and profile identity are stored. New captured runs start private. Missing measurements remain unknown. Imported records are not independent proof of execution.
+- **Photos:** owner-selected images are uploaded, decoded, resized and re-encoded without embedded metadata. Access follows the saved run. Private photos pass through an authorized API read, not a persistent signed Storage link. See [RUN-PHOTOS.md](docs/RUN-PHOTOS.md) for format limits and deletion behavior.
+- **Feedback:** the signed-in form stores the message, category, page path, profile reference and server time. Other clients cannot list or read feedback. Authorized operators can read it. A separate configured notifier sends metadata and a private inbox link, never the message or profile identity. Delivery can retry or duplicate; stored feedback is not proof of delivery. [Notification contract](docs/FEEDBACK-NOTIFICATIONS.md).
+- **Deletion:** deleting a run/profile revokes its normal API access. Photo objects may remain in the deletion queue until the cleanup worker successfully removes them. Local source files, shared authentication identity, provider operational records and copies made by recipients are separate from app deletion. No instant physical erasure or blanket backup-erasure claim is made.
+- **Service providers:** the website, authentication and storage depend on hosting providers. The hosted pages also request a Google Fonts stylesheet. This is not an offline or zero-request website. Do not claim end-to-end encryption or that operators cannot see saved content.
+
+Relevant source: `agentgrinder/push.py`, companion `scripts/preview.py` and `upload.py`, `server/run-photos.mjs`, `supabase/strava/017_capture_guard.sql`, `018_run_photos.sql`, `021_alpha_feedback.sql`, `022_feedback_notifications.sql`, `supabase/storage/strive_run_photos.sql`, and `server/feedback-notifications.mjs`.
+
+Security questions follow [SECURITY.md](SECURITY.md). General feedback belongs in the [app](https://striverun.app/?feedback); public issues must omit private records.

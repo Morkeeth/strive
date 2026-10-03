@@ -20,9 +20,10 @@ It does not alter another bucket or any public app table. The bucket must never 
 
 Set `STRIVE_STORAGE_SERVICE_ROLE_KEY` on the server to that project's service-role key.
 Never put it in `public-config.json`, the client bundle, a `VITE_`/`NEXT_PUBLIC_` variable or a log.
-The photo handler uses the caller's JWT for all run and metadata checks; the service role is
-confined to object upload/read/delete in this one bucket and re-queuing an interrupted object's
-erasure obligation. It never elevates a run/metadata read. All direct anonymous/authenticated
+The photo handler uses the caller's JWT for all run and metadata checks. Its code confines use
+of the service credential to object upload/read/delete in this bucket and re-queuing an
+interrupted object's erasure obligation. The credential itself has broader project privileges;
+it is not a bucket-scoped token. It never elevates a run/metadata read. All direct anonymous/authenticated
 Storage access is denied, including signing URLs. Missing configuration fails closed.
 
 ## Browser contract

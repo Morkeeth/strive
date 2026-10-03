@@ -1,117 +1,62 @@
 # STRIVE
 
-**Strava is for people who ran. STRIVE is for people who didn't.** Every run your agent made, on a card you can share: the numbers, the run map, and a stride line to paste anywhere.
+**Strava is for people who ran. STRIVE is for people who didn't.**
 
-A free, MIT-licensed social app for people building with coding agents. Bring in a recorded session, add a photo or a note, and choose who can see it. Follow friends and see what they are making.
+Your real agent session, a run map, a photo and the story behind the work. Save it privately, choose who sees it, and follow what your friends are building. Free to use, with no model API key required for capture.
 
-## Post your first run
+**[Open STRIVE](https://striverun.app)** · [Give feedback](https://striverun.app/?feedback) · [Contribute](CONTRIBUTING.md)
 
-One command. It reads your latest Claude Code, Cursor or Codex session on this machine, writes
-`grind.html`, and prints a private preview link to the live app:
+## Your first run
 
-```sh
-uvx --from git+https://github.com/Morkeeth/strive agentgrinder grind --push
-```
+1. Open **https://striverun.app**. Give that same link to your Cursor agent or your STRIVE Grok companion and ask it to prepare a private preview of its own recorded session. [Agent instructions](https://striverun.app/agents.md) identify the capture package and SHA-256 for the website release.
+2. Confirm the project, session and selected portion. The agent reads supported records on its own computer. It cannot reach sessions on another machine simply because you gave it a link. If access or a format is unsupported, it must say so. Sample data is for trying the parser, not posting as your work.
+3. Open the preview. Sign in using a provider actually offered by the site, choose your name and handle, and check that this is your account. Review the measured facts, title and description. **Save run** starts the run privately under **Only me**.
+4. Add your selected photos to the saved run. Review it again, then choose **Close friends**, **Followers** or **Public** when you want to share. Follow a friend, give Thanks or reply, and come back to see what they made next.
 
-No `uv`? Use a virtual environment instead (macOS system Python needs the pip upgrade):
+Measurements stay bound to their captured source; titles, descriptions, photos and audience are yours to manage. Tool calls are activity, not a score for quality or proof the task succeeded. Unknown timing, human turns or worker counts must stay unknown. Local preview, saved run and public sharing are separate actions.
 
-```sh
-python3 -m venv ~/.strive && ~/.strive/bin/pip install -U pip
-~/.strive/bin/pip install git+https://github.com/Morkeeth/strive
-~/.strive/bin/agentgrinder grind --push
-```
+### One companion, not another bot
 
-Nothing is uploaded by the command. Open the `preview ->` link and sign in with GitHub. On your
-first visit, choose your name and unique STRIVE username. The session preview is already filled
-in; edit the title or add a note if you want. Keep **Only me** selected and press **Save run** to
-save privately. You can add photos and change the audience from the saved run.
+The [STRIVE companion](templates/grokbot/INSTALL.md) handles capture, discussion, descriptions, photo guidance, feedback and owner-requested social actions. Update the existing companion; do not create separate capture and management bots. The historical `post-agent-run` folder contains the canonical `strive-companion` skill; `manage-strive` is a compatibility pointer.
 
-No model API key or account is needed for local capture. Run `agentgrinder grind --list` first
-to check which session it picked.
+Use the complete same-release kit linked by **https://striverun.app/agents.md**, including references, scripts and samples. Installation supplies instructions and capture helpers, not access to a browser, another person's files or an account. Native Grok access depends on the environment's actual transcript capability. A Connect token enables separately authorized private uploads; do not paste it into a prompt or public issue. [Capture details](templates/grokbot/post-agent-run/references/CAPTURE.md).
 
-## Photos and privacy
+The repository can be ahead of the website or the installed companion. Check the release metadata and observed result before claiming a new feature is live. X/email sign-in and Origin connections depend on deployment configuration; Origin is not a consumer sign-in provider here.
 
-Add up to six JPEG, PNG or WebP photos to a saved session. Keep the original shape or choose a
-crop before uploading. Uploads are resized and location/camera metadata is removed. Photos
-follow the run's audience: **Only me**, **Close friends**, **Followers**, or **Public**.
-Followers includes signed-in followers and people on your close-friends list; it is not an
-unrestricted link. Public runs appear in the feed and on your public profile.
+## Photos, privacy and feedback
 
-Recorded measurements cannot be edited. Runs must come from a supported session import;
-there is no manual score-entry form. Imported logs are not independent proof of execution,
-and tool counts are not a measure of work quality. See [photo and capture safeguards](docs/RUN-PHOTOS.md).
+Photos use the saved run's audience. The server resizes supported still images and removes embedded metadata from the uploaded derivative. Review what is visible in the picture too: removing metadata does not hide people, screens or addresses. Removing access cannot retract a copy somebody already saved. [Photo and deletion details](docs/RUN-PHOTOS.md) · [Privacy](PRIVACY.md).
 
-**Come build it with us.** Code, design, documentation, accessibility improvements and useful bug reports are all welcome. You do not need an invitation, a paid AI tool or a previous open-source contribution.
+[Send feedback](https://striverun.app/?feedback) from the signed-in app when something feels wrong or an idea would help. Include the action, expected result and what happened. Feedback is stored in a private app table, not posted to the feed. A maintainer notification is a separate best-effort delivery step that needs a configured destination; a saved message does not prove a ping arrived. Never include credentials, raw transcripts or confidential source code.
 
-[Start contributing](CONTRIBUTING.md) · [Find a first contribution](docs/FIRST-PR.md) · [Get help](SUPPORT.md) · [Product direction](PRODUCT.md)
+Use [GitHub issues](https://github.com/Morkeeth/strive/issues) for public bugs, ideas and contribution discussions. For sensitive problems, read [SECURITY.md](SECURITY.md) before sending details.
 
-## Run it locally
+## Contribute
 
-Python 3.9+ runs the local app. Node 20+ is needed for contributor checks.
+Design, accessibility, clear writing, testing and small bug fixes all help. You do not need a paid AI tool or previous open-source experience. [Start here](CONTRIBUTING.md), read the [product direction](PRODUCT.md), and check existing issues before starting larger work.
+
+For the full contributor checkout, use Python 3.9+ and Node 22:
 
 ```sh
 git clone https://github.com/Morkeeth/strive.git
 cd strive
+python3 scripts/dev.py setup
+npm ci
 python3 scripts/dev.py serve
 ```
 
-Open http://127.0.0.1:8000. To install the test tools and check a change:
+Open **http://127.0.0.1:8000** for a static UI preview. It has no local API or database; it is not a sign-in or photo-upload test. Run the focused contributor checks with:
 
 ```sh
-python3 scripts/dev.py setup
 python3 scripts/dev.py check
 ```
 
-**Current status:** the app is live at [agentic-strava.vercel.app](https://agentic-strava.vercel.app). Sign in with GitHub, post a run, follow people and reply. The feed is new and mostly empty; the first runs you see may be your own. Local capture works offline with no account. This checkout defaults to localhost and does not connect to the hosted database unless you configure it. The hosted app runs on Vercel with a Supabase `strava` schema; see [CONTRIBUTING.md](CONTRIBUTING.md) for the setup notes.
+The same-release download at `/agents.md` is a small capture source package. It includes the Python CLI and companion helpers, not the full website, contributor scripts or backend tests. Use the full repository for contributions. See [CONTRIBUTING.md](CONTRIBUTING.md) for disposable database checks and deployment boundaries.
 
-## Build in Cursor or Grok Bot
+## Scope and history
 
-Cursor and Grok Bot are our first documented agent workflows. Any editor or terminal works too.
+The core is **capture → private preview → save → share → respond → return**. Real sessions and real images lead. Coaching is planned, not a live promise. Posting and browsing do not require paid inference.
 
-- **Cursor:** keep your own project open and follow the [Cursor capture walkthrough](docs/CURSOR.md). Install the capture tool separately, confirm the selected project/session, then open its private preview at the hosted app.
-- **Grok Bot:** explicitly select a JSONL export on the bot’s computer and use the [post-run kit](templates/grokbot/INSTALL.md) to open the same hosted private preview. It cannot read sessions on your laptop. Bot activity and samples stay labelled; nothing auto-publishes.
-- **Without an agent:** use the same setup, branches and checks in [CONTRIBUTING.md](CONTRIBUTING.md).
+This public product grew from [the separate Agent Grinder hackathon repository](https://github.com/Morkeeth/agentgrinder). Internal `agentgrinder` package names and the `strava` database schema remain for compatibility. Material under `archive/hackathon-2026-09/` describes that history, not the current service.
 
-After the one-time setup in the walkthrough, capture a selected Cursor sitting from your own
-project and open the live private preview:
-
-```sh
-AGENTGRINDER_URL=https://agentic-strava.vercel.app \
-~/.agentgrinder/venv/bin/agentgrinder grind \
-  /exact/path/to/selected-cursor-session.jsonl \
-  --harness cursor --pick 1 --push
-```
-
-No model API key is required. The command reads that session on this machine, writes
-`./grind.html`, and prints the link to an unsaved metrics-only import (add `--open` to open it in
-a browser; nothing opens by default). Review the card, account and destination;
-choosing an audience and pressing **Save run** are deliberate later actions.
-
-With the tool installed in the active Python environment, the equivalent command prefix is
-`python3 -m agentgrinder grind`.
-
-To capture each future completed Cursor composer automatically:
-
-```sh
-python3 -m agentgrinder hook install --harness cursor
-```
-
-The hook records private local drafts and serves each card at `127.0.0.1`, writing the link to
-`~/.agentgrinder/hook/hook.log`. It opens no browser window unless you install it with `--open`.
-The local card loads no fonts or pictures from the network. It has no keys, makes no external
-request and never posts. Use `python3 -m agentgrinder hook status` to inspect it and
-`python3 -m agentgrinder hook uninstall` to stop it.
-
-## What help matters now?
-
-Make first-run instructions easier, improve the card on a phone, test keyboard access, report a reproducible bug, or improve the empty states a new user meets in a feed with few runs. [First contributions](docs/FIRST-PR.md) and [issues to open](docs/ISSUES-TO-OPEN.md) give starting files and a clear outcome. [Open issues](https://github.com/Morkeeth/strive/issues) show reported work; check before starting something large.
-
-Small fixes can go straight to a PR. Discuss new features in an issue first. Contributors review their agent-generated changes and explain what they tested. [Maintainer process](docs/MAINTAINING.md) explains how changes are triaged and reviewed.
-
-## Scope and origin
-
-The main loop is **capture → preview → post → browse**. Coaching programmes, comparison dashboards, Crews and challenges are outside the main app. Free posting and browsing must not require paid inference.
-
-This project started from [the separate Agent Grinder hackathon repo](https://github.com/Morkeeth/agentgrinder) at `5828f39ec4cfeaa63c1cc53e3acdc92589a2ca1a`. History and attribution are preserved. Hackathon docs and screenshots live under `archive/hackathon-2026-09/` and describe that source release, not this service. [Technical history](docs/TECHNICAL-HISTORY.md).
-
-[MIT license](LICENSE). Contributions are distributed under the same license.
+[MIT license](LICENSE). Contributions use the same license. [Support](SUPPORT.md) · [Security reporting](SECURITY.md).
