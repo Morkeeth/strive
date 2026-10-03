@@ -88,7 +88,7 @@
     let active=true;const controller=new AbortController(),urls=new Set(),images=new Set();
     const dispose=()=>{active=false;controller.abort();for(const url of urls)URL.revokeObjectURL(url);urls.clear();for(const image of images)image.remove();disposers.delete(dispose)};
     disposers.add(dispose);
-    const cards=[...host.querySelectorAll('.fc[data-run-id]:not([data-photo-checked])')];
+    const cards=[...host.querySelectorAll('.fc[data-run-id]:not([data-photo-checked]), .card[data-run-id]:not([data-photo-checked])')];
     await Promise.all(cards.map(async card=>{
       card.dataset.photoChecked='true';
       try{
@@ -104,10 +104,12 @@
         const blob=await imageRes.blob();if(!active||card.isConnected===false)return;
         const url=URL.createObjectURL(blob);urls.add(url);
         const image=document.createElement('img');
-        image.className='run-photo-cover';image.src=url;image.alt='';image.loading='lazy';
+        image.className='run-photo-cover';image.src=url;image.alt='Run photo';image.loading='lazy';
         images.add(image);
         image.onload=image.onerror=()=>{URL.revokeObjectURL(url);urls.delete(url)};
-        card.querySelector('.fc-body')?.prepend(image);
+        const body=card.querySelector('.fc-body');
+        if(body)body.prepend(image);
+        else{const title=card.querySelector('.run-title-row');if(title)title.insertAdjacentElement('afterend',image);else card.prepend(image);}
       }catch(_){}
     }));
   }
