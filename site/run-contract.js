@@ -74,11 +74,11 @@
           "ridge must contain 40 to 60 non-negative whole-number bins.",
         );
       if (
-        !Array.isArray(run.worker_bins) ||
+        run.worker_bins != null && (!Array.isArray(run.worker_bins) ||
         run.worker_bins.length !== run.ridge.length ||
-        run.worker_bins.some((v) => !Number.isSafeInteger(v) || v < 0)
+        run.worker_bins.some((v) => !Number.isSafeInteger(v) || v < 0))
       )
-        run.worker_bins = Array(run.ridge.length).fill(0);
+        throw new Error("worker_bins must match ridge with non-negative whole-number counts, or be unknown.");
       if (
         !Array.isArray(run.commit_bins || []) ||
         (run.commit_bins || []).some(
@@ -309,9 +309,9 @@
       values.length < 40 ||
       values.length > 60 ||
       values.some((v) => !Number.isSafeInteger(v) || v < 0) ||
-      !Array.isArray(workers) ||
+      (workers != null && (!Array.isArray(workers) ||
       workers.length !== values.length ||
-      workers.some((v) => !Number.isSafeInteger(v) || v < 0)
+      workers.some((v) => !Number.isSafeInteger(v) || v < 0)))
     )
       return "";
     const w = 800, h = 150, base = 132, top = 16;
@@ -322,7 +322,7 @@
       .map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`)
       .join(" ");
     const area = `0,${base} ${line} ${w},${base}`;
-    const workerMax = Math.max(0, ...workers);
+    const workerMax = workers ? Math.max(0, ...workers) : 0;
     let backs = "";
     for (let level = Math.min(3, workerMax); level >= 1; level--) {
       const points = workers
@@ -372,6 +372,7 @@
     const help =
       "Each activity slice is one measured step along " +
       basisLabel +
+      (workers == null ? ". Worker activity was not recorded" : "") +
       ". Commit marks sit only on measured commit_bins. Linked output is not placed on the map without a timed bin.";
     return `<div class="ridge-wrap run-map" data-ridge-basis="${escText(snapshot.ridge_basis || "")}" data-run-map="${payload}"><div class="run-map-head"><span class="run-story-label">Run map</span><span class="meta">Activity along ${escText(basisLabel)}</span></div><div class="run-map-plot"><svg class="ridge" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Tool calls across ${escText(basisLabel)}">${backs}<polygon class="ridge-fill" points="${area}"/><line class="ridge-base" x1="0" y1="${base}" x2="${w}" y2="${base}"/>${ticks}<polyline class="ridge-line" points="${line}"/><circle class="ridge-start" cx="0" cy="${y(values[0]).toFixed(1)}" r="5"/><circle class="ridge-end" cx="${w}" cy="${y(values[values.length - 1]).toFixed(1)}" r="5"/><line class="run-map-scrub" x1="${x(startBin).toFixed(1)}" y1="${top}" x2="${x(startBin).toFixed(1)}" y2="${base}" /><circle class="run-map-focus" cx="${x(startBin).toFixed(1)}" cy="${y(values[startBin]).toFixed(1)}" r="6"/>${hits}</svg></div><label class="run-map-slider-label"><span class="visually-hidden">Activity slice</span><input class="run-map-slider" type="range" min="0" max="${values.length - 1}" value="${startBin}" step="1" aria-valuemin="0" aria-valuemax="${values.length - 1}" aria-valuenow="${startBin}" /></label><div class="run-map-readout" aria-live="polite"></div><details class="run-map-help"><summary>How to read this map</summary><p>${escText(help)}</p></details></div>`;
   }
@@ -425,7 +426,7 @@
       const y = (v) => base - (v / max) * (base - top);
       const describe = (i) => {
         const tools = values[i] || 0;
-        const workers = (data.workers && data.workers[i]) || 0;
+        const workers = data.workers?.[i] ?? null;
         const isPeak = i === data.peakIndex && data.peak > 0;
         const commitHere = (data.commits || []).includes(i);
         const bits = [];

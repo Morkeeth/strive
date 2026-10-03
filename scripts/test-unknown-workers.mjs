@@ -1,0 +1,11 @@
+import vm from 'node:vm';import {readFileSync} from 'node:fs';import assert from 'node:assert/strict';
+const box={window:{},console,document:{},location:{hash:'#import=fixture'}};vm.createContext(box);
+for(const file of ['run-contract.js','sharing.js'])vm.runInContext(readFileSync('site/'+file,'utf8'),box);
+const fixture=()=>({harness:'Grok Bot',ridge_basis:'turn-order',trace_basis:'timestamps unavailable',ridge:Array(40).fill(1)});
+const unknown=fixture();box.GrinderContract.validate(unknown);assert.equal(Object.hasOwn(unknown,'worker_bins'),false,'validation must preserve absent workers');
+const html=box.GrinderContract.ridge(unknown);assert.match(html,/Activity along message order/);assert.ok(!html.includes('ridge-worker-'));assert.match(html,/Worker activity was not recorded/);assert.equal(box.window.GrinderSharing.traceSeries(unknown).label,'Tool calls over message order');
+const measured={...fixture(),worker_bins:Array(40).fill(2)};box.GrinderContract.validate(measured);assert.match(box.GrinderContract.ridge(measured),/ridge-worker-2/);assert.ok(!box.GrinderContract.ridge(measured).includes('Worker activity was not recorded'));
+assert.throws(()=>box.GrinderContract.validate({...fixture(),worker_bins:[-1]}),/worker_bins/);
+const source=readFileSync('site/index.html','utf8');const prefix=source.slice(source.indexOf('async function importRun(){'),source.indexOf('  const sample=run.is_sample===true;'));
+box.decodeImportPayload=async()=>fixture();vm.runInContext(prefix+'return run;}',box);const imported=await box.importRun();assert.equal(Object.hasOwn(imported,'worker_bins'),false,'actual import prevalidation must not invent workers');
+console.log('Unknown workers stay absent through validation/import; measured worker graph retained');

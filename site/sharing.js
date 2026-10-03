@@ -100,7 +100,7 @@ function traceSeries(run){
  const ridge=run.ridge,workers=run.worker_bins;
  if(Array.isArray(ridge)&&ridge.length>=40&&ridge.length<=60
   &&ridge.every(v=>Number.isSafeInteger(v)&&v>=0)
-  &&Array.isArray(workers)&&workers.length===ridge.length){
+  &&(workers==null||(Array.isArray(workers)&&workers.length===ridge.length))){
   return {values:ridge,label:'Tool calls over '+ridgeBasisLabel(run.ridge_basis,run)};
  }
  const rhythm=run.rhythm;

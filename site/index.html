@@ -2342,7 +2342,6 @@ async function importRun(){
   const m=location.hash.match(/import=([^&]+)/); if(!m) return false;
   try{document.title='Preview a run · __BRAND__'}catch(_){}
   let run; try{ run=await decodeImportPayload(m[1]); }catch(error){ frame(typeof railHtml==='function'?railHtml(null):null,null); $('app').innerHTML='<div class="card"><h2>This import link could not be read</h2><p>'+esc(error.importCompatibility?error.message:'The session data on this link could not be read, usually because the address was cut when it was copied. Nothing was posted. Import the session again to open a fresh preview.')+'</p><p><a href="/?post">How to import a session</a></p></div>'; return true; }
-  if(Array.isArray(run?.ridge)&&run.worker_bins==null) run.worker_bins=Array(run.ridge.length).fill(0);
   try{ GrinderContract.validate(run); }
   catch(error){ frame(typeof railHtml==='function'?railHtml(null):null,null); $('app').innerHTML='<div class="card"><h2>This session could not be imported</h2><p>'+esc(error.message)+'</p></div>'; return true; }
   if(typeof GrinderContract==='object' && GrinderContract.rejectPaths){

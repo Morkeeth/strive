@@ -22,16 +22,16 @@ for(const bad of [{...run,claims_verified:4},{...run,turns_typed:true},{...run,s
     subprocess.run(["node", "-e", script, str(module), json.dumps(payload)], check=True)
 
 
-def test_browser_ridge_repairs_worker_bins_and_preserves_valid_bins():
+def test_browser_ridge_keeps_unknown_workers_and_preserves_valid_bins():
     module = Path(__file__).resolve().parents[1] / "site/run-contract.js"
     script = """
 const {validate}=require(process.argv[1]);
 const base={ridge:Array(50).fill(0),ridge_basis:'wall-time'};
-for(const worker_bins of [undefined,Array(49).fill(1),Array(50).fill(0).map((v,i)=>i===49?-1:v),'corrupt']){
-  const run={...base,worker_bins};
-  validate(run);
-  if(run.worker_bins.length!==run.ridge.length || run.worker_bins.some(value=>value!==0))
-    throw new Error('Invalid worker bins were not replaced');
+const missing={...base}; validate(missing);
+if(Object.hasOwn(missing,'worker_bins'))throw new Error('Unknown workers invented');
+for(const worker_bins of [Array(49).fill(1),Array(50).fill(0).map((v,i)=>i===49?-1:v),'corrupt']){
+  let rejected=false;try{validate({...base,worker_bins})}catch(e){rejected=/worker_bins/.test(e.message)}
+  if(!rejected)throw new Error('Malformed worker counts accepted');
 }
 const valid=Array.from({length:50},(_,i)=>i%3);
 const run={...base,worker_bins:valid};
