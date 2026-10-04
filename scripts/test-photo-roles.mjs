@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {bootDisposable,seedJourneyActors,seedCoachRun,CASEY,RILEY} from './disposable-supabase.mjs';
+import {card,html} from '../server/public-run.mjs';
+import Feed from '../site/feed-card.js';
+const {db,as,anonymous,denied}=await bootDisposable();await seedJourneyActors(db);
+const run=await seedCoachRun(db,CASEY,'TEST DATA output','e'.repeat(64),'now()');await as(CASEY);
+const add=async()=>(await db.query('insert into strava.run_photos(run_id,width,height,byte_size) values($1,100,100,200) returning id',[run])).rows[0].id;
+const a=await add(),b=await add();const role=(id,r)=>db.query('select strava.set_run_photo_role($1,$2,$3)',[run,id,r]);
+await role(a,'before');await role(b,'after');await assert.rejects(role(b,'before'),/duplicate key/);await assert.rejects(role(b,'anything'),/valid image role/);
+await as(RILEY);await assert.rejects(role(a,'personal'),/Run not found/);await anonymous();await assert.rejects(role(a,'personal'),/permission denied/);assert.equal((await db.query('select * from strava.run_photos where run_id=$1',[run])).rows.length,0);
+await as(CASEY);assert.deepEqual((await db.query('select role from strava.run_photos where run_id=$1 order by role',[run])).rows.map(r=>r.role),['after','before']);
+const row={id:run,title:'Built a new component',story_result:'The full image is visible.',tool_calls:999999,duration_s:18000,wall_time_s:18000,visibility:'public',harness:'Codex',profiles:{handle:'test-casey'},rhythm:[1,4,2]};
+const text=JSON.stringify(card(row));assert.ok(text.includes('The full image is visible.'));assert.ok(!text.includes('Marathon'));assert.ok(!text.includes('999,999'));assert.ok(!text.includes('999999'));
+assert.ok(Feed.card(row).includes('The full image is visible.'));const shared=html({...row,photo_layout:'before_after'},{photos:[{id:b,run_id:run,role:'after'},{id:a,run_id:run,role:'before'}]});assert.ok(shared.indexOf('alt="Before"')<shared.indexOf('alt="After"'));
+await db.close();console.log('PASS roles persist, pair slots unique, invalid/other-owner/anonymous writes denied, private metadata hidden, feed and share summary agree without activity reward');

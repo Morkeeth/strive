@@ -322,7 +322,7 @@
     return b ? b.bars.join("") : "";
   }
   function strideFirst(r) {
-    return ['STRIVE',titleOf(r),r.caption||''].filter(Boolean).join(' · ');
+    return ['STRIVE',titleOf(r),story.summary(r)].filter(Boolean).join(' · ');
   }
   const where = (url) => (url ? String(url).replace(/^https?:\/\//, "") : "");
   function strideText(r, url) {
@@ -423,16 +423,17 @@
     const strideHtml = opts.stride === false || !(preview || page || opts.url) ? "" : stride(r, { url: opts.url, copy: !!opts.copy });
     const body = `
     <${tag} class="fc-title">${esc(titleOf(r))}</${tag}>
-    ${r.caption || r.note ? `<p class="fc-cap">${esc(r.caption || r.note)}</p>` : ""}
+    ${story?.summary(r) ? `<p class="fc-cap">${esc(story.summary(r))}</p>` : ""}
     ${story?story.visual(r):''}
     ${r.feedback_question?`<p class="fc-question"><span>Feedback welcome</span>${esc(r.feedback_question)}</p>`:''}
     ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Typed by the author. No capture.</p>' : ''}${evidence?evidence.summary(r):''}
     <div class="fc-route-secondary">${heroVisual(r)}</div>
     <p class="fc-open">${preview?'Preview your story':'Open the story →'}</p>
   `;
-    return `<article class="card fc"${preview ? "" : ` id="card-${id}" data-run-id="${id}"`}>
+    return `<article class="card fc"${preview ? "" : ` id="card-${id}" data-run-id="${id}" data-photo-layout="${esc(r.photo_layout||'cover')}"`}>
   <header class="fc-top">${faceHtml}<div class="fc-who">${who}<small>${meta}</small></div>${shipped}</header>
   ${preview ? `<div class="fc-body">${body}</div>` : `<a class="fc-body" href="/?run=${id}">${body}</a>`}
+  ${!preview&&typeof r.output_url==='string'&&/^https:\/\/[^\s<>"'\\]+$/i.test(r.output_url)?`<p class="fc-output-link"><a href="${esc(r.output_url)}" target="_blank" rel="noopener noreferrer">Open the work ↗</a></p>`:''}
   ${opts.foot === false ? "" : `<footer class="fc-foot">${kudos}${talk}</footer>`}
 </article>`;
   }

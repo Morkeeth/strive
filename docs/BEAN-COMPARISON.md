@@ -1,15 +1,14 @@
 # Bean comparison, local only
 
-Branch: codex/strive-bean-outcomes-20261004. Base: accepted local 0ab3e52, not current hosted 1b5579f. Accepted release archives were not changed.
+Branch codex/strive-bean-outcomes-20261004 starts from accepted local 0ab3e52, not hosted 1b5579f. Existing archives remain unchanged.
 
-Actual app changes: optional bounded author story fields; outcome image preview for an explicit HTTPS image output link; quiet activity evidence; no duration award on cards; feedback question on feed; story and conversation on detail. An ordinary output URL is labelled Work linked, never automatically Shipped. No new scoring or ranking algorithm. Existing leaderboard remains unchanged.
+Feed leads with the author result. Run detail adds what changed, what remains open and a question for readers. Uploaded images can be marked Result, Before, After or Personal. The author chooses a selected cover, result image or before/after comparison. The product URL remains a separate Open the work link. Whole images fit without cropping. No productivity score is inferred.
 
-Migration 030 follows 026-029 before a coordinated site/server release. Story fields use existing runs RLS and audience. No hosted migration or release performed. Existing posts have no story until the owner adds one; no automatic transcript extraction.
+Migration order: existing 026-029, then 030_run_story.sql, then 031_run_photo_roles.sql, before coordinated site/server promotion. Existing RLS and audience rules apply. No hosted migration or deploy performed.
 
-Verification: test-run-story.mjs exercises the disposable Postgres schema, owner save/reread, cross-owner denied update, anonymous private read, oversized input, escaping and omitted unknown story. check-flow.py exercises the actual built SPA with local exact Supabase SDK 2.57.4, fixture auth and disposable REST/database. It saves/reloads a private story, explicitly changes fixture audience, posts a separate fixture-account reply and returns as author. Mobile scroll width 390; no page errors. See result.json. Photo API/upload is not exercised. Output image is the prior local feedback proof screenshot; example.test URL is intercepted only in the test browser. It is not a live artefact URL.
+Tests use the actual SPA with pinned local Supabase SDK, fixture authentication, disposable PostgreSQL and actual photo API/sanitizer. Only storage transport is an in-memory adapter. Browser file uploads, roles, duplicate pair-slot refusal, explicit cover selection, save/reload, image change/removal fallback and mobile layout passed. Scripts test-photo-roles.mjs, test-photo-generation.mjs and test-run-story.mjs cover database permissions, delayed render races and story limits. These do not prove hosted OAuth/storage or Bean usage.
 
-The flipbook is an annotated still sequence, not a continuous recording. Baseline uses the pinned 0ab3e52 feed renderer on the same fixture. Screenshots are actual app rendering, not mockup drawings. Fixture counts and people are not real usage claims.
+Corrected review: http://127.0.0.1:58610/strive-bean/product/
+Actual component screenshots illustrate the original crop and full-frame treatment; actual SPA screenshots show them uploaded as work output. TEST DATA people and run are synthetic. This is a recorded-stage flipbook, not continuous recording. Evidence lives outside this repo under weekly-review-2026-10-04/web/strive-bean/product.
 
-Review: http://127.0.0.1:58610/strive-bean/
-Interactive local fixture: http://127.0.0.1:64699/fixture
-Review media stored outside the source checkout in weekly-review-2026-10-04/web/strive-bean. No deploy, hosted writes, Bean response or retention claimed.
+Limits: shared-preview image now leads with the authored result and map but does not include uploaded images. Activity explorer is relabelled, not a new ranking algorithm. Bean identity/setup and whether he imported remain unknown. No outside adoption or productivity outcome claimed. The older feedback-form demo remains historical mechanical proof only.

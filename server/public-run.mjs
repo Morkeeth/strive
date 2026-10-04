@@ -8,7 +8,7 @@ const config=runtimeConfig();
 export const origin=config.ORIGIN;
 export const validId=id=>typeof id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const PUBLIC_RUN_FIELDS='id,created_at,title,caption,story_result,story_next,feedback_question,output_url,repo_url,receipts,shipped,artifact_url,image_url,hero_visual,project,harness,started_at,duration_s,wall_time_s,prompts,tool_calls,shell_calls,files_touched,artifacts_produced,commits,rhythm,route,trace_basis,measurement_revision,history_evidence,ridge,worker_bins,commit_bins,ridge_basis,ridge_wall_seconds,ridge_tool_calls,code_route,visibility,profiles!runs_profile_id_fkey(github_handle,handle,display_name)';
+const PUBLIC_RUN_FIELDS='id,created_at,title,caption,photo_layout,story_result,story_next,feedback_question,output_url,repo_url,receipts,shipped,artifact_url,image_url,hero_visual,project,harness,started_at,duration_s,wall_time_s,prompts,tool_calls,shell_calls,files_touched,artifacts_produced,commits,rhythm,route,trace_basis,measurement_revision,history_evidence,ridge,worker_bins,commit_bins,ridge_basis,ridge_wall_seconds,ridge_tool_calls,code_route,visibility,profiles!runs_profile_id_fkey(github_handle,handle,display_name)';
 export async function readPublic(id,fetcher=fetch){
  if(!validId(id))return null;
  const request=select=>{const query=new URLSearchParams({id:'eq.'+id,visibility:'eq.public',select,limit:'1'});return fetcher(config.SB_URL+'/rest/v1/runs?'+query,{headers:{apikey:config.SB_KEY,"Accept-Profile":config.SB_SCHEMA},cache:'no-store',signal:AbortSignal.timeout(8000)})};
@@ -52,13 +52,13 @@ export async function readKudos(id,fetcher=fetch){
 export async function readPublicPhotos(run,fetcher=fetch){
  if(!run||run.visibility!=='public'||!validId(run.id))return [];
  try{
-  const query=new URLSearchParams({run_id:'eq.'+run.id,select:'id,run_id,width,height,byte_size,created_at,is_cover',order:'is_cover.desc,created_at.asc,id.asc',limit:'6'});
+  const query=new URLSearchParams({run_id:'eq.'+run.id,select:'id,run_id,width,height,byte_size,created_at,is_cover,role',order:'is_cover.desc,created_at.asc,id.asc',limit:'6'});
   const response=await fetcher(config.SB_URL+'/rest/v1/run_photos?'+query,{headers:{apikey:config.SB_KEY,"Accept-Profile":config.SB_SCHEMA},cache:'no-store',signal:AbortSignal.timeout(4000)});
   if(!response.ok)return [];
   const rows=await response.json();
   if(!Array.isArray(rows))return [];
   return rows.filter(photo=>validId(photo?.id)&&photo?.run_id===run.id).slice(0,6).map(photo=>({
-   id:photo.id,run_id:photo.run_id,
+   id:photo.id,run_id:photo.run_id,role:photo.role,
    width:Number.isInteger(photo.width)&&photo.width>0?photo.width:null,
    height:Number.isInteger(photo.height)&&photo.height>0?photo.height:null
   }));
@@ -88,9 +88,12 @@ const pageOutcome=run=>{
 
 const pagePhotos=(run,photos)=>{
  if(run?.visibility!=='public'||!Array.isArray(photos)||!photos.length)return '';
- const safe=photos.filter(photo=>validId(photo?.id)&&photo?.run_id===run.id).slice(0,6);
+ const all=photos.filter(photo=>validId(photo?.id)&&photo?.run_id===run.id).slice(0,6);
+ const before=all.find(p=>p.role==='before'),after=all.find(p=>p.role==='after');
+ const chosen=run.photo_layout==='before_after'&&before&&after?[before,after]:[run.photo_layout==='result'?(all.find(p=>p.role==='result')||all[0]):all[0]].filter(Boolean);
+ const safe=[...chosen,...all.filter(p=>!chosen.includes(p))];
  if(!safe.length)return '';
- return `<section class="public-run-photos" aria-labelledby="public-run-photos-title"><h2 id="public-run-photos-title">Photos</h2><div class="public-run-photo-grid">${safe.map((photo,index)=>{const src=`/api/run-photos?id=${encodeURIComponent(photo.id)}&run_id=${encodeURIComponent(run.id)}`;const size=Number.isInteger(photo.width)&&photo.width>0&&Number.isInteger(photo.height)&&photo.height>0?` width="${photo.width}" height="${photo.height}"`:'';return `<img src="${esc(src)}" alt="Run photo ${index+1}"${size} loading="lazy">`;}).join('')}</div></section>`;
+ return `<section class="public-run-photos" aria-labelledby="public-run-photos-title"><h2 id="public-run-photos-title">Images from this run</h2><div class="public-run-photo-grid">${safe.map((photo,index)=>{const src=`/api/run-photos?id=${encodeURIComponent(photo.id)}&run_id=${encodeURIComponent(run.id)}`;const size=Number.isInteger(photo.width)&&photo.width>0&&Number.isInteger(photo.height)&&photo.height>0?` width="${photo.width}" height="${photo.height}"`:'';return `<figure><img src="${esc(src)}" alt="${esc(({result:'Result',before:'Before',after:'After',personal:'Personal photo'})[photo.role]||'Run photo')}"${size} loading="lazy"><figcaption>${esc(({result:'Result',before:'Before',after:'After',personal:'Personal photo'})[photo.role]||'Photo')}</figcaption></figure>`;}).join('')}</div></section>`;
 };
 
 const routeInsight=route=>{
@@ -154,7 +157,7 @@ const pageCodeRoute=run=>{
  return `<section class="code-route" aria-label="${esc(aria)}"><h2>Code Route</h2><svg viewBox="0 0 ${width} ${height}" role="img" aria-hidden="true"><path class="code-route-line" pathLength="1" d="${line}" fill="none" stroke="#123cff" stroke-width="2.5"/>${dots}${lanes}</svg><ol class="code-route-projects">${projectList}</ol>${insight?`<p class="code-route-insight">${esc(insight)}</p>`:''}<div class="code-route-stops">${stopList}</div>${harness}</section>`;
 };
 
-export function html(run,opts={}){const title=esc(Feed.titleOf(run)),insight=routeInsight(run&&run.code_route),description=esc(insight||run.caption||'See the work, its recorded activity and the conversation.'),id=encodeURIComponent(run.id),image=origin+'/api/run?id='+id+'&image=1',url=origin+'/r/'+id;
+export function html(run,opts={}){const title=esc(Feed.titleOf(run)),insight=routeInsight(run&&run.code_route),description=esc(Story.summary(run)||insight||'See the work, its recorded activity and the conversation.'),id=encodeURIComponent(run.id),image=origin+'/api/run?id='+id+'&image=1',url=origin+'/r/'+id;
  const handle=run.profiles?.handle||run.profiles?.github_handle;
  const profileHref=handle?'/?u='+encodeURIComponent(handle):'';
  // opts.kudos is the count readKudos returned: a number, or null when it could not be read.
@@ -292,15 +295,15 @@ export function card(run,opts={}){
  const routePlot=selected==='proof_route'||(selected==='change_atlas'&&!availableGeo)?availableRoutePlot:null;
  const insight=routePlot?routeInsight(run.code_route):'';
  const plotted=selected==='activity_terrain'?availableSeries:null;
- const lead=Feed.headline(run),facts=Feed.stats(run,lead);
+ const lead=null,facts=[];
  const who=Feed.profileOf(run);
  const name=run.visibility==='public'?who.name:run.visibility==='anonymous'?'Anonymous builder':'Builder';
- const badge=Feed.achievement(run);
+ const badge=null;
  const initial=run.visibility==='anonymous'?'?':(String(name||'?').trim().charAt(0)||'?').toUpperCase();
  const avatar=run.visibility==='public'&&typeof opts.avatar==='string'&&opts.avatar.startsWith('data:image/')?opts.avatar:null;
  // The same line the page's card prints under the name: the agent and when.
  const meta=[run.harness,Feed.when(run.created_at||run.started_at)].filter(Boolean).join(' · ');
- const output=outputKind(run);
+ const output=safeUrl(run.output_url)?'Work linked':'';
  const drawn=!!(plotted||routePlot);
  const W=1044;
  // THE RUN MAP, the same geometry the card draws (Feed.routeGeometry), scaled to the image.
@@ -350,7 +353,7 @@ export function card(run,opts={}){
     output?el('div',{style:{display:'flex',fontSize:18,color:BLUE,background:WASH,border:`1px solid ${BLUE_SOFT}`,borderRadius:999,padding:'4px 14px',marginRight:18}},output):null,
     el('div',{style:{display:'flex',color:BLUE,fontSize:24,fontWeight:700,letterSpacing:4}},BRAND)),
    el('div',{style:{display:'flex',fontSize:geo?38:drawn?44:56,fontWeight:700,letterSpacing:-1,marginTop:geo?16:22,height:geo?50:drawn?56:140,lineHeight:1.2,overflow:'hidden'}},String(Feed.titleOf(run)).slice(0,120)),
-   run.caption&&!routePlot?el('div',{style:{display:'flex',fontSize:20,color:INK,marginTop:4,height:28,overflow:'hidden'}},String(run.caption).slice(0,160)):null,
+   Story.summary(run)?el('div',{style:{display:'flex',fontSize:25,color:INK,marginTop:14,height:100,lineHeight:1.25,overflow:'hidden'}},Story.summary(run)):null,
    lead||facts.length?el('div',{style:{display:'flex',alignItems:'flex-end',marginTop:geo?12:drawn?14:28}},
     lead?el('div',{style:{display:'flex',flexDirection:'column',marginRight:56}},
      el('div',{style:{display:'flex',fontSize:geo?64:drawn?84:120,fontWeight:700,letterSpacing:-3,lineHeight:1}},lead.n),

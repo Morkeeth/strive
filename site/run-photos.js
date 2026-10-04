@@ -1,7 +1,8 @@
 (function(root){
   "use strict";
   const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  const disposers=new Set();
+  const roles={photo:'Photo',result:'Result',before:'Before',after:'After',personal:'Personal photo'};
+  const disposers=new Set(),coverGeneration=new WeakMap();
   function disposeAll(){for(const dispose of [...disposers])dispose();}
   async function token(client){
     const result=await client?.auth?.getSession?.();
@@ -70,15 +71,16 @@
       if(!res.ok){const message=await responseMessage(res);if(current())slot.innerHTML=`<p class="hint">${esc(message)}</p>`;return;}
       const body=await res.json();if(!current())return;const photos=Array.isArray(body)?body:(body.photos||[]);
       const canAdd=owner&&photos.length<6;
-      slot.innerHTML=`<section class="run-photos" aria-labelledby="run-photos-title"><div class="head"><h2 id="run-photos-title">Photos</h2><span class="meta">${photos.length} of 6</span></div><div class="run-photo-grid"></div>${canAdd?'<label class="photo-add">Add a photo<input data-photo-file type="file" accept="image/jpeg,image/png,image/webp"></label><p class="hint">Choose a JPEG, PNG or WebP. Preview the crop before adding it. Photos share this run’s audience.</p><div data-photo-editor></div>':owner?'<p class="hint">Six photos added. Remove one before adding another.</p>':''}</section>`;
+      slot.innerHTML=`<section class="run-photos" aria-labelledby="run-photos-title"><div class="head"><h2 id="run-photos-title">Images from this run</h2><span class="meta">${photos.length} of 6</span></div><div class="run-photo-grid"></div>${canAdd?'<label class="photo-add">Add an image<input data-photo-file type="file" accept="image/jpeg,image/png,image/webp"></label><p class="hint">Choose a JPEG, PNG or WebP. Preview the crop, then choose Result, Before, After or Personal photo. Images share this run’s audience. Your working-product link stays separate.</p><div data-photo-editor></div>':owner?'<p class="hint">Six photos added. Remove one before adding another.</p>':''}</section>`;
       const grid=slot.querySelector('.run-photo-grid');
       for(const [photoIndex,photo] of photos.entries()){
-        try{const path=photoPath(photo);if(!path)continue;const imageRes=await request(path);if(!current())return;if(!imageRes?.ok)continue;const blob=await imageRes.blob();if(!current())return;const url=URL.createObjectURL(blob);objectUrls.push(url);const item=document.createElement('figure');item.innerHTML=`<img src="${url}" alt="Run photo" loading="lazy">${owner?`<figcaption>${photoIndex===0?'<strong>Current cover</strong>':'Gallery photo'}</figcaption><button type="button" class="ghost" data-photo-cover="${esc(photo.id)}" ${photoIndex===0?'disabled':''}>${photoIndex===0?'Cover selected':'Use as cover'}</button>`:''}${owner?`<button type="button" class="ghost" data-photo-delete="${esc(path)}">Remove</button>`:''}`;grid.append(item);}catch(_){}
+        try{const path=photoPath(photo);if(!path)continue;const imageRes=await request(path);if(!current())return;if(!imageRes?.ok)continue;const blob=await imageRes.blob();if(!current())return;const url=URL.createObjectURL(blob);objectUrls.push(url);const item=document.createElement('figure');item.innerHTML=`<img src="${url}" alt="${esc(roles[photo.role]||'Photo')}" loading="lazy"><figcaption>${esc(roles[photo.role]||'Photo')}</figcaption>${owner?`<label>Show as<select data-photo-role="${esc(photo.id)}">${Object.entries(roles).map(([key,label])=>`<option value="${key}" ${key===(photo.role||'photo')?'selected':''}>${label}</option>`).join('')}</select></label>`:''}${owner?`<figcaption>${photoIndex===0?'<strong>Current cover</strong>':'Gallery photo'}</figcaption><button type="button" class="ghost" data-photo-cover="${esc(photo.id)}" ${photoIndex===0?'disabled':''}>${photoIndex===0?'Cover selected':'Use as cover'}</button>`:''}${owner?`<button type="button" class="ghost" data-photo-delete="${esc(path)}">Remove</button>`:''}`;grid.append(item);}catch(_){}
       }
       if(!current())return;
       if(canAdd){
         slot.querySelector('[data-photo-file]').onchange=e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>12*1024*1024){status('Choose an image smaller than 12 MB.',true);return;}cropDispose=cropper(file,slot.querySelector('[data-photo-editor]'),async blob=>{try{if(!current())return;if(blob.size>3*1024*1024){status('The cropped image is still larger than 3 MB.',true);return;}const base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob)});const upload=await request('/api/run-photos',true,{method:'POST',body:JSON.stringify({run_id:run.id,image_base64:base64})});if(!current()||!upload)return;if(!upload.ok){const message=await responseMessage(upload);if(current())status(message,true);return;}const saved=await upload.json();if(!current())return;status(saved.duplicate?'This photo is already on this run. Choose Use as cover if you want it first.':'Photo added.');await load();await onChanged();}catch(_){if(current())status('Photo upload could not reach STRIVE. Try again.',true);}});};
       }
+      if(owner)slot.querySelectorAll('[data-photo-role]').forEach(select=>select.onchange=async()=>{select.disabled=true;try{const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:select.dataset.photoRole,role:select.value})});if(!current()||!res)return;if(!res.ok){status(await responseMessage(res),true);await load();return;}status('Image role saved.');await load();await onChanged();}catch(_){if(current())status('Image role could not be saved. Reload and try again.',true);}finally{if(select.isConnected)select.disabled=false;}});
       if(owner)slot.querySelectorAll('[data-photo-cover]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:button.dataset.photoCover})});if(!current()||!res)return;if(!res.ok){status(await responseMessage(res),true);return;}status('Cover selected. Your other photos stay in the gallery.');await load();await onChanged();}catch(_){if(current())status('Cover could not be saved. Try again.',true);}finally{if(button.isConnected)button.disabled=false;}});
       if(owner)slot.querySelectorAll('[data-photo-delete]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{const res=await request(button.dataset.photoDelete,false,{method:'DELETE'});if(!current()||!res)return;if(!res.ok){const message=await responseMessage(res);if(current())status(message,true);return;}status('Photo removed.');await load();await onChanged();}catch(_){if(current())status('Photo removal could not reach STRIVE. Try again.',true);}finally{if(button.isConnected)button.disabled=false;}});
     }
@@ -92,25 +94,38 @@
     const cards=[...host.querySelectorAll('.fc[data-run-id]:not([data-photo-checked]), .card[data-run-id]:not([data-photo-checked]), .history-run[data-run-id]:not([data-photo-checked])')];
     await Promise.all(cards.map(async card=>{
       card.dataset.photoChecked='true';
+      const generation=Symbol(),pendingUrls=new Set();coverGeneration.set(card,generation);
+      const current=()=>{if(active&&card.isConnected!==false&&coverGeneration.get(card)===generation)return true;for(const url of pendingUrls){URL.revokeObjectURL(url);urls.delete(url)}pendingUrls.clear();return false;};
       try{
         const runId=card.dataset.runId;
-        const listHeaders=await headers(client);if(!active||card.isConnected===false)return;
+        const listHeaders=await headers(client);if(!current())return;
         const list=await fetch(`/api/run-photos?run_id=${encodeURIComponent(runId)}`,{headers:listHeaders,signal:controller.signal});
-        if(!active||!list.ok)return;
-        const payload=await list.json(), photo=payload?.photos?.[0];
-        const path=photoPath(photo);if(!active||!path)return;
-        const imageHeaders=await headers(client);if(!active)return;
-        const imageRes=await fetch(path,{headers:imageHeaders,signal:controller.signal});
-        if(!active||!imageRes.ok)return;
-        const blob=await imageRes.blob();if(!active||card.isConnected===false)return;
-        const url=URL.createObjectURL(blob);urls.add(url);
-        const image=document.createElement('img');
-        image.className='run-photo-cover';image.src=url;image.alt='Run photo';image.loading='lazy';
-        images.add(image);
-        image.onload=image.onerror=()=>{URL.revokeObjectURL(url);urls.delete(url)};
+        if(!current()||!list.ok)return;
+        const payload=await list.json(), photos=payload?.photos||[];
+        const before=photos.find(p=>p.role==='before'),after=photos.find(p=>p.role==='after');
+        const mode=card.dataset.photoLayout||'cover';
+        const selected=mode==='before_after'&&before&&after?[before,after]:[mode==='result'?(photos.find(p=>p.role==='result')||photos[0]):photos[0]].filter(Boolean);
+        if(!selected.length)return;
+        // Build a detached group. Attach only while the same view is active, after all reads.
+        const group=document.createElement('div');group.className='run-media'+(selected.length===2?' run-before-after':'');
+        for(const photo of selected){
+          const path=photoPath(photo);if(!path)continue;
+          const imageHeaders=await headers(client);if(!current())return;
+          const imageRes=await fetch(path,{headers:imageHeaders,signal:controller.signal});
+          if(!current()||!imageRes.ok)return;
+          const blob=await imageRes.blob();if(!current())return;
+          const url=URL.createObjectURL(blob);urls.add(url);pendingUrls.add(url);
+          const figure=document.createElement('figure'),image=document.createElement('img');
+          image.className='run-photo-cover';image.src=url;image.alt=roles[photo.role]||'Run photo';image.loading='lazy';images.add(image);
+          image.onload=image.onerror=()=>{URL.revokeObjectURL(url);urls.delete(url);pendingUrls.delete(url)};
+          figure.append(image);if(photo.role&&photo.role!=='photo'){const caption=document.createElement('figcaption');caption.textContent=roles[photo.role]||'Photo';figure.append(caption)}group.append(figure);
+        }
+        if(!current())return;
+        card.querySelectorAll('.run-media').forEach(el=>el.remove());
         const body=card.querySelector('.history-visual')||card.querySelector('.fc-body');
-        if(body){const output=body.querySelector('.run-output-visual');if(output){const personal=document.createElement('details');personal.className='run-personal-photo';personal.innerHTML='<summary>Photo from the session</summary>';personal.append(image);body.after(personal);}else body.prepend(image);}
-        else{const title=card.querySelector('.run-title-row');if(title)title.insertAdjacentElement('afterend',image);else card.prepend(image);}
+        if(body){const lead=body.querySelector('.fc-cap')||body.querySelector('.fc-title');if(lead)lead.after(group);else body.prepend(group)}
+        else{const title=card.querySelector('.run-title-row');if(title)title.after(group);else card.prepend(group)}
+        images.add(group);
       }catch(_){}
     }));
   }

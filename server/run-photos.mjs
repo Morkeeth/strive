@@ -4,7 +4,7 @@ import { randomUUID, createHash } from 'node:crypto';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const MAX_PHOTO_BYTES=3*1024*1024;
 const BUCKET='strive-run-photos';
-const fields='id,run_id,width,height,byte_size,created_at,is_cover';
+const fields='id,run_id,width,height,byte_size,created_at,is_cover,role';
 export const PHOTO_HEADERS={'Cache-Control':'private, no-store, max-age=0',Vary:'Authorization','X-Content-Type-Options':'nosniff'};
 function result(status,body,headers={}) {return {status,body,headers:{...PHOTO_HEADERS,...headers}};}
 function present(p){return {...p,url:`/api/run-photos?id=${p.id}&run_id=${p.run_id}`};}
@@ -76,6 +76,11 @@ export async function runPhotos({method,headers={},query={},body},config,fetchIm
   if(method==='PATCH') {
    if(!runId||!UUID.test(String(body?.photo_id))) return result(400,{error:'Choose a saved photo for this run.'});
    if(!await ownsRun(runId)) return result(404,{error:'Run not found.'});
+   if(Object.hasOwn(body,'role')) {
+    if(!['photo','result','before','after','personal'].includes(body.role))return result(400,{error:'Choose an image role.'});
+    try{await rows('rpc/set_run_photo_role',{method:'POST',body:JSON.stringify({target_run:runId,target_photo:body.photo_id,chosen_role:body.role})});return result(200,{photo_id:body.photo_id,role:body.role});}
+    catch{return result(409,{error:'Could not save that role. Only one Before and one After image are allowed. Change the existing role first, or reload and try again.'});}
+   }
    try {
     const chosen=await rows('rpc/choose_run_cover',{method:'POST',body:JSON.stringify({target_run:runId,target_photo:body.photo_id})});
     return result(200,{cover_photo_id:chosen});

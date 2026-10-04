@@ -17,5 +17,6 @@ const card=Feed.card({...saved,tool_calls:100000,wall_time_s:90000},{preview:tru
 console.log(JSON.stringify({persistence:'exact reread after account switch',otherOwnerUpdate:'zero rows',anonymousPrivateRead:'zero rows',oversize:'rejected',unsafeText:'escaped',missingStory:'omitted',activityHero:'removed',durationBadge:'removed'}));
 assert.equal(Story.visual({output_url:'javascript:alert(1)'}),'');
 assert.equal(Story.visual({output_url:'https://example.test/page'}),'');
-assert.ok(Story.visual({output_url:'https://example.test/result.png'}).includes('referrerpolicy="no-referrer"'));
+assert.equal(Story.visual({output_url:'https://example.test/result.png'}),'','remote image links are not embedded; uploaded visuals use private photo API');
+assert.equal(Story.summary({story_result:'Built the component',caption:'Old caption'}),'Built the component');
 await db.close();

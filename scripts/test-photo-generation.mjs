@@ -1,0 +1,8 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import {JSDOM} from 'jsdom';
+const dom=new JSDOM('<article class="fc" data-run-id="r" data-photo-layout="result"><a class="fc-body"><h3 class="fc-title">Result</h3></a></article>',{url:'https://striverun.app'});
+let release,entered;const waiting=new Promise(r=>release=r),started=new Promise(r=>entered=r);let lists=0,blobs=0;
+const ctx={document:dom.window.document,location:dom.window.location,AbortController,URL:Object.assign(class extends URL {},{createObjectURL:()=>`blob:${++blobs}`,revokeObjectURL(){}}),fetch:async path=>{
+ if(path.includes('?run_id=')){lists++;return {ok:true,json:async()=>({photos:[{url:'/api/run-photos?id='+lists+'&run_id=r',role:'result'}]})}}
+ if(path.includes('id=1&')){entered();await waiting;}return {ok:true,blob:async()=>({})};
+}};vm.createContext(ctx);vm.runInContext(fs.readFileSync('site/run-photos.js','utf8'),ctx);
+const card=ctx.document.querySelector('.fc');const old=ctx.StriveRunPhotos.mountCovers({client:null,root:ctx.document});await started;delete card.dataset.photoChecked;await ctx.StriveRunPhotos.mountCovers({client:null,root:ctx.document});const current=card.querySelector('img').src;release();await old;assert.equal(card.querySelector('img').src,current);assert.equal(card.querySelectorAll('.run-media').length,1);ctx.StriveRunPhotos.disposeAll();assert.equal(card.querySelectorAll('.run-media').length,0);console.log('PASS delayed previous photo request cannot replace current selection; group disposal clears captions and images');
