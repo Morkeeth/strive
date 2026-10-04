@@ -449,6 +449,15 @@ def parse_solo(path: str, athlete: str = "you", pick: int = -1, gap: int = SITTI
         git=dict(root=repo_name if repo_root else None, commits=len(commits),
                  reason=None if repo_root else "not inside a git work tree"),
     )
+    from .capture_metadata import recorded
+    from .native_sittings import records as read_records
+    def in_window(row):
+        try:
+            stamp=datetime.fromisoformat(row.get("timestamp", "").replace("Z", "+00:00"))
+            return t0 <= stamp <= hi
+        except (TypeError, ValueError):
+            return False
+    run["capture_metadata"] = recorded((r for r in read_records(path) if in_window(r)), "claude")
     return run
 
 

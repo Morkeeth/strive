@@ -1,6 +1,7 @@
 /* Outcome-first feed. Author story and linked visual lead; captured activity remains supporting evidence on detail. No productivity score or inferred result. */
 (function (root) {
   "use strict";
+  const context=typeof module!=="undefined"&&module.exports?require("./run-context.js"):root.StriveContext;
   const story=typeof module!=="undefined"&&module.exports?require("./run-story.js"):root.StriveStory;
   const historical=typeof module!=="undefined"&&module.exports?require("./historical-import.js"):root.StriveHistory;
   const evidence=typeof module!=="undefined"&&module.exports?require("./run-evidence.js"):root.StriveEvidence;
@@ -183,6 +184,9 @@
     const raw = Array.isArray(r.ridge) && r.ridge.length > 1 ? r.ridge : Array.isArray(r.rhythm) && r.rhythm.length > 1 ? r.rhythm : null;
     if (!raw || raw.some((v) => !Number.isFinite(v) || v < 0)) return "";
     const src = settle(raw);
+    const ridge=Array.isArray(r.ridge)&&r.ridge.length>1;
+    const quantity=ridge||r.trace_basis==='elapsed-agent-tool-calls'?'Tool requests':r.trace_basis==='elapsed'||r.trace_basis==='timestamped native events'?'Human messages':'Recorded activity';
+    const axis=ridge?(r.ridge_basis==='wall-time'?'elapsed time':r.ridge_basis==='turn-order'?'turn order':'call order'):(r.trace_basis==='position'?'event order':r.trace_basis==='elapsed'||r.trace_basis==='elapsed-agent-tool-calls'||r.trace_basis==='timestamped native events'?'elapsed time':'source order; timing unknown');
     const max = Math.max(...src);
     if (!max) return "";
     const w = 300, h = 56, top = 6;
@@ -192,7 +196,7 @@
     const peak = src.indexOf(max);
     const px = ((peak / (src.length - 1)) * 100).toFixed(2);
     const py = ((y(max) / h) * 100).toFixed(2);
-    return `<div class="fc-spark" aria-hidden="true"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polygon points="0,${h} ${line} ${w},${h}" class="fc-area"/><polyline points="${line}" class="fc-line"/></svg><span class="fc-peak" style="left:${px}%;top:${py}%"></span></div>`;
+    return `<div class="fc-spark" aria-hidden="true"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polygon points="0,${h} ${line} ${w},${h}" class="fc-area"/><polyline points="${line}" class="fc-line"/></svg><span class="fc-peak" style="left:${px}%;top:${py}%"></span></div><p class="fc-source">${esc(quantity)} per slice · ${esc(axis)} · vertical 0–${max}. Activity, not result quality.</p>`;
   }
 
   // THE RUN MAP. The route the run took through the folders it touched (r.route: station
@@ -309,6 +313,9 @@
     const raw = Array.isArray(r.ridge) && r.ridge.length > 1 ? r.ridge : Array.isArray(r.rhythm) && r.rhythm.length > 1 ? r.rhythm : null;
     if (!raw || raw.some((v) => !Number.isFinite(v) || v < 0)) return null;
     const src = settle(raw);
+    const ridge=Array.isArray(r.ridge)&&r.ridge.length>1;
+    const quantity=ridge||r.trace_basis==='elapsed-agent-tool-calls'?'Tool requests':r.trace_basis==='elapsed'||r.trace_basis==='timestamped native events'?'Human messages':'Recorded activity';
+    const axis=ridge?(r.ridge_basis==='wall-time'?'elapsed time':r.ridge_basis==='turn-order'?'turn order':'call order'):(r.trace_basis==='position'?'event order':r.trace_basis==='elapsed'||r.trace_basis==='elapsed-agent-tool-calls'||r.trace_basis==='timestamped native events'?'elapsed time':'source order; timing unknown');
     const n = Math.min(12, src.length);
     const bins = new Array(n).fill(0);
     src.forEach((v, i) => { bins[Math.floor((i * n) / src.length)] += v; });
@@ -427,6 +434,7 @@
     ${story?story.visual(r):''}
     ${r.feedback_question?`<p class="fc-question"><span>Feedback welcome</span>${esc(r.feedback_question)}</p>`:''}
     ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Typed by the author. No capture.</p>' : ''}${evidence?evidence.summary(r):''}
+    ${page&&context?context.context(r):''}
     <div class="fc-route-secondary">${heroVisual(r)}</div>
     <p class="fc-open">${preview?'Preview your story':'Open the story →'}</p>
   `;

@@ -14,6 +14,8 @@ COUNT_FIELDS = ("turns_typed", "tool_calls", "shell_calls", "files_touched", "co
 def validate_run(run: dict) -> dict:
     if not isinstance(run, dict):
         raise ValueError("A grind must be a JSON object.")
+    from .capture_metadata import validate as validate_metadata
+    validate_metadata(run.get("capture_metadata"))
     version = run.get("schema_version", 0)
     if type(version) is not int or version not in (0, SCHEMA_VERSION):
         raise ValueError("This grind uses an unsupported format. Update Agent Grinder to read it.")

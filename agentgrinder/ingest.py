@@ -606,7 +606,9 @@ def parse_cursor_session(path: str, athlete: str = "you", records=None, cursor_d
     else:
         run["capabilities"]["timed_ridge"] = False
     from .code_route import attach_measured_code_route
-
+    from .capture_metadata import recorded
+    from .native_sittings import records as read_records
+    run["capture_metadata"] = recorded(records if records is not None else read_records(path), "cursor")
     return attach_measured_code_route(run)
 
 
@@ -881,6 +883,9 @@ def _codex_scan(path: str, records=None):
 
 def parse_codex_session(path: str, athlete: str = "you", records=None) -> dict:
     from .native_trace import codex_activity
+    from .native_sittings import records as read_records
+    from .capture_metadata import recorded
+    records = list(records) if records is not None else list(read_records(path))
     native = codex_activity(path, records=records)
     hit = (native['typed'], native['tools']) if native['typed'] else None
     if not hit:
@@ -920,6 +925,7 @@ def parse_codex_session(path: str, athlete: str = "you", records=None) -> dict:
         "athlete": athlete,
         "title": title,
         "harness": "Codex",
+        "capture_metadata": recorded(records, "codex"),
         "project_identity": project_identity(cwd),
         "parser_version": "codex-sittings-2026-09-05" if records is not None else "codex-native-2026-09-04",
         "authorship": native["authorship"],

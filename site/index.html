@@ -582,6 +582,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/historical-import.js"></script>
 <script src="/run-evidence.js"></script>
 <script src="/run-story.js"></script>
+<script src="/run-context.js"></script>
 <script src="/feed-card.js"></script>
 <script src="/dropin-parse.js"></script>
 <script src="/fair.js"></script>
@@ -932,14 +933,8 @@ function vptHtml(r){
   const x=vpt(r);
   return `<div class="hl" title="${esc(VPT_TIP+' · '+vptFormula(r))}"><div class="n num"${x==null?'':` data-count="${x.toFixed(2)}" data-dec="2"`}>${vptText(r)}</div><div class="k">verified per turn</div></div>`;
 }
-function fiveRow(r){
-  const share=(r.claims_verified!=null&&r.claims)?`${r.claims_verified}/${r.claims} · ${Math.round(100*r.claims_verified/r.claims)}%`:(r.claims_verified!=null&&r.claims!=null?`${r.claims_verified}/${r.claims}`:'-');
-  const corr=(r.corrections!=null&&r.prompts)?`${Math.round(100*r.corrections/r.prompts)}%`:'-';
-  const prod=`${r.artifacts_produced??'-'} ÷ ${r.artifacts_promised??'-'}`;
-  const reach=r.reach==null?'-':(r.reach?'yes':'no');
-  const cell=(v,k,src,cost)=>`<div class="five${cost?' cost':''}"${v==='-'||v.includes(' ÷ -')||v.startsWith('- ÷')||v.includes('/-')?' data-missing="1"':''} title="${esc(src)}"><div class="k">${k}${cost?' <i class="costtag">· cost</i>':''}</div><div class="v num"${cnt(v)}>${esc(v)}</div></div>`;
-  return `<div class="fiverow">${cell(String(r.prompts??'-'),'typed turns','the turns you typed or queued, read from the transcript: tool results and injected context are not turns',true)}${cell(share,'verified claims',VPT_SRC.claims_verified)}${cell(corr,'correction rate',VPT_SRC.corrections)}${cell(prod,'produced ÷ promised',VPT_SRC.artifacts_produced)}${cell(reach,'reach',r.reach_reason||VPT_SRC.reach)}</div>`;
-}
+function fiveRow(r){ return StriveContext.metrics(r); }
+
 const pace=(m,p)=>(!m||!p)?'-':`${Math.floor(Math.round(m*60/p)/60)}:${String(Math.round(m*60/p)%60).padStart(2,'0')}`;
 
 const ACK_REASONS={
@@ -1295,6 +1290,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     story,
     metricStrip(),
     runUploadIdentity(r),
+    StriveContext.setup(r),
     `<div class="sub run-effort-context"><span class="card-harness">${esc(r.harness||'Coding agent')}</span>${r.harness==='Grok Bot'?' · bot activity':''} · ${esc(started)}</div>`,
     codeRoute?codeRouteDetail:'',
     codeRoute&&ridge?ridge:'',
@@ -1324,10 +1320,11 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     ${eventChip}
     ${agentChip}
     ${r.segment_id?`<div class="sub"><a href="/?segment=${encodeURIComponent(r.segment_id)}">Open segment leaderboard</a></div>`:''}
+    ${opts.detail?StriveContext.context(r):''}
     ${StriveStory.visual(r)}
     ${visual}
     ${output?`<p class="run-output"><a href="${esc(output)}" target="_blank" rel="noopener noreferrer">See the work ↗</a></p>`:''}
-    ${opts.detail?StriveStory.detail(r):''}
+    ${opts.detail?StriveStory.detail({...r,story_result:null}):''}
     ${StriveEvidence.summary(r)}
     ${xudosTip}
     ${opts.preview?'<div class="foot"><span class="meta">Preview · not saved</span></div>':`<div class="foot run-social-actions"><span class="meta">${count||0} thanks${selfAck?' · your run':''}</span>
@@ -2466,7 +2463,7 @@ async function importRun(){
     // Signed out there is no account to show: the neutral label and its initial, never a
     // made-up GitHub login. The title starts from receipt-backed output or basic session facts.
     const preview={id:'preview',profile_id:ME?.id||'preview',profiles:ME||{display_name:'Local run'},title:$('i_title').value.trim(),
-      project:editedProject(),model:run.model||null,segment_id:run.segment_id||null,
+      project:editedProject(),model:run.model||null,capture_metadata:run.capture_metadata||null,segment_id:run.segment_id||null,
       wall_time_s:Number.isInteger(run.wall_time_s)&&run.wall_time_s>=0?run.wall_time_s:null,
       harness:run.harness||null,prompts:run.turns_typed??null,duration_s:run.duration_s??null,
       commits:run.commits??null,tool_calls:run.tool_calls??null,shell_calls:run.shell_calls??null,files_touched:run.files_touched??null,artifacts_produced:run.artifacts_produced??null,
@@ -2538,7 +2535,7 @@ async function importRun(){
     if(!current())return;
     if(prior){ await openExisting(prior); return; }
     const base={profile_id:ME.id,title:$('i_title').value||'Untitled run',
-      project:editedProject(),model:run.model||null,segment_id:run.segment_id||null,
+      project:editedProject(),model:run.model||null,capture_metadata:run.capture_metadata||null,segment_id:run.segment_id||null,
       wall_time_s:Number.isInteger(run.wall_time_s)&&run.wall_time_s>=0?run.wall_time_s:null,
       harness:run.harness||null,prompts:run.turns_typed??null,duration_s:run.duration_s??null,
       commits:run.commits??null,tool_calls:run.tool_calls??null,shell_calls:run.shell_calls??null,files_touched:run.files_touched??null,
@@ -2567,7 +2564,7 @@ async function importRun(){
       commit_bins:run.commit_bins||null,ridge_tool_calls:run.ridge_tool_calls??null});
     // Declared outcome receipts (migration 008). Same rule as the ridge: the preview already showed
     // them, so a save that dropped them would produce a card that reads differently from its preview.
-    for(const key of ['repo_url','receipts','shipped','artifact_url','code_route'])
+    for(const key of ['repo_url','receipts','shipped','artifact_url','code_route','capture_metadata'])
       if(run[key]!=null) coach[key]=run[key];
     // The Repository field wins over the capture's value: an https link is saved, anything else
     // clears it. A typed value that is not a link is never saved as text.

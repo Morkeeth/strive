@@ -22,6 +22,7 @@ def export_run(run: dict) -> dict:
     rhythm = run.get("rhythm") or run.get("series")
     out = {
         "harness": run.get("harness"),
+        "capture_metadata": run.get("capture_metadata"),
         "is_sample": True if run.get("is_sample") is True else None,
         "activity_label": "bot activity" if run.get("harness") == "Grok Bot" else None,
         "project": run.get("project") if run.get("project_proven") is not False else None,

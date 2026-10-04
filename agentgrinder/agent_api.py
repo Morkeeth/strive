@@ -20,7 +20,7 @@ RUN_FIELDS = {"title","project","harness","turns_typed","duration_s","tool_calls
               # uploader states. They are never measurements.
               "repo_url","receipts","shipped","artifact_url","image_url",
               # Code Route journey (migration 009). Ordered project lanes and checkpoints.
-              "code_route"}
+              "code_route","capture_metadata"}
 
 
 def run_payload(run: dict, visibility: str = "private", *, title: str | None = None, note: str | None = None) -> dict:
