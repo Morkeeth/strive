@@ -25,7 +25,7 @@ if(!sdk)throw Error('Set STRIVE_SUPABASE_SDK to a local Supabase browser SDK fil
 const server=createServer(async(req,res)=>{try{
  const u=new URL(req.url,'http://127.0.0.1');
  res.setHeader('Content-Security-Policy',`default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ${backend.url}; img-src 'self' data: blob:`);
- if(u.pathname.startsWith('/r/')){await db.exec('reset role');const row=(await db.query('select * from strava.runs where id=$1',[u.pathname.slice(3)])).rows[0];res.setHeader('Content-Type','text/html');return res.end(publicHtml(row));}
+ if(u.pathname.startsWith('/r/')){await db.exec('reset role');const row=(await db.query('select * from strava.runs where id=$1',[u.pathname.slice(3)])).rows[0];res.setHeader('Content-Type','text/html');const photos=(await db.query('select * from strava.run_photos where run_id=$1',[row.id])).rows;return res.end(publicHtml(row,{photos}));}
  if(u.pathname==='/fixture'){
   const peer=u.searchParams.has('peer'),session=sessionFor(peer?RILEY:CASEY,'fixture@example.test',peer?'test-riley':'test-casey');
   res.setHeader('Content-Type','text/html');return res.end(`<meta name="viewport" content="width=device-width"><h1>STRIVE local product rehearsal</h1><p>TEST DATA account, disposable database and local photo storage. No hosted services.</p><button id="go">Open ${peer?'peer':'owner'} fixture</button><script>go.onclick=()=>{localStorage.setItem('agentic-strava-auth',${JSON.stringify(JSON.stringify(session))});localStorage.setItem('ag_onboard_done','1');location.href='/?run=${run}'}</script>`);
@@ -41,5 +41,5 @@ const server=createServer(async(req,res)=>{try{
  let body=await readFile(file);if(file.endsWith('index.html'))body=Buffer.from(body.toString().replace('http://127.0.0.1:54321',backend.url).replace('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2','/local-supabase.js'));
  res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.jpg':'image/jpeg'})[extname(file)]||'application/octet-stream');res.end(body);
  }catch(e){res.writeHead(500,{'Content-Type':'text/plain'});res.end('Local rehearsal failed: '+e.message)}});
-server.listen(0,'127.0.0.1',()=>console.log(JSON.stringify({url:'http://127.0.0.1:'+server.address().port,run,missing,backend:backend.url})));
+server.listen(Number(process.env.PORT)||0,'127.0.0.1',()=>console.log(JSON.stringify({url:'http://127.0.0.1:'+server.address().port,run,missing,backend:backend.url})));
 process.on('SIGTERM',()=>{server.close();backend.server.close();db.close().then(()=>process.exit())});
