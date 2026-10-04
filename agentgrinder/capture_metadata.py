@@ -35,7 +35,9 @@ def recorded(records, harness):
         if harness=='codex':
             if row.get('type')=='turn_context': model(p.get('model'))
             if row.get('type')!='event_msg' or p.get('type')!='token_count': continue
-            info=p.get('info') or {}; usage=info.get('last_token_usage') or {}; total=info.get('total_token_usage') or {}
+            info=p.get('info'); info=info if isinstance(info,dict) else {}
+            usage=info.get('last_token_usage'); usage=usage if isinstance(usage,dict) else {}
+            total=info.get('total_token_usage'); total=total if isinstance(total,dict) else {}
             # Repeated snapshots have identical cumulative counters. Only last-call deltas are summed,
             # so selecting a later sitting never imports the earlier cumulative total.
             if not all(count(total.get(k)) and count(usage.get(k)) for k in ('input_tokens','output_tokens')): continue
@@ -43,7 +45,8 @@ def recorded(records, harness):
             usages[key]={k:usage.get(k) for k in TOKEN_KEYS if count(usage.get(k))}
         elif harness=='claude':
             if row.get('type')!='assistant' or row.get('isSidechain'): continue
-            model(msg.get('model')); usage=msg.get('usage') or {}; key=msg.get('id')
+            model(msg.get('model')); usage=msg.get('usage'); key=msg.get('id')
+            if not isinstance(usage,dict): continue
             if not key or not all(count(usage.get(k)) for k in ('input_tokens','output_tokens')): continue
             cache=usage.get('cache_read_input_tokens',0); creation=usage.get('cache_creation_input_tokens',0)
             if not count(cache) or not count(creation): continue

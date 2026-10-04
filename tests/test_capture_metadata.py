@@ -23,3 +23,9 @@ def test_missing_is_unknown_and_text_does_not_escape():
 def test_refuse_forged_shape_and_subsets():
  for m in [{'models':['a'],'basis':'codex-records','secret':'x'}, {'models':['a'],'basis':'codex-records','input_tokens':5,'cached_input_tokens':6}, {'models':['a'],'basis':'codex-records','output_tokens':True}]:
   with pytest.raises(ValueError):validate(m)
+
+def test_malformed_usage_is_unknown_and_valid_recorded_subset_survives():
+ bad=[{'type':'event_msg','payload':{'type':'token_count','info':[]}}, {'type':'event_msg','payload':{'type':'token_count','info':{'last_token_usage':'bad','total_token_usage':5}}}]
+ assert 'input_tokens' not in recorded(bad,'codex')
+ assert recorded(bad+[event(1000)],'codex')['input_tokens']==100
+ assert 'input_tokens' not in recorded([{'type':'assistant','message':{'id':'x','model':'claude-x','usage':[]}}],'claude')
