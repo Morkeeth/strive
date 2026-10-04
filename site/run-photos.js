@@ -109,7 +109,7 @@
         images.add(image);
         image.onload=image.onerror=()=>{URL.revokeObjectURL(url);urls.delete(url)};
         const body=card.querySelector('.history-visual')||card.querySelector('.fc-body');
-        if(body)body.prepend(image);
+        if(body){const output=body.querySelector('.run-output-visual');if(output){const personal=document.createElement('details');personal.className='run-personal-photo';personal.innerHTML='<summary>Photo from the session</summary>';personal.append(image);body.after(personal);}else body.prepend(image);}
         else{const title=card.querySelector('.run-title-row');if(title)title.insertAdjacentElement('afterend',image);else card.prepend(image);}
       }catch(_){}
     }));

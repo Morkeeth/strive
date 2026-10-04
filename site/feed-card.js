@@ -1,13 +1,7 @@
-/* THE FEED CARD. What a stranger scrolls past: a face, a name, one big number, the run map, the
-   activity line, and a reaction. The full run card (runCard in index.html) stays the detail view
-   behind a tap.
-
-   Every value here is a column of the run row the page fetched. A number the row does not carry is
-   not drawn; nothing is estimated and nothing is invented to fill a gap. Variety between cards comes
-   from the runs themselves: the headline is the strongest thing each run measured, so a run with
-   commits leads with commits and a run with only a session time leads with time. */
+/* Outcome-first feed. Author story and linked visual lead; captured activity remains supporting evidence on detail. No productivity score or inferred result. */
 (function (root) {
   "use strict";
+  const story=typeof module!=="undefined"&&module.exports?require("./run-story.js"):root.StriveStory;
   const historical=typeof module!=="undefined"&&module.exports?require("./historical-import.js"):root.StriveHistory;
   const evidence=typeof module!=="undefined"&&module.exports?require("./run-evidence.js"):root.StriveEvidence;
   const esc = (s) =>
@@ -328,13 +322,7 @@
     return b ? b.bars.join("") : "";
   }
   function strideFirst(r) {
-    const lead = headline(r);
-    const a = achievement(r);
-    const figures = stats(r, lead).map(([k, v]) =>
-      k === "Time" ? String(v) : k === "Turns" ? `${v} ${v === 1 ? "turn" : "turns"}` : `${v} ${k.toLowerCase()}`);
-    const leadText = lead ? `${lead.n} ${lead.unit}` : "";
-    return ["STRIVE", harnessName(r), leadText, ...figures, a ? a.label : ""]
-      .filter(Boolean).join(" · ");
+    return ['STRIVE',titleOf(r),r.caption||''].filter(Boolean).join(' · ');
   }
   const where = (url) => (url ? String(url).replace(/^https?:\/\//, "") : "");
   function strideText(r, url) {
@@ -430,14 +418,17 @@
     const talk = preview
       ? `<span class="fc-act" aria-label="Reply">${TALK_ICON}<span>Reply</span></span><span class="fc-act" aria-label="Share">${SHARE_ICON}<span>Share</span></span>`
       : `<a class="fc-act" href="/?run=${id}#grind-thread" aria-label="Reply">${TALK_ICON}<span>Reply</span></a><a class="fc-act" href="/?share=1&amp;run=${id}" aria-label="Share">${SHARE_ICON}<span>Share</span></a>`;
-    const shipped = r.output_url && /^https:\/\//i.test(r.output_url) ? `<span class="fc-chip">Shipped</span>` : "";
+    const shipped = r.output_url && /^https:\/\//i.test(r.output_url) ? `<span class="fc-chip">Work linked</span>` : "";
     const faceHtml = anon || preview ? face(r) : `<a href="/?u=${encodeURIComponent(p.handle)}" tabindex="-1">${face(r)}</a>`;
     const strideHtml = opts.stride === false || !(preview || page || opts.url) ? "" : stride(r, { url: opts.url, copy: !!opts.copy });
     const body = `
     <${tag} class="fc-title">${esc(titleOf(r))}</${tag}>
     ${r.caption || r.note ? `<p class="fc-cap">${esc(r.caption || r.note)}</p>` : ""}
-    <div class="fc-numbers">${lead ? `<div class="fc-hero"><span class="fc-n num">${esc(lead.n)}</span><span class="fc-u">${esc(lead.unit)}</span></div>` : ""}${facts.length ? `<dl class="fc-stats">${facts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd class="num">${esc(v)}</dd></div>`).join("")}</dl>` : ""}</div>
-    ${observedProjection(r) ? '<p class="fc-source">Observed message order. Missing records may be omitted; distinct requests are a lower bound.</p>' : ""}${r.trace_basis === "typed-by-author" ? '<p class="fc-source">Typed by the author. No capture.</p>' : ""}${evidence?evidence.summary(r):""}${badge(r)}${heroVisual(r)}${strideHtml}
+    ${story?story.visual(r):''}
+    ${r.feedback_question?`<p class="fc-question"><span>Feedback welcome</span>${esc(r.feedback_question)}</p>`:''}
+    ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Typed by the author. No capture.</p>' : ''}${evidence?evidence.summary(r):''}
+    <div class="fc-route-secondary">${heroVisual(r)}</div>
+    <p class="fc-open">${preview?'Preview your story':'Open the story →'}</p>
   `;
     return `<article class="card fc"${preview ? "" : ` id="card-${id}" data-run-id="${id}"`}>
   <header class="fc-top">${faceHtml}<div class="fc-who">${who}<small>${meta}</small></div>${shipped}</header>

@@ -52,3 +52,9 @@ This repository is the public product. Morkeeth/agentgrinder remains the hackath
 - Official community and competition directories appear in Discover. They are outbound references only, with no registration, joining or calendar integration.
 
 Brand decision, 16 September: the public product is STRIVE, tagline "Post your strides". The earlier name Pacecard is rejected. Keep the white cards and blue activity trace. The address remains `agentic-strava.vercel.app`. The name and tagline are held in one place, `server/brand.mjs`; internal identifiers, the package name, the CLI command and the `strava` schema are unchanged.
+
+## Local comparison: Bean feedback, 4 October
+
+Candidate only. Feed leads with author title, caption, optional linked output image and feedback question. Long-session awards and metric heroes leave the feed; source labels and the blue map remain. Detail adds optional author-written What changed / Still open / A question for you. These are declarations, not inferred or independently verified results. Existing owner-only editing and run audience cover these bounded fields. Any working attempt, design, research or unfinished question can be shared. No shipped-per-token score.
+
+Migration 030 adds these optional fields. The comparison uses fixture accounts and a disposable database. It does not prove Bean participation, hosted authentication or retention.
