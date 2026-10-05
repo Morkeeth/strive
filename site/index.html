@@ -585,6 +585,8 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/run-context.js"></script>
 <script src="/feed-card.js"></script>
 <script src="/day.js"></script>
+<script src="/import-row.js"></script>
+<script src="/day-drafts.js"></script>
 <script src="/dropin-parse.js"></script>
 <script src="/fair.js"></script>
 <script src="/home.js"></script>
@@ -2563,42 +2565,12 @@ async function importRun(){
     try{ prior=await existingRun(); }catch(lookupError){ showRecovery(lookupError); return; }
     if(!current())return;
     if(prior){ await openExisting(prior); return; }
-    const base={profile_id:ME.id,title:$('i_title').value||'Untitled run',
-      project:editedProject(),model:run.model||null,capture_metadata:run.capture_metadata||null,segment_id:run.segment_id||null,
-      wall_time_s:Number.isInteger(run.wall_time_s)&&run.wall_time_s>=0?run.wall_time_s:null,
-      harness:run.harness||null,prompts:run.turns_typed??null,duration_s:run.duration_s??null,
-      commits:run.commits??null,tool_calls:run.tool_calls??null,shell_calls:run.shell_calls??null,files_touched:run.files_touched??null,
-      rhythm:run.rhythm||null,caption:caption||null,output_url:output||null,visibility:'private',started_at:run.started||null};
-    dropNullSegmentColumns(base);
-    // the coach columns (nullable; migration 2026-09-03-coach.sql). Retry without them on a
-    // database that does not have them yet, and say so.
-    const coach={claims:run.claims??null,claims_verified:run.claims_verified??null,artifacts_produced:run.artifacts_produced??null,
-      reach:run.reach??null,
-      coach_verdict:run.coach_verdict??null,coach_plan:run.coach_plan??null,coach_tool_calls:run.coach_tool_calls??null,
-      coach_mode:run.coach_mode??null,
-      progress_verdict:run.progress_verdict??null};
-    // Persist the measurement reference whenever the export carries one, even on schema 0,
-    // so a later retry can find this row. Other schema-1 fields stay gated on version.
-    if(run.measurement_revision!=null) coach.measurement_revision=run.measurement_revision;
-    if(run.baseline_revision!=null) coach.baseline_revision=run.baseline_revision;
-    if(run.schema_version===1) Object.assign(coach,{schema_version:1,trace_basis:run.trace_basis||null,route:run.route||null,
-      progress_delta:run.progress_delta??null});
-    // The ridge columns (nullable; migration supabase/strava/003_ridge_persistence.sql). The
-    // preview already drew this ridge from the export. Before 003 the Save dropped it and the
-    // reload fell back to the legacy rhythm trace. These are the same five field names the card
-    // renderer reads back (site/run-contract.js, function ridge). No silent fallback: a database
-    // without the columns must fail the save loudly, not save a run with its ridge removed.
-    if(run.ridge) Object.assign(coach,{ridge:run.ridge,ridge_basis:run.ridge_basis||null,
-      ridge_wall_seconds:run.ridge_wall_seconds??null,worker_bins:run.worker_bins||null,
-      commit_bins:run.commit_bins||null,ridge_tool_calls:run.ridge_tool_calls??null});
-    // Declared outcome receipts (migration 008). Same rule as the ridge: the preview already showed
-    // them, so a save that dropped them would produce a card that reads differently from its preview.
-    for(const key of ['repo_url','receipts','shipped','artifact_url','code_route','capture_metadata'])
-      if(run[key]!=null) coach[key]=run[key];
+    // The row is built by site/import-row.js, the same builder the day review uses.
     // The Repository field wins over the capture's value: an https link is saved, anything else
     // clears it. A typed value that is not a link is never saved as text.
-    {const typedRepo=($('i_repo')?.value||'').trim(); const repo=safeRepoUrl(typedRepo); if(repo) coach.repo_url=repo; else delete coach.repo_url;}
-    let {data:published,error}=await sb.from('runs').insert({...base,...coach}).select('id').single();
+    const row=StriveImportRow.build(run,{profileId:ME.id,title:$('i_title').value,project:editedProject(),caption,output,
+      repo:safeRepoUrl(($('i_repo')?.value||'').trim())});
+    let {data:published,error}=await sb.from('runs').insert(row).select('id').single();
     if(!current())return;
     if(error&&error.code==='23505'){ let again=null; try{again=await existingRun()}catch(_){} if(again){ await openExisting(again); return; } }
     if(error){showRecovery(error);return;}
@@ -2758,6 +2730,8 @@ async function route(){ RUN_VIEW_GENERATION++;window.StriveRunPhotos?.disposeAll
   if(ME && social.refreshUnread) social.refreshUnread();
   if(IDENTITY_SETUP)return viewIdentitySetup();
   restoreImport();
+  if(await StriveDayDrafts.open({client:sb,me:()=>ME,app:()=>$('app'),frame,railHtml,esc,status,signIn:()=>showSignIn(),decode:decodeImportPayload,
+    validate:run=>GrinderContract.validate(run),projectLabel:v=>GrinderContract.projectLabel(v),rejectPaths:v=>GrinderContract.rejectPaths(v),safeRepoUrl,explain:e=>GrinderContract.message?GrinderContract.message(e):String(e?.message||e||'')})) return;
   if(await importRun()) return;
   if(social&&typeof social.applyStoredSocialReturn==='function'){social.applyStoredSocialReturn();}else if(ME){try{const pending=sessionStorage.getItem('ag_social_return');if(pending&&/^\?(post|mine|following|inbox|run|u|example|people|account|connect|explore|boards|projects?|crews?)(=|&|$)/.test(pending)){history.replaceState(null,'','/'+pending);sessionStorage.removeItem('ag_social_return');}}catch(_){}}
   const q=new URLSearchParams(location.search);

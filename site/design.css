@@ -306,3 +306,10 @@ button,summary{touch-action:manipulation}
 .day-models li{display:grid;grid-template-columns:minmax(90px,150px) 1fr 24px;gap:8px;align-items:center;padding:3px 0}.day-models i{display:block;height:8px;background:var(--blue)}.day-models b{text-align:right;font-weight:600}
 .day-ask .fc-question{font-size:20px;line-height:1.3;margin-bottom:12px}
 @media(max-width:720px){.day-hero{grid-template-columns:1fr;gap:14px}.day-head h1{font-size:32px}.day-repos{columns:1}.day-sheet{--day-left:0%}.day-line{grid-template-columns:1fr}.day-what{padding:0 0 8px}.day-axis{display:none}.day-how{grid-template-columns:1fr}.ptotals.day-nums{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* Review a day of drafts (site/day-drafts.js). */
+.dd-bar{display:flex;gap:16px;align-items:end;flex-wrap:wrap;padding:14px 16px}.dd-bar label{flex:1;min-width:220px;font-size:13px;color:var(--muted)}.dd-bar input{display:block;width:100%;margin-top:4px}.dd-tools{display:flex;gap:8px}
+.dd-list{padding:0}.dd-row{display:grid;grid-template-columns:44px 1fr;border-top:1px solid var(--rule);padding:12px 16px 12px 0}.dd-row:first-child{border-top:0}
+.dd-pick{display:flex;justify-content:center;padding-top:2px}.dd-pick input{width:18px;height:18px}
+.dd-body b{display:block;font-weight:600}.dd-facts{display:block;font-size:12px;color:var(--muted)}.dd-state{display:block;font-size:13px;margin-top:4px}.dd-saved .dd-state a{color:var(--blue)}.dd-failed .dd-state,.dd-unreadable .dd-state{color:#a4262c}
+.dd-body details{margin-top:6px;font-size:12px}.dd-body summary{cursor:pointer;color:var(--blue)}.dd-body pre{overflow:auto;background:var(--bg);padding:10px;margin:6px 0 0;max-height:260px}
+.dd-foot{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:14px 0}.dd-foot span{font-size:14px}
