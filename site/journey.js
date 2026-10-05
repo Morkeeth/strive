@@ -13,12 +13,16 @@
   function compute(runs){
     const all=(runs||[]).map(r=>({run:r,at:when(r)})).filter(x=>x.at).sort((a,b)=>a.at-b.at);
     const sessions=all.filter(x=>!recovered(x.run)),git=all.filter(x=>recovered(x.run));
-    let total=0;
+    let total=0,calls=0;
     const points=sessions.map(x=>{const commits=Number.isFinite(x.run.commits)?Math.max(0,x.run.commits):null;total+=commits||0;
-      return {run:x.run,at:x.at,commits,after:total,result:resultOf(x.run).trim(),next:typeof x.run.story_next==='string'?x.run.story_next.trim():''}});
+      calls+=x.run.tool_calls||x.run.ridge_tool_calls||0;
+      return {run:x.run,at:x.at,commits,after:total,callsAfter:calls,result:resultOf(x.run).trim(),next:typeof x.run.story_next==='string'?x.run.story_next.trim():''}});
     const turning=points.filter(p=>p.result),last=points[points.length-1]||null;
     const gitCommits=git.length?git.reduce((a,x)=>a+x.run.history_evidence.repo_commits,0):null;
-    return {points,turning,first:points[0]||null,last,
+    // The trace climbs with commits when the runs recorded any. A session that works in another
+    // checkout records none, so the trace then climbs with recorded tool calls and says so.
+    const metric=total>0?{key:'after',total,unit:'commit'}:calls>0?{key:'callsAfter',total:calls,unit:'tool call'}:null;
+    return {points,turning,metric,first:points[0]||null,last,
       open:[...points].reverse().find(p=>p.next)?.next||'',
       question:[...points].reverse().find(p=>typeof p.run.feedback_question==='string'&&p.run.feedback_question.trim())?.run.feedback_question.trim()||'',
       commits:total,commitsUnknown:points.filter(p=>p.commits===null).length,gitCommits,
@@ -31,16 +35,16 @@
   // The trace: time left to right, commits recorded so far bottom to top. Every run is a small dot,
   // a turning point is a numbered ring. With one run there is no line to draw, and none is drawn.
   function trace(J){
-    const P=J.points;if(P.length<2)return '';
-    const W=640,H=150,L=8,R=8,T=14,B=22,t0=P[0].at.getTime(),t1=P[P.length-1].at.getTime(),top=Math.max(1,J.commits);
+    const P=J.points,M=J.metric;if(P.length<2||!M)return '';
+    const W=640,H=150,L=8,R=8,T=14,B=22,t0=P[0].at.getTime(),t1=P[P.length-1].at.getTime(),top=Math.max(1,M.total);
     const x=p=>L+(t1>t0?(p.at-t0)/(t1-t0):0.5)*(W-L-R),y=v=>H-B-(v/top)*(H-T-B);
     let d=`M${x(P[0]).toFixed(1)} ${y(0).toFixed(1)}`,prev=0;
-    for(const p of P){d+=` L${x(p).toFixed(1)} ${y(prev).toFixed(1)} L${x(p).toFixed(1)} ${y(p.after).toFixed(1)}`;prev=p.after}
+    for(const p of P){d+=` L${x(p).toFixed(1)} ${y(prev).toFixed(1)} L${x(p).toFixed(1)} ${y(p[M.key]).toFixed(1)}`;prev=p[M.key]}
     let n=0;
-    const marks=P.map(p=>p.result?`<g><circle cx="${x(p).toFixed(1)}" cy="${y(p.after).toFixed(1)}" r="9" class="j-ring"/><text x="${x(p).toFixed(1)}" y="${(y(p.after)+3.5).toFixed(1)}" text-anchor="middle" class="j-num">${++n}</text></g>`
-      :`<circle cx="${x(p).toFixed(1)}" cy="${y(p.after).toFixed(1)}" r="2.5" class="j-dot"/>`).join('');
-    return `<svg class="j-trace" viewBox="0 0 ${W} ${H}" role="img" aria-label="Commits recorded over time, ${J.turning.length} turning points marked"><line x1="${L}" x2="${W-R}" y1="${H-B}" y2="${H-B}" class="j-base"/><path d="${d}" class="j-line"/>${marks}
-      <text x="${L}" y="${H-5}" class="j-axis">${stamp(P[0].at)}</text><text x="${W-R}" y="${H-5}" text-anchor="end" class="j-axis">${stamp(P[P.length-1].at)}</text><text x="${W-R}" y="${T-3}" text-anchor="end" class="j-axis">${plural(J.commits,'commit')} recorded</text></svg>`;
+    const marks=P.map(p=>p.result?`<g><circle cx="${x(p).toFixed(1)}" cy="${y(p[M.key]).toFixed(1)}" r="9" class="j-ring"/><text x="${x(p).toFixed(1)}" y="${(y(p[M.key])+3.5).toFixed(1)}" text-anchor="middle" class="j-num">${++n}</text></g>`
+      :`<circle cx="${x(p).toFixed(1)}" cy="${y(p[M.key]).toFixed(1)}" r="2.5" class="j-dot"/>`).join('');
+    return `<svg class="j-trace" viewBox="0 0 ${W} ${H}" role="img" aria-label="${M.unit}s recorded over time, ${J.turning.length} turning points marked"><line x1="${L}" x2="${W-R}" y1="${H-B}" y2="${H-B}" class="j-base"/><path d="${d}" class="j-line"/>${marks}
+      <text x="${L}" y="${H-5}" class="j-axis">${stamp(P[0].at)}</text><text x="${W-R}" y="${H-5}" text-anchor="end" class="j-axis">${stamp(P[P.length-1].at)}</text><text x="${W-R}" y="${T-3}" text-anchor="end" class="j-axis">${plural(M.total,M.unit)} recorded</text></svg>`;
   }
   function render(J,{esc,mine,leadWith='result',shareHref}){
     if(!J.points.length)return '';

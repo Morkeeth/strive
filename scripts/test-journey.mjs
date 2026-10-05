@@ -27,4 +27,8 @@ assert.match(J.render(J.compute([{id:'n',started_at:at(5,9),commits:1}]),{esc,mi
 assert.equal(J.render(J.compute([]),{esc,mine:true}),'');
 assert.ok(!J.render(J.compute([{id:'h',started_at:at(5,9),caption:'<script>1</script>'}]),{esc,mine:false}).includes('<script>'));
 assert.ok(![result,journey,numbers].some(h=>h.includes('undefined')||h.includes('NaN')));
-console.log('PASS: turning points need a written result, recovered rows are not points, lead order, reader view, escaping');
+const calls=J.compute([{id:'t1',started_at:at(5,9),commits:0,tool_calls:40,caption:'TEST DATA a'},{id:'t2',started_at:at(5,12),commits:0,tool_calls:60,caption:'TEST DATA b'}]);
+assert.deepEqual(calls.metric,{key:'callsAfter',total:100,unit:'tool call'},'with no commits recorded the trace climbs with tool calls');
+assert.match(J.render(calls,{esc,mine:false}),/100 tool calls recorded/);assert.equal(j.metric.unit,'commit');
+assert.ok(!J.render(J.compute([{id:'z1',started_at:at(5,9),caption:'a'},{id:'z2',started_at:at(5,10),caption:'b'}]),{esc,mine:false}).includes('<svg'),'nothing recorded, no trace');
+console.log('PASS: trace metric; turning points need a written result, recovered rows are not points, lead order, reader view, escaping');
