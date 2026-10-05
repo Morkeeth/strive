@@ -129,5 +129,34 @@
       }catch(_){}
     }));
   }
-  root.StriveRunPhotos={mount,mountCovers,disposeAll};
+  // First picture and latest picture of a project, side by side. runs is oldest first. A photo the
+  // author marked Before or After wins; otherwise the earliest and the latest photo are used and are
+  // labelled as that, never as Before and After. With fewer than two different photos nothing is shown.
+  async function mountPair({client,slot,runs}){
+    if(!slot)return;let active=true;const controller=new AbortController(),urls=new Set();
+    const dispose=()=>{active=false;controller.abort();for(const url of urls)URL.revokeObjectURL(url);urls.clear();disposers.delete(dispose)};
+    disposers.add(dispose);
+    try{
+      const found=[];
+      for(const run of (runs||[]).slice(-24)){
+        const res=await fetch(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:await headers(client),signal:controller.signal});
+        if(!active)return;if(!res.ok)continue;
+        for(const photo of ((await res.json())?.photos||[]))if(photo.role!=='personal')found.push({photo,run});
+      }
+      if(!active||found.length<2)return;
+      const marked=role=>found.filter(f=>f.photo.role===role);
+      const before=marked('before')[0]||found[0],after=[...marked('after'),...marked('result')].pop()||found[found.length-1];
+      if(before.photo.id===after.photo.id)return;
+      const declared=before.photo.role==='before'&&['after','result'].includes(after.photo.role);
+      const figures=[];
+      for(const [item,label] of [[before,declared?'Before':'First picture'],[after,declared?(after.photo.role==='result'?'Result':'After'):'Latest picture']]){
+        const path=photoPath(item.photo);if(!path)return;
+        const res=await fetch(path,{headers:await headers(client),signal:controller.signal});if(!active||!res.ok)return;
+        const url=URL.createObjectURL(await res.blob());urls.add(url);
+        figures.push(`<figure><a href="/?run=${encodeURIComponent(item.run.id)}"><img src="${url}" alt="${esc(label)}" loading="lazy"></a><figcaption>${esc(label)}</figcaption></figure>`);
+      }
+      if(active)slot.innerHTML=figures.join('<span class="j-arrow" aria-hidden="true">→</span>');
+    }catch(_){}
+  }
+  root.StriveRunPhotos={mount,mountCovers,mountPair,disposeAll};
 })(typeof window!=="undefined"?window:globalThis);
