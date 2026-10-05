@@ -45,4 +45,12 @@ const g=D.compute([...runs,{id:'g1',project:'zup',title:'Work on zup',...ev(17)}
 assert.deepEqual(g.projects.map(p=>[p.name,p.commits,p.fromGit]),[['Work on bagel',48,48],['zup',17,17],['the-fair',10,null],['fake',1,null]],'a recovered count replaces session counts for that project and is never added to them; evidence on a run that is not a recovery is ignored; another day is left out');
 assert.equal(g.commits,76);assert.equal(g.items.some(i=>i.run.id==='g1'),false,'a recovered repository is not a session and is not on the clock');
 const gr=D.render(g,{esc,mine:true,dayLabel:'d'});assert.match(gr,/from git history/);assert.match(gr,/<span class="day-name">Work on bagel<\/span>/,'a recovered row with no project is shown, not linked');
-console.log('PASS: recovered git history; day membership, unknown commits, plumbing fold, peak, lead run, models, escaping and owner-only links');
+const night=D.compute([{id:'n1',project:'p',started_at:new Date(2026,9,5,23).toISOString(),duration_s:7200,commits:1,caption:'TEST DATA late'},{id:'n2',project:'q',started_at:new Date(2026,9,6,6).toISOString(),duration_s:600,commits:2,caption:'TEST DATA early'},{id:'n3',project:'r',started_at:new Date(2026,9,7,1).toISOString(),duration_s:60,commits:9}],'2026-10-05',label,'2026-10-06');
+assert.deepEqual(night.items.map(i=>i.run.id),['n1','n2'],'a window through a second day keeps both days and nothing after');assert.equal(night.through,'2026-10-06');
+assert.equal(D.compute([],'2026-10-05',label,'2026-10-20').through,'2026-10-05','a window longer than seven days is not accepted');
+assert.equal(D.compute([],'2026-10-05',label,'2026-10-01').through,'2026-10-05');
+const R=k=>D.render(m,{esc,mine:true,dayLabel:'d',leadWith:k,leadHref:x=>'/?day=2026-10-05&lead='+x});const idx=(h,t)=>h.indexOf(t);
+assert.ok(idx(R('result'),'Ask the room')<idx(R('result'),'What got done'));assert.ok(idx(R('journey'),'What got done')<idx(R('journey'),'Ask the room'));
+assert.ok(idx(R('numbers'),'Where the commits landed')<idx(R('numbers'),'What got done'));assert.match(R('journey'),/lead=numbers/);assert.equal(D.leadOf('x'),'result');
+assert.ok(!D.render(m,{esc,mine:false,dayLabel:'d',leadWith:'journey'}).includes('Lead with'),'a reader gets no chooser');
+console.log('PASS: night window, lead order; recovered git history; day membership, unknown commits, plumbing fold, peak, lead run, models, escaping and owner-only links');

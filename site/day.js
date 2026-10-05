@@ -16,11 +16,13 @@
   const modelsOf=r=>{const m=r.capture_metadata&&Array.isArray(r.capture_metadata.models)?r.capture_metadata.models:(typeof r.model==='string'&&r.model?[r.model]:[]);return [...new Set(m.filter(v=>typeof v==='string'&&v))]};
   function shift(day,delta){const [y,m,d]=day.split('-').map(Number);return localDay(new Date(y,m-1,d+delta))}
   // Everything the page shows is computed here from run rows, so it can be tested without a browser.
-  function compute(runs,day,projectLabel=v=>v){
+  // through is an optional last day, for work that runs past midnight. At most seven days.
+  function compute(runs,day,projectLabel=v=>v,through=null){
     if(!DAY.test(day))throw new Error('A day is written YYYY-MM-DD');
+    const end=through&&DAY.test(through)&&through>day&&through<=shift(day,6)?through:day;
     const items=[],recovered=[];
     for(const r of runs||[]){
-      const start=startOf(r);if(!start||localDay(start)!==day)continue;
+      const start=startOf(r);if(!start)continue;const on=localDay(start);if(on<day||on>end)continue;
       const evidence=evidenceOf(r);
       if(evidence){recovered.push({run:r,start,label:projectLabel(r.project)||String(r.title||'Recovered build'),raw:projectLabel(r.project)?r.project:null,commits:evidence.repo_commits});continue;}
       const seconds=secondsOf(r),label=projectLabel(r.project)||'',result=resultOf(r).trim();
@@ -59,16 +61,17 @@
       if(i.result){g.result=i.result;g.open=i.run}grouped.set(key,g)}
     const groups=[...grouped.values()].map(g=>({...g,open:g.open||g.runs[g.runs.length-1].run,models:[...g.models],harnesses:[...g.harnesses],
       allPrivate:g.runs.every(i=>i.run.visibility==='private')})).sort((a,b)=>(b.result?1:0)-(a.result?1:0)||a.runs[0].start-b.runs[0].start);
-    return {day,items,recovered,lines,groups,plumbing,projects,peak,peakAt,from,until,lead,
+    return {day,through:end,items,recovered,lines,groups,plumbing,projects,peak,peakAt,from,until,lead,
       commits:projects.reduce((a,p)=>a+p.commits,0)+unlabelled,commitsUnknown:items.filter(i=>i.commits===null&&!(i.label&&by.get(i.label).fromGit!==null)).length,
       hours:first&&last?Math.round((last-first)/360000)/10:0,
       lineSeconds:lines.reduce((a,i)=>a+i.seconds,0),plumbingSeconds:plumbing.reduce((a,i)=>a+i.seconds,0),
       models:[...models.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))};
   }
   const hm=d=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const LEADS=['result','journey','numbers'],leadOf=v=>LEADS.includes(v)?v:'result';
   const span=s=>s>=3600?`${Math.floor(s/3600)} h ${pad(Math.round(s%3600/60))}`:s>=60?`${Math.round(s/60)} min`:s>0?'under a minute':'time not recorded';
   const plural=(n,one,many)=>`${n} ${n===1?one:(many||one+'s')}`;
-  function render(model,{esc,mine,dayLabel,publicHref,editHref=id=>`/?run=${encodeURIComponent(id)}`}){
+  function render(model,{esc,mine,dayLabel,publicHref,leadWith='result',leadHref,editHref=id=>`/?run=${encodeURIComponent(id)}`}){
     const D=model,total=D.from&&D.until?Math.max(1,D.until-D.from):1;
     const at=d=>Math.max(0,Math.min(100,(d-D.from)/total*100));
     const shade=(i,n)=>`oklch(${(0.42+0.42*i/Math.max(1,n-1)).toFixed(3)} ${(0.22-0.12*i/Math.max(1,n-1)).toFixed(3)} 264)`;
@@ -77,7 +80,8 @@
       :D.projects.length&&D.items.length?`${plural(D.items.length,'run')} across ${plural(D.projects.length,'project')}.`:`${plural(D.items.length,'run')}.`;
     const hours=[];if(D.from&&D.until)for(let t=D.from.getTime();t<=D.until.getTime();t+=3600000)hours.push(new Date(t));
     const step=Math.max(1,Math.ceil(hours.length/6));
-    const axis=hours.filter((_,i)=>i%step===0).map(h=>`<span style="left:${at(h).toFixed(2)}%">${hm(h)}</span>`).join('');
+    const many=D.through!==D.day,tick=h=>many&&(h.getHours()<step||h===hours[0])?`${h.toLocaleDateString(undefined,{weekday:'short'})} ${hm(h)}`:hm(h);
+    const axis=hours.filter((_,i)=>i%step===0).map(h=>`<span style="left:${at(h).toFixed(2)}%">${tick(h)}</span>`).join('');
     const bar=i=>`<i class="day-bar" style="left:${at(i.start).toFixed(2)}%;width:${Math.max(0.8,at(i.end)-at(i.start)).toFixed(2)}%"></i>`;
     const line=g=>{const chips=[...g.harnesses.map(h=>`<span class="day-chip">${esc(h)}</span>`),...g.models.map(m=>`<span class="day-chip">${esc(m)}</span>`),
         g.commits?`<span class="day-chip day-chip-on">${plural(g.commits,'commit')}</span>`:'',g.allPrivate?'<span class="day-chip">Only you</span>':'',
@@ -95,23 +99,27 @@
       <ul><li><i style="background:var(--blue)"></i>Named work<b>${span(D.lineSeconds)}</b></li><li><i style="background:var(--rule)"></i>Plumbing<b>${span(D.plumbingSeconds)}</b></li></ul></div>`:'';
     const models=D.models.length?`<ul class="day-models">${D.models.map(([m,n])=>`<li><span>${esc(m)}</span><i style="width:${(n/D.models[0][1]*100).toFixed(0)}%"></i><b>${n}</b></li>`).join('')}</ul>`:'';
     const lead=D.lead&&D.lead.run,q=lead&&typeof lead.feedback_question==='string'?lead.feedback_question.trim():'';
-    return `<section class="day-hero"><div class="day-photo card" data-run-id="${lead?esc(lead.id):''}" data-photo-layout="${lead&&lead.photo_layout?esc(lead.photo_layout):'cover'}"><div class="run-title-row"></div></div>
+    const heroHtml=`<section class="day-hero"><div class="day-photo card" data-run-id="${lead?esc(lead.id):''}" data-photo-layout="${lead&&lead.photo_layout?esc(lead.photo_layout):'cover'}"><div class="run-title-row"></div></div>
       <div class="day-head"><p class="meta">${esc(dayLabel)}</p><h1>${esc(headline)}</h1>
       ${D.peak>=3?`<p class="day-badge"><b>PARALLELISER</b><span>${D.peak} runs going at once at ${hm(D.peakAt)}</span></p>`:''}
       <div class="ptotals num day-nums"><div><div class="v">${D.commits>0?withCommits.length:D.projects.length}</div><div class="k">Projects</div></div><div><div class="v">${D.commits}</div><div class="k">Commits</div></div><div><div class="v">${D.items.length}</div><div class="k">Runs</div></div><div><div class="v">${D.hours}</div><div class="k">Hours, first to last</div></div></div>
-      ${mine&&publicHref?`<p class="hint">You see every run of the day. <a href="${esc(publicHref)}">See what others see</a>: only the runs you made public.</p>`:''}</div></section>
-      ${strip}
-      <div class="head"><h2>What got done</h2><span class="meta">${plural(D.groups.length,'project')} · ${plural(D.lines.length,'run')}</span></div>
+      ${mine&&publicHref?`<p class="hint">You see every run of the day. <a href="${esc(publicHref)}">See what others see</a>: only the runs you made public.</p>`:''}</div></section>`;
+    const doneHtml=`<div class="head"><h2>What got done</h2><span class="meta">${plural(D.groups.length,'project')} · ${plural(D.lines.length,'run')}</span></div>
       <div class="card day-sheet">${D.lines.length?`<div class="day-axis">${axis}</div>${D.groups.map(line).join('')}`:'<div class="empty"><h3>No named work on this day</h3><p>A run appears here once it has a project or a written result.</p></div>'}
       ${D.plumbing.length?`<details class="day-plumbing"><summary><b>Plumbing</b> ${plural(D.plumbing.length,'run')} with no project and no written result · ${span(D.plumbingSeconds)}<span class="day-track">${D.plumbing.filter(i=>i.seconds>0).map(bar).join('')}</span></summary>
         <ul>${D.plumbing.map(i=>`<li><a href="${esc(editHref(i.run.id))}">${esc(i.run.harness||'Run')} · ${hm(i.start)} · ${span(i.seconds)}</a></li>`).join('')}</ul>
-        <p class="hint">Lineage is not recorded: which run started which is unknown, so these stay side by side.</p></details>`:''}</div>
-      ${spent||models?`<div class="head"><h2>How the day was spent</h2></div><div class="card day-how">${spent}${models?`<div><p class="meta">Models, by number of runs that recorded each</p>${models}</div>`:''}</div>`:''}
-      <div class="head"><h2>Ask the room</h2><span class="meta">${lead?'on the lead run':''}</span></div>
+        <p class="hint">Lineage is not recorded: which run started which is unknown, so these stay side by side.</p></details>`:''}</div>`;
+    const howHtml=`${spent||models?`<div class="head"><h2>How the day was spent</h2></div><div class="card day-how">${spent}${models?`<div><p class="meta">Models, by number of runs that recorded each</p>${models}</div>`:''}</div>`:''}`;
+    const askHtml=`<div class="head"><h2>Ask the room</h2><span class="meta">${lead?'on the lead run':''}</span></div>
       ${lead?`<div class="card day-ask">${q?`<div class="fc-question"><span>The maker asks</span>${esc(q)}</div>`:`<p class="hint">${mine?`No question yet. <a href="${esc(editHref(lead.id))}">Write one on the lead run</a> and it shows here.`:'The maker has not asked a question on this day.'}</p>`}
         <section id="day-thread"></section><p class="hint">Replies belong to <a href="/?run=${encodeURIComponent(lead.id)}">${esc(lead.title||'the lead run')}</a>. A day has no thread of its own.</p></div>`:''}`;
+    // The author chooses what a reader meets first. The choice is a link parameter: result opens on
+    // the photo and the question, journey on the shared clock, numbers on where the commits landed.
+    const order=leadOf(leadWith),chooser=mine&&leadHref?`<nav class="j-lead" aria-label="What a reader sees first"><span class="meta">Lead with</span>${LEADS.map(k=>`<a href="${esc(leadHref(k))}" ${k===order?'aria-current="true"':''}>${k==='result'?'Result':k==='journey'?'Journey':'Numbers'}</a>`).join('')}<span class="meta">The choice travels in the link you share.</span></nav>`:'';
+    const blocks=order==='journey'?[heroHtml,doneHtml,askHtml,strip,howHtml]:order==='numbers'?[heroHtml,strip,howHtml,doneHtml,askHtml]:[heroHtml,askHtml,doneHtml,strip,howHtml];
+    return chooser+blocks.join('\n');
   }
-  const api={compute,render,localDay,shift,isDay:v=>DAY.test(String(v||''))};
+  const api={compute,render,localDay,shift,leadOf,isDay:v=>DAY.test(String(v||''))};
   if(typeof module==='object'&&module.exports)module.exports=api;
   root.StriveDay=api;
 })(typeof window==='object'?window:globalThis);
