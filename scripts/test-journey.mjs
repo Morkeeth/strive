@@ -31,4 +31,8 @@ const calls=J.compute([{id:'t1',started_at:at(5,9),commits:0,tool_calls:40,capti
 assert.deepEqual(calls.metric,{key:'callsAfter',total:100,unit:'tool call'},'with no commits recorded the trace climbs with tool calls');
 assert.match(J.render(calls,{esc,mine:false}),/100 tool calls recorded/);assert.equal(j.metric.unit,'commit');
 assert.ok(!J.render(J.compute([{id:'z1',started_at:at(5,9),caption:'a'},{id:'z2',started_at:at(5,10),caption:'b'}]),{esc,mine:false}).includes('<svg'),'nothing recorded, no trace');
-console.log('PASS: trace metric; turning points need a written result, recovered rows are not points, lead order, reader view, escaping');
+const st=J.strip(j,{esc,currentId:'c',projectHref:'/?project=x&scope=mine',projectName:'X'});
+assert.match(st,/<li class="j-here">/);assert.match(st,/this run/);assert.match(st,/2 turning points in 3 runs/);
+assert.equal(J.strip(J.compute([runs[1]]),{esc,currentId:'a',projectHref:'/',projectName:'X'}),'','one run alone has no journey to sit in');
+assert.ok(!J.strip(j,{esc,currentId:'b',projectHref:'/',projectName:'X'}).includes('j-here'),'a run that is not a turning point is not highlighted');
+console.log('PASS: run strip; trace metric; turning points need a written result, recovered rows are not points, lead order, reader view, escaping');

@@ -61,7 +61,15 @@
     const chooser=mine&&shareHref?`<nav class="j-lead" aria-label="What a reader sees first"><span class="meta">Lead with</span>${LEADS.map(k=>`<a href="${esc(shareHref(k))}" ${k===order?'aria-current="true"':''}>${k==='result'?'Result':k==='journey'?'Journey':'Numbers'}</a>`).join('')}<span class="meta">The choice travels in the link you share.</span></nav>`:'';
     return chooser+sequence.map(k=>blocks[k]).join('');
   }
-  const api={compute,render,lead,LEADS};
+  // The same journey, small, on one run's own page: where this run sits among its project's turning
+  // points. Shown only when the project has another run to relate it to.
+  function strip(J,{esc,currentId,projectHref,projectName}){
+    if(J.points.length<2)return '';
+    const here=J.turning.findIndex(p=>p.run.id===currentId);
+    return `<div class="head"><h2>This run in its project</h2><span class="meta"><a href="${esc(projectHref)}">${esc(projectName)} · ${J.turning.length} turning point${J.turning.length===1?'':'s'} in ${plural(J.points.length,'run')}</a></span></div>
+      <div class="card j-card j-mini">${trace(J)}${J.turning.length?`<ol class="j-steps">${J.turning.map((p,i)=>`<li${i===here?' class="j-here"':''}><a href="/?run=${encodeURIComponent(p.run.id)}"><span class="j-n">${i+1}</span><span class="j-step"><b>${esc(p.result)}</b><span class="meta">${esc(stamp(p.at))}${i===here?' · this run':''}</span></span></a></li>`).join('')}</ol>`:''}</div>`;
+  }
+  const api={compute,render,strip,lead,LEADS};
   if(typeof module==='object'&&module.exports)module.exports=api;
   root.StriveJourney=api;
 })(typeof window==='object'?window:globalThis);

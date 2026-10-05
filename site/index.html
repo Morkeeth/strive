@@ -1921,6 +1921,7 @@ async function viewRun(id){
     +runCard(r,ad.mine.has(r.id),ad.counts[r.id]||acks.length,{picker:openAck,suggested,selected:preselect,ownerActions:owner,detail:true})
     +nextAction
     +`<section id="run-photos"></section>`
+    +`<section id="run-journey"></section>`
     +`<section id="grind-thread"></section><div class="head"><h2>Thanks</h2><span class="meta">${acks.length}</span></div><div class="panel">`+ackListHtml(acks)+`</div>`
     +`<section id="grind-feature"></section>`;
   const copyLink=$('run-copy-link');if(copyLink)copyLink.onclick=async()=>{try{const sharePath=r.visibility==='public'?'/r/'+r.id:'/?run='+r.id;await navigator.clipboard.writeText(location.origin+sharePath);copyLink.textContent='Link copied'}catch(_){status('Copy this page address to share your run.')}};
@@ -1941,6 +1942,17 @@ async function viewRun(id){
   }
   wireKudos(); if(openAck){ const card=$('card-'+id); if(card) wireAckPicker(card,r,preselect); }
   if(q.get('ack')) history.replaceState(null,'',`/?run=${id}`);
+  // Where this run sits in its project (site/journey.js). The owner sees every run of theirs on the
+  // project; anyone else sees the public ones. One other run is needed before there is a journey.
+  if(r.project&&$('run-journey')){
+    const own=ME&&ME.id===r.profile_id;
+    let jq=sb.from('runs').select(PROJECT_SELECT).eq('project',r.project).eq('profile_id',r.profile_id);
+    if(!own)jq=jq.eq('visibility','public');
+    const {data:siblings}=await jq.order('created_at',{ascending:true}).limit(100);
+    if(!current())return;
+    if(siblings&&$('run-journey'))$('run-journey').innerHTML=StriveJourney.strip(StriveJourney.compute(siblings),{esc,currentId:r.id,
+      projectName:GrinderContract.projectLabel(r.project)||r.project,projectHref:`/?project=${encodeURIComponent(r.project)}&scope=${own?'mine':'public'}`});
+  }
   await social.thread(id,$('grind-thread'));
   if(!current())return;
   await social.askControl(r,$('grind-thread'));
