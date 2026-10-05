@@ -85,7 +85,7 @@ def scan(db, selected=None):
                 # unattended run of many hours looked the same as a session that was never there.
                 report['no_typed_turns'] += 1
                 report['skipped'].append({'session': path.stem, 'harness': harness,
-                                          'reason': 'no typed turns; an unattended run is measured with: agentgrinder agent capture'})
+                                          'reason': 'no typed turns, so no draft; agentgrinder agent capture can measure it only if the transcript carries SDK or sidechain provenance'})
                 continue
             for run in runs:
                 if run.get('project') in ignored_projects:
@@ -104,6 +104,13 @@ def scan(db, selected=None):
         except (OSError, ValueError, TypeError):
             report['unreadable'] += 1
     return report
+
+
+def session_tag(source):
+    """First eight characters of the session id in a transcript name, for matching a draft to a brief."""
+    import re
+    found = re.search(r'[0-9a-f]{8}(?=-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})', Path(source).name)
+    return found.group(0) if found else 'unknown'
 
 
 def day_drafts(db, day):
@@ -154,7 +161,7 @@ def write_day(db, day=None, out=None, project=None, push_url=None):
         rows.append(f"""<article><h2>{e(str(sent.get('project') or 'No project named'))}</h2>
 <p class="facts">{e(' · '.join(str(f) for f in facts))}</p>
 <p><a class="open" href="{e(import_url(run, push_url))}" target="_blank" rel="noopener">Open private preview</a>
-<span class="src">source session {e(Path(row['source']).stem[:8])}, kept on this machine</span></p>
+<span class="src">source session {e(session_tag(row['source']))}, kept on this machine</span></p>
 <details><summary>Exactly what this preview carries ({len(sent)} fields)</summary><pre>{e(json.dumps(sent, indent=1, sort_keys=True))}</pre></details></article>""")
     page = f"""<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>STRIVE day review {e(day)}</title>

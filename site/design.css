@@ -287,10 +287,10 @@ button,summary{touch-action:manipulation}
 .day-hero:not(:has(.run-media)){grid-template-columns:1fr}.day-hero:not(:has(.run-media)) .day-photo{display:none}
 .day-head h1{font-size:44px;line-height:1.04;margin:4px 0 14px;letter-spacing:-.01em}
 .day-badge{display:inline-flex;align-items:baseline;gap:10px;background:var(--blue);color:#fff;padding:9px 13px;margin:0 0 16px}.day-badge b{font-size:12px;letter-spacing:.09em;font-weight:600}.day-badge span{font-size:13px;opacity:.9}
-.day-nums{margin:0 0 10px;grid-template-columns:repeat(4,minmax(0,1fr))}
+.ptotals.day-nums{margin:0 0 10px;grid-template-columns:repeat(4,minmax(0,1fr))}
 .day-strip{display:flex;height:30px;gap:2px}.day-strip i{display:block;min-width:3px}
 .day-repos{list-style:none;margin:14px 0 0;padding:0;columns:2;column-gap:32px}.day-repos li{display:flex;align-items:baseline;gap:8px;padding:5px 0;border-bottom:1px solid var(--rule);break-inside:avoid}
-.day-repos i{width:10px;height:10px;flex:none;align-self:center}.day-repos b{margin-left:auto;font-weight:600}.day-repos a{color:var(--ink);font-weight:500}
+.day-repos i{width:10px;height:10px;flex:none;align-self:center}.day-repos b{margin-left:auto;font-weight:600}.day-repos a,.day-name{color:var(--ink);font-weight:500}
 .day-commits,.day-sheet,.day-how,.day-ask{padding:16px}
 .day-sheet{--day-left:42%}.day-axis{position:relative;height:20px;margin-left:var(--day-left);font-size:11px;color:var(--muted)}.day-axis span{position:absolute;bottom:2px;transform:translateX(-50%);white-space:nowrap}.day-axis span:first-child{transform:none}.day-axis span:last-child{transform:translateX(-100%)}
 .day-line{display:grid;grid-template-columns:var(--day-left) 1fr;border-top:1px solid var(--rule);padding:13px 0}.day-open{color:inherit;text-decoration:none}.day-open:hover b{text-decoration:underline}.day-more{color:var(--blue);text-decoration:none}
@@ -305,4 +305,4 @@ button,summary{touch-action:manipulation}
 .day-spent{display:flex;gap:18px;align-items:center}.day-spent svg{width:120px;flex:none}.day-spent ul,.day-models{list-style:none;margin:0;padding:0;font-size:14px}.day-spent li{display:flex;gap:8px;align-items:center;padding:3px 0}.day-spent li i{width:10px;height:10px}.day-spent b{margin-left:14px;font-weight:600}
 .day-models li{display:grid;grid-template-columns:minmax(90px,150px) 1fr 24px;gap:8px;align-items:center;padding:3px 0}.day-models i{display:block;height:8px;background:var(--blue)}.day-models b{text-align:right;font-weight:600}
 .day-ask .fc-question{font-size:20px;line-height:1.3;margin-bottom:12px}
-@media(max-width:720px){.day-hero{grid-template-columns:1fr;gap:14px}.day-head h1{font-size:32px}.day-repos{columns:1}.day-sheet{--day-left:0%}.day-line{grid-template-columns:1fr}.day-what{padding:0 0 8px}.day-axis{display:none}.day-how{grid-template-columns:1fr}.day-nums{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.day-hero{grid-template-columns:1fr;gap:14px}.day-head h1{font-size:32px}.day-repos{columns:1}.day-sheet{--day-left:0%}.day-line{grid-template-columns:1fr}.day-what{padding:0 0 8px}.day-axis{display:none}.day-how{grid-template-columns:1fr}.ptotals.day-nums{grid-template-columns:repeat(2,minmax(0,1fr))}}

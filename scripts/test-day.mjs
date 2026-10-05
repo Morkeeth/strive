@@ -30,7 +30,10 @@ assert.throws(()=>D.compute(runs,'5 Oct',label),/YYYY-MM-DD/);
 assert.equal(D.shift('2026-10-01',-1),'2026-09-30');
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const mine=D.render(m,{esc,mine:true,dayLabel:'Monday 5 October 2026',publicHref:'/?day=2026-10-05&p=x'});
-assert.match(mine,/13 commits across 2 projects\./);assert.match(mine,/2 runs<\/a>/);assert.match(mine,/PARALLELISER/);assert.match(mine,/TEST DATA which would you open\?/);
+assert.match(mine,/13 commits across 2 projects\./);
+const keyed=D.render(D.compute([{id:'k1',project:'Raw/Key 1',started_at:at(9),duration_s:60,commits:2},{id:'k2',project:'Raw/Key 1',started_at:at(10),duration_s:60,commits:1,caption:'TEST DATA'}],'2026-10-05',v=>v?'Shown name':''),{esc,mine:true,dayLabel:'d'});
+assert.equal((keyed.match(/\/\?project=Raw%2FKey%201&scope=mine/g)||[]).length,2,'project links carry the stored value, not the shown label');
+assert.match(D.render(D.compute([{id:'n',project:null,started_at:at(9),duration_s:60,commits:5,caption:'TEST DATA'}],'2026-10-05',label),{esc,mine:true,dayLabel:'d'}),/<h1>5 commits\.<\/h1>/,'commits on a run with no project are not credited to a project');assert.match(mine,/2 runs<\/a>/);assert.match(mine,/PARALLELISER/);assert.match(mine,/TEST DATA which would you open\?/);
 assert.match(mine,/Unknown is not zero/);assert.match(mine,/Lineage is not recorded/);assert.match(mine,/See what others see/);
 assert.ok(!mine.includes('undefined')&&!mine.includes('NaN'),'no unrendered value reaches the page');
 const hostile=D.render(D.compute([{id:'x',project:'<img src=x onerror=1>',started_at:at(9),duration_s:60,caption:'<script>1</script>',feedback_question:'"><b>q'}],'2026-10-05',label),{esc,mine:false,dayLabel:'d'});
@@ -41,5 +44,5 @@ const ev=(commits,end=at(18))=>({trace_basis:'historical-reconstruction',history
 const g=D.compute([...runs,{id:'g1',project:'zup',title:'Work on zup',...ev(17)},{id:'g2',project:null,title:'Work on bagel',...ev(48)},{id:'g3',project:'old',title:'x',...ev(9,new Date(2026,9,4,12).toISOString())},{id:'g4',project:'fake',title:'x',trace_basis:'elapsed',history_evidence:ev(500).history_evidence,started_at:at(9),commits:1}],'2026-10-05',label);
 assert.deepEqual(g.projects.map(p=>[p.name,p.commits,p.fromGit]),[['Work on bagel',48,48],['zup',17,17],['the-fair',10,null],['fake',1,null]],'a recovered count replaces session counts for that project and is never added to them; evidence on a run that is not a recovery is ignored; another day is left out');
 assert.equal(g.commits,76);assert.equal(g.items.some(i=>i.run.id==='g1'),false,'a recovered repository is not a session and is not on the clock');
-assert.match(D.render(g,{esc,mine:true,dayLabel:'d'}),/from git history/);
+const gr=D.render(g,{esc,mine:true,dayLabel:'d'});assert.match(gr,/from git history/);assert.match(gr,/<span class="day-name">Work on bagel<\/span>/,'a recovered row with no project is shown, not linked');
 console.log('PASS: recovered git history; day membership, unknown commits, plumbing fold, peak, lead run, models, escaping and owner-only links');

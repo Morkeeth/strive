@@ -48,7 +48,7 @@ def test_a_session_with_no_typed_turns_is_reported_not_silent(tmp_path):
     db=connect(tmp_path/'private')
     report=scan(db,[('claude',p)])
     assert report['created']==0 and report['no_typed_turns']==1
-    assert report['skipped']==[{'session':'unattended','harness':'claude','reason':'no typed turns; an unattended run is measured with: agentgrinder agent capture'}]
+    assert report['skipped']==[{'session':'unattended','harness':'claude','reason':'no typed turns, so no draft; agentgrinder agent capture can measure it only if the transcript carries SDK or sidechain provenance'}]
     db.close()
 
 
@@ -62,8 +62,11 @@ def test_day_page_lists_only_that_local_day_and_uploads_nothing(tmp_path,monkeyp
     assert scan(db,[('codex',p)])['created']==1
     started=datetime.fromisoformat(db.execute('select started from drafts').fetchone()[0].replace('Z','+00:00')).astimezone()
     day=started.strftime('%Y-%m-%d')
-    def no_network(*a,**k): raise AssertionError('the day page must not open a network client')
-    monkeypatch.setattr('urllib.request.urlopen',no_network)
+    import socket
+    def no_network(*a,**k): raise AssertionError('the day page must not open a network connection')
+    monkeypatch.setattr(socket,'socket',no_network);monkeypatch.setattr(socket,'create_connection',no_network)
+    from agentgrinder.capture import session_tag
+    assert session_tag('/x/rollout-2026-10-05T10-00-00-01a1077f-6c64-7792-8175-a59a0871ddb4.jsonl')=='01a1077f' and session_tag('/x/session.jsonl')=='unknown'
     out=tmp_path/'day.html'
     result=write_day(db,day,str(out),'TEST DATA label','http://localhost:8000')
     assert result=={'day':day,'drafts':1,'other_days':0,'project':'TEST DATA label','written':str(out),'uploaded':0}
