@@ -84,7 +84,8 @@
     const hours=[];if(D.from&&D.until)for(let t=D.from.getTime();t<=D.until.getTime();t+=3600000)hours.push(new Date(t));
     const step=Math.max(1,Math.ceil(hours.length/6));
     const many=D.through!==D.day,tick=h=>many&&(h.getHours()<step||h===hours[0])?`${h.toLocaleDateString(undefined,{weekday:'short'})} ${hm(h)}`:hm(h);
-    const axis=hours.filter((_,i)=>i%step===0).map(h=>`<span style="left:${at(h).toFixed(2)}%">${tick(h)}</span>`).join('');
+    // Over more than one day the first label carries the weekday and is long, so its neighbour is left out.
+    const axis=hours.filter((_,i)=>i%step===0).filter((_,i)=>!(many&&i===1)).map(h=>`<span style="left:${at(h).toFixed(2)}%">${tick(h)}</span>`).join('');
     const bar=i=>`<i class="day-bar" style="left:${at(i.start).toFixed(2)}%;width:${Math.max(0.8,at(i.end)-at(i.start)).toFixed(2)}%"></i>`;
     const line=g=>{const chips=[...g.harnesses.map(h=>`<span class="day-chip">${esc(h)}</span>`),...g.models.map(m=>`<span class="day-chip">${esc(m)}</span>`),
         g.commits?`<span class="day-chip day-chip-on">${plural(g.commits,'commit')}</span>`:'',g.allPrivate?'<span class="day-chip">Only you</span>':'',
@@ -122,9 +123,10 @@
       ${lead?`<div class="card day-ask">${q?`<div class="fc-question"><span>The maker asks</span>${esc(q)}</div>`:`<p class="hint">${mine?`No question yet. <a href="${esc(editHref(lead.id))}">Write one on the lead run</a> and it shows here.`:'The maker has not asked a question on this day.'}</p>`}
         <section id="day-thread"></section><p class="hint">Replies belong to <a href="/?run=${encodeURIComponent(lead.id)}">${esc(lead.title||'the lead run')}</a>. A day has no thread of its own.</p></div>`:''}`;
     // The author chooses what a reader meets first. The choice is a link parameter: result opens on
-    // the photo and the question, journey on the shared clock, numbers on where the commits landed.
+    // the author's own sentence, then the work and the question; journey on the count and the shared clock with the
+    // question last; numbers on where the commits landed.
     const order=leadOf(leadWith),chooser=mine&&leadHref?`<nav class="j-lead" aria-label="What a reader sees first"><span class="meta">Lead with</span>${LEADS.map(k=>`<a href="${esc(leadHref(k))}" ${k===order?'aria-current="true"':''}>${k==='result'?'Result':k==='journey'?'Journey':'Numbers'}</a>`).join('')}<span class="meta">The choice travels in the link you share.</span></nav>`:'';
-    const blocks=order==='journey'?[heroHtml,doneHtml,askHtml,strip,howHtml]:order==='numbers'?[heroHtml,strip,howHtml,doneHtml,askHtml]:[heroHtml,askHtml,doneHtml,strip,howHtml];
+    const blocks=order==='journey'?[heroHtml,doneHtml,strip,howHtml,askHtml]:order==='numbers'?[heroHtml,strip,howHtml,doneHtml,askHtml]:[heroHtml,doneHtml,askHtml,strip,howHtml];
     return chooser+blocks.join('\n');
   }
   const api={compute,render,localDay,shift,leadOf,isDay:v=>DAY.test(String(v||''))};

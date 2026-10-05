@@ -50,7 +50,7 @@ assert.deepEqual(night.items.map(i=>i.run.id),['n1','n2'],'a window through a se
 assert.equal(D.compute([],'2026-10-05',label,'2026-10-20').through,'2026-10-05','a window longer than seven days is not accepted');
 assert.equal(D.compute([],'2026-10-05',label,'2026-10-01').through,'2026-10-05');
 const R=k=>D.render(m,{esc,mine:true,dayLabel:'d',leadWith:k,leadHref:x=>'/?day=2026-10-05&lead='+x});const idx=(h,t)=>h.indexOf(t);
-assert.ok(idx(R('result'),'Ask the room')<idx(R('result'),'What got done'));assert.ok(idx(R('journey'),'What got done')<idx(R('journey'),'Ask the room'));
+assert.ok(idx(R('result'),'What got done')<idx(R('result'),'Ask the room')&&idx(R('result'),'Ask the room')<idx(R('result'),'Where the commits landed'));assert.ok(idx(R('journey'),'Where the commits landed')<idx(R('journey'),'Ask the room'));
 assert.ok(idx(R('numbers'),'Where the commits landed')<idx(R('numbers'),'What got done'));assert.match(R('journey'),/lead=numbers/);assert.equal(D.leadOf('x'),'result');
 assert.ok(!D.render(m,{esc,mine:false,dayLabel:'d',leadWith:'journey'}).includes('Lead with'),'a reader gets no chooser');
 const depth=D.compute([{id:'d1',project:'deep',started_at:at(9),duration_s:600,commits:1,story_result:'TEST DATA the one that says something',feedback_question:'q?'},...['w','x','y','z'].map((n,i)=>({id:n,project:n,started_at:at(10+i),duration_s:60,commits:20}))],'2026-10-05',label);
