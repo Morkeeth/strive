@@ -344,3 +344,5 @@ button,summary{touch-action:manipulation}
 .j-runs{margin:6px 0 18px}.j-runs>summary{cursor:pointer;display:flex;gap:10px;align-items:baseline;padding:12px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}.j-runs>summary b{font-weight:600}.j-runs[open]>summary{margin-bottom:12px}
 .j-pair{margin:0 0 14px}.j-result{margin:0 0 14px}.j-open{margin:0 0 22px}
 @media(max-width:720px){.j-pair img{aspect-ratio:auto;max-height:70vh;object-fit:contain}.j-steps a{grid-template-columns:30px 1fr}.j-step b{font-size:16px}}
+
+.day-hero:has(.run-before-after) .day-head{order:-1}

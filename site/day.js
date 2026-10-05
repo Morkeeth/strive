@@ -98,7 +98,9 @@
     // long list of touched projects cannot outweigh one project that says what came out of it.
     const quiet=g=>{const first=g.runs[0].start,last=g.runs.reduce((m,i)=>i.end>m?i.end:m,g.runs[0].end);
       return `<div class="day-quiet"><a class="day-open" href="/?run=${encodeURIComponent(g.open.id)}">${esc(g.label||'No project named')}</a><span class="day-track">${g.runs.filter(i=>i.seconds>0).map(bar).join('')}</span><span class="day-t">${g.runs.length>1?`${g.runs.length} runs · `:''}${span(g.seconds)}</span></div>`};
-    const told=D.groups.filter(g=>g.result),untold=D.groups.filter(g=>!g.result);
+    // The lead run's project is read first; the rest keep their order in time.
+    const leads=g=>D.lead&&g.runs.some(i=>i.run.id===D.lead.run.id)?0:1;
+    const told=D.groups.filter(g=>g.result).sort((a,b)=>leads(a)-leads(b)),untold=D.groups.filter(g=>!g.result);
     const strip=withCommits.length?`<div class="head"><h2>Where the commits landed</h2><span class="meta">${plural(withCommits.length,'project')}</span></div><div class="card day-commits">
       <div class="day-strip" role="img" aria-label="One segment per project, width by commits">${withCommits.map((p,i)=>`<i style="flex:${p.commits};background:${shade(i,withCommits.length)}" title="${esc(p.name)}: ${p.commits}"></i>`).join('')}</div>
       <ul class="day-repos">${withCommits.map((p,i)=>`<li><i style="background:${shade(i,withCommits.length)}"></i>${p.raw!=null?`<a href="/?project=${encodeURIComponent(p.raw)}&scope=${mine?'mine':'public'}">${esc(p.name)}</a>`:`<span class="day-name">${esc(p.name)}</span>`}<span class="meta">${p.fromGit!==null?'from git history':plural(p.runs,'run')}</span><b>${p.commits}</b></li>`).join('')}</ul>
