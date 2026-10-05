@@ -10,6 +10,10 @@ module.exports=async function handler(req,res) {
   const config=runtimeConfig();
   const {readiness}=await import('../server/readiness.mjs');
   const result=await readiness(config);
-  res.status(result.ready?200:503).json({service:SERVICE,database:result.ready?'ready':'unavailable',checks:result.checks,...identity});
+  // Reported beside the database checks, not inside them: an unset feedback destination must be
+  // visible here, but it does not make the product unavailable.
+  const {feedbackEnv,feedbackSetup}=await import('../server/feedback-notifications.mjs');
+  const feedback_notifications=feedbackSetup(feedbackEnv()).ready?'ready':'not_configured';
+  res.status(result.ready?200:503).json({service:SERVICE,database:result.ready?'ready':'unavailable',checks:result.checks,feedback_notifications,...identity});
  }catch {res.status(503).json({service:SERVICE,database:'unavailable',...identity});}
 }

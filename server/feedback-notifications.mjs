@@ -15,6 +15,20 @@ function inbox(config){
   !/^\/dashboard\/project\/[a-z0-9-]+\/editor(?:\/|$)/.test(url.pathname))throw new Error('Configure the owner-only feedback inbox URL.');
  return url.href;
 }
+export function feedbackEnv(env=process.env){
+ return {SERVICE_KEY:env.STRIVE_FEEDBACK_SERVICE_ROLE_KEY,WEBHOOK_URL:env.STRIVE_FEEDBACK_WEBHOOK_URL,WEBHOOK_HOST:env.STRIVE_FEEDBACK_WEBHOOK_HOST,
+  WEBHOOK_FORMAT:env.STRIVE_FEEDBACK_WEBHOOK_FORMAT,INBOX_URL:env.STRIVE_FEEDBACK_INBOX_URL};
+}
+// Operator setup state. Reports the names of absent or refused settings, never a value.
+// Without this, an unconfigured destination looks the same as a healthy empty queue.
+export function feedbackSetup(config,cronSecret=process.env.CRON_SECRET){
+ const missing=[];
+ if(!cronSecret)missing.push('CRON_SECRET');
+ if(!config.SERVICE_KEY)missing.push('STRIVE_FEEDBACK_SERVICE_ROLE_KEY');
+ try{webhookConfig(config);}catch{missing.push('STRIVE_FEEDBACK_WEBHOOK_URL/HOST/FORMAT');}
+ try{inbox(config);}catch{missing.push('STRIVE_FEEDBACK_INBOX_URL');}
+ return {ready:missing.length===0,missing};
+}
 export async function feedbackCaller(config,authorization,fetchImpl=fetch){
  if(!/^Bearer [A-Za-z0-9._~-]+$/.test(authorization||''))return null;
  const r=await fetchImpl(config.SB_URL+'/rest/v1/rpc/grinder_profile_id',{method:'POST',

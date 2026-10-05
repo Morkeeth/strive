@@ -9,14 +9,18 @@ module.exports=async function handler(req,res){
  }else if(!/^Bearer [A-Za-z0-9._~-]+$/.test(authorization))return res.status(401).json({error:'Unauthorized'});
  try{
   const {runtimeConfig}=await import('../server/runtime-config.mjs');
-  const {feedbackCaller,deliverFeedback}=await import('../server/feedback-notifications.mjs');
-  const config={...runtimeConfig(),SERVICE_KEY:process.env.STRIVE_FEEDBACK_SERVICE_ROLE_KEY,
-   WEBHOOK_URL:process.env.STRIVE_FEEDBACK_WEBHOOK_URL,WEBHOOK_HOST:process.env.STRIVE_FEEDBACK_WEBHOOK_HOST,
-   WEBHOOK_FORMAT:process.env.STRIVE_FEEDBACK_WEBHOOK_FORMAT,INBOX_URL:process.env.STRIVE_FEEDBACK_INBOX_URL};
+  const {feedbackCaller,deliverFeedback,feedbackEnv,feedbackSetup}=await import('../server/feedback-notifications.mjs');
+  const config={...runtimeConfig(),...feedbackEnv()};
   let profileId=null;
   if(req.method==='POST'){
    profileId=await feedbackCaller(config,authorization);
    if(!profileId)return res.status(401).json({error:'Unauthorized'});
+  }
+  const setup=feedbackSetup(config);
+  if(!setup.ready){
+   // Setting names only. Nothing was claimed, so the queue row keeps zero attempts.
+   console.error('feedback-notifications: not configured, nothing claimed. Absent or refused: '+setup.missing.join(', '));
+   return res.status(503).json({error:'Feedback notification destination is not configured; stored feedback is unchanged.',configured:false});
   }
   const result=await deliverFeedback(config,fetch,{profileId});
   return res.status(200).json(result);

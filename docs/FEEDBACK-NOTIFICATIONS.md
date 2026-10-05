@@ -32,7 +32,7 @@ Set these only after the user chooses the destination and authorizes configurati
 
 This adapter can target a user-approved Slack incoming webhook or a controlled generic receiver. It does not provision Slack, send email, or create an in-app inbox. Email needs a chosen provider adapter or an approved generic receiver that sends mail; do not call email enabled merely because this queue exists.
 
-Missing configuration prevents claiming jobs. Webhook HTTP errors and transport exceptions never include response bodies or destination secrets in the API response. The service credential is used only against the configured Supabase origin; the recipient receives only the notification fields and stable idempotency reference.
+Missing configuration prevents claiming jobs. The queue row then keeps `attempts = 0`. The scheduled run logs the names of the absent settings (never a value) and answers 503 with `configured: false`, and `GET /api/health` reports `feedback_notifications: "not_configured"` without failing the database status. Webhook HTTP errors and transport exceptions never include response bodies or destination secrets in the API response. The service credential is used only against the configured Supabase origin; the recipient receives only the notification fields and stable idempotency reference.
 
 ## Local checks
 
