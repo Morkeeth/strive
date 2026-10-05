@@ -1,15 +1,13 @@
 -- Recorded model/usage facts are additive, bounded and immutable after import.
 begin;
 alter table strava.runs add column if not exists capture_metadata jsonb;
-create or replace function strava.guard_capture_metadata() returns trigger
-language plpgsql security definer set search_path=strava,pg_temp as $$
-declare m jsonb:=new.capture_metadata; k text;
+-- One bounded-object check serves run inserts and the agent draft/publish validator.
+create or replace function strava.check_capture_metadata(m jsonb, source_basis text) returns void
+language plpgsql set search_path=strava,pg_temp as $$
+declare k text;
 begin
- if tg_op='UPDATE' and new.capture_metadata is distinct from old.capture_metadata then
-  raise exception 'Recorded model and usage facts cannot be edited';
- end if;
- if m is null then return new; end if;
- if new.trace_basis in ('typed-by-author','historical-reconstruction') then raise exception 'Recorded usage needs a session capture'; end if;
+ if m is null then return; end if;
+ if source_basis in ('typed-by-author','historical-reconstruction') then raise exception 'Recorded usage needs a session capture'; end if;
  if jsonb_typeof(m) is distinct from 'object' or octet_length(m::text)>8192 then raise exception 'Invalid capture metadata'; end if;
  if exists(select 1 from jsonb_object_keys(m) x where x not in ('models','basis','input_tokens','output_tokens','cached_input_tokens','reasoning_tokens')) then raise exception 'Unsupported capture metadata'; end if;
  if m->>'basis' is null or m->>'basis' not in ('codex-records','claude-message-usage','cursor-model-info') then raise exception 'Unknown capture metadata source'; end if;
@@ -21,6 +19,16 @@ begin
  if m->>'cached_input_tokens' is not null and (m->>'input_tokens' is null or (m->>'cached_input_tokens')::numeric>(m->>'input_tokens')::numeric) then raise exception 'Cached input exceeds input'; end if;
  if m->>'reasoning_tokens' is not null and (m->>'output_tokens' is null or (m->>'reasoning_tokens')::numeric>(m->>'output_tokens')::numeric) then raise exception 'Reasoning exceeds output'; end if;
  if (m->>'input_tokens')::numeric+(m->>'output_tokens')::numeric>9007199254740991 then raise exception 'Token count too large'; end if;
+end $$;
+revoke all on function strava.check_capture_metadata(jsonb,text) from public,anon,authenticated;
+
+create or replace function strava.guard_capture_metadata() returns trigger
+language plpgsql security definer set search_path=strava,pg_temp as $$
+begin
+ if tg_op='UPDATE' and new.capture_metadata is distinct from old.capture_metadata then
+  raise exception 'Recorded model and usage facts cannot be edited';
+ end if;
+ perform strava.check_capture_metadata(new.capture_metadata,new.trace_basis);
  return new;
 end $$;
 revoke all on function strava.guard_capture_metadata() from public,anon,authenticated;

@@ -17,6 +17,8 @@ begin
    if jsonb_typeof(value)<>'number' or (value::text)::numeric<0 or (value::text)::numeric<>floor((value::text)::numeric) or (value::text)::numeric>2147483647 then raise exception 'Counts must be non-negative whole numbers'; end if;
   end if;
  end loop;
+ -- Validate nested recorded facts before either private draft or published run storage.
+ perform strava.check_capture_metadata(nullif(payload->'capture_metadata','null'::jsonb),payload->>'trace_basis');
  for field in select unnest(array['title','project','harness','started','visibility','trace_basis','note','body','reason','ridge_basis','caption','model']) loop
   if payload ? field and payload->field<>'null'::jsonb and jsonb_typeof(payload->field)<>'string' then raise exception '% must be text',field; end if;
  end loop;
