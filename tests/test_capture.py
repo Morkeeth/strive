@@ -40,3 +40,40 @@ def test_moving_transcript_does_not_create_false_snapshot(tmp_path,monkeypatch):
     assert scan(db,[('codex',p)])['retry']==1
     assert db.execute('select count(*) from drafts').fetchone()[0]==0
     db.close()
+
+
+def test_a_session_with_no_typed_turns_is_reported_not_silent(tmp_path):
+    p=tmp_path/'unattended.jsonl'
+    p.write_text(json.dumps({'type':'assistant','timestamp':'2026-09-04T10:00:00Z','message':{'role':'assistant','content':[{'type':'tool_use','id':'t1','name':'Bash','input':{}}]}})+'\n')
+    db=connect(tmp_path/'private')
+    report=scan(db,[('claude',p)])
+    assert report['created']==0 and report['no_typed_turns']==1
+    assert report['skipped']==[{'session':'unattended','harness':'claude','reason':'no typed turns; an unattended run is measured with: agentgrinder agent capture'}]
+    db.close()
+
+
+def test_day_page_lists_only_that_local_day_and_uploads_nothing(tmp_path,monkeypatch):
+    import base64,re,urllib.parse
+    from datetime import datetime
+    from agentgrinder.capture import write_day
+    import agentgrinder.capture as capture
+    db=connect(tmp_path/'private')
+    p=transcript(tmp_path)
+    assert scan(db,[('codex',p)])['created']==1
+    started=datetime.fromisoformat(db.execute('select started from drafts').fetchone()[0].replace('Z','+00:00')).astimezone()
+    day=started.strftime('%Y-%m-%d')
+    def no_network(*a,**k): raise AssertionError('the day page must not open a network client')
+    monkeypatch.setattr('urllib.request.urlopen',no_network)
+    out=tmp_path/'day.html'
+    result=write_day(db,day,str(out),'TEST DATA label','http://localhost:8000')
+    assert result=={'day':day,'drafts':1,'other_days':0,'project':'TEST DATA label','written':str(out),'uploaded':0}
+    page=out.read_text()
+    assert 'TEST DATA label' in page and 'Nothing has been uploaded' in page and oct(out.stat().st_mode)[-3:]=='600'
+    token=re.search(r'#import=([^"]+)"',page).group(1)
+    sent=json.loads(base64.b64decode(urllib.parse.unquote(token)))
+    assert sent['project']=='TEST DATA label' and str(tmp_path) not in json.dumps(sent) and str(tmp_path) not in page
+    assert write_day(db,'2001-01-01',str(tmp_path/'none.html'))['drafts']==0 and write_day(db,'2001-01-01',str(tmp_path/'none.html'))['other_days']==1
+    import pytest
+    with pytest.raises(ValueError): write_day(db,'5 Oct',str(out))
+    with pytest.raises(ValueError): write_day(db,day,str(out),' ')
+    db.close()
