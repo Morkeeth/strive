@@ -83,7 +83,8 @@
         if(result.error&&result.error.code==='23505'){d.state='saved';d.note='Already in My runs';d.id=null;
           if(d.run.measurement_revision){const {data}=await client.from('runs').select('id').eq('profile_id',owner).eq('measurement_revision',d.run.measurement_revision).limit(1);d.id=data&&data[0]&&data[0].id}
           if(!d.id){d.state='failed';d.note='The service says this session is already saved, but it could not be found. Look in My runs.';failed++}else{ticked.delete(d.i)}}
-        else if(result.error){d.state='failed';d.note=deps.explain(result.error)||'The save did not complete.';failed++}
+        else if(result.error){const text=String(result.error.message||result.error||'');d.state='failed';
+          d.note=/failed to fetch|networkerror|load failed|network request failed|fetch failed/i.test(text)?'The service could not be reached. Nothing was saved for this draft.':(deps.explain(result.error)||'The save did not complete.');failed++}
         else{d.state='saved';d.id=result.data.id;d.note='Saved for Only me';ticked.delete(d.i);saved++}
       }
       busy=false;paint();
