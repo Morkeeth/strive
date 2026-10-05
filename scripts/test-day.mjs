@@ -1,0 +1,45 @@
+// The day page is computed from run rows by site/day.js. These are the rules it must keep.
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+const D=createRequire(import.meta.url)('../site/day.js');
+const at=(h,m=0)=>new Date(2026,9,5,h,m).toISOString();
+const label=v=>(typeof v==='string'&&v.trim())||'';
+const runs=[
+ {id:'a',project:'the-fair',started_at:at(10),duration_s:7200,commits:10,caption:'TEST DATA released',harness:'Claude Code',capture_metadata:{models:['model-a','model-a']},visibility:'public'},
+ {id:'b',project:'zup',started_at:at(10,30),duration_s:3600,commits:3,story_result:'TEST DATA fixed names',harness:'Codex',capture_metadata:{models:['model-b']},feedback_question:'TEST DATA which would you open?',visibility:'private'},
+ {id:'c',project:'zup',started_at:at(11),duration_s:1800,commits:null,harness:'Codex',model:'model-b',visibility:'private'},
+ {id:'d',project:null,started_at:at(11,10),duration_s:600,commits:null,harness:'Claude Code',visibility:'private'},
+ {id:'e',project:null,started_at:null,created_at:at(13),duration_s:0,caption:'TEST DATA typed by hand',visibility:'private'},
+ {id:'yesterday',project:'zup',started_at:new Date(2026,9,4,23,50).toISOString(),duration_s:3600,commits:99,visibility:'private'},
+ {id:'bad',project:'zup',started_at:'not a date',commits:5},
+];
+const m=D.compute(runs,'2026-10-05',label);
+assert.deepEqual(m.items.map(i=>i.run.id),['a','b','c','d','e'],'a run belongs to the local day its session started on; another day and an unreadable start are left out');
+assert.equal(m.commits,13,'commits are summed from the day only');
+assert.equal(m.commitsUnknown,3,'a run with no commit count is unknown, and is counted as unknown');
+assert.deepEqual(m.projects.map(p=>[p.name,p.commits,p.runs,p.unknown]),[['the-fair',10,1,0],['zup',3,2,1]],'projects are ordered by commits; an unknown count adds nothing');
+assert.deepEqual(m.plumbing.map(i=>i.run.id),['d'],'only a run with no project and no written result is plumbing');
+assert.deepEqual(m.lines.map(i=>i.run.id),['a','b','c','e'],'a written result alone is enough to be named work');
+assert.deepEqual(m.groups.map(g=>[g.label,g.runs.length,g.open.id,g.result]),[['the-fair',1,'a','TEST DATA released'],['zup',2,'b','TEST DATA fixed names'],['',1,'e','TEST DATA typed by hand']],'one row per project; it opens the run that carries the written result, and counts every run behind it');
+assert.equal(m.peak,4,'peak counts runs whose recorded times overlap');
+assert.equal(m.lead.run.id,'b','the run that asks a question leads the day');
+assert.deepEqual(m.models,[['model-b',2],['model-a',1]],'a model is counted once per run that recorded it');
+assert.equal(D.compute(runs.filter(r=>r.id!=='b'),'2026-10-05',label).lead.run.id,'a','without a question the run with most commits leads');
+assert.equal(D.compute([],'2026-10-05',label).lead,null);
+assert.throws(()=>D.compute(runs,'5 Oct',label),/YYYY-MM-DD/);
+assert.equal(D.shift('2026-10-01',-1),'2026-09-30');
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mine=D.render(m,{esc,mine:true,dayLabel:'Monday 5 October 2026',publicHref:'/?day=2026-10-05&p=x'});
+assert.match(mine,/13 commits across 2 projects\./);assert.match(mine,/2 runs<\/a>/);assert.match(mine,/PARALLELISER/);assert.match(mine,/TEST DATA which would you open\?/);
+assert.match(mine,/Unknown is not zero/);assert.match(mine,/Lineage is not recorded/);assert.match(mine,/See what others see/);
+assert.ok(!mine.includes('undefined')&&!mine.includes('NaN'),'no unrendered value reaches the page');
+const hostile=D.render(D.compute([{id:'x',project:'<img src=x onerror=1>',started_at:at(9),duration_s:60,caption:'<script>1</script>',feedback_question:'"><b>q'}],'2026-10-05',label),{esc,mine:false,dayLabel:'d'});
+assert.ok(!hostile.includes('<script>')&&!hostile.includes('<img src=x')&&!hostile.includes('"><b>q'),'run text is escaped');
+assert.ok(!hostile.includes('PARALLELISER'),'the badge needs at least three runs at once');
+assert.ok(!hostile.includes('See what others see'),'the public view has no owner link');
+const ev=(commits,end=at(18))=>({trace_basis:'historical-reconstruction',history_evidence:{repo_window_start:at(0),repo_window_end:end,first_observed_at:at(8),last_observed_at:at(17),history_entries:5,repo_commits:commits,repo_revision:'a'.repeat(40),source_ref:'b'.repeat(64)}});
+const g=D.compute([...runs,{id:'g1',project:'zup',title:'Work on zup',...ev(17)},{id:'g2',project:null,title:'Work on bagel',...ev(48)},{id:'g3',project:'old',title:'x',...ev(9,new Date(2026,9,4,12).toISOString())},{id:'g4',project:'fake',title:'x',trace_basis:'elapsed',history_evidence:ev(500).history_evidence,started_at:at(9),commits:1}],'2026-10-05',label);
+assert.deepEqual(g.projects.map(p=>[p.name,p.commits,p.fromGit]),[['Work on bagel',48,48],['zup',17,17],['the-fair',10,null],['fake',1,null]],'a recovered count replaces session counts for that project and is never added to them; evidence on a run that is not a recovery is ignored; another day is left out');
+assert.equal(g.commits,76);assert.equal(g.items.some(i=>i.run.id==='g1'),false,'a recovered repository is not a session and is not on the clock');
+assert.match(D.render(g,{esc,mine:true,dayLabel:'d'}),/from git history/);
+console.log('PASS: recovered git history; day membership, unknown commits, plumbing fold, peak, lead run, models, escaping and owner-only links');

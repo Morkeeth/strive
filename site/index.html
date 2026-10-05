@@ -584,6 +584,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/run-story.js"></script>
 <script src="/run-context.js"></script>
 <script src="/feed-card.js"></script>
+<script src="/day.js"></script>
 <script src="/dropin-parse.js"></script>
 <script src="/fair.js"></script>
 <script src="/home.js"></script>
@@ -685,7 +686,7 @@ function discoverySourcesHtml(){
   return `<details class="discovery-sources"><summary>Find a community or your next build challenge</summary><p class="hint">Official directories. Opening a link does not register you or join a community.</p><nav class="discovery-links" aria-label="Communities and competitions">${sources.map(([name,about,url])=>`<a href="${url}" target="_blank" rel="noopener noreferrer"><strong>${name}</strong><span>${about}</span></a>`).join('')}</nav></details>`;
 }
 function myRunsTabs(active){
-  return `<nav class="section-tabs" aria-label="My runs"><a href="/?mine" class="${active==='runs'?'on':''}" ${active==='runs'?'aria-current="page"':''}>My runs</a></nav>`;
+  return `<nav class="section-tabs" aria-label="My runs"><a href="/?mine" class="${active==='runs'?'on':''}" ${active==='runs'?'aria-current="page"':''}>My runs</a><a href="/?day=${StriveDay.localDay(new Date())}" class="${active==='day'?'on':''}" ${active==='day'?'aria-current="page"':''}>Today</a></nav>`;
 }
 function communityTabs(active){
   return `<nav class="section-tabs" aria-label="Community"><a href="/?community" class="${active==='hub'?'on':''}" ${active==='hub'?'aria-current="page"':''}>Overview</a><a href="/?forum" class="${active==='forum'?'on':''}" ${active==='forum'?'aria-current="page"':''}>Forum</a><a href="/?crews" class="${active==='crews'?'on':''}" ${active==='crews'?'aria-current="page"':''}>Crews</a><a href="/?challenges" class="${active==='challenges'?'on':''}" ${active==='challenges'?'aria-current="page"':''}>Challenges</a></nav>`;
@@ -2223,6 +2224,34 @@ async function viewProject(name){
     <p class="hint"><a href="/?projects">All projects</a></p>`;
   wireKudos(); countUp();
 }
+// One day of one builder as a single page (site/day.js). A view over run rows: no table, no column.
+// ?day=YYYY-MM-DD shows the signed-in owner every run of that local day, private ones included.
+// ?day=...&p=<profile id> shows anyone only that builder's public runs of the day.
+async function viewDay(day){
+  const app=$('app'); frame(railHtml('mine'),null); setPrimarySection('mine'); app.innerHTML=skeletonCard();
+  window.StriveRunPhotos?.disposeAll?.();
+  const params=new URLSearchParams(location.search),other=params.get('p'),profileId=ME?.id;
+  if(!StriveDay.isDay(day)){day=StriveDay.localDay(new Date());history.replaceState(null,'','/?day='+day+(other?'&p='+encodeURIComponent(other):''));}
+  const mine=!other&&!!profileId,owner=other||profileId;
+  if(!owner){app.innerHTML='<div class="card"><div class="empty"><h3>Sign in to see your day</h3><p>A day page collects your own saved runs. Nothing is shared by opening it.</p><div class="cta"><a class="act blue" href="/?signin">Sign in</a></div></div></div>';return;}
+  const [y,m,d]=day.split('-').map(Number),from=new Date(y,m-1,d-1).toISOString(),until=new Date(y,m-1,d+2).toISOString();
+  // started_at is the session's own clock and created_at is the save, so read a day either side and
+  // let the page keep only the runs whose start falls on this local day.
+  let query=sb.from('runs').select(PROJECT_SELECT).eq('profile_id',owner).or(`and(started_at.gte.${from},started_at.lt.${until}),and(started_at.is.null,created_at.gte.${from},created_at.lt.${until})`);
+  if(!mine)query=query.eq('visibility','public');
+  const {data,error}=await query.order('created_at',{ascending:true}).limit(200);
+  if(ME?.id!==profileId)return viewDay(day);
+  if(error){status(error.message,true);app.innerHTML='<div class="card"><div class="empty">This day could not load.</div></div>';return;}
+  const model=StriveDay.compute(data||[],day,v=>GrinderContract.projectLabel(v));
+  const label=new Date(y,m-1,d).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const link=(to,text)=>`<a href="/?day=${to}${other?'&p='+encodeURIComponent(other):''}">${text}</a>`;
+  const nav=(mine?myRunsTabs('day'):'')+`<nav class="day-nav" aria-label="Days">${link(StriveDay.shift(day,-1),'← Day before')}${day<StriveDay.localDay(new Date())?link(StriveDay.shift(day,1),'Day after →'):''}</nav>`;
+  if(!model.items.length){
+    app.innerHTML=nav+`<div class="card"><div class="empty"><h3>${mine?'No saved runs on this day':'No public runs on this day'}</h3><p>${esc(label)}. ${mine?'A run appears here once it is saved. Sessions that were never saved are not counted.':'Private runs are never shown here.'}</p>${mine?'<div class="cta"><a class="act blue" href="/?post">Post a run</a></div>':''}</div></div>`;return;}
+  app.innerHTML=nav+StriveDay.render(model,{esc,mine,dayLabel:label,publicHref:mine?`/?day=${day}&p=${encodeURIComponent(profileId)}`:null});
+  if(model.lead&&$('day-thread'))void social.thread(model.lead.run.id,$('day-thread'));
+  window.StriveRunPhotos?.mountCovers?.({client:sb,root:app});
+}
 async function viewProjects(){
   const app=$('app'); frame(railHtml('projects'),null); setPrimarySection('projects'); app.innerHTML=skeletonCard();
   const profileId=ME?.id;
@@ -2740,6 +2769,7 @@ async function route(){ RUN_VIEW_GENERATION++;window.StriveRunPhotos?.disposeAll
   if(RETIRED.some(k=>q.has(k))){history.replaceState(null,'','/?explore');status('That section is gone. What is left: runs, people and cheers.');return viewExplore();}
   if(q.has('boards'))return viewBoards();
   if(q.has('projects'))return viewProjects();
+  if(q.has('day'))return viewDay(q.get('day'));
   if(q.has('project'))return viewProject(q.get('project'));
   if(q.has('segment'))return GrinderSegments.mount({client:sb,id:q.get('segment'),slot:$('app'),frame,status});
   if(q.has('history-import')){frame(railHtml('mine'),null);return StriveHistory.mount({slot:$('app'),client:sb,me:()=>ME,authGeneration:()=>AUTH_GENERATION,signIn:showSignIn,openRun:id=>{history.pushState(null,'','/?run='+encodeURIComponent(id));viewRun(id);},status});}
