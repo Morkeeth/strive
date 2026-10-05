@@ -33,7 +33,7 @@ const mine=D.render(m,{esc,mine:true,dayLabel:'Monday 5 October 2026',publicHref
 assert.match(mine,/13 commits across 2 projects\./);
 const keyed=D.render(D.compute([{id:'k1',project:'Raw/Key 1',started_at:at(9),duration_s:60,commits:2},{id:'k2',project:'Raw/Key 1',started_at:at(10),duration_s:60,commits:1,caption:'TEST DATA'}],'2026-10-05',v=>v?'Shown name':''),{esc,mine:true,dayLabel:'d'});
 assert.equal((keyed.match(/\/\?project=Raw%2FKey%201&scope=mine/g)||[]).length,2,'project links carry the stored value, not the shown label');
-assert.match(D.render(D.compute([{id:'n',project:null,started_at:at(9),duration_s:60,commits:5,caption:'TEST DATA'}],'2026-10-05',label),{esc,mine:true,dayLabel:'d'}),/<h1>5 commits\.<\/h1>/,'commits on a run with no project are not credited to a project');assert.match(mine,/2 runs<\/a>/);assert.match(mine,/PARALLELISER/);assert.match(mine,/TEST DATA which would you open\?/);
+assert.match(D.render(D.compute([{id:'n',project:null,started_at:at(9),duration_s:60,commits:5,caption:'TEST DATA'}],'2026-10-05',label),{esc,mine:true,dayLabel:'d',leadWith:'numbers'}),/<h1>5 commits\.<\/h1>/,'commits on a run with no project are not credited to a project');assert.match(mine,/PARALLELISER/);assert.match(mine,/TEST DATA which would you open\?/);
 assert.match(mine,/Unknown is not zero/);assert.match(mine,/Lineage is not recorded/);assert.match(mine,/See what others see/);
 assert.ok(!mine.includes('undefined')&&!mine.includes('NaN'),'no unrendered value reaches the page');
 const hostile=D.render(D.compute([{id:'x',project:'<img src=x onerror=1>',started_at:at(9),duration_s:60,caption:'<script>1</script>',feedback_question:'"><b>q'}],'2026-10-05',label),{esc,mine:false,dayLabel:'d'});
@@ -53,4 +53,10 @@ const R=k=>D.render(m,{esc,mine:true,dayLabel:'d',leadWith:k,leadHref:x=>'/?day=
 assert.ok(idx(R('result'),'Ask the room')<idx(R('result'),'What got done'));assert.ok(idx(R('journey'),'What got done')<idx(R('journey'),'Ask the room'));
 assert.ok(idx(R('numbers'),'Where the commits landed')<idx(R('numbers'),'What got done'));assert.match(R('journey'),/lead=numbers/);assert.equal(D.leadOf('x'),'result');
 assert.ok(!D.render(m,{esc,mine:false,dayLabel:'d',leadWith:'journey'}).includes('Lead with'),'a reader gets no chooser');
-console.log('PASS: night window, lead order; recovered git history; day membership, unknown commits, plumbing fold, peak, lead run, models, escaping and owner-only links');
+const depth=D.compute([{id:'d1',project:'deep',started_at:at(9),duration_s:600,commits:1,story_result:'TEST DATA the one that says something',feedback_question:'q?'},...['w','x','y','z'].map((n,i)=>({id:n,project:n,started_at:at(10+i),duration_s:60,commits:20}))],'2026-10-05',label);
+const dr=D.render(depth,{esc,mine:false,dayLabel:'d',leadWith:'result'});
+assert.match(dr,/<h1>TEST DATA the one that says something<\/h1>/,'leading with the result, the headline is what the author wrote, not a count');
+assert.match(dr,/81 commits across 5 projects\./);assert.equal((dr.match(/class="day-line"/g)||[]).length,1,'only the project with a written result gets a full row');
+assert.equal((dr.match(/class="day-quiet"/g)||[]).length,4);assert.match(dr,/<details class="day-untold" >/,'for a reader the unwritten projects are folded');
+assert.match(D.render(depth,{esc,mine:false,dayLabel:'d',leadWith:'numbers'}),/<h1>81 commits across 5 projects\.<\/h1>/);
+console.log('PASS: depth over count; night window, lead order; recovered git history; day membership, unknown commits, plumbing fold, peak, lead run, models, escaping and owner-only links');

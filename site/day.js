@@ -78,6 +78,8 @@
     const withCommits=D.projects.filter(p=>p.commits>0);
     const headline=D.commits>0?(withCommits.length?`${plural(D.commits,'commit')} across ${plural(withCommits.length,'project')}.`:`${plural(D.commits,'commit')}.`)
       :D.projects.length&&D.items.length?`${plural(D.items.length,'run')} across ${plural(D.projects.length,'project')}.`:`${plural(D.items.length,'run')}.`;
+    const said=D.lead&&D.groups.find(g=>g.open&&g.open.id===D.lead.run.id&&g.result);
+    const title=leadOf(leadWith)==='result'&&said?said.result:headline,under=title===headline?'':headline;
     const hours=[];if(D.from&&D.until)for(let t=D.from.getTime();t<=D.until.getTime();t+=3600000)hours.push(new Date(t));
     const step=Math.max(1,Math.ceil(hours.length/6));
     const many=D.through!==D.day,tick=h=>many&&(h.getHours()<step||h===hours[0])?`${h.toLocaleDateString(undefined,{weekday:'short'})} ${hm(h)}`:hm(h);
@@ -90,6 +92,11 @@
       return `<div class="day-line"><a class="day-what day-open" href="/?run=${encodeURIComponent(g.open.id)}"><b>${esc(g.label||'No project named')}</b>`
         +(g.result?`<span>${esc(g.result)}</span>`:`<span class="day-missing">${mine?'No result written yet. Open the run to say what came out of it.':'No result written.'}</span>`)
         +`</a><span class="day-when"><span class="day-track">${g.runs.filter(i=>i.seconds>0).map(bar).join('')}</span><span class="day-facts">${chips}<span class="day-t">${hm(first)}${g.seconds>0?` to ${hm(last)}`:''} · ${span(g.seconds)}</span></span></span></div>`};
+    // A project with a written result gets a full row. One without gets a single quiet line, so a
+    // long list of touched projects cannot outweigh one project that says what came out of it.
+    const quiet=g=>{const first=g.runs[0].start,last=g.runs.reduce((m,i)=>i.end>m?i.end:m,g.runs[0].end);
+      return `<div class="day-quiet"><a class="day-open" href="/?run=${encodeURIComponent(g.open.id)}">${esc(g.label||'No project named')}</a><span class="day-track">${g.runs.filter(i=>i.seconds>0).map(bar).join('')}</span><span class="day-t">${g.runs.length>1?`${g.runs.length} runs · `:''}${span(g.seconds)}</span></div>`};
+    const told=D.groups.filter(g=>g.result),untold=D.groups.filter(g=>!g.result);
     const strip=withCommits.length?`<div class="head"><h2>Where the commits landed</h2><span class="meta">${plural(withCommits.length,'project')}</span></div><div class="card day-commits">
       <div class="day-strip" role="img" aria-label="One segment per project, width by commits">${withCommits.map((p,i)=>`<i style="flex:${p.commits};background:${shade(i,withCommits.length)}" title="${esc(p.name)}: ${p.commits}"></i>`).join('')}</div>
       <ul class="day-repos">${withCommits.map((p,i)=>`<li><i style="background:${shade(i,withCommits.length)}"></i>${p.raw!=null?`<a href="/?project=${encodeURIComponent(p.raw)}&scope=${mine?'mine':'public'}">${esc(p.name)}</a>`:`<span class="day-name">${esc(p.name)}</span>`}<span class="meta">${p.fromGit!==null?'from git history':plural(p.runs,'run')}</span><b>${p.commits}</b></li>`).join('')}</ul>
@@ -100,12 +107,12 @@
     const models=D.models.length?`<ul class="day-models">${D.models.map(([m,n])=>`<li><span>${esc(m)}</span><i style="width:${(n/D.models[0][1]*100).toFixed(0)}%"></i><b>${n}</b></li>`).join('')}</ul>`:'';
     const lead=D.lead&&D.lead.run,q=lead&&typeof lead.feedback_question==='string'?lead.feedback_question.trim():'';
     const heroHtml=`<section class="day-hero"><div class="day-photo card" data-run-id="${lead?esc(lead.id):''}" data-photo-layout="${lead&&lead.photo_layout?esc(lead.photo_layout):'cover'}"><div class="run-title-row"></div></div>
-      <div class="day-head"><p class="meta">${esc(dayLabel)}</p><h1>${esc(headline)}</h1>
+      <div class="day-head"><p class="meta">${esc(dayLabel)}</p><h1${title.length>60?' class="day-long"':''}>${esc(title)}</h1>${under?`<p class="day-under">${esc(under)}</p>`:''}
       ${D.peak>=3?`<p class="day-badge"><b>PARALLELISER</b><span>${D.peak} runs going at once at ${hm(D.peakAt)}</span></p>`:''}
       <div class="ptotals num day-nums"><div><div class="v">${D.commits>0?withCommits.length:D.projects.length}</div><div class="k">Projects</div></div><div><div class="v">${D.commits}</div><div class="k">Commits</div></div><div><div class="v">${D.items.length}</div><div class="k">Runs</div></div><div><div class="v">${D.hours}</div><div class="k">Hours, first to last</div></div></div>
       ${mine&&publicHref?`<p class="hint">You see every run of the day. <a href="${esc(publicHref)}">See what others see</a>: only the runs you made public.</p>`:''}</div></section>`;
     const doneHtml=`<div class="head"><h2>What got done</h2><span class="meta">${plural(D.groups.length,'project')} · ${plural(D.lines.length,'run')}</span></div>
-      <div class="card day-sheet">${D.lines.length?`<div class="day-axis">${axis}</div>${D.groups.map(line).join('')}`:'<div class="empty"><h3>No named work on this day</h3><p>A run appears here once it has a project or a written result.</p></div>'}
+      <div class="card day-sheet">${D.lines.length?`<div class="day-axis">${axis}</div>${told.map(line).join('')}${untold.length?`<details class="day-untold" ${mine||!told.length?'open':''}><summary>${told.length?`${plural(untold.length,'more project')} worked on, no result written`:`${plural(untold.length,'project')} worked on, no result written yet`}</summary>${untold.map(quiet).join('')}${mine?'<p class="hint">Open a run and write what came out of it. It moves up and gets a full row.</p>':''}</details>`:''}`:'<div class="empty"><h3>No named work on this day</h3><p>A run appears here once it has a project or a written result.</p></div>'}
       ${D.plumbing.length?`<details class="day-plumbing"><summary><b>Plumbing</b> ${plural(D.plumbing.length,'run')} with no project and no written result · ${span(D.plumbingSeconds)}<span class="day-track">${D.plumbing.filter(i=>i.seconds>0).map(bar).join('')}</span></summary>
         <ul>${D.plumbing.map(i=>`<li><a href="${esc(editHref(i.run.id))}">${esc(i.run.harness||'Run')} · ${hm(i.start)} · ${span(i.seconds)}</a></li>`).join('')}</ul>
         <p class="hint">Lineage is not recorded: which run started which is unknown, so these stay side by side.</p></details>`:''}</div>`;
