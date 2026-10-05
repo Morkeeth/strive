@@ -33,6 +33,11 @@ ROWS = [
     {"id": "a5", "title": "<script>alert(1)</script>", "harness": "Grok Bot", "duration_s": 30,
      "meta_extra": "bot activity", "ridge": [1, 0, 0, 1, 0, 1, 0, 0, 0, 1],
      "profiles": {"display_name": "O'Neil & \"co\""}, "visibility": "anonymous"},
+    {"id": "story", "title": "An unfinished attempt", "story_result": "A working draft <script>",
+     "caption": "Older caption", "feedback_question": "Does this help & why?", "commits": 0},
+    {"id": "bounded", "title": "Long description", "story_result": "word " * 80},
+    {"id": "typed", "title": "An idea", "trace_basis": "typed-by-author", "tool_calls": 99},
+    {"id": "observed", "title": "Partial recording", "trace_basis": "observed native events; timestamps unavailable", "prompts": 3},
 ]
 
 JS = r"""
@@ -84,7 +89,15 @@ def test_no_unknown_no_dash_and_one_commit_is_singular():
     for row in ROWS:
         text = visible(feedcard.card(row))
         assert "Unknown" not in text and " — " not in text and "1 prompts" not in text
-    assert "1 commit " in visible(feedcard.card(ROWS[3])) + " "
+    assert "1 commit recorded" in visible(feedcard.card(ROWS[3]))
+
+
+def test_author_story_leads_without_metric_hero_or_long_session_award():
+    markup = feedcard.card({"title": "An attempt", "story_result": "Still exploring", "duration_s": 50000,
+                           "tool_calls": 300, "feedback_question": "What would you try?"})
+    assert "Still exploring" in markup and "Feedback welcome" in markup
+    assert "fc-hero" not in markup and "fc-numbers" not in markup and "Marathon" not in markup
+    assert markup.index("Still exploring") < markup.index("fc-route-secondary")
 
 
 def test_card_css_is_the_feed_css():

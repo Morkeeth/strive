@@ -128,16 +128,17 @@ def test_the_stride_line_is_the_card_in_two_lines_and_pastes_the_same_from_both_
     py = [feedcard.stride_text(r, url) for r in rows]
     assert js == py
     first, second = py[0].split("\n")
-    assert first == "STRIVE · Claude Code · 270 tool calls · 12h 19m · 1 turn · Marathon"
-    assert py[1].startswith("STRIVE · Cursor · 112 tool calls · 2h 3m · 2 turns · Delegator\n")
+    assert first == "STRIVE · Night build"
+    assert py[1].startswith("STRIVE · Afternoon\n")
     assert second.endswith("  agentic-strava.vercel.app/l/k7f2") and re.fullmatch(r"[▁▂▃▄▅▆▇█]{2,12}", second.split("  ")[0])
-    assert py[2].startswith("STRIVE · Cursor · 98 tool calls · 18m · 1 turn · One-shot\n")
-    # No prompt, no path, no code: the line is figures and a badge, nothing the run typed.
+    assert py[2].startswith("STRIVE · t\n")
+    # The share line uses the chosen title and story, not a duration award.
     assert "PROMPT" not in py[0] and "/" not in first
-    # Every card carries it; the local card has no Copy button because it carries no script.
-    assert '<div class="fc-stride"><pre>' in feedcard.card(LONG) and "fc-copy" not in feedcard.card(LONG)
+    # The standalone share line remains available; Bean's story-first feed omits it.
+    assert '<div class="fc-stride"><pre>' in feedcard.stride(LONG)
+    assert "fc-stride" not in feedcard.card(LONG) and "fc-copy" not in feedcard.card(LONG)
     web = node("const F=require(process.argv[1]+'/site/feed-card.js');process.stdout.write(F.card(JSON.parse(process.argv[2]),{preview:true,copy:true,url:process.argv[3]}))", json.dumps(LONG), url)
-    assert 'class="fc-copy" data-copy="STRIVE · Claude Code' in web
+    assert "fc-copy" not in web
     # And the terminal prints the same two lines.
     lines = feedcard.terminal_lines(LONG)
     assert lines[-2].strip() == first and lines[-1].strip() == second.split("  ")[0]
@@ -173,7 +174,7 @@ def test_a_subagent_capture_reads_claude_code_on_every_surface():
     row = {"title": "", "harness": "claude-agent", "started": "2026-09-25T02:00:00Z", "tool_calls": 40, "prompts": 1, "duration_s": 600}
     card = feedcard.card(row)
     assert "claude-agent" not in card and "Claude Code" in visible(card)
-    assert feedcard.stride_text(row).startswith("STRIVE · Claude Code · ")
+    assert feedcard.stride_text(row).startswith("STRIVE · Claude Code session, ")
     assert row["harness"] == "claude-agent"                  # the row keeps the raw value
     js = node("const F=require(process.argv[1]+'/site/feed-card.js');process.stdout.write(F.card(JSON.parse(process.argv[2]),{preview:true,heading:'h1'}))", json.dumps(row))
     assert js == feedcard.card(row, avatars=True)
@@ -222,7 +223,7 @@ def test_the_stride_bars_are_monospace_with_the_peak_marked_and_copy_plain():
     assert bars.count("<b>") == 1 and re.sub(r"</?b>", "", bars) == feedcard.stride_bars(row)
     assert re.search(r"<b>(.)</b>", bars).group(1) == "█"
     # What is copied is the plain text; the markup is only on the card.
-    web = node("const F=require(process.argv[1]+'/site/feed-card.js');process.stdout.write(F.card(JSON.parse(process.argv[2]),{preview:true,copy:true,url:process.argv[3]}))",
+    web = node("const F=require(process.argv[1]+'/site/feed-card.js');process.stdout.write(F.stride(JSON.parse(process.argv[2]),{copy:true,url:process.argv[3]}))",
                json.dumps(row), "https://agentic-strava.vercel.app/l/k7f2")
     copied = re.search(r'data-copy="([^"]*)"', web).group(1)
     assert "<" not in copied and "&lt;" not in copied and feedcard.stride_bars(row) in copied

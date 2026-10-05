@@ -2,9 +2,8 @@
 
 The web feed, the shared link page /r/<id> and the share image all draw a run with one function,
 `card` in site/feed-card.js. The command line cannot run that file (it stays dependency-free
-Python), so this module is a line-for-line port of it: the same face, name, agent, title, one big
-number, up to three small figures, activity line, and heart, discuss and share row, from the same
-rules. tests/test_feed_card_parity.py renders the same rows through both and compares the visible
+Python), so this module ports its preview: the same face, name, agent, title, author story,
+feedback question, labelled activity line, and heart, discuss and share row. tests/test_feed_card_parity.py renders the same rows through both and compares the visible
 text, and compares CARD_CSS with the card section of site/feed.css, so the two cannot drift.
 
 Every value is a field of the run. A number the run did not measure is not drawn; nothing is
@@ -93,7 +92,8 @@ button.fc-act:hover,a.fc-act:hover{background:var(--blue-wash);color:var(--blue)
   .fc-act.kudo:active svg{transform:scale(.86)}
   .fc-act.kudo.on.pop svg{animation:fc-kudo .32s cubic-bezier(.23,1,.32,1)}
 }
-@keyframes fc-kudo{from{transform:scale(.72)}to{transform:scale(1)}}"""
+@keyframes fc-kudo{from{transform:scale(.72)}to{transform:scale(1)}}
+.fc-question{border-left:2px solid #2455ff;padding:10px 14px;white-space:pre-wrap}.fc-question span{display:block;color:#2455ff;font-size:12px;margin-bottom:6px}.fc-open{color:#2455ff;font-size:14px}.fc-route-secondary{margin-top:20px}"""
 
 
 def esc(s) -> str:
@@ -351,6 +351,11 @@ def spark(r: dict) -> str:
     mx = max(src)
     if not mx:
         return ""
+    ridge = isinstance(r.get("ridge"), list) and len(r["ridge"]) > 1
+    basis = r.get("trace_basis")
+    quantity = "Tool requests" if ridge or basis == "elapsed-agent-tool-calls" else "Human messages" if basis in ("elapsed", "timestamped native events") else "Recorded activity"
+    axis = ({"wall-time": "elapsed time", "turn-order": "turn order"}.get(r.get("ridge_basis"), "call order") if ridge else
+            "event order" if basis == "position" else "elapsed time" if basis in ("elapsed", "elapsed-agent-tool-calls", "timestamped native events") else "source order; timing unknown")
     w, h, top = 300, 56, 6
     x = lambda i: (i * w) / (len(src) - 1)
     y = lambda v: h - (v / mx) * (h - top)
@@ -360,7 +365,8 @@ def spark(r: dict) -> str:
     py = _fixed((y(mx) / h) * 100, 2)
     return (f'<div class="fc-spark" aria-hidden="true"><svg viewBox="0 0 {w} {h}" preserveAspectRatio="none">'
             f'<polygon points="0,{h} {line} {w},{h}" class="fc-area"/><polyline points="{line}" class="fc-line"/></svg>'
-            f'<span class="fc-peak" style="left:{px}%;top:{py}%"></span></div>')
+            f'<span class="fc-peak" style="left:{px}%;top:{py}%"></span></div>'
+            f'<p class="fc-source">{esc(quantity)} per slice · {esc(axis)} · vertical 0–{mx:g}. Activity, not result quality.</p>')
 
 
 # THE RUN MAP. site/feed-card.js routeGeometry and routeMap, the same numbers and the same rounding.
@@ -468,19 +474,14 @@ def stride_bars(r: dict) -> str:
     return "".join(b["bars"]) if b else ""
 
 
+def story_summary(r: dict) -> str:
+    """The bounded author-written summary from site/run-story.js."""
+    text = str(r.get("story_result") or r.get("caption") or r.get("note") or "").strip()
+    return text[:237].rstrip() + "…" if len(text) > 240 else text
+
+
 def _stride_first(r: dict) -> str:
-    lead = headline(r)
-    a = achievement(r)
-    figures = []
-    for k, v in stats(r, lead):
-        if k == "Time":
-            figures.append(str(v))
-        elif k == "Turns":
-            figures.append(f"{v} {'turn' if v == 1 else 'turns'}")
-        else:
-            figures.append(f"{v} {k.lower()}")
-    lead_text = f"{lead['n']} {lead['unit']}" if lead else ""
-    return " · ".join(x for x in ["STRIVE", harness_name(r), lead_text, *figures, a["label"] if a else ""] if x)
+    return " · ".join(x for x in ["STRIVE", title_of(r), story_summary(r)] if x)
 
 
 def _where(url) -> str:
@@ -523,32 +524,33 @@ def card(r: dict, meta_extra: str = "", avatars: bool = False, url: str | None =
     no network request when it is opened."""
     p = profile_of(r)
     anon = r.get("visibility") == "anonymous"
-    lead = headline(r)
-    facts = stats(r, lead)
     who = '<span class="fc-name">Anonymous builder</span>' if anon else f'<span class="fc-name">{esc(p["name"])}</span>'
     meta = " · ".join(x for x in [esc(harness_name(r)),
                                   esc(when(r.get("started_at") or r.get("started")) or "Session date unknown"), esc(meta_extra) if meta_extra else ""] if x)
-    shipped = ('<span class="fc-chip">Shipped</span>'
+    shipped = ('<span class="fc-chip">Work linked</span>'
                if r.get("output_url") and re.match(r"^https://", str(r["output_url"]), re.I) else "")
-    cap = r.get("caption") or r.get("note")
-    hero = (f'<div class="fc-hero"><span class="fc-n num">{esc(lead["n"])}</span><span class="fc-u">{esc(lead["unit"])}</span></div>'
-            if lead else "")
-    dl = ('<dl class="fc-stats">' + "".join(f'<div><dt>{esc(k)}</dt><dd class="num">{esc(v)}</dd></div>' for k, v in facts) + "</dl>"
-          if facts else "")
+    # Match the author-written summary in site/run-story.js, including its bounded preview.
+    cap = story_summary(r)
     cap_html = f'<p class="fc-cap">{esc(cap)}</p>' if cap else ""
-    typed = r.get("trace_basis") == "typed-by-author"
-    visual = '<p class="fc-source">Typed by the author. No capture.</p>' if typed else hero_visual(r)
+    question = f'<p class="fc-question"><span>Feedback welcome</span>{esc(r["feedback_question"])}</p>' if r.get("feedback_question") else ""
+    typed = '<p class="fc-source">Typed by the author. No capture.</p>' if r.get("trace_basis") == "typed-by-author" else ""
+    observed = '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' if r.get("trace_basis") == "observed native events; timestamps unavailable" else ""
     source_label = {"typed-by-author": "Author’s account", "historical-reconstruction": "Historical reconstruction · client-reported", "observed native events; timestamps unavailable": "Imported · client-reported · observed subset"}.get(r.get("trace_basis"), "Imported · client-reported")
     evidence = f'<p class="run-evidence-basis">{esc(source_label)}</p>'
     body = f"""
     <h1 class="fc-title">{esc(title_of(r))}</h1>
     {cap_html}
-    <div class="fc-numbers">{hero}{dl}</div>
-    {evidence}{badge(r)}{visual}{stride(r, url)}
+{"    "}
+    {question}
+    {observed}{typed}{evidence}
+{"    "}
+    <div class="fc-route-secondary">{hero_visual(r)}</div>
+    <p class="fc-open">Preview your story</p>
   """
     return f"""<article class="card fc">
   <header class="fc-top">{face(r, avatars=avatars)}<div class="fc-who">{who}<small>{meta}</small></div>{shipped}</header>
   <div class="fc-body">{body}</div>
+{"  "}
   <footer class="fc-foot"><span class="fc-act" aria-label="Send thanks">{KUDOS_ICON}</span><span class="fc-act" aria-label="Reply">{TALK_ICON}<span>Reply</span></span><span class="fc-act" aria-label="Share">{SHARE_ICON}<span>Share</span></span></footer>
 </article>"""
 

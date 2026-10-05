@@ -67,6 +67,7 @@ button.fc-act:hover,a.fc-act:hover{background:var(--blue-wash);color:var(--blue)
   .fc-act.kudo.on.pop svg{animation:fc-kudo .32s cubic-bezier(.23,1,.32,1)}
 }
 @keyframes fc-kudo{from{transform:scale(.72)}to{transform:scale(1)}}
+.fc-question{border-left:2px solid #2455ff;padding:10px 14px;white-space:pre-wrap}.fc-question span{display:block;color:#2455ff;font-size:12px;margin-bottom:6px}.fc-open{color:#2455ff;font-size:14px}.fc-route-secondary{margin-top:20px}
 
 /* the empty chair after a short feed */
 .fc-next{display:flex;align-items:center;gap:12px;padding:16px;border:1px dashed var(--blue-soft);background:none;margin:0 0 12px;color:var(--ink)}
