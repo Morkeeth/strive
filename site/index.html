@@ -2539,7 +2539,7 @@ async function importRun(){
       wall_time_s:Number.isInteger(run.wall_time_s)&&run.wall_time_s>=0?run.wall_time_s:null,
       harness:run.harness||null,prompts:run.turns_typed??null,duration_s:run.duration_s??null,
       commits:run.commits??null,tool_calls:run.tool_calls??null,shell_calls:run.shell_calls??null,files_touched:run.files_touched??null,
-      rhythm:run.rhythm||null,caption,output_url:output||null,visibility:'private',started_at:run.started||null};
+      rhythm:run.rhythm||null,caption:caption||null,output_url:output||null,visibility:'private',started_at:run.started||null};
     dropNullSegmentColumns(base);
     // the coach columns (nullable; migration 2026-09-03-coach.sql). Retry without them on a
     // database that does not have them yet, and say so.
