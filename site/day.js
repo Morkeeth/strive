@@ -63,6 +63,7 @@
       allPrivate:g.runs.every(i=>i.run.visibility==='private')})).sort((a,b)=>(b.result?1:0)-(a.result?1:0)||a.runs[0].start-b.runs[0].start);
     return {day,through:end,items,recovered,lines,groups,plumbing,projects,peak,peakAt,from,until,lead,
       commits:projects.reduce((a,p)=>a+p.commits,0)+unlabelled,commitsUnknown:items.filter(i=>i.commits===null&&!(i.label&&by.get(i.label).fromGit!==null)).length,
+      toolCalls:items.reduce((a,i)=>a+(i.run.tool_calls||i.run.ridge_tool_calls||0),0),
       hours:first&&last?Math.round((last-first)/360000)/10:0,
       lineSeconds:lines.reduce((a,i)=>a+i.seconds,0),plumbingSeconds:plumbing.reduce((a,i)=>a+i.seconds,0),
       models:[...models.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))};
@@ -109,7 +110,7 @@
     const heroHtml=`<section class="day-hero"><div class="day-photo card" data-run-id="${lead?esc(lead.id):''}" data-photo-layout="${lead&&lead.photo_layout?esc(lead.photo_layout):'cover'}"><div class="run-title-row"></div></div>
       <div class="day-head"><p class="meta">${esc(dayLabel)}</p><h1${title.length>60?' class="day-long"':''}>${esc(title)}</h1>${under?`<p class="day-under">${esc(under)}</p>`:''}
       ${D.peak>=3?`<p class="day-badge"><b>PARALLELISER</b><span>${D.peak} runs going at once at ${hm(D.peakAt)}</span></p>`:''}
-      <div class="ptotals num day-nums"><div><div class="v">${D.commits>0?withCommits.length:D.projects.length}</div><div class="k">Projects</div></div><div><div class="v">${D.commits}</div><div class="k">Commits</div></div><div><div class="v">${D.items.length}</div><div class="k">Runs</div></div><div><div class="v">${D.hours}</div><div class="k">Hours, first to last</div></div></div>
+      <div class="ptotals num day-nums"><div><div class="v">${D.commits>0?withCommits.length:D.projects.length}</div><div class="k">Projects</div></div>${D.commits>0||!D.toolCalls?`<div><div class="v">${D.commits}</div><div class="k">Commits</div></div>`:`<div><div class="v">${D.toolCalls}</div><div class="k">Tool calls recorded</div></div>`}<div><div class="v">${D.items.length}</div><div class="k">Runs</div></div><div><div class="v">${D.hours}</div><div class="k">Hours, first to last</div></div></div>
       ${mine&&publicHref?`<p class="hint">You see every run of the day. <a href="${esc(publicHref)}">See what others see</a>: only the runs you made public.</p>`:''}</div></section>`;
     const doneHtml=`<div class="head"><h2>What got done</h2><span class="meta">${plural(D.groups.length,'project')} · ${plural(D.lines.length,'run')}</span></div>
       <div class="card day-sheet">${D.lines.length?`<div class="day-axis">${axis}</div>${told.map(line).join('')}${untold.length?`<details class="day-untold" ${mine||!told.length?'open':''}><summary>${told.length?`${plural(untold.length,'more project')} worked on, no result written`:`${plural(untold.length,'project')} worked on, no result written yet`}</summary>${untold.map(quiet).join('')}${mine?'<p class="hint">Open a run and write what came out of it. It moves up and gets a full row.</p>':''}</details>`:''}`:'<div class="empty"><h3>No named work on this day</h3><p>A run appears here once it has a project or a written result.</p></div>'}
