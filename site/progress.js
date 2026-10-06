@@ -50,7 +50,7 @@ window.GrinderProgress = function ({client: db, me, app, frame, status, signIn, 
     try {
       let loaded=await ownRuns(); if(!current())return;let offset=loaded.length, more=loaded.length===100;
       const noteResult=await Promise.allSettled([
-        rows(db.from('grinder_notifications').select('id,kind,run_id,source_id,created_at,actor:profiles!grinder_notifications_actor_id_fkey(github_handle,name,handle,display_name,avatar_url)').eq('recipient_id',me().id).is('read_at',null).order('created_at',{ascending:false}).limit(3))
+        rows(db.from('grinder_notifications').select('id,kind,run_id,source_id,actor_id,created_at,actor:profiles!grinder_notifications_actor_id_fkey(github_handle,name,handle,display_name,avatar_url)').eq('recipient_id',me().id).is('read_at',null).order('created_at',{ascending:false}).limit(3))
       ]);
       if(!current())return;
       const notes=noteResult[0].status==='fulfilled'?noteResult[0].value:[];

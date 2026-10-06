@@ -161,7 +161,8 @@ window.GrinderSocial = function ({
   function notificationPrimary(n) {
     if (n.kind === "reply") return notificationHref(n);
     const shown = present(n.actor);
-    return shown.href || (n.kind === "ack" && n.run_id ? `/?run=${encodeURIComponent(n.run_id)}` : "/?people");
+    // Ruling, 6 Oct: a XUDOS notification is not something to open. It names the person; that is all.
+    return shown.href || (n.kind === "ack" ? null : "/?people");
   }
   function notificationHref(n) {
     if (n.kind === "follow") {
@@ -295,7 +296,7 @@ window.GrinderSocial = function ({
           <span class="notice-dot" aria-hidden="true"></span><div><p class="notice-copy">${who} ${kind}</p>
           <p class="notice-meta">${esc(new Date(n.created_at).toLocaleString())}</p><div class="notice-links">
           ${href ? `<a href="${href}" data-notification-open="1">${n.kind === "reply" ? "Open exact reply" : "Open profile"}</a>` : ""}
-          ${n.kind === "ack" && n.run_id ? `<a href="/?run=${encodeURIComponent(n.run_id)}" data-notification-open="1">Open the run</a>` : ""}
+
           ${!n.read_at ? '<button type="button" data-notification-read="1">Mark read</button>' : ""}</div></div></article>`;
       }).join("");
       slot.querySelectorAll("[data-notification-open]").forEach((a) => a.addEventListener("click", () => {
@@ -1205,7 +1206,7 @@ window.GrinderSocial = function ({
             const replyGone =
               n.kind === "reply" && uuid(n.source_id) && !reply;
             const href =
-              runGone || replyGone
+              runGone || replyGone || n.kind === "ack"
                 ? null
                 : notificationHref({
                     ...n,
