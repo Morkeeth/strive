@@ -87,7 +87,7 @@
   const LEADS=['result','journey','numbers'],leadOf=v=>LEADS.includes(v)?v:'result';
   const span=s=>s>=3600?`${Math.floor(s/3600)} h ${pad(Math.round(s%3600/60))}`:s>=60?`${Math.round(s/60)} min`:s>0?'under a minute':'time not recorded';
   const plural=(n,one,many)=>`${n} ${n===1?one:(many||one+'s')}`;
-  function render(model,{esc,mine,dayLabel,publicHref,leadWith='result',leadHref,editHref=id=>`/?run=${encodeURIComponent(id)}`}){
+  function render(model,{esc,mine,dayLabel,publicHref,leadWith='result',leadHref,split=false,editHref=id=>`/?run=${encodeURIComponent(id)}`}){
     const D=model,total=D.from&&D.until?Math.max(1,D.until-D.from):1;
     const at=d=>Math.max(0,Math.min(100,(d-D.from)/total*100));
     const shade=(i,n)=>`oklch(${(0.42+0.42*i/Math.max(1,n-1)).toFixed(3)} ${(0.22-0.12*i/Math.max(1,n-1)).toFixed(3)} 264)`;
@@ -145,6 +145,7 @@
     // question last; numbers on where the commits landed.
     const order=leadOf(leadWith),chooser=mine&&leadHref?`<nav class="j-lead" aria-label="What a reader sees first"><span class="meta">Lead with</span>${LEADS.map(k=>`<a href="${esc(leadHref(k))}" ${k===order?'aria-current="true"':''}>${k==='result'?'Result':k==='journey'?'Journey':'Numbers'}</a>`).join('')}<span class="meta">The choice travels in the link you share.</span></nav>`:'';
     const blocks=order==='journey'?[heroHtml,doneHtml,strip,howHtml,askHtml]:order==='numbers'?[heroHtml,strip,howHtml,doneHtml,askHtml]:[heroHtml,doneHtml,askHtml,strip,howHtml];
+    if(split)return {chooser,hero:heroHtml,done:doneHtml,ask:askHtml,strip,how:howHtml};
     return chooser+blocks.join('\n');
   }
   const api={compute,render,localDay,shift,leadOf,isDay:v=>DAY.test(String(v||''))};

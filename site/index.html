@@ -589,6 +589,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/import-row.js"></script>
 <script src="/day-drafts.js"></script>
 <script src="/day-share.js"></script>
+<script src="/day-card.js"></script>
 <script src="/dropin-parse.js"></script>
 <script src="/fair.js"></script>
 <script src="/home.js"></script>
@@ -2278,7 +2279,30 @@ async function viewDay(day){
   const head=model.lead&&params.get('head')===model.lead.run.id?'&head='+encodeURIComponent(model.lead.run.id):'';
   if(mine&&params.has('share')){app.innerHTML=nav+`<p class="hint"><a href="/?day=${day}${extra}">← Back to the day</a></p><section id="day-share"></section>`;
     StriveDayShare.mount({slot:$('day-share'),model,client:sb,ownerId:profileId,esc,status,dayHref:lead=>`/?day=${day}${extra}&p=${encodeURIComponent(profileId)}&lead=${leadWith}${lead?'&head='+encodeURIComponent(lead):''}`});return;}
-  app.innerHTML=nav+(mine?`<p class="hint day-share-link"><a class="act" href="/?day=${day}${extra}&share=1">Choose what readers see</a></p>`:'')+StriveDay.render(model,{esc,mine,dayLabel:label,leadWith,leadHref:k=>`/?day=${day}${extra}${head}&lead=${k}`,publicHref:mine?`/?day=${day}${extra}&p=${encodeURIComponent(profileId)}&lead=${leadWith}${head}`:null});
+  // The card (site/day-card.js) leads the page: pie, numbers and graph, then the story, with the other
+  // projects one step left or right. The author's display choices are saved on the profile under this
+  // window. A reader gets them from the same profile row the runs already carry.
+  const cardKey=`${day}_${through||day}`,ownerProfile=mine?ME:((data||[])[0]||{}).profiles||null;
+  const savedCard=ownerProfile&&ownerProfile.rig&&ownerProfile.rig.day_cards?ownerProfile.rig.day_cards[cardKey]:null;
+  const tokens=new Map();for(const g of model.groups)if(g.label)tokens.set(g.label,await StriveDayCard.token(owner,cardKey,g.label));
+  if(ME?.id!==profileId)return viewDay(day);
+  const author=ownerProfile?(ownerProfile.display_name||ownerProfile.name||ownerProfile.handle||ownerProfile.github_handle||''):'';
+  const here=`/?day=${day}${extra}${other?'&p='+encodeURIComponent(other):''}${head}&lead=${leadWith}`;
+  const cardOpts={esc,mine,author,windowLabel:label,runHref:id=>`/?run=${encodeURIComponent(id)}`};
+  if(mine&&params.has('setup')){app.innerHTML=nav+`<p class="hint"><a href="/?day=${day}${extra}">← Back to the day</a></p><section id="card-setup"></section>`;
+    StriveDayCard.mountSetup({slot:$('card-setup'),model,tokens,saved:savedCard,esc,renderOpts:cardOpts,readerHref:`/?day=${day}${extra}&p=${encodeURIComponent(profileId)}`,
+      onPreview:host=>void window.StriveRunPhotos?.mountThumbs?.({client:sb,root:host}),
+      save:async choices=>{const rig={...(ME.rig||{})},cards={...(rig.day_cards||{}),[cardKey]:choices};
+        for(const k of Object.keys(cards).sort().slice(0,-40))delete cards[k];rig.day_cards=cards;
+        const {error}=await sb.from('profiles').update({rig}).eq('id',ME.id);if(error)return error.message||'the service did not confirm it';ME.rig=rig;return null}});
+    return;}
+  const deck=StriveDayCard.slides(model,tokens,savedCard),startAt=Math.max(0,Math.min(deck.slides.length-1,parseInt(params.get('card')||'0',10)||0));
+  const parts=StriveDay.render(model,{esc,mine,dayLabel:label,leadWith,split:true,leadHref:k=>`/?day=${day}${extra}${head}&lead=${k}`,publicHref:null});
+  app.innerHTML=nav+(mine?`<p class="hint day-share-link"><a class="act" href="/?day=${day}${extra}&share=1">Choose what readers see</a> <a class="act" href="/?day=${day}${extra}&p=${encodeURIComponent(profileId)}">See what others see</a></p>`:'')
+    +StriveDayCard.render(deck,{...cardOpts,start:startAt,setupHref:mine?`/?day=${day}${extra}&setup=1`:null})
+    +parts.ask+`<details class="day-everything"><summary>Everything in this run: each project, where the commits landed, how the time was spent</summary>${parts.done}${parts.strip}${parts.how}</details>`;
+  // The selected view rides in the address, so coming back from a run returns to the same view.
+  StriveDayCard.wire($('day-card'),{onChange:at=>{const q=new URLSearchParams(location.search);at?q.set('card',at):q.delete('card');history.replaceState(null,'','/?'+q.toString())}});
   if(model.lead&&$('day-thread'))void social.thread(model.lead.run.id,$('day-thread'));
   window.StriveRunPhotos?.mountCovers?.({client:sb,root:app});
   void window.StriveRunPhotos?.mountThumbs?.({client:sb,root:app});
