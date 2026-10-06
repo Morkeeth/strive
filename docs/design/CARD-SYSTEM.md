@@ -32,6 +32,8 @@ Every page of every card has the same parts in the same order.
 
 A card with one project and a card with many projects are built by the same function from the same parts. The one-project card has no selector.
 
+If saved sessions have no project names at all, show one "Runs without a project" card with their recorded facts and trace. Do not count that group as a project or invent a result. This fallback must not reveal projects the author explicitly hid.
+
 One exception: the "Turning points" page. It is a list of links to the runs where the author wrote a result. It has no headline, no numbers and no main visual.
 
 Tokens:

@@ -47,6 +47,14 @@
     const brief=t=>(String(t).match(/[^.!?]+[.!?]*\s*/g)||[]).filter(x=>!/\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b/.test(x)).join('').trim();
     const wrote=r=>r&&typeof r.story_result==='string'?r.story_result.trim():'';
     let groups=model.groups.filter(g=>g.label&&!c.hidden.includes(tk(g)));
+    // Older imports may have no project field. Keep their real sessions visible without
+    // inventing a project count. Do not use this path when named projects were hidden.
+    if(!model.groups.some(g=>g.label)&&model.items.length){
+      const runs=model.items,open=model.lead?.run||runs[0].run;
+      groups=[{label:'Runs without a project',raw:null,runs,marks:[],gitCommits:null,
+        seconds:runs.reduce((n,i)=>n+i.seconds,0),commits:runs.reduce((n,i)=>n+(i.commits||0),0),
+        result:wrote(open),open}];
+    }
     const rank=g=>{const i=c.order.indexOf(tk(g));return i<0?1e6:i};
     const leadTok=c.lead&&groups.some(g=>tk(g)===c.lead)?c.lead:(model.lead&&groups.find(g=>g.runs.some(i=>i.run.id===model.lead.run.id))?tk(groups.find(g=>g.runs.some(i=>i.run.id===model.lead.run.id))):null);
     groups=groups.map((g,i)=>({g,i})).sort((a,b)=>(tk(b.g)===leadTok)-(tk(a.g)===leadTok)||rank(a.g)-rank(b.g)||(b.g.result?1:0)-(a.g.result?1:0)||a.i-b.i).map(x=>x.g);

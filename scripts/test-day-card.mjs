@@ -92,4 +92,15 @@ assert.ok(![html,rh].some(h=>h.includes('undefined')||h.includes('NaN')));
 // A reader with several public projects is numbered over those only.
 const two=D.compute(runs.filter(r=>['b1','c1'].includes(r.id)),'2026-10-05',label),twoH=R(C.slides(two,tokens,{order:[T('alpha'),T('delta')],lead:T('alpha')}));
 assert.deepEqual([...twoH.matchAll(/class="dc-page"[^>]*aria-label="(\d [^"]*)"/g)].map(m=>m[1]),['1 Overview','2 beta','3 gamma'],'numbering comes from visible pages only: a hidden or private project takes no number and leaves no name');assert.ok(!twoH.includes('alpha')&&!twoH.includes('delta'));
-console.log('PASS: anatomy order, page selector names and addresses, one reducer, owner menu, visual modes, old choices migrate, private picture never leaks, honest empty state, view order, lead project, measured facts with unknowns, author choices, hidden projects out of totals, reader privacy, saved choices hold no names');
+// Older imported sessions can have a caption and timing but no project or result.
+const unnamed=D.compute([{id:'old-a',started_at:at(9),duration_s:120,caption:'Context only'},
+ {id:'old-b',started_at:at(10),duration_s:180}], '2026-10-05',label);
+const unnamedDeck=C.slides(unnamed,new Map(),null),unnamedHtml=R(unnamedDeck);
+assert.match(unnamedHtml,/id="day-card"/,'saved sessions without project names still have a daily card');
+assert.equal(unnamedDeck.slides[0].facts.runs.value,2);
+assert.equal(unnamedDeck.slides[0].facts.commits.value,null);
+assert.equal(unnamedDeck.slides[0].facts.projects,undefined,'unknown projects are not an invented project count');
+assert.equal(unnamedDeck.slides[0].result,'','caption does not become a claimed result');
+assert.match(unnamedHtml,/2 captured sessions/);
+assert.equal(C.slides(model,tokens,{hidden:[...tokens.values()]}).slides.length,0,'fallback never restores deliberately hidden projects');
+console.log('PASS: card anatomy, navigation, privacy, visual choices, and unnamed saved sessions');
