@@ -68,9 +68,15 @@
     // lone says the picture's run is not public, so only its owner is looking at it here.
     const picture=g=>{if(!holds(g))return null;const r=[...g.runs.map(i=>i.run),...g.marks.map(m=>m.run)].find(x=>x.id===c.photo.run);
       return {kind:c.visual,run:c.photo.run,id:c.photo.id,focus:c.focus,lone:!!r.visibility&&r.visibility!=='public',of:g.label}};
+    // With no picture picked for the card, a project page may lead with the cover its author already
+    // chose on that project's own run. Only that run, only a chosen cover: nothing is borrowed from
+    // another project and no first upload is assumed. The page shows the measured data until the cover
+    // is confirmed, and keeps it when there is none.
+    // An author who picked a picture and then set the card to Data has said: no pictures.
+    const cover=g=>{if(c.photo&&c.visual==='data')return null;const r=told(g).open;return r&&r.id&&g.runs.some(i=>i.run.id===r.id)?{kind:'screenshot',run:r.id,id:'',cover:true,focus:'center',of:g.label,lone:false}:null};
     const project=g=>{const [a,b]=ends(g),cm=commitsOf(g);
       const said=[...g.runs].filter(i=>wrote(i.run)).map(i=>({text:wrote(i.run),run:i.run,at:i.start})).concat(g.marks.filter(m=>m.result).map(m=>({text:m.result,run:m.run,at:m.until}))).sort((x,y)=>y.at-x.at);
-      return {kind:'project',key:tk(g),name:g.label,group:g,visual:picture(g),open:told(g).open,from:a,until:b,result:told(g).result,highlights:c.highlights?said.slice(0,3):[],
+      return {kind:'project',key:tk(g),name:g.label,group:g,visual:picture(g)||cover(g),open:told(g).open,from:a,until:b,result:told(g).result,highlights:c.highlights?said.slice(0,3):[],
         facts:{commits:cm?{value:cm.n,note:cm.from==='git'?'from git history':'recorded by the runs'}:{value:null},session:{value:g.seconds>0?span(g.seconds):null,note:'summed across runs'},
           elapsed:{value:a&&b?span((b-a)/1000):null},runs:{value:g.runs.length,note:g.marks.length?`plus ${plural(g.marks.length,'git window')}`:''},
           tools:{value:g.runs.reduce((s,i)=>s+(i.run.tool_calls||i.run.ridge_tool_calls||0),0)||null}}}};
@@ -189,14 +195,15 @@
   // drawn as zero. On the overview each project in the list opens its own page of this card.
   function share(s,esc,jump){
     const P=s.pie;if(!P||!P.total)return '';
-    const known=P.parts.filter(p=>p.known&&p.value>0).sort((a,b)=>b.value-a.value),left=P.parts.length-known.length;if(known.length<2)return '';
+    // Three kinds of project: a measured share, a measured zero, and no measurement. They are never merged.
+    const known=P.parts.filter(p=>p.known&&p.value>0).sort((a,b)=>b.value-a.value),zero=P.parts.filter(p=>p.known&&!(p.value>0)).length,left=P.parts.filter(p=>!p.known).length;if(known.length<2)return '';
     const mine=s.kind==='project'?known.find(p=>p.key===s.key):null,unit=P.unit==='commits'?'commits':'session time';
     const amount=v=>P.unit==='commits'?String(v):span(v),C=2*Math.PI*40;let acc=0;
     const top=known.slice(0,5),rest=known.slice(5),drawn=rest.length?[...top,{key:'',name:`${rest.length} more`,value:rest.reduce((a,p)=>a+p.value,0),share:rest.reduce((a,p)=>a+p.share,0),other:true}]:top;
     const ring=(s.kind==='project'?known:drawn).map((p,i,all)=>{const len=p.share*C,d=`<circle r="40" cx="50" cy="50" fill="none" stroke="${s.kind==='project'?(mine&&p.key===mine.key?'var(--blue)':'var(--rule)'):p.other?'var(--rule)':shade(i,Math.max(2,top.length))}" stroke-width="14" stroke-dasharray="${Math.max(0,len-1.2).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}" transform="rotate(-90 50 50)"/>`;acc+=len;return d}).join('');
-    const not=left?` ${plural(left,'project')} not counted: no ${P.unit==='commits'?'commit count':'session time'} recorded.`:'';
+    const what=P.unit==='commits'?'commit count':'session time',not=(zero?` ${plural(zero,'project')} with ${P.unit==='commits'?'0 commits':'no session time'}.`:'')+(left?` ${plural(left,'project')} not counted: no ${what} recorded.`:'');
     if(s.kind==='project'){
-      const says=mine?`<b>${Math.round(mine.share*100)}%</b> of the run's ${unit}: ${amount(mine.value)} of ${amount(P.total)}`:`Not in the split: no ${P.unit==='commits'?'commit count':'session time'} recorded for this project`;
+      const own=P.parts.find(p=>p.key===s.key),says=mine?`<b>${Math.round(mine.share*100)}%</b> of the run's ${unit}: ${amount(mine.value)} of ${amount(P.total)}`:own&&own.known?`<b>0%</b> of the run's ${unit}: ${P.unit==='commits'?'0 commits recorded':'no session time recorded'} for this project`:`Not in the split: no ${what} recorded for this project`;
       return `<div class="dc-share dc-share-one"><svg class="dc-pie" viewBox="0 0 100 100" role="img" aria-label="${mine?`${esc(s.name)}: ${Math.round(mine.share*100)} percent of the run's ${unit}`:`${esc(s.name)} is not in the split`}">${ring}</svg><p class="dc-share-says">${says}<span>${esc(P.source)}</span></p></div>`}
     const row=(p,i)=>{const at=p.other?-1:jump(p.key),name=at>=0?`<a class="dc-jump" href="${esc(jump.href(p.key,at))}" data-goto="${at}">${esc(p.name)}</a>`:esc(p.name);
       return `<li><i style="background:${p.other?'var(--rule)':shade(i,Math.max(2,top.length))}"></i><span class="dc-share-n">${name}</span><span class="dc-share-v">${Math.round(p.share*100)}% · ${amount(p.value)}</span></li>`};
@@ -206,6 +213,10 @@
   const CAPTION={photo:'Photo chosen by the author. Atmosphere, not a measurement.',screenshot:'Screenshot chosen by the author, shown whole.'};
   function visual(s,{esc,mine,visualHref,runHref,jump}){
     const split=jump?share(s,esc,jump):'',line=overview(s),trace=split||line?split+line:'',v=s.visual;
+    if(v&&v.cover)return `<figure class="dc-visual" data-kind="${trace?'data':'none'}" data-state="fallback" data-visual-run="${esc(v.run)}" data-visual-cover data-alt="Cover the author chose on this run${v.of?`, ${esc(v.of)}`:''}">
+        <a class="dc-picture" href="${esc(runHref(v.run))}" aria-label="Open the run this picture is from" hidden></a>
+        <div class="dc-fallback">${trace?`${trace}${mine&&visualHref?`<p class="dc-prompt"><a href="${esc(visualHref)}">Add a photo or a screenshot to this page</a></p>`:''}`:`<p class="dc-empty">No measured trace and no picture on this page yet.${mine&&visualHref?` <a href="${esc(visualHref)}">Choose a visual</a>`:''}</p>`}</div>
+        <figcaption hidden>Cover the author chose on this run.</figcaption></figure>`;
     if(v){const noun=v.kind==='photo'?'Photo':'Screenshot';
       return `<figure class="dc-visual" data-kind="${v.kind}" data-state="loading" data-visual-run="${esc(v.run)}" data-visual-photo="${esc(v.id)}" data-focus="${esc(v.focus)}" data-alt="${noun} chosen by the author${v.of?` for ${esc(v.of)}`:''}">
         <a class="dc-picture" href="${esc(runHref(v.run))}" aria-label="Open the run this ${noun.toLowerCase()} is from"></a>
@@ -260,7 +271,7 @@
       card.querySelectorAll('.dc-page').forEach(a=>{+a.dataset.goto===at?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current')});
       const more=card.querySelector('.dc-open');if(more)more.href=now.dataset.open||more.dataset.fallback;
       card.querySelector('[data-step="-1"]').disabled=at===0;card.querySelector('[data-step="1"]').disabled=at===state.count-1;return now};
-    const send=(action,{push=true}={})=>{const next=reduce(state,action);if(next===state)return false;state=next;const now=paint();if(onChange)onChange(state.at,now.dataset.key||'',{push});return true};
+    const send=(action,{push=true,auto=false}={})=>{const next=reduce(state,action);if(next===state)return false;state=next;const now=paint();if(onChange)onChange(state.at,now.dataset.key||'',{push,auto});return true};
     api.go=(n,opts)=>send({type:'goto',at:n},opts);
     // The card may turn its own page every `auto` milliseconds. It waits while the pointer or the focus is
     // on the card and while the tab is hidden, never runs for a reader who asked for reduced motion, and

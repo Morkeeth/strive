@@ -2317,7 +2317,8 @@ async function viewDay(day){
   // A page change made on the card adds a step to the browser's history. A change that came from Back or
   // Forward does not, it only follows the address. Both go through the card's one page function.
   // The card's own 15 second turn keeps the address in step without adding a history step.
-  const pager=StriveDayCard.wire($('day-card'),{auto:15000,onChange:(at,key,{push,auto})=>{if(push)history.pushState({dayPage:key},'',pageHref(key));else if(auto)history.replaceState(history.state,'',pageHref(key))}});
+  const pager=StriveDayCard.wire($('day-card'),{auto:15000,onChange:(at,key,{push,auto})=>{if(push)history.pushState({dayPage:key},'',pageHref(key));else if(auto)history.replaceState(history.state,'',pageHref(key));
+    void window.StriveRunPhotos?.mountVisuals?.({client:sb,root:$('day-card')})}});
   if(DAY_POP)window.removeEventListener('popstate',DAY_POP);
   DAY_POP=()=>{const q=new URLSearchParams(location.search),card=$('day-card');if(!card||!card.isConnected||q.get('day')!==day||(q.get('p')||null)!==(other||null)||q.has('setup')||q.has('share'))return;
     pager.go(StriveDayCard.pageIndex(deck,q.get('page'),q.get('card')),{push:false})};

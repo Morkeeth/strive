@@ -29,6 +29,13 @@ assert.ok(!/class="dc-share-n">(?:<a[^>]*>)?gamma/.test(html),'a project with no
 assert.match(html,/<a class="dc-jump" href="[^"]*" data-goto="2">alpha<\/a><\/span><span class="dc-share-v">50% · 6</,'each project in the split opens its own page');
 assert.match(html,/delta<\/span><span class="dc-share-v">33% · 4/,'a project known from git only is in the split and has no page to open');
 assert.match(html,/dc-share-one[^]*?<b>17%<\/b> of the run's commits: 2 of 12/,'a project page shows its own share');assert.match(html,/Not in the split: no commit count recorded for this project/);
+// Positive, zero and missing are three different things in the split.
+{const rz=[{id:'p1',project:'pos',started_at:at(9),duration_s:600,commits:5},{id:'p2',project:'pos2',started_at:at(10),duration_s:600,commits:3},{id:'z1',project:'zero',started_at:at(11),duration_s:600,commits:0},{id:'m1',project:'missing',started_at:at(12),duration_s:600}];
+ const mz=D.compute(rz,'2026-10-05',label),tz=new Map();for(const g of mz.groups)tz.set(g.label,await C.token('owner','k',g.label));
+ const hz=C.render(C.slides(mz,tz,null),{esc,mine:false,author:'a',windowLabel:'w'});
+ assert.match(hz,/Share of 8 commits, recorded by the runs\. 1 project with 0 commits\. 1 project not counted: no commit count recorded\./,'a measured zero is said as zero, a missing count as not counted');
+ assert.match(hz,/<b>0%<\/b> of the run's commits: 0 commits recorded for this project/);assert.match(hz,/Not in the split: no commit count recorded for this project/);
+ assert.ok(!/dc-share-n">(?:<a[^>]*>)?(zero|missing)</.test(hz),'neither is drawn as a slice');}
 // The card's own step: round and round, and only that move wraps.
 assert.deepEqual(C.reduce({at:4,count:5},{type:'auto'}),{at:0,count:5});assert.deepEqual(C.reduce({at:1,count:5},{type:'auto'}),{at:2,count:5});assert.equal(C.reduce({at:4,count:5},{type:'next'}).at,4,'a press on Next never wraps');
 assert.match(html,/class="dc-auto" data-auto hidden/,'the pause control is in the selector, hidden until the card rotates');
@@ -63,12 +70,18 @@ assert.match(ph,/data-kind="photo"[^>]*data-focus="top"/);assert.match(ph,/Photo
 assert.equal((ph.match(/data-slide="0"(?:(?!data-slide=)[^])*/)[0].match(/class="dc-visual"/g)||[]).length,1,'one main visual on a page, never a thumbnail beside a graph');
 assert.match(R(pd,true),/Its run is Only you, so readers get the measured trace instead\./,'the owner is told when the picture is on a run readers cannot see');assert.ok(!ph.includes('Only you'),'a reader is never told about private work');
 assert.ok(!R(C.slides(pm,tokens,{...v2,visual:'data'})).includes(U+'" data-visual'),'data mode shows the trace and keeps the picture out of the page');
+// Each project page may lead with the cover chosen on that project's own run. Never another project's picture.
+{const two=C.render(C.slides(model,tokens,null),{esc,mine:false,author:'a',windowLabel:'w'}),pages=two.split('<section class="dc-slide"').slice(1);
+ const own=n=>pages.find(x=>x.includes(`data-name="${n}"`));
+ assert.match(own('alpha'),/data-visual-run="a2" data-visual-cover/);assert.match(own('beta'),/data-visual-run="b1" data-visual-cover/);assert.ok(!own('alpha').includes('"b1" data-visual')&&!own('beta').includes('"a2" data-visual'),'a project page asks only for its own run');
+ assert.ok(!own('Overview').includes('data-visual-cover'),'the overview borrows no project cover');assert.match(own('alpha'),/data-state="fallback"[^]*?class="dc-picture"[^>]*hidden/,'the measured data shows until a chosen cover is confirmed');
+ assert.equal((own('alpha').match(/class="dc-visual"/g)||[]).length,1);const seen=C.render(C.slides(D.compute(runs.filter(r=>r.id==='b1'),'2026-10-05',label),new Map([['beta',T('beta')]]),null),{esc,mine:false,author:'a',windowLabel:'w'});assert.ok(!seen.includes('a2')&&!seen.includes('a1')&&seen.includes('data-visual-run="b1" data-visual-cover'),'a reader gets no cover request for a run they cannot see');}
 assert.deepEqual(C.clean({...v2,visual:'video',focus:'<x>',hero:'yes'}).visual,'data');assert.equal(C.clean({...v2,focus:'<x>'}).focus,'center');assert.equal(C.clean({v:2,visual:'photo',hero:true}).hero,false,'a mode with no picture is data, and cannot lead the overview');
 assert.ok(!R(C.slides(reader0,rt0,v2)).includes(U)&&!R(C.slides(reader0,rt0,v2)).includes(P),'a reader who cannot see that run gets no trace of the picture: not its id, not its run');
 assert.match(R(C.slides(reader0,rt0,v2)),/data-kind="data"/,'and gets the measured trace in its place');
 // No trace and no picture: one honest sentence, with a way forward for the owner only.
 const bare=D.compute([{id:'z1',project:'zeta',started_at:at(9),story_result:'TEST DATA zeta said'}],'2026-10-05',label),bt=new Map([['zeta',T('alpha')]]),bd=C.slides(bare,bt,null);
-assert.match(C.render(bd,{esc,mine:true,author:'a',windowLabel:'w',visualHref:'/v'}),/data-kind="none"><p class="dc-empty">No measured trace and no picture on this page yet\. <a href="\/v">Choose a visual<\/a>/);
+assert.match(C.render(bd,{esc,mine:true,author:'a',windowLabel:'w',visualHref:'/v'}),/data-kind="none"[^]*?<p class="dc-empty">No measured trace and no picture on this page yet\. <a href="\/v">Choose a visual<\/a>/);
 assert.ok(!R(bd).includes('Choose a visual')&&R(bd).includes('No measured trace and no picture'),'a reader gets the sentence without the owner link');
 assert.match(C.render(d,{esc,mine:true,author:'a',windowLabel:'w',visualHref:'/v'}),/Add a photo or a screenshot to this page/);assert.ok(!html.includes('Add a photo'),'the prompt to add a visual is the owner\'s only');
 // Names an agent or a screen reader can ask for: the headline is a heading, each number a named group.

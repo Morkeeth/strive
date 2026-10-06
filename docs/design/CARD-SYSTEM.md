@@ -47,6 +47,7 @@ Tokens:
 | `--card-fact` | Size of a number |
 | `--action-h` | Height of each action in the action row, feed card and day card alike |
 | `--trace-h` | Height of a run's activity trace on the run page |
+| `--hero-max` | Tallest a picture gets on a feed card |
 | `--share-ring` | Size of the ring that shows how a run divides between projects |
 
 ## 2. Page selector
@@ -162,15 +163,19 @@ Follows the rules:
 - Day card: overview page, project pages, turning points page (`/?day=`).
 - Edit card (`&setup=1`) and its live preview.
 - Sharing (`&share=1`): owner menu and the reader link.
-- Action row on the feed card and the day card: one function, one height token.
+- Action row on the feed card, the run page and the day card: one function, one height token.
+- A picture on a feed card, a run card and a day card page: only one the author chose (the run's selected cover, the picture marked Result when the layout asks for it, or the only picture on the run). Shown whole, on the wash, under `--hero-max` on the feed and `--visual-shot-max` on the run page. The first upload is never assumed. One function decides: `lead()` in `site/run-photos.js`.
+- A project page of the day card: with no picture picked for the card, it leads with the cover chosen on that project's own run, and with the measured data when there is none.
+- Photo reads: one function, `get()` in `site/run-photos.js`. Every read is checked by the server. Nothing is shown from memory without that check.
+- Run page: the description is shown once. The trace height is `--trace-h`. Owner links are quiet text links.
 
 Not yet moved over. These still differ and are listed here so nobody mistakes them for the pattern:
 
-- Feed card body (`site/feed-card.js`): shares the action row only. Its headline, numbers and hero follow older rules.
+- Feed card body (`site/feed-card.js`): shares the action row and the picture rule. Its headline, numbers and trace follow older rules.
 - Run page (`/?run=`): its owner controls are separate links and buttons, with no owner menu.
 - Public run page (`/r/<id>`, `server/public-run.mjs`): server drawn, older layout, its own action row markup in `page` mode.
 - Run share page (`/?share=1&run=`): older layout. A reader's Share on a day card still goes here, for the lead run only.
 - Profile page and "My runs" list: no card anatomy.
 - Everything under "Everything in this run" on the day page: older sheet layout.
-- One picture per card. A card cannot yet hold a different picture for each project.
+- The author picks one picture per card on Edit card. Other project pages can only show their own run's cover. Picking a different card picture for each project on Edit card does not exist yet.
 - The overview headline "One run across N projects" is a counted draft, shown to the owner as a draft.

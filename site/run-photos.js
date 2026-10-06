@@ -17,20 +17,29 @@
   async function responseMessage(res){
     try{const body=await res.json();return body?.error||body?.message||`Request failed (${res.status})`;}catch(_){return `Request failed (${res.status})`;}
   }
-  // One way to read photos. The server checks access on every request; this only avoids asking twice
-  // for the same thing in one visit. A list is kept for a minute and a picture for five, per sign-in:
-  // the key holds the Authorization value, so another account in the same tab starts empty. Any
-  // upload, cover change or removal empties it. Pictures are asked for at the width a card needs.
-  const kept=new Map(),LIST_MS=60_000,IMAGE_MS=300_000,KEEP=80;
+  // One way to read photos. Every read goes to the server, which checks access under the reader's own
+  // sign-in each time. Nothing is ever shown from memory without that check: a picture the owner
+  // removed, or a run the reader lost, answers 404 and the copy held here is dropped.
+  // What this saves is bytes and repeats. A picture already held is asked for with its ETag, and the
+  // server answers 304 with no body after the same access check. Two parts of one page that ask for
+  // the same thing at the same moment share one request. A list is never kept.
+  // The key holds the Authorization value, so another account in the same tab starts empty.
+  const kept=new Map(),flying=new Map(),KEEP=60;
   function forget(){kept.clear()}
-  async function get(url,opts={},width){
-    const image=/[?&]id=/.test(url),full=image&&width?`${url}&w=${width}`:url,key=`${opts.headers?.Authorization||''} ${full}`,now=Date.now(),hit=kept.get(key);
-    if(hit&&now-hit.at<(image?IMAGE_MS:LIST_MS)){kept.delete(key);kept.set(key,hit);return hit.res}
-    const res=await fetch(full,opts);
-    if(!res.ok)return res;
-    const body=image?await res.blob():await res.json(),again={ok:true,status:200,blob:async()=>body,json:async()=>body};
-    kept.set(key,{at:now,res:again});while(kept.size>KEEP)kept.delete(kept.keys().next().value);
-    return again;
+  function get(url,opts={},width){
+    const image=/[?&]id=/.test(url),full=image&&width?`${url}&w=${width}`:url,key=`${opts.headers?.Authorization||''} ${full}`;
+    if(flying.has(key))return flying.get(key);
+    const job=(async()=>{
+      const hit=image?kept.get(key):null,headers={...(opts.headers||{}),...(hit?{'If-None-Match':hit.etag}:{})};
+      const res=await fetch(full,{...opts,headers});
+      if(hit&&res.status===304){kept.delete(key);kept.set(key,hit);return {ok:true,status:200,revalidated:true,blob:async()=>hit.body}}
+      if(!res.ok){kept.delete(key);return res}
+      if(!image){const body=await res.json();return {ok:true,status:200,json:async()=>body}}
+      const body=await res.blob(),etag=res.headers?.get?.('ETag');
+      if(etag){kept.set(key,{etag,body});while(kept.size>KEEP)kept.delete(kept.keys().next().value)}
+      return {ok:true,status:200,blob:async()=>body};
+    })().finally(()=>flying.delete(key));
+    flying.set(key,job);return job;
   }
   // Which picture leads a run's card. Only one the author chose: the selected cover, or the one
   // marked Result when the layout asks for it. With a single picture on the run there is nothing to
@@ -209,18 +218,27 @@
     let active=true;const controller=new AbortController(),urls=new Set();
     const dispose=()=>{active=false;controller.abort();for(const url of urls)URL.revokeObjectURL(url);urls.clear();disposers.delete(dispose)};
     disposers.add(dispose);
-    await Promise.all([...host.querySelectorAll('figure[data-visual-run][data-visual-photo]')].slice(0,24).map(async figure=>{
-      const fall=()=>{if(!active)return;figure.dataset.state='fallback';const f=figure.querySelector('.dc-fallback');if(f)f.hidden=false;figure.querySelector('.dc-picture')?.remove();figure.querySelector('figcaption')?.remove()};
+    // A page of the card that is not open asks for nothing. Its picture is read when the page opens.
+    const figures=[...host.querySelectorAll('figure[data-visual-run]:not([data-visual-asked])')].filter(f=>!f.closest('[hidden]')).slice(0,24);
+    await Promise.all(figures.map(async figure=>{
+      figure.dataset.visualAsked='1';const own=figure.dataset.visualCover!==undefined;
+      // A picture the author picked for the card falls back to the measured trace when it cannot be shown.
+      // A run's own cover works the other way: the measured data stays until the cover is confirmed.
+      const fall=()=>{if(!active||own)return;figure.dataset.state='fallback';const f=figure.querySelector('.dc-fallback');if(f)f.hidden=false;figure.querySelector('.dc-picture')?.remove();figure.querySelector('figcaption')?.remove()};
       try{
         const list=await get(`/api/run-photos?run_id=${encodeURIComponent(figure.dataset.visualRun)}`,{headers:await headers(client),signal:controller.signal});
         if(!active)return;if(!list.ok)return fall();
-        const photo=((await list.json())?.photos||[]).find(p=>p.id===figure.dataset.visualPhoto),path=photo&&photoPath(photo);if(!path)return fall();
+        const photos=(await list.json())?.photos||[],photo=own?photos.find(p=>p.is_cover):photos.find(p=>p.id===figure.dataset.visualPhoto),path=photo&&photoPath(photo);if(!path)return fall();
         const res=await get(path,{headers:await headers(client),signal:controller.signal},960);if(!active)return;if(!res.ok)return fall();
         const url=URL.createObjectURL(await res.blob());urls.add(url);
         const image=document.createElement('img');image.alt=figure.dataset.alt||'Picture chosen by the author';image.decoding='async';
         if(photo.width&&photo.height){image.width=photo.width;image.height=photo.height}
+        if(own){figure.dataset.was=figure.dataset.kind;figure.dataset.kind=photo.role==='personal'?'photo':'screenshot'}
         if(figure.dataset.kind==='photo')image.style.objectPosition=FOCUS[figure.dataset.focus]||FOCUS.center;
-        image.onerror=fall;image.src=url;figure.querySelector('.dc-picture')?.replaceChildren(image);figure.dataset.state='shown';
+        const slot=figure.querySelector('.dc-picture');image.onerror=()=>{if(own){slot.hidden=true;figure.dataset.kind=figure.dataset.was||'data';figure.dataset.state='fallback';const f=figure.querySelector('.dc-fallback');if(f)f.hidden=false;const c=figure.querySelector('figcaption');if(c)c.hidden=true}else fall()};
+        image.src=url;slot?.replaceChildren(image);
+        if(own){slot.hidden=false;const f=figure.querySelector('.dc-fallback');if(f)f.hidden=true;const c=figure.querySelector('figcaption');if(c)c.hidden=false}
+        figure.dataset.state='shown';
       }catch(_){fall()}
     }));
   }

@@ -12,7 +12,7 @@
   --card-headline:18px;--card-fact:19px;
   --page-dot:36px;--page-gap:6px;
   --visual-photo-ratio:3/2;--visual-shot-max:420px;--visual-wash:var(--rule-2);
-  --action-h:44px;--trace-h:72px;--share-ring:84px;
+  --action-h:44px;--trace-h:72px;--share-ring:84px;--hero-max:320px;
 }
 /* Shared product surfaces, including the reading pages. */
 :focus-visible{outline:2px solid var(--blue);outline-offset:3px}
@@ -458,3 +458,10 @@ button,summary{touch-action:manipulation}
 .thread-compact .reply-form:focus-within textarea,.thread-compact .reply-form textarea:not(:placeholder-shown){height:76px}
 .thread-compact .reply-form button{width:auto;flex:none;height:36px;min-height:36px;padding:0 14px;font-size:13px;font-weight:600;background:none;color:var(--blue);border:1px solid var(--rule)}
 #grind-thread.thread-compact{max-width:640px}#grind-thread.thread-compact::before{content:'Comments';display:block;font-size:14px;font-weight:600;margin:0 0 6px}
+/* A picture on a feed card or a run card: the one the author chose, whole, never taller than a token, on the
+   wash. The same rule as a screenshot on the day card. Before and after sit side by side under the same cap. */
+.fc .run-media,.card .run-media{margin:12px 0}.fc .run-media figure,.card .run-media figure{background:var(--visual-wash);display:flex;flex-direction:column;align-items:center}
+.fc .run-media .run-photo-cover{width:auto;max-width:100%;height:auto;max-height:var(--hero-max);object-fit:contain;margin:0;background:none}
+.card:not(.fc) .run-media .run-photo-cover{width:auto;max-width:100%;height:auto;max-height:var(--visual-shot-max);object-fit:contain;margin:0;background:none}
+.fc .run-media figcaption,.card .run-media figcaption{align-self:stretch;background:var(--card);padding:4px 0 0;font-size:12px}
+@media(max-width:600px){.fc .run-media .run-photo-cover{max-height:240px!important}}
