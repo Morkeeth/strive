@@ -124,7 +124,7 @@
         <div class="dc-story">${c.visual==='photo'&&s.open?`<a class="dc-photo" href="${esc(runHref(s.open.id))}" data-thumb-run="${esc(s.open.id)}"></a>`:''}<div>
           ${many&&s.kind==='project'?`<h3 class="dc-name">${esc(s.name)}</h3>`:''}${s.result?`<p class="dc-said">${esc(s.result)}</p>`:`<p class="dc-said dc-none">${mine?'No result written yet. Open the run and say what came out of it.':'No result written.'}</p>`}
           ${s.highlights.length?`<ul class="dc-high">${s.highlights.filter(h=>h.text!==s.result).map(h=>`<li><a href="${esc(runHref(h.run.id))}">${h.name?`<b>${esc(h.name)}</b> `:''}${esc(h.text)}</a></li>`).join('')}</ul>`:''}
-          ${s.open?`<p class="dc-open"><a href="${esc(runHref(s.open.id))}">Open ${s.kind==='whole'?'the lead run':'this run'}: timeline, evidence, photos →</a></p>`:''}</div></div></section>`};
+          ${s.open?`<p class="dc-open"><a href="${esc(runHref(s.open.id))}">${s.kind==='project'&&!s.group.runs.length?'Open the row recovered from git history':`Open ${s.kind==='whole'?'the lead run':'this run'}: timeline, evidence, photos`} →</a></p>`:''}</div></div></section>`};
     const lead=S.find(x=>x.open);
     return `<article class="card dc" id="day-card" tabindex="0" data-at="${at}" data-count="${S.length}" aria-roledescription="${many?'carousel':'card'}">
       <header class="dc-head"><p class="meta">${esc(author||'')}${author?' · ':''}${esc(windowLabel)}</p></header>
