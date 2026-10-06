@@ -2298,8 +2298,8 @@ async function viewDay(day){
     return;}
   const deck=StriveDayCard.slides(model,tokens,savedCard),startAt=Math.max(0,Math.min(deck.slides.length-1,parseInt(params.get('card')||'0',10)||0));
   const parts=StriveDay.render(model,{esc,mine,dayLabel:label,leadWith,split:true,leadHref:k=>`/?day=${day}${extra}${head}&lead=${k}`,publicHref:null});
-  app.innerHTML=nav+(mine?`<p class="hint day-share-link"><a class="act" href="/?day=${day}${extra}&share=1">Choose what readers see</a> <a class="act" href="/?day=${day}${extra}&p=${encodeURIComponent(profileId)}">See what others see</a></p>`:'')
-    +StriveDayCard.render(deck,{...cardOpts,start:startAt,setupHref:mine?`/?day=${day}${extra}&setup=1`:null})
+  app.innerHTML=nav+StriveDayCard.render(deck,{...cardOpts,start:startAt,setupHref:mine?`/?day=${day}${extra}&setup=1`:null})
+    +(mine?`<p class="hint day-share-link"><a class="act" href="/?day=${day}${extra}&share=1">Choose what readers see</a> <a class="act" href="/?day=${day}${extra}&p=${encodeURIComponent(profileId)}">See what others see</a></p>`:'')
     +parts.ask+`<details class="day-everything"><summary>Everything in this run: each project, where the commits landed, how the time was spent</summary>${parts.done}${parts.strip}${parts.how}</details>`;
   // The selected view rides in the address, so coming back from a run returns to the same view.
   StriveDayCard.wire($('day-card'),{onChange:at=>{const q=new URLSearchParams(location.search);at?q.set('card',at):q.delete('card');history.replaceState(null,'','/?'+q.toString())}});

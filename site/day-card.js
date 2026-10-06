@@ -78,18 +78,19 @@
   // blue and the rest is grey, so the reader sees its share of the whole.
   function donut(s,esc){
     const P=s.pie;if(!P||P.parts.length<2||!P.parts.some(p=>p.value>0))return '';
+    if(s.kind==='project'&&!((P.parts.find(p=>p.key===s.key)||{}).value>0))return '';   // no measured share: no ring, never a 0% that looks like a finding
     const C=2*Math.PI*40;let acc=0;
     const seg=P.parts.map((p,i)=>{const len=p.share*C,own=s.kind!=='project'||p.key===s.key,d=`<circle r="40" cx="50" cy="50" fill="none" stroke="${s.kind==='project'?(own?'var(--blue)':'var(--rule)'):shade(i,P.parts.length)}" stroke-width="14" stroke-dasharray="${Math.max(0,len-1).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}" transform="rotate(-90 50 50)"/>`;acc+=len;return d}).join('');
     const mine=s.kind==='project'?P.parts.find(p=>p.key===s.key):null,mid=mine?`${Math.round(mine.share*100)}%`:String(P.parts.length),sub=mine?'of the run':'projects';
     return `<svg class="dc-pie" viewBox="0 0 100 100" role="img" aria-label="${mine?`${esc(s.name)}: ${mid} of the run's ${P.unit}`:`${P.parts.length} projects by ${P.unit}`}">${seg}<text x="50" y="50" text-anchor="middle" class="dc-pie-n">${mid}</text><text x="50" y="63" text-anchor="middle" class="dc-pie-k">${sub}</text></svg>`;
   }
   function wholeGraph(s,esc){
-    const lanes=s.groups.slice(0,8),more=s.groups.length-lanes.length,W=360,L=4,R=4,row=27,top=4,H=top+lanes.length*row+18,total=Math.max(1,s.until-s.from);
+    const lanes=s.groups.slice(0,8),more=s.groups.length-lanes.length,W=360,L=4,R=4,row=24,top=2,H=top+lanes.length*row+18,total=Math.max(1,s.until-s.from);
     const x=t=>L+(t-s.from)/total*(W-L-R);
     const body=lanes.map((g,i)=>{const y=top+i*row;
-      return `<text x="${L}" y="${y+10}" class="dc-lane">${esc(g.label)}</text><line x1="${L}" x2="${W-R}" y1="${y+19}" y2="${y+19}" class="dc-base"/>`
-        +g.runs.filter(r=>r.seconds>0).map(r=>`<rect x="${x(r.start).toFixed(1)}" y="${y+16}" width="${Math.max(2.5,x(r.end)-x(r.start)).toFixed(1)}" height="5" rx="2.5" class="dc-run"/>`).join('')
-        +g.marks.map(m=>`<rect x="${x(m.from).toFixed(1)}" y="${y+22}" width="${Math.max(2,x(m.until)-x(m.from)).toFixed(1)}" height="3" class="dc-mark"/>`).join('')}).join('');
+      return `<text x="${L}" y="${y+9}" class="dc-lane">${esc(g.label)}</text><line x1="${L}" x2="${W-R}" y1="${y+17}" y2="${y+17}" class="dc-base"/>`
+        +g.runs.filter(r=>r.seconds>0).map(r=>`<rect x="${x(r.start).toFixed(1)}" y="${y+14}" width="${Math.max(2.5,x(r.end)-x(r.start)).toFixed(1)}" height="5" rx="2.5" class="dc-run"/>`).join('')
+        +g.marks.map(m=>`<rect x="${x(m.from).toFixed(1)}" y="${y+20}" width="${Math.max(2,x(m.until)-x(m.from)).toFixed(1)}" height="3" class="dc-mark"/>`).join('')}).join('');
     return `<svg class="dc-graph" viewBox="0 0 ${W} ${H}" role="img" aria-label="${plural(lanes.length,'project')} on one clock: captured sessions and windows in which commits landed">${body}${axis(s.from,s.until,W,L,R,H-4)}</svg>${more>0?`<p class="dc-more">and ${plural(more,'more project')}${s.quiet?`, ${s.quiet} of them known from commits only`:''}.</p>`:''}`;
   }
   function projectGraph(s){
@@ -109,7 +110,7 @@
   function render(deck,{esc,mine,author,windowLabel,start=0,setupHref,runHref=(id)=>`/?run=${encodeURIComponent(id)}`}){
     const S=deck.slides;if(!S.length)return '';
     const c=deck.choices,at=Math.max(0,Math.min(S.length-1,start|0)),many=S.length>1;
-    const fact=(s,id)=>{const f=s.facts[id];if(!f)return '';return `<div><div class="v">${f.value===null||f.value===undefined?'unknown':esc(String(f.value))}</div><div class="k">${esc(FACTS[id].label)}${f.note&&f.value!==null?`<span>${esc(f.note)}</span>`:''}</div></div>`};
+    const fact=(s,id)=>{const f=s.facts[id];if(!f)return '';return `<div><div class="v${f.value===null||f.value===undefined?' dc-unk':''}">${f.value===null||f.value===undefined?'not recorded':esc(String(f.value))}</div><div class="k">${esc(FACTS[id].label)}${f.note&&f.value!==null?`<span>${esc(f.note)}</span>`:''}</div></div>`};
     const slide=(s,i)=>{
       if(s.kind==='points')return `<section class="dc-slide" data-slide="${i}" ${i===at?'':'hidden'} aria-label="Turning points">
         <ol class="dc-points">${s.points.map(p=>`<li><a href="${esc(runHref(p.run.id))}"><span class="dc-when">${esc(p.at.toLocaleDateString(undefined,{weekday:'short'}))} ${hm(p.at)} · ${esc(p.name)}</span>${esc(p.text)}</a></li>`).join('')}</ol>

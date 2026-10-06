@@ -386,3 +386,5 @@ button,summary{touch-action:manipulation}
 .j-pair{grid-template-columns:auto auto auto;justify-content:start}.j-pair img{width:auto;height:auto;max-width:200px;max-height:200px;aspect-ratio:auto;object-fit:contain}
 .day-thumb img{width:auto;height:auto;max-width:160px;max-height:160px;object-fit:contain}
 @media(max-width:720px){.dc-top{grid-template-columns:88px minmax(0,1fr);gap:12px}.dc-pie{width:88px;height:88px}.dc-facts .v{font-size:20px}.dc-said{font-size:18px}.dc-key span{margin-left:0;flex-basis:100%}.dc-photo img{max-width:96px;max-height:96px}.j-pair{grid-template-columns:auto;}.j-pair img{max-width:150px;max-height:150px}.cs-facts{grid-template-columns:1fr}}
+.dc-facts .v.dc-unk{font-size:13px;line-height:1.3;font-weight:400;color:var(--muted);padding:6px 0 3px}
+@media(min-width:721px){.dc-visual{max-width:470px}}

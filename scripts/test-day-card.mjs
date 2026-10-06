@@ -20,7 +20,7 @@ assert.equal(whole.pie.unit,'commits');assert.deepEqual(whole.pie.parts.map(p=>[
 const gamma=d.slides.find(s=>s.name==='gamma');assert.equal(gamma.facts.commits.value,null,'a project with no commit count is unknown, not zero');
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const html=C.render(d,{esc,mine:false,author:'TEST DATA Author',windowLabel:'Monday'});
-assert.match(html,/>unknown</);assert.match(html,/Marks show when, never who\./);assert.match(html,/1 of 5/);assert.match(html,/class="act blue"[^>]*>Kudos</);assert.match(html,/data-comment>Comment</);
+assert.match(html,/>not recorded</);assert.match(html,/Marks show when, never who\./);assert.match(html,/1 of 5/);assert.match(html,/class="act blue"[^>]*>Kudos</);assert.match(html,/data-comment>Comment</);
 assert.ok(html.indexOf('class="dc-pie"')<html.indexOf('class="dc-graph"')&&html.indexOf('class="dc-graph"')<html.indexOf('class="dc-said"'),'pie and numbers, then the graph, then the story');
 assert.ok(!html.includes('dc-photo'),'no picture unless the author chose one');assert.ok(!html.includes('Set up this card'),'a reader gets no setup link');
 assert.equal((html.match(/class="dc-slide"/g)||[]).length,5);assert.equal((html.match(/class="dc-slide" data-slide="\d" hidden/g)||[]).length,4,'one view is open at a time');
