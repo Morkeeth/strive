@@ -17,7 +17,7 @@
   function shift(day,delta){const [y,m,d]=day.split('-').map(Number);return localDay(new Date(y,m-1,d+delta))}
   // Everything the page shows is computed here from run rows, so it can be tested without a browser.
   // through is an optional last day, for work that runs past midnight. At most seven days.
-  function compute(runs,day,projectLabel=v=>v,through=null){
+  function compute(runs,day,projectLabel=v=>v,through=null,head=null){
     if(!DAY.test(day))throw new Error('A day is written YYYY-MM-DD');
     const end=through&&DAY.test(through)&&through>day&&through<=shift(day,6)?through:day;
     const items=[],recovered=[];
@@ -53,7 +53,9 @@
     const from=first?new Date(first.getFullYear(),first.getMonth(),first.getDate(),first.getHours()):null;
     const until=last?new Date(Math.ceil(last.getTime()/3600000)*3600000):null;
     const models=new Map();for(const i of items)for(const m of i.models)models.set(m,(models.get(m)||0)+1);
-    const lead=(items.find(i=>typeof i.run.feedback_question==='string'&&i.run.feedback_question.trim())
+    // The author may name the run that leads. Otherwise: the one that asks a question, a pinned one,
+    // the one with most commits.
+    const lead=(items.find(i=>head&&i.run.id===head)||items.find(i=>typeof i.run.feedback_question==='string'&&i.run.feedback_question.trim())
       ||items.find(i=>i.run.pinned_at)||[...lines].sort((a,b)=>(b.commits||0)-(a.commits||0))[0]||items[0]||null);
     const unlabelled=items.filter(i=>!i.label).reduce((a,i)=>a+(i.commits||0),0);
     // One row per project on the page, however many sittings it took. Every run stays reachable:
@@ -72,6 +74,8 @@
       return {...g,marks,gitCommits:marks.length?marks.reduce((a,m)=>a+m.commits,0):null,open:g.open||g.runs[g.runs.length-1].run,models:[...g.models],harnesses:[...g.harnesses],
         begins:g.runs.length?g.runs[0].start:marks[0].from,allPrivate:g.runs.length?g.runs.every(i=>i.run.visibility==='private'):marks.every(m=>m.run.visibility==='private')}})
       .sort((a,b)=>(b.result?1:0)-(a.result?1:0)||a.begins-b.begins);
+    // The project the lead run belongs to speaks with the lead run's own sentence and opens it.
+    if(lead&&lead.result){const own=groups.find(g=>g.runs.some(i=>i.run.id===lead.run.id));if(own){own.result=lead.result;own.open=lead.run}}
     return {day,through:end,items,recovered,lines,groups,plumbing,projects,peak,peakAt,from,until,lead,
       commits:projects.reduce((a,p)=>a+p.commits,0)+unlabelled,commitsUnknown:items.filter(i=>i.commits===null&&!(i.label&&by.get(i.label).fromGit!==null)).length,
       toolCalls:items.reduce((a,i)=>a+(i.run.tool_calls||i.run.ridge_tool_calls||0),0),
@@ -90,8 +94,7 @@
     const withCommits=D.projects.filter(p=>p.commits>0);
     const headline=D.commits>0?(withCommits.length?`${plural(D.commits,'commit')} across ${plural(withCommits.length,'project')}.`:`${plural(D.commits,'commit')}.`)
       :D.projects.length&&D.items.length?`${plural(D.items.length,'run')} across ${plural(D.projects.length,'project')}.`:`${plural(D.items.length,'run')}.`;
-    const said=D.lead&&D.groups.find(g=>g.open&&g.open.id===D.lead.run.id&&g.result);
-    const title=leadOf(leadWith)==='result'&&said?said.result:headline,under=title===headline?'':headline;
+    const title=leadOf(leadWith)==='result'&&D.lead&&D.lead.result?D.lead.result:headline,under=title===headline?'':headline;
     const hours=[];if(D.from&&D.until)for(let t=D.from.getTime();t<=D.until.getTime();t+=3600000)hours.push(new Date(t));
     const step=Math.max(1,Math.ceil(hours.length/6));
     const many=D.through!==D.day,tick=h=>many&&(h.getHours()<step||h===hours[0])?`${h.toLocaleDateString(undefined,{weekday:'short'})} ${hm(h)}`:hm(h);

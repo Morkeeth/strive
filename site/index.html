@@ -588,6 +588,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/journey.js"></script>
 <script src="/import-row.js"></script>
 <script src="/day-drafts.js"></script>
+<script src="/day-share.js"></script>
 <script src="/dropin-parse.js"></script>
 <script src="/fair.js"></script>
 <script src="/home.js"></script>
@@ -2264,7 +2265,9 @@ async function viewDay(day){
   const {data,error}=await query.order('created_at',{ascending:true}).limit(200);
   if(ME?.id!==profileId)return viewDay(day);
   if(error){status(error.message,true);app.innerHTML='<div class="card"><div class="empty">This day could not load.</div></div>';return;}
-  const model=StriveDay.compute(data||[],day,v=>GrinderContract.projectLabel(v),through);
+  // &head=<run id> names the run that leads the day. Its own written result is the headline, so a
+  // day's headline is always a sentence the author wrote on a run, never one made up for the day.
+  const model=StriveDay.compute(data||[],day,v=>GrinderContract.projectLabel(v),through,params.get('head'));
   const long=(a,b,c)=>new Date(a,b-1,c).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const label=through?`${new Date(y,m-1,d).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'})} to ${long(ty,tm,td)}`:long(y,m,d);
   const extra=(through?'&through='+through:'');
@@ -2272,7 +2275,10 @@ async function viewDay(day){
   const nav=(mine?myRunsTabs('day'):'')+`<nav class="day-nav" aria-label="Days">${link(StriveDay.shift(day,-1),'← Day before')}${day<StriveDay.localDay(new Date())?link(StriveDay.shift(day,1),'Day after →'):''}</nav>`;
   if(!model.items.length){
     app.innerHTML=nav+`<div class="card"><div class="empty"><h3>${mine?'No saved runs on this day':'No public runs on this day'}</h3><p>${esc(label)}. ${mine?'A run appears here once it is saved. Sessions that were never saved are not counted.':'Private runs are never shown here.'}</p>${mine?'<div class="cta"><a class="act blue" href="/?post">Post a run</a></div>':''}</div></div>`;return;}
-  app.innerHTML=nav+StriveDay.render(model,{esc,mine,dayLabel:label,leadWith,leadHref:k=>`/?day=${day}${extra}&lead=${k}`,publicHref:mine?`/?day=${day}${extra}&p=${encodeURIComponent(profileId)}&lead=${leadWith}`:null});
+  const head=model.lead&&params.get('head')===model.lead.run.id?'&head='+encodeURIComponent(model.lead.run.id):'';
+  if(mine&&params.has('share')){app.innerHTML=nav+`<p class="hint"><a href="/?day=${day}${extra}">← Back to the day</a></p><section id="day-share"></section>`;
+    StriveDayShare.mount({slot:$('day-share'),model,client:sb,ownerId:profileId,esc,status,dayHref:lead=>`/?day=${day}${extra}&p=${encodeURIComponent(profileId)}&lead=${leadWith}${lead?'&head='+encodeURIComponent(lead):''}`});return;}
+  app.innerHTML=nav+(mine?`<p class="hint day-share-link"><a class="act" href="/?day=${day}${extra}&share=1">Choose what readers see</a></p>`:'')+StriveDay.render(model,{esc,mine,dayLabel:label,leadWith,leadHref:k=>`/?day=${day}${extra}${head}&lead=${k}`,publicHref:mine?`/?day=${day}${extra}&p=${encodeURIComponent(profileId)}&lead=${leadWith}${head}`:null});
   if(model.lead&&$('day-thread'))void social.thread(model.lead.run.id,$('day-thread'));
   window.StriveRunPhotos?.mountCovers?.({client:sb,root:app});
   void window.StriveRunPhotos?.mountThumbs?.({client:sb,root:app});
