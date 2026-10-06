@@ -205,14 +205,16 @@
   // uploaded, moved or changed here: the choice is the picture's id. Thumbnails are the real pictures,
   // whole, large enough to tell two screenshots apart. Returns a function that sets the selection again.
   function mountChooser({client,slot,runs,selected,onPick}){
-    let active=true,chosen=selected||null;const controller=new AbortController(),urls=new Set();
+    let active=true,loading=true,chosen=selected||null;const controller=new AbortController(),urls=new Set();
     const dispose=()=>{active=false;controller.abort();for(const url of urls)URL.revokeObjectURL(url);urls.clear();disposers.delete(dispose)};
     disposers.add(dispose);slot.innerHTML='<p class="meta">Looking for pictures on these runs…</p>';
     const found=[],on=f=>!!chosen&&chosen.id===f.photo.id&&chosen.run===f.run.id;
-    const paint=()=>{if(!active)return;
-      slot.innerHTML=`<div class="pc-list" role="radiogroup" aria-label="Picture for the main visual"><label class="pc-item pc-none"><input type="radio" name="pc-photo" value="" ${found.some(on)?'':'checked'}><span>No picture</span></label>`
+    const paint=()=>{if(!active)return;if(loading){slot.innerHTML='<p class="meta">Looking for pictures on these runs…</p>';return;}
+      const unavailable=!!chosen&&!found.some(on);
+      slot.innerHTML=`<div class="pc-list" role="radiogroup" aria-label="Picture for the main visual"><label class="pc-item pc-none"><input type="radio" name="pc-photo" value="" ${chosen?'':'checked'}><span>No picture</span></label>`
         +found.map((f,i)=>`<label class="pc-item"><input type="radio" name="pc-photo" value="${i}" ${on(f)?'checked':''} aria-label="${esc(roles[f.photo.role]||'Photo')} picture on ${esc(f.run.label||'a run')}, ${f.photo.width} by ${f.photo.height}"><img src="${f.url}" alt=""><span aria-hidden="true">${esc(f.run.label||'Run')} · ${esc((roles[f.photo.role]||'Photo').toLowerCase())}</span></label>`).join('')+'</div>'
-        +(found.length?'':`<p class="meta">No picture on these runs yet. ${runs&&runs[0]?`<a href="/?run=${encodeURIComponent(runs[0].id)}">Open a run to add one</a>, then choose it here. `:''}The card works without one.</p>`);
+        +(unavailable?'<p class="meta" role="status">Your saved picture is not available here. It stays selected until you choose another picture or No picture.</p>':'')
+        +(found.length||unavailable?'':`<p class="meta">No picture on these runs yet. ${runs&&runs[0]?`<a href="/?run=${encodeURIComponent(runs[0].id)}">Open a run to add one</a>, then choose it here. `:''}The card works without one.</p>`);
       slot.querySelectorAll('[name=pc-photo]').forEach(r=>r.addEventListener('change',e=>{e.stopPropagation();const f=found[+r.value];chosen=r.value===''||!f?null:{run:f.run.id,id:f.photo.id};onPick(chosen,f&&r.value!==''?{role:f.photo.role,width:f.photo.width,height:f.photo.height}:null)}))};
     (async()=>{
       // Every run on the card is asked, eight at a time, so a long day does not lose the pictures on its later runs.
@@ -222,7 +224,7 @@
             const img=await fetch(path,{headers:await headers(client),signal:controller.signal});if(!active||!img.ok)continue;const url=URL.createObjectURL(await img.blob());urls.add(url);found.push({run,photo,url})}
         }catch(_){}};
       let next=0;await Promise.all(Array.from({length:8},async()=>{while(active&&next<queue.length)await ask(queue[next++])}));
-      found.sort((a,b)=>runs.indexOf(a.run)-runs.indexOf(b.run));paint();
+      found.sort((a,b)=>runs.indexOf(a.run)-runs.indexOf(b.run));loading=false;paint();
     })();
     return next=>{chosen=next||null;paint()};
   }
