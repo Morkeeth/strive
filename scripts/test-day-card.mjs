@@ -62,6 +62,8 @@ const bare=D.compute([{id:'z1',project:'zeta',started_at:at(9),story_result:'TES
 assert.match(C.render(bd,{esc,mine:true,author:'a',windowLabel:'w',visualHref:'/v'}),/data-kind="none"><p class="dc-empty">No measured trace and no picture on this page yet\. <a href="\/v">Choose a visual<\/a>/);
 assert.ok(!R(bd).includes('Choose a visual')&&R(bd).includes('No measured trace and no picture'),'a reader gets the sentence without the owner link');
 assert.match(C.render(d,{esc,mine:true,author:'a',windowLabel:'w',visualHref:'/v'}),/Add a photo or a screenshot to this page/);assert.ok(!html.includes('Add a photo'),'the prompt to add a visual is the owner\'s only');
+// Names an agent or a screen reader can ask for: the headline is a heading, each number a named group.
+assert.match(html,/<h2 class="dc-said">One run across 4 projects<\/h2>/);assert.match(html,/role="group" aria-label="Commits, git and runs: 12"/);assert.match(html,/role="group" aria-label="Commits: not recorded"/,'an unknown number is named as not recorded');
 // PAGE SELECTOR: numbered links with their own names and addresses, built from the pages this reader has.
 const nav=C.render(d,{esc,mine:false,author:'a',windowLabel:'w',start:2,pageHref:(k,i)=>`/?day=x&page=${k}`});
 assert.deepEqual([...nav.matchAll(/class="dc-page" href="([^"]*)" data-goto="(\d)" aria-label="([^"]*)" (aria-current="page")?/g)].map(m=>[m[3],m[1],!!m[4]]),

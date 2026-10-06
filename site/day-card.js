@@ -190,7 +190,7 @@
     const S=deck.slides;if(!S.length)return '';
     const c=deck.choices,at=Math.max(0,Math.min(S.length-1,start|0)),many=S.length>1;
     const fact=(s,id)=>{const f=s.facts[id],none=f.value===null||f.value===undefined,note=!none&&SHORT[f.note];
-      return `<div><div class="k">${esc(FACTS[id].label)}${note?`<span> · ${esc(note)}</span>`:''}</div><div class="v${none?' dc-unk':''}">${none?'not recorded':esc(String(f.value))}</div></div>`};
+      return `<div role="group" aria-label="${esc(FACTS[id].label)}${note?`, ${esc(note)}`:''}: ${none?'not recorded':esc(String(f.value))}"><div class="k">${esc(FACTS[id].label)}${note?`<span> · ${esc(note)}</span>`:''}</div><div class="v${none?' dc-unk':''}">${none?'not recorded':esc(String(f.value))}</div></div>`};
     // A project's headline is the first sentence the author wrote. The rest of the same result sits under
     // it, smaller and two lines at most; the whole text is on the run the card opens. Nothing is reworded.
     const lede=s=>{const m=s.kind==='project'&&String(s.result).match(/^([\s\S]*?[.!?])\s+(\S[\s\S]*)$/);return m?[m[1],m[2]]:[s.result,'']};
@@ -200,7 +200,7 @@
         ${s.total>s.points.length?`<p class="dc-more">The latest ${s.points.length} of ${s.total}.</p>`:''}</section>`;
       const ids=(s.kind==='whole'?c.facts.whole:c.facts.project).filter(id=>s.facts[id]),high=s.kind==='whole'?s.highlights.filter(h=>h.text!==s.result).slice(0,2):[];
       return `<section class="dc-slide" data-slide="${i}" data-key="${esc(s.key)}" data-name="${esc(s.name)}" ${s.open?`data-open="${esc(runHref(s.open.id))}"`:''} ${i===at?'':'hidden'} aria-label="${esc(s.name)}">
-        <div class="dc-story">${s.result?`<p class="dc-said">${esc(lede(s)[0])}${s.draft&&mine&&setupHref?` <a class="dc-draft" href="${esc(setupHref)}">Draft headline. Write your own</a>`:''}</p>${lede(s)[1]?`<p class="dc-rest">${esc(lede(s)[1])}</p>`:''}`:`<p class="dc-said dc-none">${mine?'No result written yet. Open the run and say what came out of it.':'No result written.'}</p>`}</div>
+        <div class="dc-story">${s.result?`<h2 class="dc-said">${esc(lede(s)[0])}</h2>${s.draft&&mine&&setupHref?`<p class="dc-draft-row"><a class="dc-draft" href="${esc(setupHref)}">Draft headline. Write your own</a></p>`:''}${lede(s)[1]?`<p class="dc-rest">${esc(lede(s)[1])}</p>`:''}`:`<p class="dc-said dc-none">${mine?'No result written yet. Open the run and say what came out of it.':'No result written.'}</p>`}</div>
         <div class="dc-facts">${ids.map(id=>fact(s,id)).join('')}</div>
         ${visual(s,{esc,mine,visualHref,runHref})}
         ${high.length?`<ul class="dc-high">${high.map(h=>`<li><a href="${esc(runHref(h.run.id))}">${h.name?`<b>${esc(h.name)}</b> `:''}${esc(h.text)}</a></li>`).join('')}</ul>`:''}</section>`};
@@ -263,15 +263,15 @@
           <label class="cs-mode"><input type="radio" name="cs-visual" value="data"> <b>Data</b><span>The measured trace of the sessions and commits. Nothing to add.</span></label>
           <label class="cs-mode"><input type="radio" name="cs-visual" value="photo"> <b>Photo</b><span>A photograph you took. It fills the frame, cropped where you say. It is atmosphere, not proof.</span></label>
           <label class="cs-mode"><input type="radio" name="cs-visual" value="screenshot"> <b>Screenshot</b><span>A capture of a screen. It is shown whole, never cropped.</span></label></div>
-        <p class="hint" id="cs-visual-note" role="status"></p>
+        <p class="hint" id="cs-visual-note" role="status" aria-label="What the card will show"></p>
         <div id="cs-photos"></div>
         <div class="cs-frame" id="cs-frame" role="radiogroup" aria-label="Part of the photo to keep in the frame"><span class="meta">Keep in the frame</span>${Object.keys(FOCUS).map(k=>`<label><input type="radio" name="cs-focus" value="${k}"> ${k==='center'?'Centre':k[0].toUpperCase()+k.slice(1)}</label>`).join('')}</div>
         <label class="cs-opt" id="cs-hero-row"><input type="checkbox" id="cs-hero"> Lead the overview with this picture too. Left off, the overview keeps the measured trace.</label>
         <h2>Numbers on the run's view <span class="meta">up to three</span></h2><div class="cs-facts" data-k="whole"></div>
         <h2>Numbers on a project's view <span class="meta">up to three</span></h2><div class="cs-facts" data-k="project"></div>
         <label class="cs-opt"><input type="checkbox" id="cs-high"> Show short highlights under the result</label>
-        <div class="dd-foot cs-foot"><button type="button" class="act blue" id="cs-save">Save</button><button type="button" class="act" id="cs-cancel">Cancel</button><span id="cs-state" class="cs-state" role="status" data-state="saved"></span>${readerHref?`<a href="${esc(readerHref)}">Preview as reader</a>`:''}</div></div>
-      <div class="head"><h2>Preview</h2><span class="meta">the card as it will show, not saved until you press Save</span></div><div id="cs-preview"></div>`;
+        <div class="dd-foot cs-foot"><button type="button" class="act blue" id="cs-save">Save</button><button type="button" class="act" id="cs-cancel">Cancel</button><span id="cs-state" class="cs-state" role="status" aria-label="Save state" data-state="saved"></span>${readerHref?`<a href="${esc(readerHref)}">Preview as reader</a>`:''}</div></div>
+      <div class="head"><h2>Preview</h2><span class="meta">the card as it will show, not saved until you press Save</span></div><div id="cs-preview" role="region" aria-label="Preview of the card"></div>`;
     wireMenu(slot);
     const list=slot.querySelector('#cs-list'),status=slot.querySelector('#cs-state'),saveBtn=slot.querySelector('#cs-save'),cancelBtn=slot.querySelector('#cs-cancel');let at=0;
     const dirty=()=>JSON.stringify(current())!==base;

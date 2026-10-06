@@ -24,13 +24,15 @@ Every page of every card has the same parts in the same order.
 |---|---|---|---|
 | 1 | Identity and date | Author name and the day or days. One line. | `StriveDayCard.render` |
 | 2 | Page selector | Only when the card has more than one page. See section 2. | `StriveDayCard.render` |
-| 3 | Headline | One short sentence the author wrote. Never invented. A project headline is the first sentence of the result field. | `StriveDayCard.render` |
-| 4 | Numbers | Two or three measured facts. A missing value says "not recorded". Unknown is never zero. | `StriveDayCard.render` |
+| 3 | Headline | A level 2 heading. One short sentence the author wrote. Never invented. A project headline is the first sentence of the result field. | `StriveDayCard.render` |
+| 4 | Numbers | Two or three measured facts, each a group named with its label and value. A missing value says "not recorded". Unknown is never zero. | `StriveDayCard.render` |
 | 5 | Main visual | Exactly ONE region. See section 4. | `visual()` in `site/day-card.js` |
 | 6 | Highlights | At most two short lines, each opens its run. Overview only. | `StriveDayCard.render` |
 | 7 | Action row | XUDOS, Comment, Share. The approved look. Do not restyle it. | `GrinderFeed.actions` |
 
 A card with one project and a card with many projects are built by the same function from the same parts. The one-project card has no selector.
+
+One exception: the "Turning points" page. It is a list of links to the runs where the author wrote a result. It has no headline, no numbers and no main visual.
 
 Tokens:
 
