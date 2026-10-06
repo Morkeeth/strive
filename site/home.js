@@ -106,7 +106,7 @@
     const failed = '<p class="home-none" data-failed>Could not load. Refresh to try again.</p>';
     const events = data.events === null ? failed : data.events.length ? `<div class="evs">${data.events.slice(0, 3).map(eventRow).join("")}</div>` : '<p class="home-none">No event in the next 7 days.</p>';
     const clubs = data.clubs === null ? failed : data.clubs.length ? `<div class="clubs">${data.clubs.slice(0, 6).map(clubRow).join("")}</div>` : '<p class="home-none">No public club yet.</p>';
-    return `<section class="home-community" aria-label="Clubs and events"><div class="hc-col"><div class="land-head"><h2>Events</h2></div>${events}</div><div class="hc-col"><div class="land-head"><h2>Clubs</h2><a href="/?crews">${data.clubs && data.clubs.length ? "All clubs" : "Start or join a club"}</a></div>${clubs}</div></section>`;
+    return `<section class="home-community" aria-label="Clubs and events"><div class="hc-col"><div class="land-head"><h2>Events</h2></div>${events}</div><div class="hc-col"><div class="land-head"><h2 id="h-clubs">Clubs</h2><a href="/?crews">${data.clubs && data.clubs.length ? "All clubs" : "Start or join a club"}</a></div>${clubs}</div></section>`;
   }
 
   const api = { week, weekHtml, eventRow, clubRow, community, builders, popular, read };

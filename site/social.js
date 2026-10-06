@@ -290,7 +290,7 @@ window.GrinderSocial = function ({
         const actor = present(n.actor);
         const kind = n.kind === "reply" ? "replied to your run" : n.kind === "ack" ? "sent XUDOS on your run" : "followed you";
         // XUDOS and a follow open the person. Only a comment opens its discussion.
-        const href = notificationPrimary(n), who = actor.href ? `<a href="${actor.href}" data-notification-open="1"><b>${esc(actor.label)}</b></a>` : `<b>${esc(actor.label)}</b>`;
+        const href = n.kind === "reply" ? notificationHref(n) : notificationPrimary(n), who = actor.href ? `<a href="${actor.href}" data-notification-open="1"><b>${esc(actor.label)}</b></a>` : `<b>${esc(actor.label)}</b>`;
         return `<article class="notice-item ${n.read_at ? "read" : "unread"}" data-notification-id="${esc(n.id)}">
           <span class="notice-dot" aria-hidden="true"></span><div><p class="notice-copy">${who} ${kind}</p>
           <p class="notice-meta">${esc(new Date(n.created_at).toLocaleString())}</p><div class="notice-links">

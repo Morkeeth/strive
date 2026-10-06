@@ -45,4 +45,10 @@ const thrown=await H.read({from:()=>{throw new Error('x')}},now);
 assert.deepEqual([thrown.runs,thrown.clubs,thrown.events],[null,null,null]);
 assert.match(H.weekHtml([],null,now),/No public runs in the last 7 days · events could not load/);
 assert.match(H.weekHtml(null,[],now),/Runs could not load · no events in the next 7/);
+// Clubs and events as entry points: real rows, an honest empty line with the door still offered, and a failed read that says so.
+{const H=(await import('../site/home.js')).default||globalThis.GrinderHome;
+ const full=H.community({clubs:[{id:'c1',name:'TEST DATA club',members:2}],events:[{id:'e1',title:'TEST DATA event',place:'',starts_at:new Date(Date.now()+864e5).toISOString(),club:{name:'TEST DATA club'},going:1}]});
+ assert.match(full,/href="\/\?crew=c1"/);assert.match(full,/href="\/\?event=e1"/);assert.match(full,/All clubs/);
+ const none=H.community({clubs:[],events:[]});assert.match(none,/No public club yet\./);assert.match(none,/No event in the next 7 days\./);assert.match(none,/href="\/\?crews">Start or join a club/,'with no club the door is still offered');assert.ok(!/member|going/.test(none),'no activity is invented');
+ const bad=H.community({clubs:null,events:null});assert.equal((bad.match(/data-failed/g)||[]).length,2,'a failed read says it failed and never says none');}
 console.log('Home checks passed.');

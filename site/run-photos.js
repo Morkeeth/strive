@@ -196,7 +196,9 @@
     let active=true;const controller=new AbortController(),urls=new Set();
     const dispose=()=>{active=false;controller.abort();for(const url of urls)URL.revokeObjectURL(url);urls.clear();disposers.delete(dispose)};
     disposers.add(dispose);
-    await Promise.all([...host.querySelectorAll('[data-thumb-run]')].slice(0,24).map(async slot=>{
+    // A thumbnail inside a folded section asks for nothing until the section is opened.
+    await Promise.all([...host.querySelectorAll('[data-thumb-run]:not([data-thumb-asked])')].filter(slot=>!slot.closest('details:not([open])')&&!slot.closest('[hidden]')).slice(0,24).map(async slot=>{
+      slot.dataset.thumbAsked='1';
       try{
         const list=await get(`/api/run-photos?run_id=${encodeURIComponent(slot.dataset.thumbRun)}`,{headers:await headers(client),signal:controller.signal});
         if(!active||!list.ok)return;const photos=((await list.json())?.photos||[]).filter(p=>p.role!=='personal');

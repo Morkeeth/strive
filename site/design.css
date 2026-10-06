@@ -281,7 +281,7 @@ button,summary{touch-action:manipulation}
 @media(max-width:600px){.roadmap-feedback dialog{margin:auto 0 0;width:100%;max-width:100%;max-height:calc(100dvh - 16px);border-radius:16px 16px 0 0;padding-bottom:max(20px,env(safe-area-inset-bottom))}}
 
 /* Outcome-first comparison: existing blue route, human story, quiet measurements. */
-.run-story{padding:24px 0;border-top:1px solid #ddd;margin-top:24px}.run-story section{margin:22px 0}.run-story p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65}.run-story h3{font-size:18px}.run-story-editor{border:0;padding:20px 0}.run-story-editor textarea{width:100%;box-sizing:border-box}.run-metrics{font-size:14px}.run-photo-cover{height:auto!important;max-height:520px!important;object-fit:contain!important;background:#f4f4f2}
+.run-story{padding:24px 0;border-top:1px solid #ddd;margin-top:24px}.run-story section{margin:22px 0}.run-story p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65}.run-story h3{font-size:18px}.run-story-editor{border:0;padding:20px 0}.run-story-editor textarea{width:100%;box-sizing:border-box}.run-metrics{font-size:14px}.run-photo-cover{height:auto!important;max-height:var(--visual-shot-max)!important;object-fit:contain!important;background:#f4f4f2}.fc .run-photo-cover{max-height:var(--hero-max)!important}
 @media(max-width:600px){.run-photo-cover{max-height:420px!important}.run-story{padding:16px 0}}
 
 .run-output-visual{margin:20px 0}.run-output-visual img{display:block;width:100%;height:auto;max-height:480px;object-fit:contain;background:#f4f4f2}.run-output-visual figcaption{font-size:12px;color:#666;margin:8px 0}.fc-route-secondary .fc-n{font-size:20px}
@@ -461,7 +461,6 @@ button,summary{touch-action:manipulation}
 /* A picture on a feed card or a run card: the one the author chose, whole, never taller than a token, on the
    wash. The same rule as a screenshot on the day card. Before and after sit side by side under the same cap. */
 .fc .run-media,.card .run-media{margin:12px 0}.fc .run-media figure,.card .run-media figure{background:var(--visual-wash);display:flex;flex-direction:column;align-items:center}
-.fc .run-media .run-photo-cover{width:auto;max-width:100%;height:auto;max-height:var(--hero-max);object-fit:contain;margin:0;background:none}
-.card:not(.fc) .run-media .run-photo-cover{width:auto;max-width:100%;height:auto;max-height:var(--visual-shot-max);object-fit:contain;margin:0;background:none}
+.fc .run-media .run-photo-cover,.card .run-media .run-photo-cover{width:auto;max-width:100%;margin:0;background:none}
 .fc .run-media figcaption,.card .run-media figcaption{align-self:stretch;background:var(--card);padding:4px 0 0;font-size:12px}
 @media(max-width:600px){.fc .run-media .run-photo-cover{max-height:240px!important}}

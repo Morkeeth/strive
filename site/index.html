@@ -1743,7 +1743,7 @@ function landingHTML(){
   return `<div class="home">
     <section class="home-hero"><h1>Strava is for people who ran. <i>__BRAND__</i> is for people who didn't.</h1><p class="home-explanation">A run is one real session with your coding agent. See its activity map, add your story and a photo, and follow what your friends are building.</p><a class="act blue home-first-run" href="/?connect">Bring one session</a><p class="home-private">Preview it first. Save it privately. Share when you choose.</p></section>
     <section class="home-sec" id="home-week-section" aria-labelledby="h-week"><div class="land-head"><h2 id="h-week">This week</h2></div><div id="home-week">${'<div class="wk-skel"></div>'}</div><div id="home-events"></div></section>
-    <div id="home-community"></div>
+    <section id="home-community" aria-labelledby="h-clubs"></section>
     <section class="home-sec" aria-labelledby="h-builders"><div class="land-head"><h2 id="h-builders">Builders to follow</h2><a href="/?people">Find people</a></div><div id="home-builders"></div></section>
     <section class="home-sec landing-feature" aria-labelledby="h-popular" id="landing-feature"><div class="land-head"><h2 id="h-popular">Popular runs</h2><a href="/?explore">See all</a></div><div id="landing-feature-body">${skeletonCard()}</div><p id="public-run-count" class="public-run-count" role="status"></p></section>
     <section class="home-join"><h2>Your work belongs here too.</h2><p>Start with a real session. Add your story and a photo, then choose who sees it.</p><a class="act blue" href="/?connect">Make my first run</a><button type="button" class="act primary" data-signin>${signInLabel()} and build your profile</button></section>
@@ -2324,6 +2324,8 @@ async function viewDay(day){
     pager.go(StriveDayCard.pageIndex(deck,q.get('page'),q.get('card')),{push:false})};
   window.addEventListener('popstate',DAY_POP);
   if(model.lead&&$('day-thread'))void social.thread(model.lead.run.id,$('day-thread'),{compact:true});
+  // The folded sheet under the card reads its pictures when someone opens it, not on every visit to the day.
+  app.querySelectorAll('details').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)void window.StriveRunPhotos?.mountThumbs?.({client:sb,root:d})}));
   window.StriveRunPhotos?.mountCovers?.({client:sb,root:app});
   void window.StriveRunPhotos?.mountThumbs?.({client:sb,root:app});
   void window.StriveRunPhotos?.mountVisuals?.({client:sb,root:app});
@@ -2801,6 +2803,14 @@ function pageTitle(q){
   if(q.has('onboard')) return t('Connect your agent');
   return '__BRAND__ · __TAGLINE__';
 }
+// The signed-in start page keeps clubs and events one press away, above the feed, from rows that exist.
+// It waits for the feed's own frame, and gives up quietly if the reader has moved on.
+function mountHomeCommunity(){
+  const H=window.GrinderHome;if(!H||!sb)return;const generation=RUN_VIEW_GENERATION;
+  H.read(sb,Date.now()).then(data=>{let tries=0;const place=()=>{const body=$('social-body');
+    if(RUN_VIEW_GENERATION!==generation||$('home-community'))return;if(!body){if(++tries<40)setTimeout(place,100);return}
+    const slot=document.createElement('section');slot.id='home-community';slot.innerHTML=H.community(data);body.before(slot)};place()});
+}
 async function route(){ RUN_VIEW_GENERATION++;window.StriveRunPhotos?.disposeAll?.();account.recover(); try{document.title=pageTitle(new URLSearchParams(location.search))}catch(_){}
   if(ME && social.refreshUnread) social.refreshUnread();
   if(IDENTITY_SETUP)return viewIdentitySetup();
@@ -2850,13 +2860,8 @@ async function route(){ RUN_VIEW_GENERATION++;window.StriveRunPhotos?.disposeAll
   // Home is the feed (Oscar, 25 Sep 2026 evening). Signed in: the runs of the people you follow,
   // with people to follow and the latest public runs when that is empty. Signed out: the public
   // feed and the ask to sign in and build a profile. Adding a run is /?post.
-  if(ME){
-    // The start page keeps clubs and events one press away, above the feed, from rows that exist.
-    const generation=RUN_VIEW_GENERATION,feed=social.following({home:true}),H=window.GrinderHome;
-    if(H&&sb)H.read(sb,Date.now()).then(async data=>{await feed.catch(()=>{});const body=$('social-body');if(generation!==RUN_VIEW_GENERATION||!body||$('home-community'))return;
-      const slot=document.createElement('div');slot.id='home-community';slot.innerHTML=H.community(data);body.before(slot)});
-    return feed;
-  }
+  if(ME) mountHomeCommunity();
+  if(ME) return social.following({home:true});
   return viewLanding(); }
 
 // Import links can change only the fragment, without a document load. Ordinary

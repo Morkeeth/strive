@@ -26,6 +26,8 @@ const TABLES = new Set([
   "grinder_notifications",
   "grinder_memberships",
   "grinder_crews",
+  "grinder_events",
+  "grinder_event_people",
 ]);
 
 export function mintJwt(sub, email) {
@@ -497,6 +499,12 @@ function embedParts(select) {
     embeds.push({ alias, table, cols });
     return "";
   });
+  // An embed with no alias and no hint, as the home page reads clubs and events:
+  // grinder_memberships(count), grinder_event_people(count), grinder_crews(name).
+  columns = columns.replace(/(^|,)([A-Za-z_][A-Za-z0-9_]*)\(([^)]*)\)/g, (_, lead, table, cols) => {
+    embeds.push({ alias: table, table, cols, plain: true });
+    return lead;
+  });
   columns = columns.replace(/,+/g, ",").replace(/^,|,$/g, "");
   if (!columns.trim()) columns = "*";
   return { columns, embeds };
@@ -544,6 +552,12 @@ async function selectRows(db, table, select, filters, url) {
           await db.query("select id,github_handle,name,rig,handle,display_name,avatar_url from profiles where id=$1", [emb.table in row && emb.table !== "profiles" ? row[emb.table] : emb.alias === "author" ? row.author_id : emb.alias === "actor" ? row.actor_id : emb.alias === "friend" ? row.friend_profile_id : row.profile_id])
         ).rows[0];
         row[emb.alias] = p || null;
+      } else if (emb.plain && emb.table === "grinder_memberships" && emb.cols === "count") {
+        row[emb.alias] = [{ count: Number((await db.query("select count(*) n from grinder_memberships where crew_id=$1", [row.id])).rows[0].n) }];
+      } else if (emb.plain && emb.table === "grinder_event_people" && emb.cols === "count") {
+        row[emb.alias] = [{ count: Number((await db.query("select count(*) n from grinder_event_people where event_id=$1", [row.id])).rows[0].n) }];
+      } else if (emb.plain && emb.table === "grinder_crews" && row.crew_id) {
+        row[emb.alias] = (await db.query("select id,name from grinder_crews where id=$1", [row.crew_id])).rows[0] || null;
       } else if (emb.table === "grinder_run_moments" && (row.moment_id || row.id)) {
         const id = row.moment_id;
         const m = id
