@@ -71,7 +71,7 @@ def test_day_page_lists_only_that_local_day_and_uploads_nothing(tmp_path,monkeyp
     series=str(tmp_path/'series.db')
     result=write_day(db,day,str(out),'TEST DATA label','http://localhost:8000',None,series)
     link=result.pop('review_link_bytes');assert link>0
-    assert result=={'day':day,'drafts':1,'other_days':0,'project':'TEST DATA label','without_measurement_reference':0,'written':str(out),'renamed_from_contract':0,'uploaded':0}
+    assert result=={'day':day,'drafts':1,'other_days':0,'project':'TEST DATA label','without_measurement_reference':0,'git_history_windows':0,'written':str(out),'renamed_from_contract':0,'uploaded':0}
     import gzip
     packed=re.search(r'#day-drafts=gz\.([A-Za-z0-9_-]+)"',out.read_text()).group(1)
     review=json.loads(gzip.decompress(base64.urlsafe_b64decode(packed+'='*(-len(packed)%4))))
@@ -80,9 +80,12 @@ def test_day_page_lists_only_that_local_day_and_uploads_nothing(tmp_path,monkeyp
     assert re.fullmatch(r'[a-f0-9]{64}',review['runs'][0]['measurement_revision']),'a draft without a measurement reference is refused by the service at Save'
     contract=tmp_path/'metrics.json'
     raw=json.loads(db.execute('select payload from drafts').fetchone()[0]).get('project')
-    contract.write_text(json.dumps({'schema':'tokens-zup-metrics/1','status':'ready','products':[{'id':'x','name':'TEST DATA Product','in_registry':True,'source_labels':[str(raw).upper(),'other']},{'id':'unregistered:y','name':'Never used','in_registry':False,'source_labels':[str(raw)]}]}))
+    contract.write_text(json.dumps({'schema':'tokens-zup-metrics/1','status':'ready','products':[{'id':'x','name':'TEST DATA Product','in_registry':True,'source_labels':[str(raw).upper(),'other']},{'id':'unregistered:y','name':'Never used','in_registry':False,'source_labels':[str(raw)]},{'id':'unregistered:z','name':'TEST DATA Named By Contract','in_registry':False,'has_canonical_name':True,'source_labels':['folder-z']},{'id':'w','name':'Raw label','in_registry':True,'has_canonical_name':False,'source_labels':['folder-w']}]}))
     named=write_day(db,day,str(tmp_path/'named.html'),None,'http://localhost:8000',str(contract),series)
     assert named['renamed_from_contract']==(1 if raw else 0) and (not raw or 'TEST DATA Product' in (tmp_path/'named.html').read_text())
+    from agentgrinder.capture import product_names
+    names=product_names(str(contract))
+    assert names.get('folder-z')=='TEST DATA Named By Contract' and 'folder-w' not in names,'the contract says which names are product names; registry membership alone does not'
     contract.write_text(json.dumps({'schema':'something-else/1','status':'ready','products':[]}))
     import pytest as _p
     with _p.raises(ValueError): write_day(db,day,str(tmp_path/'bad.html'),None,None,str(contract),series)

@@ -122,12 +122,71 @@ def product_names(path):
         raise ValueError('Product names come from a ready tokens-zup-metrics/1 reply.')
     names = {}
     for product in reply.get('products') or []:
-        if product.get('in_registry') is not True or not isinstance(product.get('name'), str):
+        # has_canonical_name is the contract's own statement that the name is a product name and not a
+        # raw folder or lane label. An older reply has no such field; then only a registry name counts.
+        named = product.get('has_canonical_name') if 'has_canonical_name' in product else product.get('in_registry')
+        if named is not True or not isinstance(product.get('name'), str):
             continue
         for label in product.get('source_labels') or []:
             if isinstance(label, str) and label.strip():
                 names[label.strip().lower()] = product['name'].strip()[:120]
     return names
+
+
+def history_rows(directory, known=None, gap_seconds=3600):
+    """Git-history rows for the day review, from local-historical-recovery-v1 files in a folder.
+    Each file is one repository. It is split where more than gap_seconds pass with no commit, so a
+    row keeps a real window: first commit to last. The evidence and its reference are computed
+    exactly as site/historical-import.js computes them, so a row saved here and the same file
+    recovered by hand are the same run. Nothing but counts, times and hashes is carried."""
+    import hashlib
+    import re
+    from datetime import datetime, timedelta, timezone
+    def iso(moment):
+        moment = moment.astimezone(timezone.utc)
+        return moment.strftime('%Y-%m-%dT%H:%M:%S.') + f'{moment.microsecond // 1000:03d}Z'
+    def digest(value):
+        return hashlib.sha256(json.dumps(value, separators=(',', ':'), ensure_ascii=False).encode()).hexdigest()
+    rows = []
+    for path in sorted(Path(directory).expanduser().glob('*.json')):
+        try:
+            manifest = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        if not isinstance(manifest, dict) or manifest.get('schema') != 'local-historical-recovery-v1':
+            continue
+        source, repo = manifest.get('source') or {}, manifest.get('repo_evidence') or {}
+        if source.get('full_transcript_recovered') is not False or source.get('contains_raw_prompt_text') is not False:
+            raise ValueError(f'{path.name}: not a source-indexed recovery file without raw prompt text.')
+        entries = sorted({(r['timestamp_ms'], r['line_sha256']) for r in source.get('rows') or []
+                          if isinstance(r.get('timestamp_ms'), int) and re.fullmatch(r'[a-f0-9]{64}', str(r.get('line_sha256')))})
+        commits = [c for c in repo.get('reachable_commits_in_utc_window') or [] if re.fullmatch(r'[a-f0-9]{40}', str(c.get('sha'))) and c.get('committer_time')]
+        head = repo.get('frozen_head')
+        if not entries or not commits or not re.fullmatch(r'[a-f0-9]{40}', str(head)):
+            continue
+        commits.sort(key=lambda c: datetime.fromisoformat(c['committer_time']))
+        bursts = []
+        for commit in commits:
+            when = datetime.fromisoformat(commit['committer_time'])
+            if bursts and (when - bursts[-1][-1][0]).total_seconds() <= gap_seconds:
+                bursts[-1].append((when, commit['sha']))
+            else:
+                bursts.append([(when, commit['sha'])])
+        proposed = str((manifest.get('draft_copy') or {}).get('title') or '').strip()
+        title = 'Recovered build' if re.search(r'[\\/]|(?:^|\s)~|file:|\b[A-Za-z]:', proposed) else (proposed or 'Recovered build')[:160]
+        label = str(repo.get('repo') or '').strip()
+        project = (known or {}).get(label.lower(), label) or None
+        listed = [{'timestamp_ms': t, 'hash': h} for t, h in entries]
+        for burst in bursts:
+            shas = sorted({sha for _, sha in burst})
+            evidence = {'repo_window_start': iso(burst[0][0]), 'repo_window_end': iso(burst[-1][0] + timedelta(seconds=1)),
+                        'first_observed_at': iso(datetime.fromtimestamp(entries[0][0] / 1000, timezone.utc)),
+                        'last_observed_at': iso(datetime.fromtimestamp(entries[-1][0] / 1000, timezone.utc)),
+                        'history_entries': len(entries), 'repo_commits': len(shas), 'repo_revision': head,
+                        'source_ref': digest({'entries': listed, 'commits': shas})}
+            rows.append({'title': title, 'project': project, 'history_evidence': evidence,
+                         'measurement_revision': digest({'format': 'strive-history-v1', 'evidence': evidence})})
+    return rows
 
 
 def day_drafts(db, day):
@@ -149,7 +208,7 @@ def day_drafts(db, day):
     return chosen, other
 
 
-def write_day(db, day=None, out=None, project=None, push_url=None, names=None, series=None):
+def write_day(db, day=None, out=None, project=None, push_url=None, names=None, series=None, history=None):
     """One local HTML page: every draft of the day, exactly what each would send, and its private
     preview link. Nothing is uploaded here and nothing is saved until the owner presses Save run."""
     import html
@@ -197,9 +256,11 @@ def write_day(db, day=None, out=None, project=None, push_url=None, names=None, s
 <span class="src">source session {e(session_tag(row['source']))}, kept on this machine</span></p>
 <details><summary>Exactly what this preview carries ({len(sent)} fields)</summary><pre>{e(json.dumps(sent, indent=1, sort_keys=True))}</pre></details></article>""")
     # One link for the whole day. The app lists the drafts, the owner ticks, and only then saves.
+    # Git history rides along as rows of counts, times and hashes, so no repository is recovered by hand.
+    recovered = history_rows(history, known) if history else []
     packed = gzip.compress(json.dumps({'schema': 'strive-day-drafts-v1', 'day': day, 'project': project.strip() if project else None,
-                                       'runs': batch}, separators=(',', ':')).encode(), mtime=0)
-    review = f"{(push_url or DEFAULT_URL).rstrip('/')}/#day-drafts=gz.{base64.urlsafe_b64encode(packed).decode().rstrip('=')}" if batch else None
+                                       'runs': batch, 'history': recovered}, separators=(',', ':')).encode(), mtime=0)
+    review = f"{(push_url or DEFAULT_URL).rstrip('/')}/#day-drafts=gz.{base64.urlsafe_b64encode(packed).decode().rstrip('=')}" if batch or recovered else None
     page = f"""<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>STRIVE day review {e(day)}</title>
 <style>body{{font:16px/1.5 "IBM Plex Sans",Arial,sans-serif;background:#f7f7f5;color:#0a0a0a;margin:0}}main{{max-width:820px;margin:0 auto;padding:24px 16px 80px}}
@@ -212,13 +273,13 @@ pre{{font-size:12px;overflow:auto;background:#f7f7f5;padding:10px}}summary{{curs
 {f'{renamed} drafts were given their registry product name from the token contract file.' if names else ''}
 {f'{unmeasured} drafts could not be given a measurement reference and will be refused at Save.' if unmeasured else ''}
 {other} drafts from other days are not shown. A session with no typed turns makes no draft: run capture scan to see which were skipped.</p>
-{f'<p><a class="open" href="{e(review)}" target="_blank" rel="noopener">Review all {len(batch)} and save the ones you tick</a><span class="src">opens a list in the app; nothing is saved until you press Save there</span></p>' if review else ''}
+{f'<p><a class="open" href="{e(review)}" target="_blank" rel="noopener">Review all {len(batch)}{f' and {len(recovered)} windows of git history' if recovered else ''} and save the ones you tick</a><span class="src">opens a list in the app; nothing is saved until you press Save there</span></p>' if review else ''}
 {''.join(rows) or '<article><h2>No drafts on this day</h2><p class="facts">Run capture scan first.</p></article>'}</main>"""
     target = Path(out or f'strive-day-{day}.html')
     target.write_text(page)
     os.chmod(target, 0o600)
     return {'day': day, 'drafts': len(chosen), 'other_days': other, 'project': project.strip() if project else None,
-            'without_measurement_reference': unmeasured, 'written': str(target), 'review_link_bytes': len(review) if review else 0, 'renamed_from_contract': renamed, 'uploaded': 0}
+            'without_measurement_reference': unmeasured, 'git_history_windows': len(recovered), 'written': str(target), 'review_link_bytes': len(review) if review else 0, 'renamed_from_contract': renamed, 'uploaded': 0}
 
 
 def add_parser(sub):
@@ -242,6 +303,7 @@ def add_parser(sub):
     p.add_argument('--project', help='one project label to put on every draft of the day, declared by you')
     p.add_argument('--push-url', help='where the private previews open (default https://striverun.app)')
     p.add_argument('--series', help='measurement series file (default: the standard local series, as grind uses)')
+    p.add_argument('--history', help='a folder of local-historical-recovery-v1 files; their git history joins the review link')
     p.add_argument('--names', help='a tokens-zup-metrics/1 reply; drafts take their registry product name from it')
     p.add_argument('--out', help='file to write (default ./strive-day-<date>.html)')
     p = commands.add_parser('show'); p.add_argument('id'); p.add_argument('--measure',action='store_true',help='record the captured counts as an immutable local measurement'); p.add_argument('--export', action='store_true', help='print the public allowlist instead of the private draft')
@@ -270,7 +332,7 @@ def run_cli(args):
         elif name == 'list':
             output = [dict(row) for row in db.execute('select id,harness,started,updated_at from drafts order by updated_at desc')]
         elif name == 'day':
-            output = write_day(db, args.date, args.out, args.project, args.push_url, args.names, args.series)
+            output = write_day(db, args.date, args.out, args.project, args.push_url, args.names, args.series, args.history)
         elif name in ('show', 'delete'):
             row = db.execute('select payload from drafts where id=?', (args.id,)).fetchone()
             if not row: raise ValueError('Draft not found. Use capture list.')

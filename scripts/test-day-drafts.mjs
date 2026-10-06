@@ -5,7 +5,7 @@ const require=createRequire(import.meta.url);
 require('../site/import-row.js');
 const D=require('../site/day-drafts.js');
 const run={harness:'Codex',started:'2026-10-05T10:00:00.000Z',duration_s:600,turns_typed:2,tool_calls:5,project:'raw-label',schema_version:1,trace_basis:'elapsed',repo_url:'https://example.test/r'};
-assert.deepEqual(D.parse({schema:'strive-day-drafts-v1',day:'2026-10-05',project:null,runs:[run]}),{day:'2026-10-05',project:null,runs:[run]});
+assert.deepEqual(D.parse({schema:'strive-day-drafts-v1',day:'2026-10-05',project:null,runs:[run]}),{day:'2026-10-05',project:null,runs:[run],history:[]});
 for(const bad of [null,{},{schema:'other',day:'2026-10-05',runs:[run]},{schema:'strive-day-drafts-v1',day:'5 Oct',runs:[run]},{schema:'strive-day-drafts-v1',day:'2026-10-05',runs:[]},{schema:'strive-day-drafts-v1',day:'2026-10-05',runs:Array(101).fill(run)}])
   assert.throws(()=>D.parse(bad),/not a day review link/);
 const saved=[{id:'a',started_at:'2026-10-05T10:00:00+00:00',harness:'Codex',measurement_revision:null},{id:'b',started_at:'2026-10-05T10:00:00+00:00',harness:'Claude Code',measurement_revision:'r'.repeat(64)}];
@@ -21,4 +21,36 @@ assert.equal(own.caption,null);assert.equal(own.profile_id,'p');assert.equal(own
 const labelled=D.rowFor(run,{...deps,project:'  Monday 5 Oct '});assert.equal(labelled.project,'Monday 5 Oct');assert.equal(labelled.title,'Monday 5 Oct session');
 assert.equal(D.rowFor(run,{...deps,project:'/Users/someone/secret'}).project,'raw-label','a typed path is refused and the draft keeps its own project');
 assert.equal(D.rowFor({...run,project:null},{...deps,project:''}).title,'Codex session');
-console.log('PASS: review link shape, already-saved matching, private-only rows, declared project label');
+// Git history in the review link: the Python side must compute exactly what the browser importer computes.
+import {execFileSync} from 'node:child_process';
+import {mkdtempSync,writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+const H=require('../site/historical-import.js');
+const dir=mkdtempSync(join(tmpdir(),'strive-history-'));
+const sha=n=>n.toString(16).padStart(40,'0'),line=n=>n.toString(16).padStart(64,'0');
+const manifest={schema:'local-historical-recovery-v1',visibility:'private',draft_copy:{title:'Work on TEST DATA repo, 2026-10-05'},
+ source:{full_transcript_recovered:false,contains_raw_prompt_text:false,rows:[{timestamp_ms:1791014400000,line_sha256:line(2)},{timestamp_ms:1791010800000,line_sha256:line(1)},{timestamp_ms:1791010800000,line_sha256:line(1)}]},
+ observed_history:{unique_timestamped_entries:2},
+ repo_evidence:{repo:'test-data-repo',frozen_head:sha(99),window:['2026-10-04T22:00:00+00:00','2026-10-05T22:00:00+00:00'],commit_count:4,
+  reachable_commits_in_utc_window:[{sha:sha(3),committer_time:'2026-10-05T15:00:10+00:00'},{sha:sha(1),committer_time:'2026-10-05T09:00:00+00:00'},{sha:sha(2),committer_time:'2026-10-05T09:40:00+02:00'},{sha:sha(4),committer_time:'2026-10-05T15:30:00+00:00'}]}};
+writeFileSync(join(dir,'history-test-data-repo.json'),JSON.stringify(manifest));writeFileSync(join(dir,'not-a-manifest.json'),'{"schema":"other"}');
+const py=JSON.parse(execFileSync('python3',['-c',`import json,sys;sys.path.insert(0,'.');from agentgrinder.capture import history_rows;print(json.dumps(history_rows(${JSON.stringify(dir)},{'test-data-repo':'TEST DATA Product'})))`],{encoding:'utf8'}));
+assert.equal(py.length,3,'commits more than an hour apart are separate windows; 09:40+02:00 is 07:40 UTC and stands alone');
+assert.deepEqual(py.map(r=>r.history_evidence.repo_commits),[1,1,2]);assert.ok(py.every(r=>r.project==='TEST DATA Product'&&r.title==='Work on TEST DATA repo, 2026-10-05'));
+for(const row of py){
+ const a=Date.parse(row.history_evidence.repo_window_start),b=Date.parse(row.history_evidence.repo_window_end);
+ const same=JSON.parse(JSON.stringify(manifest));same.repo_evidence.window=[row.history_evidence.repo_window_start,row.history_evidence.repo_window_end];
+ same.repo_evidence.reachable_commits_in_utc_window=manifest.repo_evidence.reachable_commits_in_utc_window.filter(c=>{const t=Date.parse(c.committer_time);return t>=a&&t<b});same.repo_evidence.commit_count=same.repo_evidence.reachable_commits_in_utc_window.length;
+ const js=await H.prepare(same);
+ assert.deepEqual(row.history_evidence,js.history_evidence,'the same window gives the same evidence in Python and in the browser importer');
+ assert.equal(row.measurement_revision,js.measurement_revision,'and the same reference, so a row saved in bulk and a file recovered by hand are one run');
+ const saved=D.historyRow(row,{...deps});
+ assert.equal(saved.visibility,'private');assert.equal(saved.trace_basis,'historical-reconstruction');assert.equal(saved.project,'TEST DATA Product');assert.ok(!('harness' in saved)&&!('commits' in saved)&&!('started_at' in saved),'a git-history row claims no session metric');
+}
+assert.throws(()=>D.historyRow({...py[0],history_evidence:{...py[0].history_evidence,commit_times:[]}},deps),/unexpected shape/);
+assert.throws(()=>D.historyRow({...py[0],measurement_revision:'x'},deps),/source reference/);
+assert.throws(()=>D.historyRow({...py[0],history_evidence:{...py[0].history_evidence,repo_commits:0}},deps),/counted commits/);
+assert.equal(D.parse({schema:'strive-day-drafts-v1',day:'2026-10-05',runs:[],history:py}).history.length,3,'a link may carry git history alone');
+assert.throws(()=>D.parse({schema:'strive-day-drafts-v1',day:'2026-10-05',runs:[],history:[]}),/not a day review link/);
+console.log('PASS: git history rows match the browser importer; review link shape, already-saved matching, private-only rows, declared project label');
