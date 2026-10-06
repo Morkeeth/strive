@@ -4,6 +4,7 @@ import { randomUUID, createHash } from 'node:crypto';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const MAX_PHOTO_BYTES=3*1024*1024;
 const BUCKET='strive-run-photos';
+export const WIDTHS=[320,480,960];
 const fields='id,run_id,width,height,byte_size,created_at,is_cover,role';
 export const PHOTO_HEADERS={'Cache-Control':'private, no-store, max-age=0',Vary:'Authorization','X-Content-Type-Options':'nosniff'};
 function result(status,body,headers={}) {return {status,body,headers:{...PHOTO_HEADERS,...headers}};}
@@ -144,10 +145,19 @@ export async function runPhotos({method,headers={},query={},body},config,fetchIm
    await rows('run_photos?id=eq.'+p.id,{method:'DELETE'});
    return result(200,{removed:true});
   }
+  // Metadata RLS was checked above, under the caller's own sign-in, and is checked on every request.
+  // No signed URL survives a revoke or delete. A photo's bytes never change under its id, so a browser
+  // may keep its own copy, but only if it asks again each time (no-cache): a reader who lost access
+  // gets 404 here and the copy is not used. Nothing shared may store it (private).
+  const width=WIDTHS.includes(Number(query.w))?Number(query.w):0,etag=`"${p.id}.${width||'full'}"`;
+  const keep={'Content-Type':'image/jpeg','Content-Disposition':'inline','Cache-Control':'private, no-cache',ETag:etag};
+  if(String(headers['if-none-match']||'').split(',').map(v=>v.trim().replace(/^W\//,'')).includes(etag)) return result(304,Buffer.alloc(0),keep);
   const image=await storage('authenticated/'+BUCKET+'/'+path(p),{method:'GET'});
   if(!image.ok) return result(404,{error:'Photo not found.'});
-  // Metadata RLS checked on every request. No signed URL survives a revoke or delete.
-  return result(200,Buffer.from(await image.arrayBuffer()),{'Content-Type':'image/jpeg','Content-Disposition':'inline'});
+  let bytes=Buffer.from(await image.arrayBuffer());
+  // A card never needs the stored 2048 pixel copy. Same shape, fewer bytes; never enlarged.
+  if(width&&width<p.width) bytes=await sharp(bytes,{limitInputPixels:40_000_000}).resize({width,withoutEnlargement:true}).jpeg({quality:78}).toBuffer();
+  return result(200,bytes,keep);
  } catch(error) {
   if(error.status===401) return result(401,{error:'Your sign-in expired. Sign in again to manage photos.'});
   if(error.status===403) return result(404,{error:'Photo not found.'});

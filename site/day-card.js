@@ -81,7 +81,8 @@
     // The pie: how the run divides between its projects. Commits where any project has a count,
     // otherwise summed session time. The unit is always named beside it.
     const byCommits=groups.some(g=>commitsOf(g)&&commitsOf(g).n>0),weight=g=>byCommits?(commitsOf(g)?commitsOf(g).n:0):g.seconds;
-    const sum=groups.reduce((a,g)=>a+weight(g),0),pie={unit:byCommits?'commits':'session time',parts:groups.map(g=>({key:tk(g),name:g.label,value:weight(g),share:sum?weight(g)/sum:0}))};
+    const sum=groups.reduce((a,g)=>a+weight(g),0),pie={unit:byCommits?'commits':'session time',total:sum,source:byCommits?(groups.every(g=>!commitsOf(g)||commitsOf(g).from==='git')?'git history':groups.some(g=>commitsOf(g)&&commitsOf(g).from==='git')?'git history and runs':'recorded by the runs'):'first message to last, summed across runs',
+      parts:groups.map(g=>({key:tk(g),name:g.label,value:weight(g),share:sum?weight(g)/sum:0,known:byCommits?!!commitsOf(g):g.seconds>0}))};
     per.forEach(p=>{p.pie=pie});
     // Turning points, as one view: every run in the card where the author wrote what came out, newest last.
     const turning=groups.flatMap(g=>g.runs.filter(i=>wrote(i.run)).map(i=>({text:wrote(i.run),run:i.run,at:i.end,name:g.label}))).sort((a,b)=>a.at-b.at);
@@ -145,7 +146,9 @@
   // and the browser's back and forward all send an action here; nothing else moves the card.
   function reduce(state,action){
     const count=Math.max(1,state.count|0),clamp=n=>Math.max(0,Math.min(count-1,n|0)),a=action||{};let at=clamp(state.at);
-    if(a.type==='next')at=clamp(at+1);else if(a.type==='prev')at=clamp(at-1);else if(a.type==='goto')at=clamp(a.at);
+    if(a.type==='next')at=clamp(at+1);
+    // The card's own 15 second step. It is the only move that goes round from the last page to the first.
+    else if(a.type==='auto')at=(at+1)%count;else if(a.type==='prev')at=clamp(at-1);else if(a.type==='goto')at=clamp(a.at);
     // An arrow key typed in a field, a menu or a media control belongs to that control. So does one held with a
     // modifier: Alt and the left arrow is the browser's own Back.
     else if(a.type==='key'){if(!a.guarded&&!a.modified){if(a.key==='ArrowRight')at=clamp(at+1);else if(a.key==='ArrowLeft')at=clamp(at-1)}}
@@ -181,13 +184,32 @@
   // is in the reader's own view; otherwise the page falls back to the measured trace, and to a plain
   // sentence when there is neither. The trace is always in the markup behind a picture, so a picture that
   // cannot be fetched leaves the trace and never an empty frame.
+  // How the run divides between its projects, from one measured quantity that is named beside it.
+  // A project with no recorded value is left out of the ring and counted in words: unknown is never
+  // drawn as zero. On the overview each project in the list opens its own page of this card.
+  function share(s,esc,jump){
+    const P=s.pie;if(!P||!P.total)return '';
+    const known=P.parts.filter(p=>p.known&&p.value>0).sort((a,b)=>b.value-a.value),left=P.parts.length-known.length;if(known.length<2)return '';
+    const mine=s.kind==='project'?known.find(p=>p.key===s.key):null,unit=P.unit==='commits'?'commits':'session time';
+    const amount=v=>P.unit==='commits'?String(v):span(v),C=2*Math.PI*40;let acc=0;
+    const top=known.slice(0,5),rest=known.slice(5),drawn=rest.length?[...top,{key:'',name:`${rest.length} more`,value:rest.reduce((a,p)=>a+p.value,0),share:rest.reduce((a,p)=>a+p.share,0),other:true}]:top;
+    const ring=(s.kind==='project'?known:drawn).map((p,i,all)=>{const len=p.share*C,d=`<circle r="40" cx="50" cy="50" fill="none" stroke="${s.kind==='project'?(mine&&p.key===mine.key?'var(--blue)':'var(--rule)'):p.other?'var(--rule)':shade(i,Math.max(2,top.length))}" stroke-width="14" stroke-dasharray="${Math.max(0,len-1.2).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}" transform="rotate(-90 50 50)"/>`;acc+=len;return d}).join('');
+    const not=left?` ${plural(left,'project')} not counted: no ${P.unit==='commits'?'commit count':'session time'} recorded.`:'';
+    if(s.kind==='project'){
+      const says=mine?`<b>${Math.round(mine.share*100)}%</b> of the run's ${unit}: ${amount(mine.value)} of ${amount(P.total)}`:`Not in the split: no ${P.unit==='commits'?'commit count':'session time'} recorded for this project`;
+      return `<div class="dc-share dc-share-one"><svg class="dc-pie" viewBox="0 0 100 100" role="img" aria-label="${mine?`${esc(s.name)}: ${Math.round(mine.share*100)} percent of the run's ${unit}`:`${esc(s.name)} is not in the split`}">${ring}</svg><p class="dc-share-says">${says}<span>${esc(P.source)}</span></p></div>`}
+    const row=(p,i)=>{const at=p.other?-1:jump(p.key),name=at>=0?`<a class="dc-jump" href="${esc(jump.href(p.key,at))}" data-goto="${at}">${esc(p.name)}</a>`:esc(p.name);
+      return `<li><i style="background:${p.other?'var(--rule)':shade(i,Math.max(2,top.length))}"></i><span class="dc-share-n">${name}</span><span class="dc-share-v">${Math.round(p.share*100)}% · ${amount(p.value)}</span></li>`};
+    return `<div class="dc-share"><svg class="dc-pie" viewBox="0 0 100 100" role="img" aria-label="${plural(known.length,'project')} by ${unit}"><title>${plural(known.length,'project')} by ${unit}</title>${ring}<text x="50" y="49" text-anchor="middle" class="dc-pie-n">${known.length}</text><text x="50" y="62" text-anchor="middle" class="dc-pie-k">projects</text></svg>
+      <ol class="dc-share-list">${drawn.map(row).join('')}</ol><p class="dc-share-note">Share of ${amount(P.total)} ${P.unit==='commits'?'commits':'of session time'}, ${esc(P.source)}.${not}</p></div>`;
+  }
   const CAPTION={photo:'Photo chosen by the author. Atmosphere, not a measurement.',screenshot:'Screenshot chosen by the author, shown whole.'};
-  function visual(s,{esc,mine,visualHref,runHref}){
-    const trace=overview(s),v=s.visual;
+  function visual(s,{esc,mine,visualHref,runHref,jump}){
+    const split=jump?share(s,esc,jump):'',line=overview(s),trace=split||line?split+line:'',v=s.visual;
     if(v){const noun=v.kind==='photo'?'Photo':'Screenshot';
       return `<figure class="dc-visual" data-kind="${v.kind}" data-state="loading" data-visual-run="${esc(v.run)}" data-visual-photo="${esc(v.id)}" data-focus="${esc(v.focus)}" data-alt="${noun} chosen by the author${v.of?` for ${esc(v.of)}`:''}">
         <a class="dc-picture" href="${esc(runHref(v.run))}" aria-label="Open the run this ${noun.toLowerCase()} is from"></a>
-        <div class="dc-fallback" hidden>${trace||'<p class="dc-empty">This picture could not be shown and this page has no measured trace.</p>'}</div>
+        <div class="dc-fallback" hidden>${line||'<p class="dc-empty">This picture could not be shown and this page has no measured trace.</p>'}</div>
         <figcaption>${CAPTION[v.kind]}${mine&&v.lone?' <span class="dc-lone">Its run is Only you, so readers get the measured trace instead.</span>':''}</figcaption></figure>`}
     if(trace)return `<div class="dc-visual" data-kind="data">${trace}${mine&&visualHref&&s.kind!=='whole'?`<p class="dc-prompt"><a href="${esc(visualHref)}">Add a photo or a screenshot to this page</a></p>`:''}</div>`;
     return `<div class="dc-visual" data-kind="none"><p class="dc-empty">No measured trace and no picture on this page yet.${mine&&visualHref?` <a href="${esc(visualHref)}">Choose a visual</a>`:''}</p></div>`;
@@ -202,6 +224,7 @@
     // A project's headline is the first sentence the author wrote. The rest of the same result sits under
     // it, smaller and two lines at most; the whole text is on the run the card opens. Nothing is reworded.
     const lede=s=>{const m=s.kind==='project'&&String(s.result).match(/^([\s\S]*?[.!?])\s+(\S[\s\S]*)$/);return m?[m[1],m[2]]:[s.result,'']};
+    const jump=Object.assign(key=>S.findIndex(x=>x.kind==='project'&&x.key===key),{href:(key,i)=>pageHref(key,i)});
     const slide=(s,i)=>{
       if(s.kind==='points')return `<section class="dc-slide" data-slide="${i}" data-key="${esc(s.key)}" data-name="${esc(s.name)}" ${i===at?'':'hidden'} aria-label="Turning points">
         <ol class="dc-points">${s.points.map(p=>`<li><a href="${esc(runHref(p.run.id))}"><span class="dc-when">${esc(p.at.toLocaleDateString(undefined,{weekday:'short'}))} ${hm(p.at)} · ${esc(p.name)}</span>${esc(p.text)}</a></li>`).join('')}</ol>
@@ -210,14 +233,14 @@
       return `<section class="dc-slide" data-slide="${i}" data-key="${esc(s.key)}" data-name="${esc(s.name)}" ${s.open?`data-open="${esc(runHref(s.open.id))}"`:''} ${i===at?'':'hidden'} aria-label="${esc(s.name)}">
         <div class="dc-story">${s.result?`<h2 class="dc-said">${esc(lede(s)[0])}</h2>${s.draft&&mine&&setupHref?`<p class="dc-draft-row"><a class="dc-draft" href="${esc(setupHref)}">Draft headline. Write your own</a></p>`:''}${lede(s)[1]?`<p class="dc-rest">${esc(lede(s)[1])}</p>`:''}`:`<p class="dc-said dc-none">${mine?'No result written yet. Open the run and say what came out of it.':'No result written.'}</p>`}</div>
         <div class="dc-facts">${ids.map(id=>fact(s,id)).join('')}</div>
-        ${visual(s,{esc,mine,visualHref,runHref})}
+        ${visual(s,{esc,mine,visualHref,runHref,jump})}
         ${high.length?`<ul class="dc-high">${high.map(h=>`<li><a href="${esc(runHref(h.run.id))}">${h.name?`<b>${esc(h.name)}</b> `:''}${esc(h.text)}</a></li>`).join('')}</ul>`:''}</section>`};
     const lead=S.find(x=>x.open),open=S[at].open||(lead&&lead.open);
     // The selector is a list of real links. Each has an address of its own and a name a screen reader or an
     // agent can ask for: its number and the page it opens. The names come from this deck only, so a
     // reader's selector can never carry the name of a project they cannot see.
     const pages=many?`<nav class="dc-pages" aria-label="Pages of this card"><p class="dc-pos" aria-live="polite"><b>${esc(S[at].name)}</b> · ${at+1} of ${S.length}</p>
-        <div class="dc-steps"><button type="button" class="dc-arrow" data-step="-1" aria-label="Previous page" ${at===0?'disabled':''}>‹</button><button type="button" class="dc-arrow" data-step="1" aria-label="Next page" ${at===S.length-1?'disabled':''}>›</button></div>
+        <div class="dc-steps"><button type="button" class="dc-arrow" data-step="-1" aria-label="Previous page" ${at===0?'disabled':''}>‹</button><button type="button" class="dc-arrow" data-step="1" aria-label="Next page" ${at===S.length-1?'disabled':''}>›</button><button type="button" class="dc-auto" data-auto hidden aria-pressed="false">Pause</button></div>
         <ol class="dc-dots">${S.map((s,i)=>`<li><a class="dc-page" href="${esc(pageHref(s.key,i))}" data-goto="${i}" aria-label="${i+1} ${esc(s.name)}" ${i===at?'aria-current="page"':''}>${i+1}</a></li>`).join('')}</ol></nav>`:'';
     return `<article class="card dc" id="day-card" tabindex="0" data-at="${at}" data-count="${S.length}" aria-roledescription="${many?'carousel':'card'}">
       <header class="dc-head"><p class="meta">${esc(author||'')}${author?' · ':''}${esc(windowLabel)}</p>${mine?ownerMenu(menu,esc,menuAt):''}</header>
@@ -227,7 +250,7 @@
       ${actions?`<footer class="fc-foot">${actions}</footer>`:''}</article>`;
   }
   // Wires one card. Returns {go, at}: go(n,{push}) is what the page calls when the browser goes back or forward.
-  function wire(card,{onChange}={}){
+  function wire(card,{onChange,auto=0}={}){
     if(!card)return null;wireMenu(card);
     card.addEventListener('click',e=>{const say=e.target.closest('[data-comment]');if(say){const box=document.querySelector('#day-thread textarea');if(box){e.preventDefault();box.scrollIntoView({block:'center'});box.focus()}}});
     let state={at:+card.dataset.at||0,count:+card.dataset.count||1};const api={go:()=>{},at:()=>state.at};if(state.count<2)return api;
@@ -239,14 +262,33 @@
       card.querySelector('[data-step="-1"]').disabled=at===0;card.querySelector('[data-step="1"]').disabled=at===state.count-1;return now};
     const send=(action,{push=true}={})=>{const next=reduce(state,action);if(next===state)return false;state=next;const now=paint();if(onChange)onChange(state.at,now.dataset.key||'',{push});return true};
     api.go=(n,opts)=>send({type:'goto',at:n},opts);
-    card.addEventListener('click',e=>{const page=e.target.closest('.dc-page');
+    // The card may turn its own page every `auto` milliseconds. It waits while the pointer or the focus is
+    // on the card and while the tab is hidden, never runs for a reader who asked for reduced motion, and
+    // stops for the rest of the visit the moment the reader moves the card themselves. An automatic turn
+    // adds no history step and is not read out: the page name is announced only for a turn the reader made.
+    const rot={on:false,timer:null,over:false,in:false},toggle=card.querySelector('[data-auto]'),pos=card.querySelector('.dc-pos');
+    const quiet=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const tick=()=>{clearTimeout(rot.timer);rot.timer=null;if(!rot.on||!card.isConnected)return;
+      rot.timer=setTimeout(()=>{rot.timer=null;if(!rot.on||!card.isConnected)return;if(!rot.over&&!rot.in&&!document.hidden)send({type:'auto'},{push:false,auto:true});tick()},auto)};
+    const set=on=>{rot.on=on;card.dataset.auto=on?'on':'off';if(pos)pos.setAttribute('aria-live',on?'off':'polite');
+      if(toggle){toggle.hidden=false;toggle.textContent=on?'Pause':'Play';toggle.setAttribute('aria-pressed',String(!on));toggle.setAttribute('aria-label',on?`Pause: pages change every ${Math.round(auto/1000)} seconds`:`Play: change page every ${Math.round(auto/1000)} seconds`)}tick()};
+    api.stop=()=>set(false);api.auto=()=>rot.on;
+    if(auto>0&&toggle){
+      card.addEventListener('pointerenter',()=>{rot.over=true});card.addEventListener('pointerleave',()=>{rot.over=false});
+      card.addEventListener('focusin',()=>{rot.in=true});card.addEventListener('focusout',()=>{rot.in=card.contains(document.activeElement)&&document.activeElement!==card});
+      document.addEventListener('visibilitychange',()=>{if(rot.on&&!document.hidden)tick()});
+      toggle.addEventListener('click',e=>{e.stopPropagation();set(!rot.on)});
+      set(!quiet);
+    }
+    const mineNow=()=>{if(rot.on)set(false)};
+    card.addEventListener('click',e=>{const page=e.target.closest('.dc-page,.dc-jump');
       // A plain press changes the page in place. A press that asks for a new tab or window is left to the browser.
-      if(page){if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button)return;e.preventDefault();send({type:'goto',at:+page.dataset.goto});return}
-      const t=e.target.closest('[data-step]');if(t)send({type:+t.dataset.step>0?'next':'prev'})});
+      if(page){if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button)return;e.preventDefault();mineNow();send({type:'goto',at:+page.dataset.goto});return}
+      const t=e.target.closest('[data-step]');if(t){mineNow();send({type:+t.dataset.step>0?'next':'prev'})}});
     card.addEventListener('keydown',e=>{if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft')return;
-      if(send({type:'key',key:e.key,guarded:!!e.target.closest(GUARDED),modified:e.altKey||e.ctrlKey||e.metaKey||e.shiftKey}))e.preventDefault()});
+      if(send({type:'key',key:e.key,guarded:!!e.target.closest(GUARDED),modified:e.altKey||e.ctrlKey||e.metaKey||e.shiftKey})){mineNow();e.preventDefault()}});
     let x0=null,y0=null,held=false;card.addEventListener('touchstart',e=>{held=!!e.target.closest(GUARDED+',.dc-dots');x0=e.touches[0].clientX;y0=e.touches[0].clientY},{passive:true});
-    card.addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;x0=null;if(!held)send({type:'swipe',dx,dy})},{passive:true});
+    card.addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;x0=null;if(!held&&send({type:'swipe',dx,dy}))mineNow()},{passive:true});
     return api;
   }
   // SETUP: the author's display choices for this card. The preview under the form is the real card, drawn

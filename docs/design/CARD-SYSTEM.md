@@ -46,6 +46,8 @@ Tokens:
 | `--card-headline` | Headline size |
 | `--card-fact` | Size of a number |
 | `--action-h` | Height of each action in the action row, feed card and day card alike |
+| `--trace-h` | Height of a run's activity trace on the run page |
+| `--share-ring` | Size of the ring that shows how a run divides between projects |
 
 ## 2. Page selector
 
@@ -57,7 +59,15 @@ Classes: `.dc-pages`, `.dc-pos`, `.dc-dots`, `.dc-page`, `.dc-arrow`.
 - Previous and Next buttons stay. They are disabled at the ends. Pages do not wrap around.
 - A long card wraps onto more rows inside the card. It never scrolls sideways and a target never gets smaller than `--page-dot`. The gap is `--page-gap`.
 - Every link is a real `href`. A page is named in the address by its project token: `&page=<token>`. The overview has no `page` value. The older form `&card=<number>` is still read.
-- A page change on the card adds one step to the browser history. Back, Forward and Reload keep the page.
+- A page change the reader makes adds one step to the browser history. Back, Forward and Reload keep the page.
+- The card may turn its own page every 15 seconds (`auto` in `wire`, action `auto` in `reduce()`). This is the only move that goes round from the last page to the first. Rules for it:
+  - It adds no history step. It only keeps the address in step with `replaceState`.
+  - It waits while the pointer is on the card, while focus is inside the card and while the tab is hidden.
+  - It never starts for a reader who asked for reduced motion.
+  - It stops for the rest of the visit as soon as the reader moves the card: a page link, an arrow, a key, a swipe.
+  - The reader can stop and start it with one named button, `.dc-auto` ("Pause" and "Play"), beside the arrows.
+  - The page name is not read out for an automatic turn. `.dc-pos` is `aria-live="off"` while the card rotates and `polite` once the reader takes over.
+  - A card with one page never rotates. The preview on Edit card never rotates.
 - One function changes the page: `reduce()` in `site/day-card.js`. Links, arrows, the keyboard, a swipe and the browser's Back all send it an action. Do not add a second way to move.
 - Arrow keys are left alone when focus is in a field, a menu, a radio group, a slider or a media control, and when a modifier key is held. The list is `GUARDED` in `site/day-card.js`.
 - Numbering comes only from the pages this reader can see. A private or hidden project takes no number and its name is in no label.
@@ -96,9 +106,20 @@ Class: `.dc-visual`. One of three modes. The author chooses the mode. Nothing gu
 
 | Mode | What it is | How it is shown |
 |---|---|---|
-| Data | The measured trace: captured sessions and commits on one clock | Default everywhere. Needs no upload. |
+| Data | The split between projects, then the measured trace: captured sessions and commits on one clock | Default everywhere. Needs no upload. |
 | Screenshot | A capture of a screen the author picked from their own runs | Shown whole, never cropped. `object-fit: contain`, at most `--visual-shot-max` high, on `--visual-wash`. |
 | Photo | A photograph the author picked from their own runs | Fills a `--visual-photo-ratio` frame. `object-fit: cover`. The author picks the part to keep in the frame and checks the crop in the preview. |
+
+The split (`.dc-share`, drawn only by `share()` in `site/day-card.js`) is part of Data mode. It is one ring.
+
+- It divides the run by ONE measured quantity and names it under the ring: commits where any project has a commit count, otherwise session time summed across runs.
+- A project with no recorded value is not drawn. It is counted in words: "2 projects not counted: no commit count recorded." Unknown is never a zero slice.
+- At most five projects are named. The rest are one grey slice, "N more".
+- On the overview each named project that has a page is a link to that page. It goes through `reduce()` like every other move.
+- On a project page the ring is small and shows that project's share in words: "7% of the run's commits: 24 of 366".
+- Session time is first message to last, summed across runs. It is not one person's hours and the ring's note says where the number comes from.
+- With fewer than two measured projects there is no ring.
+- A page that leads with a picture shows no ring. One main visual per page still holds.
 
 Rules:
 

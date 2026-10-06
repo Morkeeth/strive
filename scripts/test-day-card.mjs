@@ -22,7 +22,16 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const html=C.render(d,{esc,mine:false,author:'TEST DATA Author',windowLabel:'Monday'});
 assert.match(html,/>not recorded</);assert.match(C.detail(d,esc),/Marks show when, never who\./);assert.match(C.detail(d,esc),/not one person's hours/);assert.match(html,/<b>Overview<\/b> · 1 of 5/);assert.match(html,/class="dc-open"[^>]*>Open the run/);assert.ok(!/kudos/i.test(html.replace(/fc-kudos-mine/g,'')),'the word is XUDOS');assert.match(C.render(d,{esc,mine:false,author:'a',windowLabel:'w',actions:'<i>ROW</i>'}),/<footer class="fc-foot"><i>ROW<\/i><\/footer>/,'the action row is handed in, drawn by the shared function');
 assert.ok(html.indexOf('class="dc-pages"')<html.indexOf('class="dc-said"')&&html.indexOf('class="dc-said"')<html.indexOf('class="dc-facts"')&&html.indexOf('class="dc-facts"')<html.indexOf('class="dc-visual"')&&html.indexOf('class="dc-visual"')<html.indexOf('class="dc-high"'),'anatomy in order: page selector, headline, numbers, one main visual, highlights');
-assert.ok(!html.includes('dc-pie')&&!html.includes('dc-lane')&&!html.includes('role="tab"'),'no ring, no lane rows and no tab row on the card');
+assert.ok(!html.includes('dc-lane')&&!html.includes('role="tab"'),'no lane rows and no tab row on the card');
+// The split between projects: one ring, its metric named, and what is not counted said in words.
+assert.match(html,/class="dc-share"/);assert.match(html,/Share of 12 commits, git history and runs\. 1 project not counted: no commit count recorded\./,'the ring names its metric and says what it leaves out');
+assert.ok(!/class="dc-share-n">(?:<a[^>]*>)?gamma/.test(html),'a project with no commit count is not drawn as a zero slice');
+assert.match(html,/<a class="dc-jump" href="[^"]*" data-goto="2">alpha<\/a><\/span><span class="dc-share-v">50% · 6</,'each project in the split opens its own page');
+assert.match(html,/delta<\/span><span class="dc-share-v">33% · 4/,'a project known from git only is in the split and has no page to open');
+assert.match(html,/dc-share-one[^]*?<b>17%<\/b> of the run's commits: 2 of 12/,'a project page shows its own share');assert.match(html,/Not in the split: no commit count recorded for this project/);
+// The card's own step: round and round, and only that move wraps.
+assert.deepEqual(C.reduce({at:4,count:5},{type:'auto'}),{at:0,count:5});assert.deepEqual(C.reduce({at:1,count:5},{type:'auto'}),{at:2,count:5});assert.equal(C.reduce({at:4,count:5},{type:'next'}).at,4,'a press on Next never wraps');
+assert.match(html,/class="dc-auto" data-auto hidden/,'the pause control is in the selector, hidden until the card rotates');
 assert.match(html,/class="dc-area"/);assert.match(html,/class="dc-mark"/);assert.match(html,/captured sessions, up to \d at once/);assert.match(html,/commits landed/);
 // a note or a caption is never promoted to the headline
 const noted=C.slides(D.compute([{...runs[0],story_result:null,caption:'TEST DATA a mission statement',note:'TEST DATA note'}],'2026-10-05',label),new Map([[label(runs[0].project),T('beta')]]),null);

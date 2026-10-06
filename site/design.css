@@ -12,7 +12,7 @@
   --card-headline:18px;--card-fact:19px;
   --page-dot:36px;--page-gap:6px;
   --visual-photo-ratio:3/2;--visual-shot-max:420px;--visual-wash:var(--rule-2);
-  --action-h:44px;--trace-h:72px;
+  --action-h:44px;--trace-h:72px;--share-ring:84px;
 }
 /* Shared product surfaces, including the reading pages. */
 :focus-visible{outline:2px solid var(--blue);outline-offset:3px}
@@ -391,6 +391,11 @@ button,summary{touch-action:manipulation}
 .dc-rest{font-size:14px;line-height:1.4;color:var(--muted);margin:6px 0 0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 /* The main visual: one region per page. Data is the measured trace. A screenshot is shown whole on a quiet
    ground. A photo fills a fixed frame around the point its author picked. Nothing is ever stretched. */
+.dc-share{display:grid;grid-template-columns:var(--share-ring) minmax(0,1fr);gap:4px 14px;align-items:center;margin:0 0 10px}.dc-pie{width:var(--share-ring);height:var(--share-ring);display:block}.dc-pie-n{font-size:22px;font-weight:600;fill:var(--ink)}.dc-pie-k{font-size:9px;fill:var(--muted)}
+.dc-share-list{list-style:none;margin:0;padding:0;font-size:12.5px;line-height:1.3;min-width:0}.dc-share-list li{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:8px;align-items:center;padding:1.5px 0}.dc-share-list i{width:10px;height:10px;border-radius:2px;display:block}
+.dc-share-n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dc-share-n a{color:var(--ink);text-decoration:none}.dc-share-n a:hover{color:var(--blue);text-decoration:underline}.dc-share-v{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.dc-share-note{grid-column:1/-1;margin:2px 0 0;font-size:11px;color:var(--muted)}.dc-share-one{--share-ring:44px;margin:0 0 6px}.dc-share-says{margin:0;font-size:13px;color:var(--muted)}.dc-share-says b{color:var(--ink);font-weight:600}.dc-share-says span{display:block;font-size:11px}
+.dc-auto{font:inherit;font-size:12px;height:32px;padding:0 8px;margin-left:4px;border:0;background:none;color:var(--muted);cursor:pointer}.dc-auto:hover{color:var(--blue)}
 .dc-visual{margin:2px 0 0;padding:0}.dc-visual figcaption{font-size:11px;color:var(--muted);margin:6px 0 0}.dc-lone{color:var(--ink)}
 .dc-picture{display:block;background:var(--visual-wash);border:1px solid var(--rule)}.dc-picture:empty{aspect-ratio:var(--visual-photo-ratio)}
 .dc-visual[data-kind=screenshot] .dc-picture{display:flex;justify-content:center}

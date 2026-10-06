@@ -17,6 +17,28 @@
   async function responseMessage(res){
     try{const body=await res.json();return body?.error||body?.message||`Request failed (${res.status})`;}catch(_){return `Request failed (${res.status})`;}
   }
+  // One way to read photos. The server checks access on every request; this only avoids asking twice
+  // for the same thing in one visit. A list is kept for a minute and a picture for five, per sign-in:
+  // the key holds the Authorization value, so another account in the same tab starts empty. Any
+  // upload, cover change or removal empties it. Pictures are asked for at the width a card needs.
+  const kept=new Map(),LIST_MS=60_000,IMAGE_MS=300_000,KEEP=80;
+  function forget(){kept.clear()}
+  async function get(url,opts={},width){
+    const image=/[?&]id=/.test(url),full=image&&width?`${url}&w=${width}`:url,key=`${opts.headers?.Authorization||''} ${full}`,now=Date.now(),hit=kept.get(key);
+    if(hit&&now-hit.at<(image?IMAGE_MS:LIST_MS)){kept.delete(key);kept.set(key,hit);return hit.res}
+    const res=await fetch(full,opts);
+    if(!res.ok)return res;
+    const body=image?await res.blob():await res.json(),again={ok:true,status:200,blob:async()=>body,json:async()=>body};
+    kept.set(key,{at:now,res:again});while(kept.size>KEEP)kept.delete(kept.keys().next().value);
+    return again;
+  }
+  // Which picture leads a run's card. Only one the author chose: the selected cover, or the one
+  // marked Result when the layout asks for it. With a single picture on the run there is nothing to
+  // guess. Otherwise no picture: the first upload is never assumed to be the right one.
+  function lead(photos,mode){
+    const shown=photos.filter(p=>p.role!=='personal'||p.is_cover),cover=photos.find(p=>p.is_cover),result=photos.find(p=>p.role==='result');
+    return (mode==='result'?result||cover:cover)||(shown.length===1?shown[0]:null);
+  }
   function photoPath(photo){
     if(typeof photo?.url!=="string")return null;
     try{
@@ -59,6 +81,7 @@
     const request=async(path,json=false,options={})=>{
       const h=await headers(client,json);
       if(!current())return null;
+      if(options.method&&options.method!=='GET')forget();   // an upload, a cover change or a removal: read fresh after it
       return fetch(path,{...options,headers:h,signal:controller.signal});
     };
     const clearUrls=()=>{while(objectUrls.length)URL.revokeObjectURL(objectUrls.pop())};
@@ -99,24 +122,24 @@
       try{
         const runId=card.dataset.runId;
         const listHeaders=await headers(client);if(!current())return;
-        const list=await fetch(`/api/run-photos?run_id=${encodeURIComponent(runId)}`,{headers:listHeaders,signal:controller.signal});
+        const list=await get(`/api/run-photos?run_id=${encodeURIComponent(runId)}`,{headers:listHeaders,signal:controller.signal});
         if(!current()||!list.ok)return;
         const payload=await list.json(), photos=payload?.photos||[];
         const before=photos.find(p=>p.role==='before'),after=photos.find(p=>p.role==='after');
         const mode=card.dataset.photoLayout||'cover';
-        const selected=mode==='before_after'&&before&&after?[before,after]:[mode==='result'?(photos.find(p=>p.role==='result')||photos[0]):photos[0]].filter(Boolean);
+        const selected=mode==='before_after'&&before&&after?[before,after]:[lead(photos,mode)].filter(Boolean);
         if(!selected.length)return;
         // Build a detached group. Attach only while the same view is active, after all reads.
         const group=document.createElement('div');group.className='run-media'+(selected.length===2?' run-before-after':'');
         for(const photo of selected){
           const path=photoPath(photo);if(!path)continue;
           const imageHeaders=await headers(client);if(!current())return;
-          const imageRes=await fetch(path,{headers:imageHeaders,signal:controller.signal});
+          const imageRes=await get(path,{headers:imageHeaders,signal:controller.signal},960);
           if(!current()||!imageRes.ok)return;
           const blob=await imageRes.blob();if(!current())return;
           const url=URL.createObjectURL(blob);urls.add(url);pendingUrls.add(url);
           const figure=document.createElement('figure'),image=document.createElement('img');
-          image.className='run-photo-cover';image.src=url;image.alt=roles[photo.role]||'Run photo';image.loading='lazy';images.add(image);
+          image.className='run-photo-cover';if(photo.width&&photo.height){image.width=photo.width;image.height=photo.height}image.decoding='async';image.src=url;image.alt=roles[photo.role]||'Run photo';image.loading='lazy';images.add(image);
           image.onload=image.onerror=()=>{URL.revokeObjectURL(url);urls.delete(url);pendingUrls.delete(url)};
           figure.append(image);if(photo.role&&photo.role!=='photo'){const caption=document.createElement('figcaption');caption.textContent=roles[photo.role]||'Photo';figure.append(caption)}group.append(figure);
         }
@@ -139,7 +162,7 @@
     try{
       const found=[];
       for(const run of (runs||[]).slice(-24)){
-        const res=await fetch(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:await headers(client),signal:controller.signal});
+        const res=await get(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:await headers(client),signal:controller.signal});
         if(!active)return;if(!res.ok)continue;
         for(const photo of ((await res.json())?.photos||[]))if(photo.role!=='personal')found.push({photo,run});
       }
@@ -151,7 +174,7 @@
       const figures=[];
       for(const [item,label] of [[before,declared?'Before':'First picture'],[after,declared?(after.photo.role==='result'?'Result':'After'):'Latest picture']]){
         const path=photoPath(item.photo);if(!path)return;
-        const res=await fetch(path,{headers:await headers(client),signal:controller.signal});if(!active||!res.ok)return;
+        const res=await get(path,{headers:await headers(client),signal:controller.signal},480);if(!active||!res.ok)return;
         const url=URL.createObjectURL(await res.blob());urls.add(url);
         figures.push(`<figure><a href="/?run=${encodeURIComponent(item.run.id)}"><img src="${url}" alt="${esc(label)}" loading="lazy"></a><figcaption>${esc(label)}</figcaption></figure>`);
       }
@@ -166,12 +189,12 @@
     disposers.add(dispose);
     await Promise.all([...host.querySelectorAll('[data-thumb-run]')].slice(0,24).map(async slot=>{
       try{
-        const list=await fetch(`/api/run-photos?run_id=${encodeURIComponent(slot.dataset.thumbRun)}`,{headers:await headers(client),signal:controller.signal});
+        const list=await get(`/api/run-photos?run_id=${encodeURIComponent(slot.dataset.thumbRun)}`,{headers:await headers(client),signal:controller.signal});
         if(!active||!list.ok)return;const photos=((await list.json())?.photos||[]).filter(p=>p.role!=='personal');
         // A strict slot takes only a picture the author marked as the result or the after state, never just the first one.
         // A slot that names one picture shows that picture or nothing: the author chose it.
         const photo=slot.dataset.thumbPhoto?photos.find(p=>p.id===slot.dataset.thumbPhoto):photos.find(p=>p.role==='result')||photos.find(p=>p.role==='after')||(slot.dataset.thumbStrict===undefined?photos[0]:null),path=photo&&photoPath(photo);if(!path)return;
-        const res=await fetch(path,{headers:await headers(client),signal:controller.signal});if(!active||!res.ok)return;
+        const res=await get(path,{headers:await headers(client),signal:controller.signal},320);if(!active||!res.ok)return;
         const url=URL.createObjectURL(await res.blob());urls.add(url);
         const image=document.createElement('img');image.src=url;image.alt=roles[photo.role]||'Run photo';image.loading='lazy';slot.replaceChildren(image);
       }catch(_){}
@@ -189,10 +212,10 @@
     await Promise.all([...host.querySelectorAll('figure[data-visual-run][data-visual-photo]')].slice(0,24).map(async figure=>{
       const fall=()=>{if(!active)return;figure.dataset.state='fallback';const f=figure.querySelector('.dc-fallback');if(f)f.hidden=false;figure.querySelector('.dc-picture')?.remove();figure.querySelector('figcaption')?.remove()};
       try{
-        const list=await fetch(`/api/run-photos?run_id=${encodeURIComponent(figure.dataset.visualRun)}`,{headers:await headers(client),signal:controller.signal});
+        const list=await get(`/api/run-photos?run_id=${encodeURIComponent(figure.dataset.visualRun)}`,{headers:await headers(client),signal:controller.signal});
         if(!active)return;if(!list.ok)return fall();
         const photo=((await list.json())?.photos||[]).find(p=>p.id===figure.dataset.visualPhoto),path=photo&&photoPath(photo);if(!path)return fall();
-        const res=await fetch(path,{headers:await headers(client),signal:controller.signal});if(!active)return;if(!res.ok)return fall();
+        const res=await get(path,{headers:await headers(client),signal:controller.signal},960);if(!active)return;if(!res.ok)return fall();
         const url=URL.createObjectURL(await res.blob());urls.add(url);
         const image=document.createElement('img');image.alt=figure.dataset.alt||'Picture chosen by the author';image.decoding='async';
         if(photo.width&&photo.height){image.width=photo.width;image.height=photo.height}
@@ -219,14 +242,14 @@
     (async()=>{
       // Every run on the card is asked, eight at a time, so a long day does not lose the pictures on its later runs.
       const queue=(runs||[]).slice(0,240),ask=async run=>{
-        try{const res=await fetch(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:await headers(client),signal:controller.signal});if(!active||!res.ok)return;
+        try{const res=await get(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:await headers(client),signal:controller.signal});if(!active||!res.ok)return;
           for(const photo of ((await res.json())?.photos||[])){const path=photoPath(photo);if(!path)continue;
-            const img=await fetch(path,{headers:await headers(client),signal:controller.signal});if(!active||!img.ok)continue;const url=URL.createObjectURL(await img.blob());urls.add(url);found.push({run,photo,url})}
+            const img=await get(path,{headers:await headers(client),signal:controller.signal},320);if(!active||!img.ok)continue;const url=URL.createObjectURL(await img.blob());urls.add(url);found.push({run,photo,url})}
         }catch(_){}};
       let next=0;await Promise.all(Array.from({length:8},async()=>{while(active&&next<queue.length)await ask(queue[next++])}));
       found.sort((a,b)=>runs.indexOf(a.run)-runs.indexOf(b.run));loading=false;paint();
     })();
     return next=>{chosen=next||null;paint()};
   }
-  root.StriveRunPhotos={mount,mountCovers,mountPair,mountThumbs,mountVisuals,mountChooser,disposeAll};
+  root.StriveRunPhotos={mount,mountCovers,mountPair,mountThumbs,mountVisuals,mountChooser,disposeAll,forget,lead};
 })(typeof window!=="undefined"?window:globalThis);
