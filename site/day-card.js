@@ -275,6 +275,8 @@
     wireMenu(slot);
     const list=slot.querySelector('#cs-list'),status=slot.querySelector('#cs-state'),saveBtn=slot.querySelector('#cs-save'),cancelBtn=slot.querySelector('#cs-cancel');let at=0;
     const dirty=()=>JSON.stringify(current())!==base;
+    // The preview draws the picture from the owner's own view. When the picture's run is not public, the note says so here, before a save.
+    const lone=()=>!!photo&&all.some(g=>[...g.runs.map(i=>i.run),...g.marks.map(m=>m.run)].some(r=>r.id===photo.run&&!!r.visibility&&r.visibility!=='public'));
     const SAY={saved:'All changes saved.',unsaved:'Unsaved changes.',saving:'Saving…'};
     function mark(){
       if(state!=='saving')state=dirty()?(state==='error'?'error':'unsaved'):'saved';
@@ -297,7 +299,7 @@
       slot.querySelectorAll('[name=cs-focus]').forEach(r=>{r.checked=r.value===focus});slot.querySelector('#cs-frame').hidden=shown!=='photo';
       slot.querySelector('#cs-hero').checked=hero;slot.querySelector('#cs-hero-row').hidden=shown==='data';
       slot.querySelector('#cs-visual-note').textContent=visualKind==='data'?(photo?'The card shows the measured trace. Your picture stays chosen in case you switch back.':'The card shows the measured trace.')
-        :photo?(visualKind==='photo'?'The photo leads the page of its own project. Check the crop in the preview below.':'The screenshot leads the page of its own project, shown whole.')
+        :photo?(visualKind==='photo'?'The photo leads the page of its own project. Check the crop in the preview below.':'The screenshot leads the page of its own project, shown whole.')+(lone()?' Its run is Only you, so readers get the measured trace instead. The preview below shows it to you alone.':'')
         :'Pick a picture below. Until then the card keeps the measured trace, and nothing stops you saving.';
       preview();mark();
     }

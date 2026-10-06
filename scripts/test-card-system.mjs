@@ -115,6 +115,13 @@ press(save);await settle();assert.equal(state(),'saved');assert.equal(sent.at(-1
 assert.match(slot.querySelector('#cs-preview').innerHTML,/data-kind="data"/);
 // the picture is drawn in the preview only when its run is in the model
 const pv=C.render(C.slides(withPic,tokens,body),{esc,mine:false,author:'a',windowLabel:'w'});assert.match(pv,new RegExp(`data-visual-photo="${P}"`));
+// a picture on a run that is Only you: the owner is told on this screen, before a save, because the preview draws it from the owner's own view
+const noteNow=()=>slot.querySelector('#cs-visual-note').textContent;
+pick({run:'b1',id:P},{role:'result'});assert.notEqual(form.current().visual,'data');assert.match(noteNow(),/Its run is Only you, so readers get the measured trace instead\./,'a private picture is flagged on Edit card');
+pick({run:'a1',id:P},{role:'result'});assert.ok(!/Only you/.test(noteNow()),'a picture on a public run carries no such note');
+pick({run:'b1',id:P},{role:'result'});slot.querySelector('[name=cs-visual][value=data]').checked=true;slot.querySelector('[name=cs-visual][value=data]').dispatchEvent(new window.Event('change',{bubbles:true}));
+assert.equal(form.current().visual,'data');assert.ok(!/Only you/.test(noteNow()),'data mode says nothing about a picture it does not draw');
+press(cancel);
 
 // ---- the rules are written down, and the names in the document exist in the styles
 const doc=readFileSync(new URL('../docs/design/CARD-SYSTEM.md',import.meta.url),'utf8'),css=readFileSync(new URL('../site/design.css',import.meta.url),'utf8');
