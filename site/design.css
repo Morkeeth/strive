@@ -356,4 +356,4 @@ button,summary{touch-action:manipulation}
 /* Choose what readers see (site/day-share.js). */
 .ds-preview{padding:14px 16px;margin-bottom:12px;border-left:2px solid var(--blue)}.ds-count{font-size:22px;line-height:1.2;font-weight:600;margin:2px 0 6px}
 .ds-said{display:block;font-size:15px;margin:2px 0}.ds-on{color:var(--blue)}.ds-item{display:flex;gap:8px;align-items:baseline;padding:6px 0;font-size:13px;flex-wrap:wrap}.ds-item em{color:#a4262c;font-style:normal}
-.ds-lead{margin-left:auto;font-size:12px;color:var(--blue);white-space:nowrap}.day-share-link{margin:0 0 12px}
+.ds-lead{flex-basis:100%;margin-left:26px;font-size:12px;color:var(--blue)}.ds-item>span{min-width:0;flex:1}.day-share-link{margin:0 0 12px}
