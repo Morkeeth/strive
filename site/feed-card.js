@@ -205,7 +205,7 @@
   // them, sized by how often it was there; every move is one arc, forward over the rail and back
   // under it, so a run that kept returning to one folder draws a dense knot and a run that
   // walked the tree once draws a clean sweep. No folder is named: the map is the shape of the
-  // work. Blue only; orange is spent on the peak and a sent thanks mark. A run that touched
+  // work. Blue only; orange is spent on the peak and a sent XUDOS mark. A run that touched
   // two folders draws a short strip (h, rail and the arcs halved): the full box around one arc
   // reads as an empty map.
   const MAP_W = 300, MAP_H = 44, RAIL = 30, MAP_X0 = 12, MAP_X1 = 288;
@@ -384,11 +384,31 @@
     '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M10 3v10M6 7l4-4 4 4M4 11v5.5h12V11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   // opts.page: the signed-out share page at /r/<id>. It has no script, so the heart is a link into
-  // the run (where a signed-in reader can send thanks) and the title is the page's one h1.
+  // the run (where a signed-in reader can send XUDOS) and the title is the page's one h1.
   // opts.count null means the count could not be read; the heart then carries no number.
   // opts.preview: a run that is not saved anywhere yet (the import preview, and the card the
   // command line writes on this computer, agentgrinder/feedcard.py). Nothing on it links anywhere:
   // there is no saved run to open, react to or share, so the row is drawn but inert.
+  // The one action row: XUDOS, Comment, Share. The feed card and the day card both draw it from here,
+  // so the three controls look and behave the same wherever a run can be answered.
+  // mode: "preview" (nothing saved, inert), "page" (the share page, no script), "mine" (your own run).
+  function actions(o) {
+    const id = esc(o.id), count = o.count === null || o.count === undefined ? null : whole(o.count) || 0;
+    const n = count === null ? "" : `<span class="num">${count}</span>`, said = count === null ? "" : `, ${count} so far`;
+    const heart = `${KUDOS_ICON}<span>XUDOS</span>`;
+    const xudos = o.mode === "preview"
+      ? `<span class="fc-act" aria-label="Send XUDOS">${heart}</span>`
+      : o.mode === "page"
+      ? `<a class="fc-act" href="/?run=${id}" aria-label="Send XUDOS${said}">${heart}${n}</a>`
+      : o.mode === "mine"
+      ? `<span class="fc-act fc-kudos-mine" aria-label="XUDOS on your run${said}">${heart}${n}</span>`
+      : `<button class="fc-act kudo${o.acked ? " on" : ""}" data-run="${id}" data-to="${esc(o.to)}" aria-label="${o.acked ? "XUDOS sent" : "Send XUDOS"}${said}">${heart}${n}</button>`;
+    const talk = o.mode === "preview"
+      ? `<span class="fc-act" aria-label="Comment">${TALK_ICON}<span>Comment</span></span><span class="fc-act" aria-label="Share">${SHARE_ICON}<span>Share</span></span>`
+      : `<a class="fc-act" href="${o.commentHref ? esc(o.commentHref) : `/?run=${id}#grind-thread`}" aria-label="Comment"${o.commentHref ? " data-comment" : ""}>${TALK_ICON}<span>Comment</span></a><a class="fc-act" href="/?share=1&amp;run=${id}" aria-label="Share">${SHARE_ICON}<span>Share</span></a>`;
+    return xudos + talk;
+  }
+
   function card(r, opts) {
     opts = opts || {};
     const preview = !!opts.preview;
@@ -415,16 +435,6 @@
         ? (posted ? `Posted ${/^(Today|Yesterday)$/.test(posted) ? posted.toLowerCase() : posted}` : "Session date unknown")
         : posted;
     const meta = [esc(harnessName(r)), esc(dateLabel), opts.metaExtra ? esc(opts.metaExtra) : ""].filter(Boolean).join(" · ");
-    const kudos = preview
-      ? `<span class="fc-act" aria-label="Send thanks">${KUDOS_ICON}</span>`
-      : page
-      ? `<a class="fc-act" href="/?run=${id}" aria-label="Send thanks${count === null ? "" : `, ${count} so far`}">${KUDOS_ICON}${countHtml}</a>`
-      : mine
-      ? `<span class="fc-act fc-kudos-mine">${KUDOS_ICON}<span class="num">${count}</span></span>`
-      : `<button class="fc-act kudo${opts.acked ? " on" : ""}" data-run="${id}" data-to="${esc(r.profile_id)}" aria-label="${opts.acked ? "Thanks sent" : "Send thanks"}, ${count} so far">${KUDOS_ICON}<span class="num">${count}</span></button>`;
-    const talk = preview
-      ? `<span class="fc-act" aria-label="Reply">${TALK_ICON}<span>Reply</span></span><span class="fc-act" aria-label="Share">${SHARE_ICON}<span>Share</span></span>`
-      : `<a class="fc-act" href="/?run=${id}#grind-thread" aria-label="Reply">${TALK_ICON}<span>Reply</span></a><a class="fc-act" href="/?share=1&amp;run=${id}" aria-label="Share">${SHARE_ICON}<span>Share</span></a>`;
     const shipped = r.output_url && /^https:\/\//i.test(r.output_url) ? `<span class="fc-chip">Work linked</span>` : "";
     const faceHtml = anon || preview ? face(r) : `<a href="/?u=${encodeURIComponent(p.handle)}" tabindex="-1">${face(r)}</a>`;
     const strideHtml = opts.stride === false || !(preview || page || opts.url) ? "" : stride(r, { url: opts.url, copy: !!opts.copy });
@@ -442,7 +452,7 @@
   <header class="fc-top">${faceHtml}<div class="fc-who">${who}<small>${meta}</small></div>${shipped}</header>
   ${preview ? `<div class="fc-body">${body}</div>` : `<a class="fc-body" href="/?run=${id}">${body}</a>`}
   ${!preview&&typeof r.output_url==='string'&&/^https:\/\/[^\s<>"'\\]+$/i.test(r.output_url)?`<p class="fc-output-link"><a href="${esc(r.output_url)}" target="_blank" rel="noopener noreferrer">Open the work ↗</a></p>`:''}
-  ${opts.foot === false ? "" : `<footer class="fc-foot">${kudos}${talk}</footer>`}
+  ${opts.foot === false ? "" : `<footer class="fc-foot">${actions({ id: r.id, to: r.profile_id, count: preview || (opts.count === null && page) ? null : opts.count, acked: opts.acked, mode: preview ? "preview" : page ? "page" : mine ? "mine" : "" })}</footer>`}
 </article>`;
   }
 
@@ -459,7 +469,7 @@
     return `<div class="fc-builder">${face(r, 44)}<div class="fc-who"><a class="fc-name" href="/?u=${encodeURIComponent(p.handle)}">${esc(p.name)}</a><small>Recent: <a href="/?run=${esc(r.id)}">${esc(titleOf(r))}</a></small></div><span class="card-follow" data-profile="${esc(r.profile_id)}" data-handle="${esc(p.handle)}" data-label="Follow"></span></div>`;
   }
 
-  const api = { card, face, headline, stats, achievement, harnessName, badge, spark, settle, routeGeometry, routeMap, proofRoute, changeAtlas, resultVisual, photoVisual, heroChoices, heroVisual, strideBars, strideText, strideHtml, stride, wireStride, nextSlot, builderRow, profileOf, durationLabel, when, titleOf };
+  const api = { card, actions, face, headline, stats, achievement, harnessName, badge, spark, settle, routeGeometry, routeMap, proofRoute, changeAtlas, resultVisual, photoVisual, heroChoices, heroVisual, strideBars, strideText, strideHtml, stride, wireStride, nextSlot, builderRow, profileOf, durationLabel, when, titleOf };
   root.GrinderFeed = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

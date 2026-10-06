@@ -17,7 +17,7 @@
     tools:{label:'Tool calls'},
     peak:{label:'Runs at once, peak',whole:true}};
   const DEFAULTS={whole:['projects','commits','elapsed'],project:['commits','session','runs']};
-  const VISUALS=['trace','photo'];
+  const VISUALS=['trace','photo'],UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   async function token(profileId,key,name){
     const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(`${profileId}|${key}|${name}`));
     return Array.from(new Uint8Array(bytes).slice(0,6),x=>x.toString(16).padStart(2,'0')).join('');
@@ -28,7 +28,7 @@
     const list=v=>Array.isArray(v)?[...new Set(v.filter(tok))].slice(0,60):[];
     const facts=k=>{const l=Array.isArray(o.facts&&o.facts[k])?[...new Set(o.facts[k].filter(f=>FACTS[f]&&(k==='whole'||!FACTS[f].whole)))].slice(0,3):[];return l.length?l:null};
     return {lead:tok(o.lead)?o.lead:null,order:list(o.order),hidden:list(o.hidden),visual:VISUALS.includes(o.visual)?o.visual:'trace',
-      facts:{whole:facts('whole')||DEFAULTS.whole,project:facts('project')||DEFAULTS.project},highlights:o.highlights!==false,title:typeof o.title==='string'?o.title.replace(/\s+/g,' ').trim().slice(0,140):''};
+      facts:{whole:facts('whole')||DEFAULTS.whole,project:facts('project')||DEFAULTS.project},highlights:o.highlights!==false,photo:o.photo&&UUID.test(o.photo.run)&&UUID.test(o.photo.id)?{run:o.photo.run,id:o.photo.id}:null,title:typeof o.title==='string'?o.title.replace(/\s+/g,' ').trim().slice(0,140):''};
   }
   // The slides, in order. Pure: the same model and choices always give the same card.
   function slides(model,tokens,raw){
@@ -48,9 +48,11 @@
     const told=g=>{if(g.result&&g.open&&wrote(g.open)===g.result)return {result:g.result,open:g.open};
       const last=[...g.runs].filter(i=>wrote(i.run)).sort((x,y)=>y.end-x.end)[0];if(last)return {result:wrote(last.run),open:last.run};
       const mark=[...g.marks].filter(m=>m.result&&wrote(m.run)===m.result).sort((x,y)=>y.until-x.until)[0];return mark?{result:mark.result,open:mark.run}:{result:'',open:g.open}};
+    // The chosen picture shows only where its run is in view: a reader who cannot see that run gets no trace of it.
+    const holds=g=>!!c.photo&&(g.runs.some(i=>i.run.id===c.photo.run)||g.marks.some(m=>m.run.id===c.photo.run));
     const project=g=>{const [a,b]=ends(g),cm=commitsOf(g);
       const said=[...g.runs].filter(i=>wrote(i.run)).map(i=>({text:wrote(i.run),run:i.run,at:i.start})).concat(g.marks.filter(m=>m.result).map(m=>({text:m.result,run:m.run,at:m.until}))).sort((x,y)=>y.at-x.at);
-      return {kind:'project',key:tk(g),name:g.label,group:g,open:told(g).open,from:a,until:b,result:told(g).result,highlights:c.highlights?said.slice(0,3):[],
+      return {kind:'project',key:tk(g),name:g.label,group:g,photo:holds(g)?c.photo:null,open:told(g).open,from:a,until:b,result:told(g).result,highlights:c.highlights?said.slice(0,3):[],
         facts:{commits:cm?{value:cm.n,note:cm.from==='git'?'from git history':'recorded by the runs'}:{value:null},session:{value:g.seconds>0?span(g.seconds):null,note:'summed across runs'},
           elapsed:{value:a&&b?span((b-a)/1000):null},runs:{value:g.runs.length,note:g.marks.length?`plus ${plural(g.marks.length,'git window')}`:''},
           tools:{value:g.runs.reduce((s,i)=>s+(i.run.tool_calls||i.run.ridge_tool_calls||0),0)||null}}}};
@@ -72,7 +74,7 @@
     const edges=runs.filter(i=>i.seconds>0).flatMap(i=>[[i.start.getTime(),1],[i.end.getTime(),-1]]).sort((x,y)=>x[0]-y[0]||x[1]-y[1]);let now=0,peak=0;for(const [,d] of edges){now+=d;peak=Math.max(peak,now)}
     const lead=per[0],seconds=runs.reduce((s,i)=>s+i.seconds,0);
     const fromGit=groups.filter(g=>commitsOf(g)&&commitsOf(g).from==='git').length,counted=groups.filter(g=>commitsOf(g)).length;
-    const whole={kind:'whole',key:'',name:'Overview',pie,groups:[...featured,...groups.filter(g=>!featured.includes(g))],quiet,from:first,until:last,result:c.title||`One run across ${plural(groups.length,'project')}`,draft:!c.title,open:lead.open,
+    const whole={kind:'whole',key:'',name:'Overview',pie,photo:groups.some(holds)?c.photo:null,groups:[...featured,...groups.filter(g=>!featured.includes(g))],quiet,from:first,until:last,result:c.title||`One run across ${plural(groups.length,'project')}`,draft:!c.title,open:lead.open,
       highlights:c.highlights?per.filter(p=>p.result).map(p=>({text:brief(p.result),run:p.open,name:p.name})).filter(h=>h.text).slice(0,3):[],
       facts:{projects:{value:groups.length},commits:{value:known?all:null,note:fromGit===counted?'from git history':fromGit?'git history and runs':'recorded by the runs'},session:{value:seconds>0?span(seconds):null,note:"summed across runs, not one person's hours"},
         elapsed:{value:first&&last?span((last-first)/1000):null},runs:{value:runs.length},tools:{value:runs.reduce((s,i)=>s+(i.run.tool_calls||i.run.ridge_tool_calls||0),0)||null},peak:{value:peak||null}}};
@@ -121,7 +123,7 @@
       <p class="dc-more">Marks show when, never who. Session time is first message to last and is summed across runs, so it is not one person's hours.</p></div>`;
   }
   const SHORT={'from git history':'git history','git history and runs':'git and runs','recorded by the runs':'from runs','summed across runs':'summed',"summed across runs, not one person's hours":'summed'};
-  function render(deck,{esc,mine,author,windowLabel,start=0,setupHref,runHref=(id)=>`/?run=${encodeURIComponent(id)}`}){
+  function render(deck,{esc,mine,author,windowLabel,start=0,setupHref,actions='',runHref=(id)=>`/?run=${encodeURIComponent(id)}`}){
     const S=deck.slides;if(!S.length)return '';
     const c=deck.choices,at=Math.max(0,Math.min(S.length-1,start|0)),many=S.length>1;
     const fact=(s,id)=>{const f=s.facts[id],none=f.value===null||f.value===undefined,note=!none&&SHORT[f.note];
@@ -131,7 +133,7 @@
         <ol class="dc-points">${s.points.map(p=>`<li><a href="${esc(runHref(p.run.id))}"><span class="dc-when">${esc(p.at.toLocaleDateString(undefined,{weekday:'short'}))} ${hm(p.at)} · ${esc(p.name)}</span>${esc(p.text)}</a></li>`).join('')}</ol>
         ${s.total>s.points.length?`<p class="dc-more">The latest ${s.points.length} of ${s.total}.</p>`:''}</section>`;
       const ids=(s.kind==='whole'?c.facts.whole:c.facts.project).filter(id=>s.facts[id]),high=s.kind==='whole'?s.highlights.filter(h=>h.text!==s.result).slice(0,2):[];
-      const photo=c.visual==='photo'&&s.open?`<a class="dc-photo" href="${esc(runHref(s.open.id))}" data-thumb-run="${esc(s.open.id)}" data-thumb-strict></a>`:'';
+      const photo=s.photo?`<a class="dc-photo" href="${esc(runHref(s.photo.run))}" data-thumb-run="${esc(s.photo.run)}" data-thumb-photo="${esc(s.photo.id)}" aria-label="Open the run this screenshot is from"></a>`:'';
       return `<section class="dc-slide" data-slide="${i}" data-name="${esc(s.name)}" ${s.open?`data-open="${esc(runHref(s.open.id))}"`:''} ${i===at?'':'hidden'} aria-label="${esc(s.name)}">
         <div class="dc-story">${photo}${s.result?`<p class="dc-said">${esc(s.result)}${s.draft&&mine&&setupHref?` <a class="dc-draft" href="${esc(setupHref)}">Draft headline. Write your own</a>`:''}</p>`:`<p class="dc-said dc-none">${mine?'No result written yet. Open the run and say what came out of it.':'No result written.'}</p>`}</div>
         <div class="dc-facts">${ids.map(id=>fact(s,id)).join('')}</div>
@@ -142,7 +144,8 @@
       <header class="dc-head"><p class="meta">${esc(author||'')}${author?' · ':''}${esc(windowLabel)}</p>
         ${many?`<nav class="dc-nav" aria-label="Views of this run"><button type="button" class="dc-arrow" data-step="-1" aria-label="Previous view">‹</button><p class="dc-pos" aria-live="polite"><b>${esc(S[at].name)}</b> · ${at+1} of ${S.length}</p><button type="button" class="dc-arrow" data-step="1" aria-label="Next view">›</button></nav>`:''}</header>
       ${S.map(slide).join('')}
-      ${lead?`<footer class="dc-actions"><a href="${esc(runHref(lead.open.id))}&ack=1">Kudos</a><a href="#day-thread" data-comment>Comment</a><a class="dc-open" href="${esc(runHref(open.id))}" data-fallback="${esc(runHref(lead.open.id))}">Details →</a></footer>`:''}</article>`;
+      ${lead?`<p class="dc-more-link"><a class="dc-open" href="${esc(runHref(open.id))}" data-fallback="${esc(runHref(lead.open.id))}">Open the run: timeline, evidence, pictures →</a></p>`:''}
+      ${actions?`<footer class="fc-foot">${actions}</footer>`:''}</article>`;
   }
   // Arrows, the selector, the keyboard and a swipe all go through one function. Nothing moves on its own.
   function wire(card,{onChange}={}){
@@ -161,16 +164,16 @@
   }
   // Setup: the author's display choices for this card. The preview under the form is the real card,
   // drawn from the same function a reader gets. Saving writes the choices; it never touches a run.
-  function mountSetup({slot,model,tokens,saved,esc,save,renderOpts,readerHref,onPreview}){
+  function mountSetup({slot,model,tokens,saved,esc,save,renderOpts,readerHref,onPreview,photos}){
     const all=model.groups.filter(g=>g.label),tk=g=>tokens.get(g.label)||'',c=clean(saved);
     const first=slides(model,tokens,saved);let order=all.slice().sort((a,b)=>{const i=x=>{const n=c.order.indexOf(tk(x));return n<0?1e6:n};return i(a)-i(b)}).map(tk);
-    const hidden=new Set(c.hidden.filter(t=>order.includes(t)));let title=c.title,lead=first.lead,visual=c.visual,highlights=c.highlights,facts={whole:[...c.facts.whole],project:[...c.facts.project]};
+    const hidden=new Set(c.hidden.filter(t=>order.includes(t)));let title=c.title,lead=first.lead,photo=c.photo,highlights=c.highlights,facts={whole:[...c.facts.whole],project:[...c.facts.project]};
     const name=t=>all.find(g=>tk(g)===t).label;
-    const current=()=>({lead:lead&&!hidden.has(lead)?lead:null,order:[...order],hidden:[...hidden],title,visual,highlights,facts:{whole:[...facts.whole],project:[...facts.project]}});
+    const current=()=>({lead:lead&&!hidden.has(lead)?lead:null,order:[...order],hidden:[...hidden],title,photo,highlights,facts:{whole:[...facts.whole],project:[...facts.project]}});
     slot.innerHTML=`<div class="head"><h1>Set up this card</h1></div>
       <p class="hint">This changes what the card shows and in which order. It changes no measurement and it shares nothing: who can see a run is still set under "Choose what readers see".</p>
       <div class="card ds-form"><h2>Headline of the overview</h2><input id="cs-title" class="cs-title" maxlength="140" value="${esc(title)}" placeholder="Left empty: One run across the number of projects" aria-label="Headline of the overview"><h2>Projects</h2><ol class="cs-list" id="cs-list"></ol>
-        <h2>Picture</h2><label class="cs-opt"><input type="radio" name="cs-visual" value="trace"> Graph only</label><label class="cs-opt"><input type="radio" name="cs-visual" value="photo"> One small screenshot: on the overview from the main project's run, on a project's view from its own run. Only a picture marked result or after is used</label>
+        <h2>Screenshot <span class="meta">one, from the pictures already on these runs</span></h2><div id="cs-photos"></div>
         <h2>Numbers on the run's view <span class="meta">up to three</span></h2><div class="cs-facts" data-k="whole"></div>
         <h2>Numbers on a project's view <span class="meta">up to three</span></h2><div class="cs-facts" data-k="project"></div>
         <label class="cs-opt"><input type="checkbox" id="cs-high"> Show short highlights under the result</label>
@@ -181,7 +184,7 @@
       list.innerHTML=order.map((t,i)=>`<li data-t="${t}"><label><input type="checkbox" data-inc ${hidden.has(t)?'':'checked'} aria-label="Include ${esc(name(t))}"> <b>${esc(name(t))}</b></label>
         <label class="cs-lead"><input type="radio" name="cs-lead" value="${t}" ${lead===t&&!hidden.has(t)?'checked':''} ${hidden.has(t)?'disabled':''}> main project</label>
         <span class="cs-move"><button type="button" data-move="-1" ${i===0?'disabled':''} aria-label="Move ${esc(name(t))} up">↑</button><button type="button" data-move="1" ${i===order.length-1?'disabled':''} aria-label="Move ${esc(name(t))} down">↓</button></span></li>`).join('');
-      slot.querySelectorAll('[name=cs-visual]').forEach(r=>{r.checked=r.value===visual});slot.querySelector('#cs-high').checked=highlights;
+      slot.querySelector('#cs-high').checked=highlights;
       slot.querySelectorAll('.cs-facts').forEach(box=>{const k=box.dataset.k;box.innerHTML=Object.entries(FACTS).filter(([,f])=>k==='whole'||!f.whole).map(([id,f])=>`<label class="cs-opt"><input type="checkbox" data-fact="${id}" ${facts[k].includes(id)?'checked':''} ${!facts[k].includes(id)&&facts[k].length>=3?'disabled':''}> ${esc(f.label)}</label>`).join('')});
       const deck=slides(model,tokens,current());slot.querySelector('#cs-preview').innerHTML=render(deck,{...renderOpts,mine:false});wire(slot.querySelector('#cs-preview #day-card'));if(onPreview)onPreview(slot.querySelector('#cs-preview'));
       state.textContent=dirty?'Not saved yet.':'';
@@ -189,13 +192,14 @@
     slot.querySelector('#cs-title').addEventListener('input',e=>{title=e.target.value.replace(/\s+/g,' ').trim().slice(0,140);dirty=true;const deck=slides(model,tokens,current());slot.querySelector('#cs-preview').innerHTML=render(deck,{...renderOpts,mine:false});wire(slot.querySelector('#cs-preview #day-card'));if(onPreview)onPreview(slot.querySelector('#cs-preview'));state.textContent='Not saved yet.'});
     slot.addEventListener('change',e=>{if(e.target.id==='cs-title')return;const t=e.target,li=t.closest('li[data-t]');
       if(t.dataset.inc!==undefined){t.checked?hidden.delete(li.dataset.t):hidden.add(li.dataset.t)}
-      else if(t.name==='cs-lead'){lead=t.value}else if(t.name==='cs-visual'){visual=t.value}else if(t.id==='cs-high'){highlights=t.checked}
+      else if(t.name==='cs-lead'){lead=t.value}else if(t.id==='cs-high'){highlights=t.checked}
       else if(t.dataset.fact){const k=t.closest('.cs-facts').dataset.k;facts[k]=t.checked?[...facts[k],t.dataset.fact].slice(0,3):facts[k].filter(f=>f!==t.dataset.fact)}
       else return;dirty=true;paint()});
     slot.addEventListener('click',async e=>{const m=e.target.closest('[data-move]');
       if(m){const li=m.closest('li'),i=order.indexOf(li.dataset.t),j=i+ +m.dataset.move;if(j<0||j>=order.length)return;[order[i],order[j]]=[order[j],order[i]];dirty=true;paint();slot.querySelector(`li[data-t="${order[j]}"] [data-move="${m.dataset.move}"]`)?.focus();return}
       if(e.target.id==='cs-save'){e.target.disabled=true;state.textContent='Saving…';const error=await save(current());e.target.disabled=false;dirty=!!error;state.textContent=error?`Not saved: ${error}`:'Saved. Readers get this card.'}});
     paint();
+    if(photos)photos(slot.querySelector('#cs-photos'),all.flatMap(g=>[...g.runs.map(i=>i.run),...g.marks.map(m=>m.run)].map(r=>({id:r.id,label:g.label}))),photo,pick=>{photo=pick;dirty=true;paint()});
   }
   const api={slides,render,detail,wire,clean,token,mountSetup,FACTS,DEFAULTS,VISUALS};
   if(typeof module==='object'&&module.exports)module.exports=api;

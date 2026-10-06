@@ -123,7 +123,7 @@ window.GrinderAccount = function ({
         <p>Signs you out of __BRAND__ in this browser only. Other devices, and Agent Grinder if you use it with the same sign-in, stay signed in.</p>
         <div class="account-actions"><button type="button" class="act" id="account-signout">Sign out here</button></div></section>
       <section class="card pad account-section account-danger" id="danger" aria-labelledby="account-delete-title"><h2 id="account-delete-title">Delete your __BRAND__ profile</h2>
-        <p><strong>Goes:</strong> this __BRAND__ profile, your posted runs, and the thanks and replies you gave or received here. Deleted work cannot be restored.</p>
+        <p><strong>Goes:</strong> this __BRAND__ profile, your posted runs, and the XUDOS and replies you gave or received here. Deleted work cannot be restored.</p>
         <p><strong>Stays:</strong> your sign-in account, your Agent Grinder profile and runs if you have one, and anything on your own computer.</p>
         <form id="account-delete" class="account-form" novalidate>
           <label for="account-confirm">Type your handle <strong id="account-confirm-handle">${esc(p.handle)}</strong> to confirm</label>

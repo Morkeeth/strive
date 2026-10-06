@@ -56,4 +56,4 @@ def test_active_interface_uses_plain_social_and_account_labels():
     assert ">Reply</a>" in INDEX
     assert "Back to Notifications" in social and "Back to Notifications" in people
     assert "<h1>Settings</h1>" in account
-    assert "Thanks recognise real contributions" in terms
+    assert "XUDOS recognise real contributions" in terms

@@ -169,12 +169,34 @@
         const list=await fetch(`/api/run-photos?run_id=${encodeURIComponent(slot.dataset.thumbRun)}`,{headers:await headers(client),signal:controller.signal});
         if(!active||!list.ok)return;const photos=((await list.json())?.photos||[]).filter(p=>p.role!=='personal');
         // A strict slot takes only a picture the author marked as the result or the after state, never just the first one.
-        const photo=photos.find(p=>p.role==='result')||photos.find(p=>p.role==='after')||(slot.dataset.thumbStrict===undefined?photos[0]:null),path=photo&&photoPath(photo);if(!path)return;
+        // A slot that names one picture shows that picture or nothing: the author chose it.
+        const photo=slot.dataset.thumbPhoto?photos.find(p=>p.id===slot.dataset.thumbPhoto):photos.find(p=>p.role==='result')||photos.find(p=>p.role==='after')||(slot.dataset.thumbStrict===undefined?photos[0]:null),path=photo&&photoPath(photo);if(!path)return;
         const res=await fetch(path,{headers:await headers(client),signal:controller.signal});if(!active||!res.ok)return;
         const url=URL.createObjectURL(await res.blob());urls.add(url);
         const image=document.createElement('img');image.src=url;image.alt=roles[photo.role]||'Run photo';image.loading='lazy';slot.replaceChildren(image);
       }catch(_){}
     }));
   }
-  root.StriveRunPhotos={mount,mountCovers,mountPair,mountThumbs,disposeAll};
+  // The author picks one picture for a card from the pictures already on their runs. Nothing is
+  // uploaded, moved or changed here: the choice is the picture's id.
+  async function mountChooser({client,slot,runs,selected,onPick}){
+    let active=true;const controller=new AbortController(),urls=new Set();
+    const dispose=()=>{active=false;controller.abort();for(const url of urls)URL.revokeObjectURL(url);urls.clear();disposers.delete(dispose)};
+    disposers.add(dispose);slot.innerHTML='<p class="meta">Looking for pictures on these runs…</p>';
+    const found=[];
+    await Promise.all((runs||[]).slice(0,60).map(async run=>{
+      try{const res=await fetch(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:await headers(client),signal:controller.signal});if(!active||!res.ok)return;
+        for(const photo of ((await res.json())?.photos||[])){if(photo.role==='personal')continue;const path=photoPath(photo);if(!path)continue;
+          const img=await fetch(path,{headers:await headers(client),signal:controller.signal});if(!active||!img.ok)continue;const url=URL.createObjectURL(await img.blob());urls.add(url);found.push({run,photo,url})}
+      }catch(_){}}));
+    if(!active)return;
+    found.sort((a,b)=>runs.indexOf(a.run)-runs.indexOf(b.run));
+    const on=f=>selected&&selected.id===f.photo.id&&selected.run===f.run.id;
+    slot.innerHTML=`<div class="pc-list" role="radiogroup" aria-label="Screenshot on the card"><label class="pc-item pc-none"><input type="radio" name="pc-photo" value="" ${found.some(on)?'':'checked'}><span>No screenshot</span></label>`
+      +found.map((f,i)=>`<label class="pc-item"><input type="radio" name="pc-photo" value="${i}" ${on(f)?'checked':''}><img src="${f.url}" alt="${esc(roles[f.photo.role]||'Photo')} picture on ${esc(f.run.label||'a run')}"><span>${esc(f.run.label||'Run')} · ${esc((roles[f.photo.role]||'Photo').toLowerCase())}</span></label>`).join('')+'</div>'
+      +(found.length?'':'<p class="meta">No picture on these runs yet. Add one on a run, then choose it here.</p>');
+    slot.querySelectorAll('[name=pc-photo]').forEach(r=>r.addEventListener('change',e=>{e.stopPropagation();const f=found[+r.value];onPick(r.value===''||!f?null:{run:f.run.id,id:f.photo.id})}));
+    return found.length;
+  }
+  root.StriveRunPhotos={mount,mountCovers,mountPair,mountThumbs,mountChooser,disposeAll};
 })(typeof window!=="undefined"?window:globalThis);

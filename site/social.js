@@ -262,7 +262,7 @@ window.GrinderSocial = function ({
   async function notificationsPanel(slot) {
     if (!slot) return;
     if (!me()) {
-      slot.innerHTML = '<p class="notice-empty">Sign in to see replies, thanks and new followers.</p>';
+      slot.innerHTML = '<p class="notice-empty">Sign in to see replies, XUDOS and new followers.</p>';
       return;
     }
     slot.innerHTML = '<p class="notice-empty">Loading…</p>';
@@ -276,12 +276,12 @@ window.GrinderSocial = function ({
           .limit(20),
       );
       if (!rows.length) {
-        slot.innerHTML = '<p class="notice-empty">No notifications yet. Replies, thanks and follows will appear here.</p>';
+        slot.innerHTML = '<p class="notice-empty">No notifications yet. Replies, XUDOS and follows will appear here.</p>';
         return;
       }
       slot.innerHTML = rows.map((n) => {
         const actor = present(n.actor);
-        const kind = n.kind === "reply" ? "replied to your run" : n.kind === "ack" ? "thanked your run" : "followed you";
+        const kind = n.kind === "reply" ? "replied to your run" : n.kind === "ack" ? "sent XUDOS on your run" : "followed you";
         const href = notificationHref(n);
         return `<article class="notice-item ${n.read_at ? "read" : "unread"}" data-notification-id="${esc(n.id)}">
           <span class="notice-dot" aria-hidden="true"></span><div><p class="notice-copy"><b>${esc(actor.label)}</b> ${kind}</p>
@@ -1151,7 +1151,7 @@ window.GrinderSocial = function ({
         body.innerHTML =
           filters +
           empty(
-            "Post a real run and share it with a friend. Their thanks and replies will bring you back to the conversation.",
+            "Post a real run and share it with a friend. Their XUDOS and replies will bring you back to the conversation.",
             `<div class="cta"><a class="act blue" href="/?post">Post your first run</a><a class="act" href="/?people">Find people</a></div>`,
           );
         await refreshUnread();
@@ -1162,7 +1162,7 @@ window.GrinderSocial = function ({
         body.innerHTML =
           filters +
           empty(
-            "No unread notifications. Open All to browse earlier thanks and replies.",
+            "No unread notifications. Open All to browse earlier XUDOS and replies.",
             `<div class="cta"><a class="act" href="/?inbox">Show all responses</a></div>`,
           );
         await refreshUnread();
@@ -1179,7 +1179,7 @@ window.GrinderSocial = function ({
               n.kind === "reply"
                 ? "replied to your run"
                 : n.kind === "ack"
-                  ? "thanked your work"
+                  ? "sent XUDOS on your work"
                   : "followed you";
             const run = n.run_id ? runs.get(n.run_id) : null;
             const reply =
@@ -1424,7 +1424,7 @@ window.GrinderSocial = function ({
           '<p class="hint">Invite one person. A Crew becomes real when two builders each have a run in this feed.</p>';
       } else if (members.length === 2 && posters.size >= 2) {
         loopNote =
-          '<p class="hint">Two builders, real runs. Thank a specific contribution, then return through Notifications.</p>';
+          '<p class="hint">Two builders, real runs. Send XUDOS for a specific contribution, then return through Notifications.</p>';
       } else if (members.length === 2 && posters.size === 1) {
         const missing = members.find((m) => !posters.has(m.profile_id));
         const label = missing ? present(missing.profile).label : "the other member";

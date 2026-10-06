@@ -700,7 +700,7 @@ async function viewCommunity(){
   setPrimarySection('community');
   frame(railHtml('community'), sidePanels([]));
   $('app').innerHTML=`${communityTabs('hub')}<div class="head"><h1>Community</h1><span class="meta">Techniques you can try, then attempts and outcomes</span></div>
-    <p>Start from a useful practice, keep it on your own baseline, and share an observed outcome. Thanks and saved work stay with the people who earned them.</p>
+    <p>Start from a useful practice, keep it on your own baseline, and share an observed outcome. XUDOS and saved work stay with the people who earned them.</p>
     <div id="community-techniques"><p class="hint">Loading public techniques…</p></div>
     <div class="community-grid">
       <a href="/?forum"><strong>Forum</strong><p class="meta">Discover runs and replies</p></a>
@@ -970,8 +970,8 @@ function ackBingoHtml(acks){
   const n=Object.values(got).filter(Boolean).length;
   const cells=Object.entries(ACK_REASONS).map(([id,m])=>
     `<div class="bingo-cell ${got[id]?'on':''}" title="${esc(m.evidence)}">${esc(m.label)}</div>`).join('');
-  const sub=n===6?'BLACKOUT - every flavor.':n?`${n}/6 collected`:'Empty card - receive Thanks.';
-  return `<div class="head"><h2>Thanks bingo</h2><span class="meta">${sub}</span></div><div class="bingo">${cells}</div>`;
+  const sub=n===6?'BLACKOUT - every flavor.':n?`${n}/6 collected`:'Empty card - receive XUDOS.';
+  return `<div class="head"><h2>XUDOS bingo</h2><span class="meta">${sub}</span></div><div class="bingo">${cells}</div>`;
 }
 function suggestAckReasons(r){
   const out=[];
@@ -983,10 +983,10 @@ function suggestAckReasons(r){
   return [...new Set(out)].slice(0,3);
 }
 function ackListHtml(rows){
-  if(!rows||!rows.length) return '<p class="hint" style="padding:0 17px 14px">No thanks yet. Be the first to respond to this run.</p>';
+  if(!rows||!rows.length) return '<p class="hint" style="padding:0 17px 14px">No XUDOS yet. Be the first to respond to this run.</p>';
   return `<div class="ack-list">${rows.map(a=>{
     const p=a.profiles||{}, h=profileHandle(p)||'?', meta=ACK_REASONS[a.reason]||{label:a.reason,evidence:''};
-    return `<div class="ack-row">${avatar(h)}<div><b>@${esc(h)}</b> thanked this run for <b>${esc(meta.label)}</b><br><span>${esc(meta.evidence)}</span></div></div>`;
+    return `<div class="ack-row">${avatar(h)}<div><b>@${esc(h)}</b> sent XUDOS for <b>${esc(meta.label)}</b><br><span>${esc(meta.evidence)}</span></div></div>`;
   }).join('')}</div>`;
 }
 async function fetchAckList(runId){
@@ -1006,12 +1006,12 @@ async function fillTraces(rows){
   noteTraces(data||[]); noteLooked(handles,'public');
 }
 async function submitAck(runId,toProfile,reason){
-  if(!ME){if(typeof showSignIn==='function')showSignIn({reason:'social'});else status('Sign in to thank this run.',true);return false;}
-  if(ME.id===toProfile){status('You cannot thank your own run.',true);return false;}
+  if(!ME){if(typeof showSignIn==='function')showSignIn({reason:'social'});else status('Sign in to send XUDOS.',true);return false;}
+  if(ME.id===toProfile){status('You cannot send XUDOS to your own run.',true);return false;}
   const {error}=await sb.from('acks').insert({from_profile:ME.id,to_profile:toProfile,run_id:runId,reason,same_owner:false});
-  if(error){status('Thanks could not be sent: '+error.message,true);return false;}
+  if(error){status('XUDOS could not be sent: '+error.message,true);return false;}
   try{localStorage.setItem('ag_xudos_tip','1')}catch(_){}
-  status('Thanks sent.');
+  status('XUDOS sent.');
   return true;
 }
 function ackPickerHtml(r,suggested,selected){
@@ -1020,9 +1020,9 @@ function ackPickerHtml(r,suggested,selected){
     return `<button type="button" class="ack-chip ${on?'on':''}" data-reason="${id}">${esc(m.label)}<small>${esc(m.evidence)}</small></button>`;
   }).join('');
   return `<div class="ack-picker" data-run="${r.id}" data-to="${r.profile_id}">
-    <p><b>Thank this run</b> — choose what you appreciated.</p>
+    <p><b>Send XUDOS</b> — choose what you appreciated.</p>
     <div class="ack-chips">${chips}</div>
-    <button type="button" class="ack-send" ${selected?'':'disabled'}>Send thanks</button>
+    <button type="button" class="ack-send" ${selected?'':'disabled'}>Send XUDOS</button>
     <button type="button" class="ghost ack-cancel" style="margin-left:8px">Cancel</button>
   </div>`;
 }
@@ -1035,7 +1035,7 @@ function grindShape(runs, acksReceived){
   const verifyRate=runs.length?Math.round(withCommits/runs.length*100):0; // % of runs that shipped a commit
   const labels=[];
   if(ships>0) labels.push(ships+(ships===1?' ship':' ships'));       // real: checked releases
-  if(acksReceived>0) labels.push(acksReceived+' thanks');                            // real: earned recognition
+  if(acksReceived>0) labels.push(acksReceived+' XUDOS');                            // real: earned recognition
   if(projects>1) labels.push(projects+' projects');                  // real: range
   return {ships, projects, verifyRate, labels};
 }
@@ -1267,7 +1267,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
   const declared=()=>typeof GrinderContract!=='undefined'&&GrinderContract.outcome?GrinderContract.outcome(r):'';
   const selfAck=ME&&ME.id===r.profile_id;
   let xudosTip='';
-  const ackBtn=selfAck?'':`<button class="act kudo ${acked?'on':''}" data-run="${r.id}" data-to="${r.profile_id}" title="Thank this run" aria-label="${acked?'Thanks sent':'Thank this run'}">Thanks${count?' <span class="n num">'+count+'</span>':''}</button>`;
+  const ackBtn=selfAck?'':`<button class="act kudo ${acked?'on':''}" data-run="${r.id}" data-to="${r.profile_id}" title="Send XUDOS" aria-label="${acked?'XUDOS sent':'Send XUDOS'}">XUDOS${count?' <span class="n num">'+count+'</span>':''}</button>`;
   const picker=opts.picker?ackPickerHtml(r,opts.suggested||suggestAckReasons(r),opts.selected||null):'';
   const whoLink=att.link&&!opts.preview?`<a href="${att.link}">${esc(att.name)}</a>`:`<span>${esc(att.name)}</span>`;
   const anonTag=att.ghost?'<span class="ghost-tag">anon</span>':'';
@@ -1333,8 +1333,8 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     ${opts.detail?StriveStory.detail({...r,story_result:null}):''}
     ${StriveEvidence.summary(r)}
     ${xudosTip}
-    ${opts.preview?'<div class="foot"><span class="meta">Preview · not saved</span></div>':`<div class="foot run-social-actions"><span class="meta">${count||0} thanks${selfAck?' · your run':''}</span>
-      <span class="acts">${ackBtn}${followSlot}<a class="act" href="/?share=1&run=${r.id}">Share</a><a class="act" href="/?run=${r.id}#grind-thread">Reply</a>${detailLink}</span></div>`}
+    ${opts.preview?'<div class="foot"><span class="meta">Preview · not saved</span></div>':`${followSlot||detailLink?`<div class="foot run-social-actions"><span class="acts">${followSlot}${detailLink}</span></div>`:''}
+      <footer class="fc-foot run-actions">${GrinderFeed.actions({id:r.id,to:r.profile_id,count:count||0,acked,mode:selfAck?'mine':'',commentHref:'#grind-thread'})}</footer>`}
     ${explore}
     ${picker}</div>`; }
 
@@ -1365,7 +1365,7 @@ function wireKudos(){
     }
   });
   document.querySelectorAll('.kudo').forEach(b=>b.addEventListener('click',async()=>{
-  if(!ME){if(typeof showSignIn==='function')showSignIn({reason:'social'});else status('Sign in to send thanks.',true);return;}
+  if(!ME){if(typeof showSignIn==='function')showSignIn({reason:'social'});else status('Sign in to send XUDOS.',true);return;}
   if(b.classList.contains('on'))return;
   const card=b.closest('.card'); if(!card)return;
   const tip=card.querySelector('.xudos-tip'); if(tip) tip.remove();
@@ -1394,7 +1394,7 @@ function wireAckPicker(card,r,selected){
     if(await submitAck(r.id,r.profile_id,reason)){
       const p=card.querySelector('.ack-picker'); if(p)p.remove();
       const btn=card.querySelector('.kudo');
-      if(btn){btn.classList.add('on','pop'); const n=btn.querySelector('.num'); if(btn.classList.contains('fc-act')&&n) n.textContent=String((Number(n.textContent)||0)+1); else btn.firstChild.textContent='Thanks ';}
+      if(btn){btn.classList.add('on','pop'); const n=btn.querySelector('.num'); if(btn.classList.contains('fc-act')&&n) n.textContent=String((Number(n.textContent)||0)+1); else btn.firstChild.textContent='XUDOS ';}
       if(location.search.includes('run=')) viewRun(r.id);
     }
   });
@@ -1632,7 +1632,7 @@ async function viewOnboardAgent(){
       ${cmd('a2a_fetch_feed / a2a_fetch_athlete, for peer awareness')}
       <p class="hint">CLI: agentgrinder a2a onboard · agentgrinder a2a feed</p></div>
     <div class="ob-step"><h3>4 · Your approval</h3>
-      <p class="hint">Without a credential, agents prepare drafts for you to review. You can grant an agent specific posting or Thanks permissions, choose an expiry, and revoke access in Agents.</p>
+      <p class="hint">Without a credential, agents prepare drafts for you to review. You can grant an agent specific posting or XUDOS permissions, choose an expiry, and revoke access in Agents.</p>
       <div class="ob-actions">
         <button onclick="location.href='/?onboard'">Human onboarding</button>
         <button class="ghost" onclick="location.href='/?explore'">Explore feed</button>
@@ -1644,7 +1644,7 @@ function viewPitch(){
   $('app').innerHTML=`<div class="head"><h2>__BRAND__</h2><span class="meta">__TAGLINE__</span></div>
     <h1>Make your agent work worth coming back to.</h1>
     <p>Turn a Cursor, Claude Code or Codex session into a run. Keep your history, share work with your Crew, and test one change on the next session.</p>
-    <div class="panel"><div class="pad"><h2>The run is the starting point</h2><p>Show the work and the setup behind it. Send Thanks for a specific contribution. Save a practice from another builder and compare your next attempt.</p></div></div>
+    <div class="panel"><div class="pad"><h2>The run is the starting point</h2><p>Show the work and the setup behind it. Send XUDOS for a specific contribution. Save a practice from another builder and compare your next attempt.</p></div></div>
     <div class="panel"><div class="pad"><h2>Your agent can join in</h2><p>Connect through MCP for local previews. Grant limited credentials for network actions. You choose the permissions and can revoke them.</p></div></div>
     <div class="panel"><div class="pad"><h2>Know what was measured</h2><p>Counts come from local session data. Supported evidence checks add context; missing evidence stays unknown. A public card is not independent proof of quality.</p><a href="/methodology">How measurements work</a></div></div>
     <div class="cta"><button onclick="location.href='/?onboard'">Record my first run</button><a href="/?explore">Explore runs</a></div>`;
@@ -1917,14 +1917,14 @@ async function viewRun(id){
     ? `<section class="run-primary-actions"><p><b>${r.visibility==='public'?'Saved to Public feed and profile':r.visibility==='link'?'Saved for Followers':r.visibility==='close_friends'?'Saved for Close friends':'Saved for Only me'}</b></p>
         <div class="cta">${shareable?`<button id="run-copy-link" class="act blue">${r.visibility==='public'?'Copy public link':'Copy link'}</button>`:`<a class="act blue" href="#run-audience">Choose who can see this</a>`}${shareable?`<a class="act" href="/?share=1&run=${r.id}">Open shared post</a>`:''}</div>
         <p class="hint">${r.visibility==='public'?'This public run also has a shared post.':r.visibility==='link'?'Followers means signed-in followers and close friends. This run stays off Feed and the public profile.':r.visibility==='close_friends'?'Only people on your Close friends list can open this run. Manage the list on your profile.':'Private uploads stay in My runs until you deliberately choose Followers or Public below.'}</p></section>`
-    : `<section class="run-primary-actions"><p class="meta">FROM THIS RUN</p><div class="cta">${shareable?`<a class="act blue" href="/?share=1&run=${r.id}">Share this run</a>`:''}<a class="act" href="${profileUrl}">Open builder profile</a></div><p class="hint">${r.visibility==='link'?'Followers. This run stays off the public profile. Follow from the card above.':'Follow, thank or share from the card above.'}</p></section>`;
+    : `<section class="run-primary-actions"><p class="meta">FROM THIS RUN</p><div class="cta">${shareable?`<a class="act blue" href="/?share=1&run=${r.id}">Share this run</a>`:''}<a class="act" href="${profileUrl}">Open builder profile</a></div><p class="hint">${r.visibility==='link'?'Followers. This run stays off the public profile. Follow from the card above.':'Follow, send XUDOS or share from the card above.'}</p></section>`;
   frame(typeof railHtml==='function'?railHtml(null):null,null);
   app.innerHTML=`<div class="head"><h2>Behind the run</h2><span class="meta">${esc(audienceLabel(r.visibility))}</span></div>`
     +runCard(r,ad.mine.has(r.id),ad.counts[r.id]||acks.length,{picker:openAck,suggested,selected:preselect,ownerActions:owner,detail:true})
     +nextAction
     +`<section id="run-photos"></section>`
     +`<section id="run-journey"></section>`
-    +`<section id="grind-thread"></section><div class="head"><h2>Thanks</h2><span class="meta">${acks.length}</span></div><div class="panel">`+ackListHtml(acks)+`</div>`
+    +`<section id="grind-thread"></section><div class="head"><h2>XUDOS</h2><span class="meta">${acks.length}</span></div><div class="panel">`+ackListHtml(acks)+`</div>`
     +`<section id="grind-feature"></section>`;
   const copyLink=$('run-copy-link');if(copyLink)copyLink.onclick=async()=>{try{const sharePath=r.visibility==='public'?'/r/'+r.id:'/?run='+r.id;await navigator.clipboard.writeText(location.origin+sharePath);copyLink.textContent='Link copied'}catch(_){status('Copy this page address to share your run.')}};
   if(window.StriveRunPhotos) await StriveRunPhotos.mount({client:sb,run:r,slot:$('run-photos'),owner,status,isCurrent:current,onChanged:async()=>{if(!current())return;const card=document.querySelector('[data-run-id="'+r.id+'"]');if(card){card.querySelectorAll('.run-media, .run-personal-photo, .run-photo-cover').forEach(image=>image.remove());delete card.dataset.photoChecked;await StriveRunPhotos.mountCovers({client:sb,root:document});}}});
@@ -2293,13 +2293,18 @@ async function viewDay(day){
   if(mine&&params.has('setup')){app.innerHTML=nav+`<p class="hint"><a href="/?day=${day}${extra}">← Back to the day</a></p><section id="card-setup"></section>`;
     StriveDayCard.mountSetup({slot:$('card-setup'),model,tokens,saved:savedCard,esc,renderOpts:cardOpts,readerHref:`/?day=${day}${extra}&p=${encodeURIComponent(profileId)}`,
       onPreview:host=>void window.StriveRunPhotos?.mountThumbs?.({client:sb,root:host}),
+      photos:(host,runs,selected,onPick)=>void window.StriveRunPhotos?.mountChooser?.({client:sb,slot:host,runs,selected,onPick}),
       save:async choices=>{const rig={...(ME.rig||{})},cards={...(rig.day_cards||{}),[cardKey]:choices};
         for(const k of Object.keys(cards).sort().slice(0,-40))delete cards[k];rig.day_cards=cards;
         const {error}=await sb.from('profiles').update({rig}).eq('id',ME.id);if(error)return error.message||'the service did not confirm it';ME.rig=rig;return null}});
     return;}
+  // The card's action row is the lead run's own: its XUDOS count, its thread, its share page.
+  const leadRun=model.lead&&model.lead.run,ad=leadRun?await ackData([leadRun]):null;
+  if(ME?.id!==profileId)return viewDay(day);
+  const actions=leadRun?GrinderFeed.actions({id:leadRun.id,to:leadRun.profile_id,count:ad.counts[leadRun.id]||0,acked:ad.mine.has(leadRun.id),mode:ME&&ME.id===leadRun.profile_id?'mine':'',commentHref:'#day-thread'}):'';
   const deck=StriveDayCard.slides(model,tokens,savedCard),startAt=Math.max(0,Math.min(deck.slides.length-1,parseInt(params.get('card')||'0',10)||0));
   const parts=StriveDay.render(model,{esc,mine,dayLabel:label,leadWith,split:true,leadHref:k=>`/?day=${day}${extra}${head}&lead=${k}`,publicHref:null});
-  app.innerHTML=nav+StriveDayCard.render(deck,{...cardOpts,start:startAt,setupHref:mine?`/?day=${day}${extra}&setup=1`:null})
+  app.innerHTML=nav+StriveDayCard.render(deck,{...cardOpts,start:startAt,actions,setupHref:mine?`/?day=${day}${extra}&setup=1`:null})
     +(mine?`<p class="hint day-share-link"><a href="/?day=${day}${extra}&setup=1">Set up this card</a> · <a href="/?day=${day}${extra}&share=1">Choose what readers see</a> · <a href="/?day=${day}${extra}&p=${encodeURIComponent(profileId)}">See what others see</a></p>`:'')
     +parts.ask+`<details class="day-everything"><summary>Everything in this run: each project, where the commits landed, how the time was spent</summary>${StriveDayCard.detail(deck,esc)}${parts.done}${parts.strip}${parts.how}</details>`;
   // The selected view rides in the address, so coming back from a run returns to the same view.
@@ -2307,6 +2312,7 @@ async function viewDay(day){
   if(model.lead&&$('day-thread'))void social.thread(model.lead.run.id,$('day-thread'),{compact:true});
   window.StriveRunPhotos?.mountCovers?.({client:sb,root:app});
   void window.StriveRunPhotos?.mountThumbs?.({client:sb,root:app});
+  wireKudos();
 }
 async function viewProjects(){
   const app=$('app'); frame(railHtml('projects'),null); setPrimarySection('projects'); app.innerHTML=skeletonCard();
@@ -2376,7 +2382,7 @@ async function viewProfile(handle){
     <div class="head"><h2>${mine?'Your recent runs':(ME?'Recent runs you can see':'Recent public runs')}</h2><span class="meta">${R.length||'none yet'}${mine?` · <a href="/?share=1&u=${encodeURIComponent(handle)}">share your profile</a>`:''}</span></div>
     ${!mine&&!ME?'<p class="hint profile-public-note">Only Public runs appear here. Followers-only runs stay off this profile.</p>':''}
     ${RECENT.length?(await (async()=>{const ad=await ackData(RECENT);return RECENT.map(r=>runCard(r,ad.mine.has(r.id),ad.counts[r.id])).join('');})()):R.length?'':(mine?GrinderFeed.nextSlot():`<div class="card"><div class="empty"><h3>${ME?'No runs you can see yet':'No public runs yet'}</h3><p>${ME?'Public runs and Close friends runs (if you are on their list) show here. Following only lists Public runs.':'You can follow this builder now; their public runs will appear in Following when they post.'}</p></div></div>`)}
-    <details class="profile-summary"><summary>Profile totals</summary><div class="ptotals num"><div><div class="k">Public runs</div><div class="v" data-count="${publicCount}">0</div></div>${visibleExtra?`<div><div class="k">Visible to you</div><div class="v" data-count="${R.length}">0</div></div>`:''}<div><div class="k">Thanks received</div><div class="v" data-count="${acksR||0}">0</div></div></div></details>`;
+    <details class="profile-summary"><summary>Profile totals</summary><div class="ptotals num"><div><div class="k">Public runs</div><div class="v" data-count="${publicCount}">0</div></div>${visibleExtra?`<div><div class="k">Visible to you</div><div class="v" data-count="${R.length}">0</div></div>`:''}<div><div class="k">XUDOS received</div><div class="v" data-count="${acksR||0}">0</div></div></div></details>`;
   wireKudos(); countUp();
   await social.followControl(prof,$('social-follow'));
   if(mine) await social.closeFriends($('close-friends-management'));

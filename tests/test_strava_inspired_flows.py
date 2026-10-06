@@ -42,14 +42,14 @@ def test_run_detail_promotes_audience_aware_next_action():
         "Saved for Followers",
         "Saved for Only me",
         "Open builder profile",
-        "Follow, thank or share from the card above.",
+        "Follow, send XUDOS or share from the card above.",
     ):
         assert phrase in detail
     assert "Followers means signed-in followers and close friends" in detail
     assert "runCard(r" in detail
     assert detail.index("+nextAction") < detail.index("grind-thread")
     assert "Grokbot Builders Sunday" not in INDEX
-    assert "Send thanks" in INDEX
+    assert "Send XUDOS" in INDEX
     assert "Oscar and Eric" in SOCIAL
 
 

@@ -48,8 +48,8 @@ def test_card_shows_builder_project_session_caption_and_output():
 def test_social_actions_remain_in_the_focused_app():
     assert ".from(\"grinder_follows\")" in SOCIAL
     assert ".from(\"grinder_replies\")" in SOCIAL
-    assert "Thank this run" in INDEX
-    assert "Send thanks" in INDEX
+    assert "Send XUDOS" in INDEX
+    assert "Send XUDOS" in INDEX
     assert "ACK the work" not in INDEX
     assert "Send ACK" not in INDEX
     assert "Notifications" in SOCIAL
