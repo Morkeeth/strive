@@ -14,6 +14,14 @@ assert.equal(D.match({...run,harness:'Cursor'},saved),null,'another harness at t
 assert.equal(D.match({...run,started:'2026-10-05T10:00:01.000Z'},saved),null);
 assert.equal(D.match({...run,harness:'Cursor',measurement_revision:'r'.repeat(64)},saved).id,'b','a measurement reference wins over time');
 assert.equal(D.match({...run,started:null},saved),null,'a draft with no start time is never guessed to be saved');
+// The real shape from 5 Oct: two Claude Code sessions that started in the same millisecond, in two projects, with two
+// measurement references. Saving one must never mark the other as already saved.
+const twinA={started:'2026-10-05T22:23:39.711000+02:00',harness:'Claude Code',project:'continuity',duration_s:1480,tool_calls:29,measurement_revision:'e607f4c0de'.padEnd(64,'0')};
+const twinB={...twinA,project:'token-planner',duration_s:1542,tool_calls:43,measurement_revision:'ff427f0a31'.padEnd(64,'0')};
+const afterA=[{id:'ta',started_at:'2026-10-05T20:23:39.711+00:00',harness:'Claude Code',measurement_revision:twinA.measurement_revision}];
+assert.equal(D.match(twinA,afterA).id,'ta');assert.equal(D.match(twinB,afterA),null,'a different measurement reference is a different session, whatever the clock says');
+assert.equal(D.match(twinB,[{...afterA[0],measurement_revision:null}]).id,'ta','a saved row with no reference can still only be matched by time');
+assert.equal(D.match({...twinB,measurement_revision:null},afterA).id,'ta','a draft with no reference can still only be matched by time');
 const deps={profileId:'p',projectLabel:v=>(typeof v==='string'&&v.trim())||'',rejectPaths:v=>/[\\/]/.test(v)?'':v,safeRepoUrl:v=>/^https:/.test(v||'')?v:null};
 const own=D.rowFor(run,{...deps,project:''});
 assert.equal(own.project,'raw-label');assert.equal(own.title,'raw-label session');assert.equal(own.visibility,'private','a day save is always Only me');

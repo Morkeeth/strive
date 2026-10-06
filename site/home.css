@@ -61,3 +61,5 @@
 .pin-check{display:flex;align-items:center;gap:10px;min-height:44px;font-size:15px;color:var(--ink)}
 .pin-check input{width:20px;height:20px;accent-color:var(--blue)}
 .pinned{margin:0 0 18px}
+.home-community{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 24px;margin:0 0 18px;max-width:900px}.home-community .land-head{margin:0 0 6px}.home-community .land-head h2{font-size:14px}.home-community .home-none{border-top:0;padding:4px 0 8px;font-size:13px}.home-community .evs{margin:0}
+@media(max-width:720px){.home-community{grid-template-columns:1fr}}

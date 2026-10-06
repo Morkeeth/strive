@@ -13,7 +13,10 @@ function validate(m){
  if(count(m.input_tokens)&&count(m.output_tokens)&&!count(m.input_tokens+m.output_tokens))throw Error('Token count too large');
  return m;
 }
-function context(r){const goal=String(r.caption||r.note||'').trim(),result=String(r.story_result||'').trim();return `<section class="run-context" aria-label="About this run"><h3>Goal / context</h3><p>${goal?esc(goal):'The author has not described the goal yet.'}</p><h3>What changed</h3><p>${result?esc(result):'The author has not described the result yet.'}</p><p class="meta">${goal||result?'In the author’s words.':'Activity alone cannot tell us what was achieved.'}</p></section>`;}
+function context(r){const goal=String(r.caption||r.note||'').trim(),result=String(r.story_result||'').trim();// The run's description is already on the card, above this. It is not said twice: this block adds
+// only what the author wrote about the result, and stays out of the way when there is nothing.
+if(!result)return goal?'':'<p class="meta run-context-none">The author has not described this run. Activity alone cannot tell us what was achieved.</p>';
+return `<section class="run-context" aria-label="What changed"><h3>What changed</h3><p>${esc(result)}</p><p class="meta">In the author’s words.</p></section>`;}
 function setup(r){let m=null;try{m=validate(r.capture_metadata)}catch{}
  const models=m?.models?.length?[...new Set(m.models)].join(', '):'Unknown — not recorded';
  const total=m&&count(m.input_tokens)&&count(m.output_tokens)?(m.input_tokens+m.output_tokens).toLocaleString('en-US'):'Unknown — not recorded';

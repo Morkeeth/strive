@@ -66,7 +66,7 @@
 
 #signin-dialog{border:1px solid var(--rule);border-radius:2px;background:var(--bg);color:inherit;padding:24px;width:min(420px,calc(100% - 32px));box-sizing:border-box}#signin-dialog::backdrop{background:rgba(0,0,0,.45)}
 
-#scrapbook-extras .panel{padding:20px}#scrapbook-extras .panel h3{margin-top:0}
+
 
 .octacon-board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:20px 0}.octacon-place{padding:16px;border:1px solid var(--rule);overflow-wrap:anywhere;min-height:110px}.octacon-place.open{border-style:dashed;color:var(--muted);display:grid;place-items:center}@media(max-width:700px){.octacon-board{grid-template-columns:repeat(2,minmax(0,1fr))}}
 

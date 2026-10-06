@@ -200,7 +200,7 @@ a.act{display:inline-block;text-decoration:none}
 .c-title,.title{font-size:14px;font-weight:500;padding:14px 16px 0}
 .run-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-right:16px}
 .run-title-row .title{min-width:0;flex:1}
-.run-owner-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;padding-top:8px}
+.run-owner-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:14px;padding-top:10px;font-size:13px}.run-owner-actions a{color:var(--blue);text-decoration:none;white-space:nowrap}
 .sub{padding:4px 16px 0;font-size:13px;color:var(--soft)}
 .card-harness{color:var(--ink);font-weight:500}
 .note{padding:8px 16px 0;font-size:14px;line-height:1.55}
@@ -1315,7 +1315,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     ?`<span class="card-follow" data-profile="${esc(r.profile_id)}" data-handle="${esc(h)}" data-label="Follow"></span>`
     :'';
   const detailLink=explore&&!opts.preview?`<a class="act run-detail-link" href="#run-detail-${esc(r.id)}">Receipts</a>`:'';
-  const ownerActions=opts.ownerActions&&!opts.preview?`<span class="run-owner-actions"><a class="act blue" href="#run-edit">Edit run</a><a class="act" href="#run-photos">Add photos</a></span>`:'';
+  const ownerActions=opts.ownerActions&&!opts.preview?`<span class="run-owner-actions"><a href="#run-edit">Edit run</a><a href="#run-photos">Add photos</a></span>`:'';
   return `<div class="card" id="card-${r.id}" data-run-id="${esc(r.id)}" data-photo-layout="${esc(r.photo_layout||'cover')}">
     <div class="runtop">${avatar(h,{rhythm:r.rhythm,ghost:att.ghost})}
       <div class="who">${whoLink}${anonTag}<small>${att.ghost?'metrics only ·':`@${esc(h)} ·`} ${opts.preview?esc(date):`<a href="/?run=${r.id}">${esc(date)}</a>`}</small></div></div>
@@ -1743,7 +1743,7 @@ function landingHTML(){
   return `<div class="home">
     <section class="home-hero"><h1>Strava is for people who ran. <i>__BRAND__</i> is for people who didn't.</h1><p class="home-explanation">A run is one real session with your coding agent. See its activity map, add your story and a photo, and follow what your friends are building.</p><a class="act blue home-first-run" href="/?connect">Bring one session</a><p class="home-private">Preview it first. Save it privately. Share when you choose.</p></section>
     <section class="home-sec" id="home-week-section" aria-labelledby="h-week"><div class="land-head"><h2 id="h-week">This week</h2></div><div id="home-week">${'<div class="wk-skel"></div>'}</div><div id="home-events"></div></section>
-    <section class="home-sec" id="home-clubs-section" aria-labelledby="h-clubs"><div class="land-head"><h2 id="h-clubs">Clubs</h2></div><div id="home-clubs"></div></section>
+    <div id="home-community"></div>
     <section class="home-sec" aria-labelledby="h-builders"><div class="land-head"><h2 id="h-builders">Builders to follow</h2><a href="/?people">Find people</a></div><div id="home-builders"></div></section>
     <section class="home-sec landing-feature" aria-labelledby="h-popular" id="landing-feature"><div class="land-head"><h2 id="h-popular">Popular runs</h2><a href="/?explore">See all</a></div><div id="landing-feature-body">${skeletonCard()}</div><p id="public-run-count" class="public-run-count" role="status"></p></section>
     <section class="home-join"><h2>Your work belongs here too.</h2><p>Start with a real session. Add your story and a photo, then choose who sees it.</p><a class="act blue" href="/?connect">Make my first run</a><button type="button" class="act primary" data-signin>${signInLabel()} and build your profile</button></section>
@@ -1801,9 +1801,7 @@ async function viewLanding(){
   // A failed read says it failed; only a read that worked may say there is nothing.
   const failed='<p class="home-none" data-failed>This section could not load. Refresh to try again.</p>';
   put('home-week',data.runs===null&&data.events===null?failed:H.weekHtml(data.runs,data.events,now));
-  put('home-events',data.events===null?failed:data.events.length?`<div class="evs">${data.events.slice(0,3).map(H.eventRow).join('')}</div>`:'');
-  put('home-clubs',data.clubs===null?failed:data.clubs.length?`<div class="clubs">${data.clubs.slice(0,6).map(H.clubRow).join('')}</div>`:'');
-  if(data.clubs!==null&&!data.clubs.length)$('home-clubs-section')?.setAttribute('hidden','');
+  put('home-community',H?H.community(data):'');
   if(data.runs!==null&&!data.runs.length&&data.events!==null&&!data.events.length)$('home-week-section')?.setAttribute('hidden','');
   const who=data.runs?H.builders(data.runs,6):[];
   put('home-builders',data.runs===null?failed:who.length?who.map(b=>GrinderFeed.builderRow(b.run)).join(''):'<p class="home-none">No builder has posted a public run in the last 30 days.</p>');
@@ -1925,7 +1923,7 @@ async function viewRun(id){
     +`<section id="run-photos"></section>`
     +`<section id="run-journey"></section>`
     +`<section id="grind-thread"></section><div class="head"><h2>XUDOS</h2><span class="meta">${acks.length}</span></div><div class="panel">`+ackListHtml(acks)+`</div>`
-    +`<section id="grind-feature"></section>`;
+;
   const copyLink=$('run-copy-link');if(copyLink)copyLink.onclick=async()=>{try{const sharePath=r.visibility==='public'?'/r/'+r.id:'/?run='+r.id;await navigator.clipboard.writeText(location.origin+sharePath);copyLink.textContent='Link copied'}catch(_){status('Copy this page address to share your run.')}};
   if(window.StriveRunPhotos) await StriveRunPhotos.mount({client:sb,run:r,slot:$('run-photos'),owner,status,isCurrent:current,onChanged:async()=>{if(!current())return;const card=document.querySelector('[data-run-id="'+r.id+'"]');if(card){card.querySelectorAll('.run-media, .run-personal-photo, .run-photo-cover').forEach(image=>image.remove());delete card.dataset.photoChecked;await StriveRunPhotos.mountCovers({client:sb,root:document});}}});
   if(!current())return;
@@ -1959,7 +1957,6 @@ async function viewRun(id){
   if(!current())return;
   await social.askControl(r,$('grind-thread'));
   if(!current())return;
-  await social.featureControl(r,$('grind-feature'));
   countUp();
 }
 
@@ -2851,7 +2848,13 @@ async function route(){ RUN_VIEW_GENERATION++;window.StriveRunPhotos?.disposeAll
   // Home is the feed (Oscar, 25 Sep 2026 evening). Signed in: the runs of the people you follow,
   // with people to follow and the latest public runs when that is empty. Signed out: the public
   // feed and the ask to sign in and build a profile. Adding a run is /?post.
-  if(ME) return social.following({home:true});
+  if(ME){
+    // The start page keeps clubs and events one press away, above the feed, from rows that exist.
+    const generation=RUN_VIEW_GENERATION,feed=social.following({home:true}),H=window.GrinderHome;
+    if(H&&sb)H.read(sb,Date.now()).then(async data=>{await feed.catch(()=>{});const body=$('social-body');if(generation!==RUN_VIEW_GENERATION||!body||$('home-community'))return;
+      const slot=document.createElement('div');slot.id='home-community';slot.innerHTML=H.community(data);body.before(slot)});
+    return feed;
+  }
   return viewLanding(); }
 
 // Import links can change only the fragment, without a document load. Ordinary

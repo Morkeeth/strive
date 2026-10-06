@@ -9,8 +9,11 @@
   // Pure, so it can be tested without a browser: which drafts are already saved, and the row for each.
   function match(run,existing){
     if(run.measurement_revision){const hit=existing.find(r=>r.measurement_revision===run.measurement_revision);if(hit)return hit;}
+    // Start time and harness is the older, weaker test. It is used only where the two cannot be
+    // compared by measurement reference. Two sessions that both carry a reference and differ are two
+    // sessions, even when they started in the same millisecond on the same harness.
     const at=instant(run.started);if(at===null)return null;
-    return existing.find(r=>instant(r.started_at)===at&&(r.harness||null)===(run.harness||null))||null;
+    return existing.find(r=>instant(r.started_at)===at&&(r.harness||null)===(run.harness||null)&&!(run.measurement_revision&&r.measurement_revision))||null;
   }
   function parse(payload){
     const history=payload&&payload.history==null?[]:payload&&payload.history;

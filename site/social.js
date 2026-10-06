@@ -156,6 +156,13 @@ window.GrinderSocial = function ({
     return uuid(q) ? q : null;
   }
 
+  // Where a notification leads first. XUDOS and a follow are about a person, so they open that
+  // person's profile. A comment is about a discussion, so it opens that exact comment.
+  function notificationPrimary(n) {
+    if (n.kind === "reply") return notificationHref(n);
+    const shown = present(n.actor);
+    return shown.href || (n.kind === "ack" && n.run_id ? `/?run=${encodeURIComponent(n.run_id)}` : "/?people");
+  }
   function notificationHref(n) {
     if (n.kind === "follow") {
       const shown = present(n.actor);
@@ -282,11 +289,13 @@ window.GrinderSocial = function ({
       slot.innerHTML = rows.map((n) => {
         const actor = present(n.actor);
         const kind = n.kind === "reply" ? "replied to your run" : n.kind === "ack" ? "sent XUDOS on your run" : "followed you";
-        const href = notificationHref(n);
+        // XUDOS and a follow open the person. Only a comment opens its discussion.
+        const href = notificationPrimary(n), who = actor.href ? `<a href="${actor.href}" data-notification-open="1"><b>${esc(actor.label)}</b></a>` : `<b>${esc(actor.label)}</b>`;
         return `<article class="notice-item ${n.read_at ? "read" : "unread"}" data-notification-id="${esc(n.id)}">
-          <span class="notice-dot" aria-hidden="true"></span><div><p class="notice-copy"><b>${esc(actor.label)}</b> ${kind}</p>
+          <span class="notice-dot" aria-hidden="true"></span><div><p class="notice-copy">${who} ${kind}</p>
           <p class="notice-meta">${esc(new Date(n.created_at).toLocaleString())}</p><div class="notice-links">
-          ${href ? `<a href="${href}" data-notification-open="1">Open</a>` : ""}
+          ${href ? `<a href="${href}" data-notification-open="1">${n.kind === "reply" ? "Open exact reply" : "Open profile"}</a>` : ""}
+          ${n.kind === "ack" && n.run_id ? `<a href="/?run=${encodeURIComponent(n.run_id)}" data-notification-open="1">Open the run</a>` : ""}
           ${!n.read_at ? '<button type="button" data-notification-read="1">Mark read</button>' : ""}</div></div></article>`;
       }).join("");
       slot.querySelectorAll("[data-notification-open]").forEach((a) => a.addEventListener("click", () => {
@@ -1184,9 +1193,10 @@ window.GrinderSocial = function ({
               n.kind === "reply"
                 ? "replied to your run"
                 : n.kind === "ack"
-                  ? "sent XUDOS on your work"
+                  ? "sent XUDOS on your run"
                   : "followed you";
             const run = n.run_id ? runs.get(n.run_id) : null;
+            const about = n.kind !== "follow" && run && run.title ? ` <span class="response-about">${esc(run.title)}</span>` : "";
             const reply =
               n.kind === "reply" && n.source_id
                 ? replies.get(n.source_id)
@@ -1238,7 +1248,7 @@ window.GrinderSocial = function ({
             const actorHtml = actor.id || actor.href ? link(n.actor) : "Someone";
             return `<article class="card response-item${!n.read_at ? " unread" : " read"}" data-notification-id="${esc(n.id)}" data-read="${n.read_at ? "1" : "0"}">
               <div class="response-item-top">
-                <p class="response-item-copy">${actorHtml} ${kind}${!n.read_at ? ' <span class="response-new">New</span>' : ""}</p>
+                <p class="response-item-copy">${actorHtml} ${kind}${about}${!n.read_at ? ' <span class="response-new">New</span>' : ""}</p>
                 <small>${esc(new Date(n.created_at).toLocaleString())}</small>
               </div>
               ${stateNote}
@@ -1843,89 +1853,7 @@ window.GrinderSocial = function ({
     };
     slot.append(form);
   }
-  async function scrapbook(person, slot) {
-    if (!slot) return;
-    try {
-      const agents = await result(
-        db
-          .from("grinder_agents")
-          .select("id,name,visibility")
-          .eq("owner_id", person.id)
-          .order("created_at", { ascending: false })
-          .limit(20),
-      );
-      const rigs = await result(
-        db
-          .from("grinder_rig_revisions")
-          .select("id,label,visibility")
-          .eq("owner_id", person.id)
-          .order("created_at", { ascending: false })
-          .limit(6),
-      );
-      let featured = "";
-      if (person.featured_run_id) {
-        const runs = await result(
-          db
-            .from("runs")
-            .select("*,profiles!runs_profile_id_fkey(github_handle,name,rig,handle,display_name,avatar_url)")
-            .eq("id", person.featured_run_id)
-            .eq("profile_id", person.id)
-            .eq("visibility", "public"),
-        );
-        if (runs.length)
-          featured =
-            '<div class="head"><h2>Selected run</h2></div>' +
-            (await renderRuns(runs));
-      }
-      slot.innerHTML =
-        featured +
-        (agents.length
-          ? '<div class="panel"><h3>Agents</h3>' +
-            agents
-              .map(
-                (a) =>
-                  `<p><a href="/?agent=${a.id}">${esc(a.name)}</a>${a.visibility === "private" ? " · only you" : ""}</p>`,
-              )
-              .join("") +
-            "</div>"
-          : "") +
-        (rigs.length
-          ? '<div class="panel"><h3>Rig versions</h3>' +
-            rigs
-              .map(
-                (r) =>
-                  `<p><a href="/?rigversion=${r.id}">${esc(r.label)}</a>${r.visibility === "private" ? " · only you" : ""}</p>`,
-              )
-              .join("") +
-            "</div>"
-          : "");
-    } catch (e) {
-      slot.textContent = "Agent and Rig details are temporarily unavailable.";
-    }
-  }
-  async function featureControl(run, slot) {
-    if (
-      !slot ||
-      !me() ||
-      run.profile_id !== me().id ||
-      run.visibility !== "public"
-    )
-      return;
-    const button = document.createElement("button");
-    button.textContent = "Feature in my Scrapbook";
-    button.onclick = async () => {
-      try {
-        await result(db.rpc("grinder_feature_run", { grind: run.id }));
-        status("Run saved to your profile.");
-      } catch (e) {
-        fail(e);
-      }
-    };
-    slot.append(button);
-  }
   return {
-    scrapbook,
-    featureControl,
     askControl,
     following,
     followControl,

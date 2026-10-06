@@ -6,7 +6,7 @@ import {bootDisposable,seedJourneyActors,CASEY,RILEY} from './disposable-supabas
 const m={basis:'codex-records',models:['model-a','model-b'],input_tokens:1000,output_tokens:200,cached_input_tokens:700,reasoning_tokens:150};
 assert.match(Context.setup({capture_metadata:m}),/1,200/);assert.doesNotMatch(Context.setup({capture_metadata:m}),/2,050/);
 assert.match(Context.setup({model:'Selected label'}),/Unknown — not recorded/);
-assert.match(Context.context({}),/not described the goal/);
+assert.match(Context.context({}),/not described this run/);assert.equal(Context.context({caption:'TEST DATA goal'}),'','a description that is already on the card is not said twice');assert.doesNotMatch(Context.context({caption:'TEST DATA goal',story_result:'TEST DATA done'}),/TEST DATA goal|Goal/);
 assert.match(Context.context({story_result:'<script>evil</script>'}),/&lt;script&gt;/);
 assert.doesNotMatch(Context.metrics({}),/correction|promised|verified/);
 assert.throws(()=>Context.validate({...m,input_tokens:5}));
