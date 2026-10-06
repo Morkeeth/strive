@@ -62,7 +62,7 @@ assert.match(D.render(depth,{esc,mine:false,dayLabel:'d',leadWith:'numbers'}),/<
 const zg=g.groups.find(x=>x.label==='zup'),bg=g.groups.find(x=>x.label==='Work on bagel');
 assert.equal(zg.marks.length,1);assert.equal(zg.gitCommits,17);assert.equal(zg.runs.length,2,'git marks sit on the lane of the project that also has sessions');
 assert.equal(bg.gitOnly,true);assert.equal(bg.runs.length,0);assert.equal(bg.gitCommits,48,'a project with git history and no captured session still gets a lane');
-assert.match(gr,/class="day-mark"/);assert.match(gr,/48 commits, git/);
+assert.match(gr,/class="day-mark"/);assert.match(gr,/2 projects counted from git history, in 2 windows of commits\./,'projects and windows of git history are two different counts and are both named');assert.match(gr,/48 commits, git/);
 const failed=D.compute([{id:'f1',project:'arc',title:'Work on arc',story_result:'TEST DATA both arms ended in ERROR.',...ev(4)}],'2026-10-05',label);
 const fr=D.render(failed,{esc,mine:false,dayLabel:'d',leadWith:'journey'});
 assert.match(fr,/TEST DATA both arms ended in ERROR\./,'a written result on a git-history row is shown, failure included');assert.match(fr,/4 commits, from git history/);
