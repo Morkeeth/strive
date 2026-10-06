@@ -28,13 +28,16 @@
     const list=v=>Array.isArray(v)?[...new Set(v.filter(tok))].slice(0,60):[];
     const facts=k=>{const l=Array.isArray(o.facts&&o.facts[k])?[...new Set(o.facts[k].filter(f=>FACTS[f]&&(k==='whole'||!FACTS[f].whole)))].slice(0,3):[];return l.length?l:null};
     return {lead:tok(o.lead)?o.lead:null,order:list(o.order),hidden:list(o.hidden),visual:VISUALS.includes(o.visual)?o.visual:'trace',
-      facts:{whole:facts('whole')||DEFAULTS.whole,project:facts('project')||DEFAULTS.project},highlights:o.highlights!==false};
+      facts:{whole:facts('whole')||DEFAULTS.whole,project:facts('project')||DEFAULTS.project},highlights:o.highlights!==false,title:typeof o.title==='string'?o.title.replace(/\s+/g,' ').trim().slice(0,140):''};
   }
   // The slides, in order. Pure: the same model and choices always give the same card.
   function slides(model,tokens,raw){
     const c=clean(raw),tk=g=>tokens.get(g.label)||'';
     // The headline is only ever a sentence the author wrote in a run's result field. A note, a title or a
     // project description is never promoted to a result.
+    // A highlight is one or two plain sentences. A sentence that carries a commit hash is release
+    // bookkeeping: it stays on the run's own page and is left off the card.
+    const brief=t=>(String(t).match(/[^.!?]+[.!?]*\s*/g)||[]).filter(x=>!/\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b/.test(x)).join('').trim();
     const wrote=r=>r&&typeof r.story_result==='string'?r.story_result.trim():'';
     let groups=model.groups.filter(g=>g.label&&!c.hidden.includes(tk(g)));
     const rank=g=>{const i=c.order.indexOf(tk(g));return i<0?1e6:i};
@@ -69,8 +72,8 @@
     const edges=runs.filter(i=>i.seconds>0).flatMap(i=>[[i.start.getTime(),1],[i.end.getTime(),-1]]).sort((x,y)=>x[0]-y[0]||x[1]-y[1]);let now=0,peak=0;for(const [,d] of edges){now+=d;peak=Math.max(peak,now)}
     const lead=per[0],seconds=runs.reduce((s,i)=>s+i.seconds,0);
     const fromGit=groups.filter(g=>commitsOf(g)&&commitsOf(g).from==='git').length,counted=groups.filter(g=>commitsOf(g)).length;
-    const whole={kind:'whole',key:'',name:'The run',pie,groups:[...featured,...groups.filter(g=>!featured.includes(g))],quiet,from:first,until:last,result:(leadTok&&lead.result)||'',open:lead.open,
-      highlights:c.highlights?per.filter(p=>p.result).slice(0,3).map(p=>({text:p.result,run:p.open,name:p.name})):[],
+    const whole={kind:'whole',key:'',name:'Overview',pie,groups:[...featured,...groups.filter(g=>!featured.includes(g))],quiet,from:first,until:last,result:c.title||`One run across ${plural(groups.length,'project')}`,draft:!c.title,open:lead.open,
+      highlights:c.highlights?per.filter(p=>p.result).map(p=>({text:brief(p.result),run:p.open,name:p.name})).filter(h=>h.text).slice(0,3):[],
       facts:{projects:{value:groups.length},commits:{value:known?all:null,note:fromGit===counted?'from git history':fromGit?'git history and runs':'recorded by the runs'},session:{value:seconds>0?span(seconds):null,note:"summed across runs, not one person's hours"},
         elapsed:{value:first&&last?span((last-first)/1000):null},runs:{value:runs.length},tools:{value:runs.reduce((s,i)=>s+(i.run.tool_calls||i.run.ridge_tool_calls||0),0)||null},peak:{value:peak||null}}};
     return {choices:c,slides:[whole,...per,...points],lead:leadTok};
@@ -118,7 +121,7 @@
       <p class="dc-more">Marks show when, never who. Session time is first message to last and is summed across runs, so it is not one person's hours.</p></div>`;
   }
   const SHORT={'from git history':'git history','git history and runs':'git and runs','recorded by the runs':'from runs','summed across runs':'summed',"summed across runs, not one person's hours":'summed'};
-  function render(deck,{esc,mine,author,windowLabel,start=0,runHref=(id)=>`/?run=${encodeURIComponent(id)}`}){
+  function render(deck,{esc,mine,author,windowLabel,start=0,setupHref,runHref=(id)=>`/?run=${encodeURIComponent(id)}`}){
     const S=deck.slides;if(!S.length)return '';
     const c=deck.choices,at=Math.max(0,Math.min(S.length-1,start|0)),many=S.length>1;
     const fact=(s,id)=>{const f=s.facts[id],none=f.value===null||f.value===undefined,note=!none&&SHORT[f.note];
@@ -128,9 +131,9 @@
         <ol class="dc-points">${s.points.map(p=>`<li><a href="${esc(runHref(p.run.id))}"><span class="dc-when">${esc(p.at.toLocaleDateString(undefined,{weekday:'short'}))} ${hm(p.at)} · ${esc(p.name)}</span>${esc(p.text)}</a></li>`).join('')}</ol>
         ${s.total>s.points.length?`<p class="dc-more">The latest ${s.points.length} of ${s.total}.</p>`:''}</section>`;
       const ids=(s.kind==='whole'?c.facts.whole:c.facts.project).filter(id=>s.facts[id]),high=s.kind==='whole'?s.highlights.filter(h=>h.text!==s.result).slice(0,2):[];
-      const photo=c.visual==='photo'&&s.kind==='project'&&s.open?`<a class="dc-photo" href="${esc(runHref(s.open.id))}" data-thumb-run="${esc(s.open.id)}" data-thumb-strict></a>`:'';
+      const photo=c.visual==='photo'&&s.open?`<a class="dc-photo" href="${esc(runHref(s.open.id))}" data-thumb-run="${esc(s.open.id)}" data-thumb-strict></a>`:'';
       return `<section class="dc-slide" data-slide="${i}" data-name="${esc(s.name)}" ${s.open?`data-open="${esc(runHref(s.open.id))}"`:''} ${i===at?'':'hidden'} aria-label="${esc(s.name)}">
-        <div class="dc-story">${photo}${s.result?`<p class="dc-said">${esc(s.result)}</p>`:`<p class="dc-said dc-none">${mine?'No result written yet. Open the run and say what came out of it.':'No result written.'}</p>`}</div>
+        <div class="dc-story">${photo}${s.result?`<p class="dc-said">${esc(s.result)}${s.draft&&mine&&setupHref?` <a class="dc-draft" href="${esc(setupHref)}">Draft headline. Write your own</a>`:''}</p>`:`<p class="dc-said dc-none">${mine?'No result written yet. Open the run and say what came out of it.':'No result written.'}</p>`}</div>
         <div class="dc-facts">${ids.map(id=>fact(s,id)).join('')}</div>
         ${overview(s)}
         ${high.length?`<ul class="dc-high">${high.map(h=>`<li><a href="${esc(runHref(h.run.id))}">${h.name?`<b>${esc(h.name)}</b> `:''}${esc(h.text)}</a></li>`).join('')}</ul>`:''}</section>`};
@@ -161,13 +164,13 @@
   function mountSetup({slot,model,tokens,saved,esc,save,renderOpts,readerHref,onPreview}){
     const all=model.groups.filter(g=>g.label),tk=g=>tokens.get(g.label)||'',c=clean(saved);
     const first=slides(model,tokens,saved);let order=all.slice().sort((a,b)=>{const i=x=>{const n=c.order.indexOf(tk(x));return n<0?1e6:n};return i(a)-i(b)}).map(tk);
-    const hidden=new Set(c.hidden.filter(t=>order.includes(t)));let lead=first.lead,visual=c.visual,highlights=c.highlights,facts={whole:[...c.facts.whole],project:[...c.facts.project]};
+    const hidden=new Set(c.hidden.filter(t=>order.includes(t)));let title=c.title,lead=first.lead,visual=c.visual,highlights=c.highlights,facts={whole:[...c.facts.whole],project:[...c.facts.project]};
     const name=t=>all.find(g=>tk(g)===t).label;
-    const current=()=>({lead:lead&&!hidden.has(lead)?lead:null,order:[...order],hidden:[...hidden],visual,highlights,facts:{whole:[...facts.whole],project:[...facts.project]}});
+    const current=()=>({lead:lead&&!hidden.has(lead)?lead:null,order:[...order],hidden:[...hidden],title,visual,highlights,facts:{whole:[...facts.whole],project:[...facts.project]}});
     slot.innerHTML=`<div class="head"><h1>Set up this card</h1></div>
       <p class="hint">This changes what the card shows and in which order. It changes no measurement and it shares nothing: who can see a run is still set under "Choose what readers see".</p>
-      <div class="card ds-form"><h2>Projects</h2><ol class="cs-list" id="cs-list"></ol>
-        <h2>Picture</h2><label class="cs-opt"><input type="radio" name="cs-visual" value="trace"> Graph only</label><label class="cs-opt"><input type="radio" name="cs-visual" value="photo"> One small picture on a project's view: the result picture of that project's own run</label>
+      <div class="card ds-form"><h2>Headline of the overview</h2><input id="cs-title" class="cs-title" maxlength="140" value="${esc(title)}" placeholder="Left empty: One run across the number of projects" aria-label="Headline of the overview"><h2>Projects</h2><ol class="cs-list" id="cs-list"></ol>
+        <h2>Picture</h2><label class="cs-opt"><input type="radio" name="cs-visual" value="trace"> Graph only</label><label class="cs-opt"><input type="radio" name="cs-visual" value="photo"> One small screenshot: on the overview from the main project's run, on a project's view from its own run. Only a picture marked result or after is used</label>
         <h2>Numbers on the run's view <span class="meta">up to three</span></h2><div class="cs-facts" data-k="whole"></div>
         <h2>Numbers on a project's view <span class="meta">up to three</span></h2><div class="cs-facts" data-k="project"></div>
         <label class="cs-opt"><input type="checkbox" id="cs-high"> Show short highlights under the result</label>
@@ -183,7 +186,8 @@
       const deck=slides(model,tokens,current());slot.querySelector('#cs-preview').innerHTML=render(deck,{...renderOpts,mine:false});wire(slot.querySelector('#cs-preview #day-card'));if(onPreview)onPreview(slot.querySelector('#cs-preview'));
       state.textContent=dirty?'Not saved yet.':'';
     }
-    slot.addEventListener('change',e=>{const t=e.target,li=t.closest('li[data-t]');
+    slot.querySelector('#cs-title').addEventListener('input',e=>{title=e.target.value.replace(/\s+/g,' ').trim().slice(0,140);dirty=true;const deck=slides(model,tokens,current());slot.querySelector('#cs-preview').innerHTML=render(deck,{...renderOpts,mine:false});wire(slot.querySelector('#cs-preview #day-card'));if(onPreview)onPreview(slot.querySelector('#cs-preview'));state.textContent='Not saved yet.'});
+    slot.addEventListener('change',e=>{if(e.target.id==='cs-title')return;const t=e.target,li=t.closest('li[data-t]');
       if(t.dataset.inc!==undefined){t.checked?hidden.delete(li.dataset.t):hidden.add(li.dataset.t)}
       else if(t.name==='cs-lead'){lead=t.value}else if(t.name==='cs-visual'){visual=t.value}else if(t.id==='cs-high'){highlights=t.checked}
       else if(t.dataset.fact){const k=t.closest('.cs-facts').dataset.k;facts[k]=t.checked?[...facts[k],t.dataset.fact].slice(0,3):facts[k].filter(f=>f!==t.dataset.fact)}

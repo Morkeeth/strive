@@ -137,9 +137,8 @@
         <ul>${D.plumbing.map(i=>`<li><a href="${esc(editHref(i.run.id))}">${esc(i.run.harness||'Run')} · ${hm(i.start)} · ${span(i.seconds)}</a></li>`).join('')}</ul>
         <p class="hint">Lineage is not recorded: which run started which is unknown, so these stay side by side.</p></details>`:''}</div>`;
     const howHtml=`${spent||models?`<div class="head"><h2>How the day was spent</h2></div><div class="card day-how">${spent}${models?`<div><p class="meta">Models, by number of runs that recorded each</p>${models}</div>`:''}</div>`:''}`;
-    const askHtml=`<div class="head"><h2>Ask the room</h2><span class="meta">${lead?'on the lead run':''}</span></div>
-      ${lead?`<div class="card day-ask">${q?`<div class="fc-question"><span>The maker asks</span>${esc(q)}</div>`:`<p class="hint">${mine?`No question yet. <a href="${esc(editHref(lead.id))}">Write one on the lead run</a> and it shows here.`:'The maker has not asked a question on this day.'}</p>`}
-        <section id="day-thread"></section><p class="hint">Replies belong to <a href="/?run=${encodeURIComponent(lead.id)}">${esc(lead.title||'the lead run')}</a>. A day has no thread of its own.</p></div>`:''}`;
+    // Comments are the lead run's own thread: a day has none of its own. The heading names that run.
+    const askHtml=lead?`<section class="day-comments"><div class="head"><h2>Comments</h2><span class="meta">on <a href="/?run=${encodeURIComponent(lead.id)}">${esc(lead.title||'the lead run')}</a></span></div><section id="day-thread"></section></section>`:'';
     // The author chooses what a reader meets first. The choice is a link parameter: result opens on
     // the author's own sentence, then the work and the question; journey on the count and the shared clock with the
     // question last; numbers on where the commits landed.

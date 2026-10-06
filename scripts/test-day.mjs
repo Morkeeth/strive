@@ -33,7 +33,7 @@ const mine=D.render(m,{esc,mine:true,dayLabel:'Monday 5 October 2026',publicHref
 assert.match(mine,/13 commits across 2 projects\./);
 const keyed=D.render(D.compute([{id:'k1',project:'Raw/Key 1',started_at:at(9),duration_s:60,commits:2},{id:'k2',project:'Raw/Key 1',started_at:at(10),duration_s:60,commits:1,caption:'TEST DATA'}],'2026-10-05',v=>v?'Shown name':''),{esc,mine:true,dayLabel:'d'});
 assert.equal((keyed.match(/\/\?project=Raw%2FKey%201&scope=mine/g)||[]).length,2,'project links carry the stored value, not the shown label');
-assert.match(D.render(D.compute([{id:'n',project:null,started_at:at(9),duration_s:60,commits:5,caption:'TEST DATA'}],'2026-10-05',label),{esc,mine:true,dayLabel:'d',leadWith:'numbers'}),/<h1>5 commits\.<\/h1>/,'commits on a run with no project are not credited to a project');assert.match(mine,/PARALLELISER/);assert.match(mine,/TEST DATA which would you open\?/);
+assert.match(D.render(D.compute([{id:'n',project:null,started_at:at(9),duration_s:60,commits:5,caption:'TEST DATA'}],'2026-10-05',label),{esc,mine:true,dayLabel:'d',leadWith:'numbers'}),/<h1>5 commits\.<\/h1>/,'commits on a run with no project are not credited to a project');assert.match(mine,/PARALLELISER/);assert.ok(!mine.includes('TEST DATA which would you open?')&&!mine.includes('Ask the room')&&!mine.includes('A day has no thread'),'the day page carries a plain comment list, no question block and no storage notes');assert.match(mine,/<h2>Comments<\/h2><span class="meta">on <a href="\/\?run=b"/,'the comments name the run they belong to');
 assert.match(mine,/Unknown is not zero/);assert.match(mine,/Lineage is not recorded/);assert.match(mine,/See what others see/);
 assert.ok(!mine.includes('undefined')&&!mine.includes('NaN'),'no unrendered value reaches the page');
 const hostile=D.render(D.compute([{id:'x',project:'<img src=x onerror=1>',started_at:at(9),duration_s:60,caption:'<script>1</script>',feedback_question:'"><b>q'}],'2026-10-05',label),{esc,mine:false,dayLabel:'d'});
@@ -50,7 +50,7 @@ assert.deepEqual(night.items.map(i=>i.run.id),['n1','n2'],'a window through a se
 assert.equal(D.compute([],'2026-10-05',label,'2026-10-20').through,'2026-10-05','a window longer than seven days is not accepted');
 assert.equal(D.compute([],'2026-10-05',label,'2026-10-01').through,'2026-10-05');
 const R=k=>D.render(m,{esc,mine:true,dayLabel:'d',leadWith:k,leadHref:x=>'/?day=2026-10-05&lead='+x});const idx=(h,t)=>h.indexOf(t);
-assert.ok(idx(R('result'),'What got done')<idx(R('result'),'Ask the room')&&idx(R('result'),'Ask the room')<idx(R('result'),'Where the commits landed'));assert.ok(idx(R('journey'),'Where the commits landed')<idx(R('journey'),'Ask the room'));
+assert.ok(idx(R('result'),'What got done')<idx(R('result'),'>Comments<')&&idx(R('result'),'>Comments<')<idx(R('result'),'Where the commits landed'));assert.ok(idx(R('journey'),'Where the commits landed')<idx(R('journey'),'>Comments<'));
 assert.ok(idx(R('numbers'),'Where the commits landed')<idx(R('numbers'),'What got done'));assert.match(R('journey'),/lead=numbers/);assert.equal(D.leadOf('x'),'result');
 assert.ok(!D.render(m,{esc,mine:false,dayLabel:'d',leadWith:'journey'}).includes('Lead with'),'a reader gets no chooser');
 const depth=D.compute([{id:'d1',project:'deep',started_at:at(9),duration_s:600,commits:1,story_result:'TEST DATA the one that says something',feedback_question:'q?'},...['w','x','y','z'].map((n,i)=>({id:n,project:n,started_at:at(10+i),duration_s:60,commits:20}))],'2026-10-05',label);

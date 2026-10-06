@@ -830,13 +830,23 @@ window.GrinderSocial = function ({
     }
   }
 
-  async function thread(runId, slot) {
+  // compact: a plain comment list with one small input, for a card that already says what it is about.
+  async function thread(runId, slot, opts) {
     await attachAgentShareGate(runId);
     if (!slot || !uuid(runId)) return;
+    const compact = opts ? !!opts.compact : slot.dataset.compact === "1";
+    if (compact) slot.dataset.compact = "1";
+    else delete slot.dataset.compact;
+    slot.classList.toggle("thread-compact", compact);
     const focusReply = replyTargetId();
     slot.innerHTML =
       responseReturnBar() +
-      '<div class="head"><h2>Talk about this run</h2><span class="meta">ask about the work</span></div><div class="thread-items" aria-live="polite">Loading replies…</div>';
+      (compact
+        ? ""
+        : '<div class="head"><h2>Talk about this run</h2><span class="meta">ask about the work</span></div>') +
+      '<div class="thread-items" aria-live="polite">' +
+      (compact ? "" : "Loading replies…") +
+      "</div>";
     const items = slot.querySelector(".thread-items");
     let cursor = null;
     let sawFocus = false;
@@ -880,7 +890,8 @@ window.GrinderSocial = function ({
           article.classList.add("reply-target");
           sawFocus = true;
         }
-        article.innerHTML = `<div>${link(reply.author)} ${reply.source_actor_id ? `· <a href="/?agent=${reply.source_actor_id}">${esc(reply.agent_name || "Agent")}</a>` : ""} <small>${esc(new Date(reply.created_at).toLocaleString())}${reply.edited_at ? " · edited" : ""}</small></div><p class="reply-body">${esc(reply.body)}</p>${reply.evidence_ref ? `<small>About: ${esc(reply.evidence_ref)}</small>` : ""}`;
+        const face = compact ? (reply.author?.avatar_url ? `<img class="c-av" src="${esc(reply.author.avatar_url)}" alt="" loading="lazy">` : `<span class="c-av" aria-hidden="true">${esc(String(reply.author?.display_name || reply.author?.name || reply.author?.handle || reply.author?.github_handle || "?").trim().charAt(0).toUpperCase())}</span>`) : "";
+        article.innerHTML = `${face}<div>${link(reply.author)} ${reply.source_actor_id ? `· <a href="/?agent=${reply.source_actor_id}">${esc(reply.agent_name || "Agent")}</a>` : ""} <small>${esc(compact ? new Date(reply.created_at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : new Date(reply.created_at).toLocaleString())}${reply.edited_at ? " · edited" : ""}</small></div><p class="reply-body">${esc(reply.body)}</p>${reply.evidence_ref ? `<small>About: ${esc(reply.evidence_ref)}</small>` : ""}`;
         if (me()?.id === reply.author_id) {
           const edit = document.createElement("button");
           edit.className = "ghost";
@@ -994,7 +1005,9 @@ window.GrinderSocial = function ({
       for (const reply of rows) items.append(renderReply(reply));
       if (!rows.length && !cursor)
         items.innerHTML =
-          "<p>No replies yet. Ask about the work or the setup.</p>";
+          compact
+            ? '<p class="thread-empty">No comments yet.</p>'
+            : "<p>No replies yet. Ask about the work or the setup.</p>";
       slot.querySelector(".older-replies")?.remove();
       if (rows.length === 25) {
         cursor = rows[rows.length - 1];
@@ -1060,8 +1073,9 @@ window.GrinderSocial = function ({
     if (me()) {
       const form = document.createElement("form");
       form.className = "reply-form";
-      form.innerHTML =
-        '<label>Your reply<textarea name="body" required maxlength="3000" placeholder="Ask about the build or respond to the work."></textarea></label><label>Part of the run you mean (optional)<input name="evidence" maxlength="200"></label><button>Post reply</button>';
+      form.innerHTML = compact
+        ? '<textarea name="body" rows="1" required maxlength="3000" placeholder="Add a comment" aria-label="Add a comment"></textarea><button>Post</button>'
+        : '<label>Your reply<textarea name="body" required maxlength="3000" placeholder="Ask about the build or respond to the work."></textarea></label><label>Part of the run you mean (optional)<input name="evidence" maxlength="200"></label><button>Post reply</button>';
       form.onsubmit = async (e) => {
         e.preventDefault();
         const button = form.querySelector("button");
@@ -1074,7 +1088,7 @@ window.GrinderSocial = function ({
                 run_id: runId,
                 author_id: me().id,
                 body: form.elements.body.value,
-                evidence_ref: form.elements.evidence.value || null,
+                evidence_ref: form.elements.evidence?.value || null,
               }),
           );
           status(
@@ -1091,7 +1105,8 @@ window.GrinderSocial = function ({
       slot.append(form);
     } else {
       const note = document.createElement("p");
-      note.textContent = "Sign in to reply.";
+      note.textContent = compact ? "Sign in to comment." : "Sign in to reply.";
+      if (compact) note.className = "thread-empty";
       slot.append(note);
     }
   }

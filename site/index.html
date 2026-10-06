@@ -1955,7 +1955,7 @@ async function viewRun(id){
     if(siblings&&$('run-journey'))$('run-journey').innerHTML=StriveJourney.strip(StriveJourney.compute(siblings),{esc,currentId:r.id,
       projectName:GrinderContract.projectLabel(r.project)||r.project,projectHref:`/?project=${encodeURIComponent(r.project)}&scope=${own?'mine':'public'}`});
   }
-  await social.thread(id,$('grind-thread'));
+  await social.thread(id,$('grind-thread'),{compact:true});
   if(!current())return;
   await social.askControl(r,$('grind-thread'));
   if(!current())return;
@@ -2299,12 +2299,12 @@ async function viewDay(day){
     return;}
   const deck=StriveDayCard.slides(model,tokens,savedCard),startAt=Math.max(0,Math.min(deck.slides.length-1,parseInt(params.get('card')||'0',10)||0));
   const parts=StriveDay.render(model,{esc,mine,dayLabel:label,leadWith,split:true,leadHref:k=>`/?day=${day}${extra}${head}&lead=${k}`,publicHref:null});
-  app.innerHTML=nav+StriveDayCard.render(deck,{...cardOpts,start:startAt})
+  app.innerHTML=nav+StriveDayCard.render(deck,{...cardOpts,start:startAt,setupHref:mine?`/?day=${day}${extra}&setup=1`:null})
     +(mine?`<p class="hint day-share-link"><a href="/?day=${day}${extra}&setup=1">Set up this card</a> · <a href="/?day=${day}${extra}&share=1">Choose what readers see</a> · <a href="/?day=${day}${extra}&p=${encodeURIComponent(profileId)}">See what others see</a></p>`:'')
     +parts.ask+`<details class="day-everything"><summary>Everything in this run: each project, where the commits landed, how the time was spent</summary>${StriveDayCard.detail(deck,esc)}${parts.done}${parts.strip}${parts.how}</details>`;
   // The selected view rides in the address, so coming back from a run returns to the same view.
   StriveDayCard.wire($('day-card'),{onChange:at=>{const q=new URLSearchParams(location.search);at?q.set('card',at):q.delete('card');history.replaceState(null,'','/?'+q.toString())}});
-  if(model.lead&&$('day-thread'))void social.thread(model.lead.run.id,$('day-thread'));
+  if(model.lead&&$('day-thread'))void social.thread(model.lead.run.id,$('day-thread'),{compact:true});
   window.StriveRunPhotos?.mountCovers?.({client:sb,root:app});
   void window.StriveRunPhotos?.mountThumbs?.({client:sb,root:app});
 }
