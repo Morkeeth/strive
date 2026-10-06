@@ -168,7 +168,8 @@
       try{
         const list=await fetch(`/api/run-photos?run_id=${encodeURIComponent(slot.dataset.thumbRun)}`,{headers:await headers(client),signal:controller.signal});
         if(!active||!list.ok)return;const photos=((await list.json())?.photos||[]).filter(p=>p.role!=='personal');
-        const photo=photos.find(p=>p.role==='result')||photos.find(p=>p.role==='after')||photos[0],path=photo&&photoPath(photo);if(!path)return;
+        // A strict slot takes only a picture the author marked as the result or the after state, never just the first one.
+        const photo=photos.find(p=>p.role==='result')||photos.find(p=>p.role==='after')||(slot.dataset.thumbStrict===undefined?photos[0]:null),path=photo&&photoPath(photo);if(!path)return;
         const res=await fetch(path,{headers:await headers(client),signal:controller.signal});if(!active||!res.ok)return;
         const url=URL.createObjectURL(await res.blob());urls.add(url);
         const image=document.createElement('img');image.src=url;image.alt=roles[photo.role]||'Run photo';image.loading='lazy';slot.replaceChildren(image);

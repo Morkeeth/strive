@@ -20,17 +20,23 @@ assert.equal(whole.pie.unit,'commits');assert.deepEqual(whole.pie.parts.map(p=>[
 const gamma=d.slides.find(s=>s.name==='gamma');assert.equal(gamma.facts.commits.value,null,'a project with no commit count is unknown, not zero');
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const html=C.render(d,{esc,mine:false,author:'TEST DATA Author',windowLabel:'Monday'});
-assert.match(html,/>not recorded</);assert.match(html,/Marks show when, never who\./);assert.match(html,/1 of 5/);assert.match(html,/class="act blue"[^>]*>Kudos</);assert.match(html,/data-comment>Comment</);
-assert.ok(html.indexOf('class="dc-pie"')<html.indexOf('class="dc-graph"')&&html.indexOf('class="dc-graph"')<html.indexOf('class="dc-said"'),'pie and numbers, then the graph, then the story');
+assert.match(html,/>not recorded</);assert.match(C.detail(d,esc),/Marks show when, never who\./);assert.match(C.detail(d,esc),/not one person's hours/);assert.match(html,/1 of 5/);assert.match(html,/ack=1">Kudos</);assert.match(html,/class="dc-open"[^>]*>Details/);assert.match(html,/data-comment>Comment</);
+assert.ok(html.indexOf('class="dc-said"')<html.indexOf('class="dc-facts"')&&html.indexOf('class="dc-facts"')<html.indexOf('class="dc-graph"'),'the result, then the numbers, then one small graph');
+assert.ok(!html.includes('dc-pie')&&!html.includes('dc-lane')&&!html.includes('role="tab"'),'no ring, no lane rows and no tab row on the card');
+assert.match(html,/class="dc-area"/);assert.match(html,/class="dc-mark"/);assert.match(html,/captured sessions, up to \d at once/);assert.match(html,/commits landed/);
+// a note or a caption is never promoted to the headline
+const noted=C.slides(D.compute([{...runs[0],story_result:null,caption:'TEST DATA a mission statement',note:'TEST DATA note'}],'2026-10-05',label),new Map([[label(runs[0].project),T('beta')]]),null);
+assert.ok(noted.slides.every(s=>!s.result),'only the result field makes a headline');
 assert.ok(!html.includes('dc-photo'),'no picture unless the author chose one');assert.ok(!html.includes('Set up this card'),'a reader gets no setup link');
-assert.equal((html.match(/class="dc-slide"/g)||[]).length,5);assert.equal((html.match(/class="dc-slide" data-slide="\d" hidden/g)||[]).length,4,'one view is open at a time');
+assert.equal((html.match(/class="dc-slide"/g)||[]).length,5);assert.equal((html.match(/<section class="dc-slide"[^>]* hidden /g)||[]).length,4,'one view is open at a time');
 // the author's choices
 const chosen={lead:T('alpha'),order:[T('delta'),T('alpha'),T('beta')],hidden:[T('gamma')],visual:'photo',facts:{whole:['runs','peak','elapsed','tools'],project:['projects','runs']},highlights:false};
 const e=C.slides(model,tokens,chosen);
 assert.deepEqual(e.slides.map(s=>s.name),['The run','alpha','beta','Turning points'],'the chosen main project leads, then the author\'s order; a hidden project is gone');
 assert.equal(e.slides[0].result,'TEST DATA alpha second');assert.equal(e.slides[0].facts.projects.value,3,'a hidden project is not in the totals');assert.equal(e.slides[0].facts.commits.value,12);
 assert.deepEqual(e.choices.facts,{whole:['runs','peak','elapsed'],project:['runs']},'at most three numbers, and a whole-run number is not offered on a project');
-assert.equal(e.slides[1].highlights.length,0);assert.match(C.render(e,{esc,mine:true,author:'a',windowLabel:'w',setupHref:'/x'}),/class="dc-photo"[^>]*data-thumb-run="a2"/);
+assert.equal(e.slides[1].highlights.length,0);assert.match(C.render(e,{esc,mine:true,author:'a',windowLabel:'w'}),/class="dc-photo"[^>]*data-thumb-run="a2" data-thumb-strict/);
+assert.ok(!/data-slide="0"[^]*?dc-photo[^]*?data-slide="1"/.test(C.render(e,{esc,mine:true,author:'a',windowLabel:'w'})),'the whole-run view never borrows a picture');
 // privacy: a reader's model holds public runs only; a saved choice naming private work matches nothing and shows nothing
 const reader=D.compute(runs.filter(r=>r.id==='b1'),'2026-10-05',label),rt=new Map([['beta',T('beta')]]);
 const r=C.slides(reader,rt,chosen),rh=C.render(r,{esc,mine:false,author:'a',windowLabel:'w'});

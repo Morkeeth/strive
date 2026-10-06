@@ -2288,7 +2288,8 @@ async function viewDay(day){
   if(ME?.id!==profileId)return viewDay(day);
   const author=ownerProfile?(ownerProfile.display_name||ownerProfile.name||ownerProfile.handle||ownerProfile.github_handle||''):'';
   const here=`/?day=${day}${extra}${other?'&p='+encodeURIComponent(other):''}${head}&lead=${leadWith}`;
-  const cardOpts={esc,mine,author,windowLabel:label,runHref:id=>`/?run=${encodeURIComponent(id)}`};
+  const brief=(a,b,c,yr)=>new Date(a,b-1,c).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short',...(yr?{year:'numeric'}:{})});
+  const cardOpts={esc,mine,author,windowLabel:through?`${brief(y,m,d)} to ${brief(ty,tm,td,ty!==new Date().getFullYear())}`:brief(y,m,d,y!==new Date().getFullYear()),runHref:id=>`/?run=${encodeURIComponent(id)}`};
   if(mine&&params.has('setup')){app.innerHTML=nav+`<p class="hint"><a href="/?day=${day}${extra}">← Back to the day</a></p><section id="card-setup"></section>`;
     StriveDayCard.mountSetup({slot:$('card-setup'),model,tokens,saved:savedCard,esc,renderOpts:cardOpts,readerHref:`/?day=${day}${extra}&p=${encodeURIComponent(profileId)}`,
       onPreview:host=>void window.StriveRunPhotos?.mountThumbs?.({client:sb,root:host}),
@@ -2298,9 +2299,9 @@ async function viewDay(day){
     return;}
   const deck=StriveDayCard.slides(model,tokens,savedCard),startAt=Math.max(0,Math.min(deck.slides.length-1,parseInt(params.get('card')||'0',10)||0));
   const parts=StriveDay.render(model,{esc,mine,dayLabel:label,leadWith,split:true,leadHref:k=>`/?day=${day}${extra}${head}&lead=${k}`,publicHref:null});
-  app.innerHTML=nav+StriveDayCard.render(deck,{...cardOpts,start:startAt,setupHref:mine?`/?day=${day}${extra}&setup=1`:null})
-    +(mine?`<p class="hint day-share-link"><a class="act" href="/?day=${day}${extra}&share=1">Choose what readers see</a> <a class="act" href="/?day=${day}${extra}&p=${encodeURIComponent(profileId)}">See what others see</a></p>`:'')
-    +parts.ask+`<details class="day-everything"><summary>Everything in this run: each project, where the commits landed, how the time was spent</summary>${parts.done}${parts.strip}${parts.how}</details>`;
+  app.innerHTML=nav+StriveDayCard.render(deck,{...cardOpts,start:startAt})
+    +(mine?`<p class="hint day-share-link"><a href="/?day=${day}${extra}&setup=1">Set up this card</a> · <a href="/?day=${day}${extra}&share=1">Choose what readers see</a> · <a href="/?day=${day}${extra}&p=${encodeURIComponent(profileId)}">See what others see</a></p>`:'')
+    +parts.ask+`<details class="day-everything"><summary>Everything in this run: each project, where the commits landed, how the time was spent</summary>${StriveDayCard.detail(deck,esc)}${parts.done}${parts.strip}${parts.how}</details>`;
   // The selected view rides in the address, so coming back from a run returns to the same view.
   StriveDayCard.wire($('day-card'),{onChange:at=>{const q=new URLSearchParams(location.search);at?q.set('card',at):q.delete('card');history.replaceState(null,'','/?'+q.toString())}});
   if(model.lead&&$('day-thread'))void social.thread(model.lead.run.id,$('day-thread'));
