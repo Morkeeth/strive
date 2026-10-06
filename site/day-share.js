@@ -32,13 +32,13 @@
     for(const g of model.recovered)items.push({id:g.run.id,project:g.label||'',git:true,visibility:g.run.visibility,result:g.result,title:g.run.title||'',at:g.from,until:g.until,commits:g.commits});
     return items;
   }
-  function mount({slot,model,client,ownerId,esc,status,dayHref}){
+  function mount({slot,model,client,ownerId,esc,status,dayHref,menu=''}){
     const items=collect(model),wanted=new Set(items.filter(i=>pub(i.visibility)).map(i=>i.id)),failed=new Map();
     const groups=new Map();for(const i of items){const k=i.project||'No project named';const g=groups.get(k)||{name:k,items:[]};g.items.push(i);groups.set(k,g)}
     const list=[...groups.values()].sort((a,b)=>(b.items.some(i=>i.result)?1:0)-(a.items.some(i=>i.result)?1:0)||a.name.localeCompare(b.name));
     const pad=n=>String(n).padStart(2,'0'),hm=d=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
     let lead=(model.lead&&pub(model.lead.run.visibility)&&model.lead.run.id)||null,busy=false;
-    slot.innerHTML=`<div class="head"><h1>Choose what readers see</h1></div>
+    slot.innerHTML=`<div class="head cs-head"><h1>Sharing</h1>${menu}</div><h2 class="ds-sub">Choose what readers see</h2>
       <p class="hint">Everything stays as it is until you press the button. An unticked item is <b>Only you</b>. Tick a project to share all of it, or open it and tick single items.</p>
       <div class="card ds-preview" id="ds-preview" role="status"></div><div class="card dd-list" id="ds-list"></div>
       <div class="dd-foot"><button type="button" class="act blue" id="ds-apply"></button><span id="ds-summary" role="status"></span></div>`;
@@ -58,13 +58,16 @@
         <p class="hint">${p.results} of the shared runs carry a written result. ${p.hidden} item${p.hidden===1?' stays':'s stay'} Only you.${lead?'':p.results?' Pick which run leads the day: its own sentence becomes the headline.':''}</p>`;
       const n=d.toPublic.length+d.toPrivate.length;
       apply.textContent=n?`Make ${d.toPublic.length} public${d.toPrivate.length?` and ${d.toPrivate.length} Only you`:''}`:'No change to make';apply.disabled=!n||busy;
-      const href=dayHref(lead);summary.innerHTML=n?'':`<a href="${esc(href)}">See what others see</a>`;
+      // With nothing left to apply, the reader's address is offered: to open, and to copy.
+      const href=dayHref(lead);summary.innerHTML=n?'':`<a href="${esc(href)}">Preview as reader</a> <button type="button" class="act" id="ds-copy" data-href="${esc(href)}">Copy link for readers</button>`;
     }
     box.addEventListener('change',e=>{const t=e.target;
       if(t.dataset.all!==undefined){const g=groups.get(t.closest('.dd-row').dataset.g);g.items.forEach(i=>t.checked?wanted.add(i.id):wanted.delete(i.id))}
       else if(t.dataset.id){t.checked?wanted.add(t.dataset.id):wanted.delete(t.dataset.id)}
       else if(t.name==='ds-lead'){lead=t.value}
       paint()});
+    summary.addEventListener('click',async e=>{const b=e.target.closest('#ds-copy');if(!b)return;const link=new URL(b.dataset.href,location.href).href;
+      try{await navigator.clipboard.writeText(link);b.textContent='Link copied'}catch(_){status(link)}});
     apply.onclick=async()=>{
       if(busy)return;busy=true;apply.disabled=true;failed.clear();let done=0;
       const d=plan(items,wanted);

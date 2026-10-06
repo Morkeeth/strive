@@ -2250,10 +2250,12 @@ async function viewProject(name){
 // One day of one builder as a single page (site/day.js). A view over run rows: no table, no column.
 // ?day=YYYY-MM-DD shows the signed-in owner every run of that local day, private ones included.
 // ?day=...&p=<profile id> shows anyone only that builder's public runs of the day.
+let DAY_POP=null;
 async function viewDay(day){
-  const app=$('app'); frame(railHtml('mine'),null); setPrimarySection('mine'); app.innerHTML=skeletonCard();
+  const app=$('app'),params=new URLSearchParams(location.search),other=params.get('p'),profileId=ME?.id;
+  // "My runs" is marked only on your own day. Another builder's day, or your own seen as a reader, marks nothing.
+  frame(railHtml(other?'':'mine'),null); setPrimarySection(other?'':'mine'); app.innerHTML=skeletonCard();
   window.StriveRunPhotos?.disposeAll?.();
-  const params=new URLSearchParams(location.search),other=params.get('p'),profileId=ME?.id;
   if(!StriveDay.isDay(day)){day=StriveDay.localDay(new Date());history.replaceState(null,'','/?day='+day+(other?'&p='+encodeURIComponent(other):''));}
   const mine=!other&&!!profileId,owner=other||profileId;
   if(!owner){app.innerHTML='<div class="card"><div class="empty"><h3>Sign in to see your day</h3><p>A day page collects your own saved runs. Nothing is shared by opening it.</p><div class="cta"><a class="act blue" href="/?signin">Sign in</a></div></div></div>';return;}
@@ -2277,8 +2279,10 @@ async function viewDay(day){
   if(!model.items.length){
     app.innerHTML=nav+`<div class="card"><div class="empty"><h3>${mine?'No saved runs on this day':'No public runs on this day'}</h3><p>${esc(label)}. ${mine?'A run appears here once it is saved. Sessions that were never saved are not counted.':'Private runs are never shown here.'}</p>${mine?'<div class="cta"><a class="act blue" href="/?post">Post a run</a></div>':''}</div></div>`;return;}
   const head=model.lead&&params.get('head')===model.lead.run.id?'&head='+encodeURIComponent(model.lead.run.id):'';
-  if(mine&&params.has('share')){app.innerHTML=nav+`<p class="hint"><a href="/?day=${day}${extra}">← Back to the day</a></p><section id="day-share"></section>`;
-    StriveDayShare.mount({slot:$('day-share'),model,client:sb,ownerId:profileId,esc,status,dayHref:lead=>`/?day=${day}${extra}&p=${encodeURIComponent(profileId)}&lead=${leadWith}${lead?'&head='+encodeURIComponent(lead):''}`});return;}
+  // The owner's four places, the same list on the card, on Edit card and on Sharing. A reader gets none of it.
+  const ownerLinks=mine?{edit:`/?day=${day}${extra}&setup=1`,visual:`/?day=${day}${extra}&setup=visual`,reader:`/?day=${day}${extra}&p=${encodeURIComponent(profileId)}`,sharing:`/?day=${day}${extra}&share=1`}:null;
+  if(mine&&params.has('share')){app.innerHTML=nav+`<p class="hint"><a href="/?day=${day}${extra}">← Back to the card</a></p><section id="day-share"></section>`;
+    StriveDayShare.mount({slot:$('day-share'),model,client:sb,ownerId:profileId,esc,status,menu:StriveDayCard.ownerMenu(ownerLinks,esc,'sharing'),dayHref:lead=>`/?day=${day}${extra}&p=${encodeURIComponent(profileId)}&lead=${leadWith}${lead?'&head='+encodeURIComponent(lead):''}`});StriveDayCard.wireMenu($('day-share'));return;}
   // The card (site/day-card.js) leads the page: pie, numbers and graph, then the story, with the other
   // projects one step left or right. The author's display choices are saved on the profile under this
   // window. A reader gets them from the same profile row the runs already carry.
@@ -2290,10 +2294,10 @@ async function viewDay(day){
   const here=`/?day=${day}${extra}${other?'&p='+encodeURIComponent(other):''}${head}&lead=${leadWith}`;
   const brief=(a,b,c,yr)=>new Date(a,b-1,c).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short',...(yr?{year:'numeric'}:{})});
   const cardOpts={esc,mine,author,windowLabel:through?`${brief(y,m,d)} to ${brief(ty,tm,td,ty!==new Date().getFullYear())}`:brief(y,m,d,y!==new Date().getFullYear()),runHref:id=>`/?run=${encodeURIComponent(id)}`};
-  if(mine&&params.has('setup')){app.innerHTML=nav+`<p class="hint"><a href="/?day=${day}${extra}">← Back to the day</a></p><section id="card-setup"></section>`;
-    StriveDayCard.mountSetup({slot:$('card-setup'),model,tokens,saved:savedCard,esc,renderOpts:cardOpts,readerHref:`/?day=${day}${extra}&p=${encodeURIComponent(profileId)}`,
-      onPreview:host=>void window.StriveRunPhotos?.mountThumbs?.({client:sb,root:host}),
-      photos:(host,runs,selected,onPick)=>void window.StriveRunPhotos?.mountChooser?.({client:sb,slot:host,runs,selected,onPick}),
+  if(mine&&params.has('setup')){app.innerHTML=nav+`<p class="hint"><a href="/?day=${day}${extra}">← Back to the card</a></p><section id="card-setup"></section>`;
+    StriveDayCard.mountSetup({slot:$('card-setup'),model,tokens,saved:savedCard,esc,renderOpts:cardOpts,readerHref:ownerLinks.reader,menu:ownerLinks,focusOn:params.get('setup')==='visual'?'visual':'',
+      onPreview:host=>void window.StriveRunPhotos?.mountVisuals?.({client:sb,root:host}),
+      photos:(host,runs,selected,onPick)=>window.StriveRunPhotos?.mountChooser?.({client:sb,slot:host,runs,selected,onPick}),
       save:async choices=>{const rig={...(ME.rig||{})},cards={...(rig.day_cards||{}),[cardKey]:choices};
         for(const k of Object.keys(cards).sort().slice(0,-40))delete cards[k];rig.day_cards=cards;
         const {error}=await sb.from('profiles').update({rig}).eq('id',ME.id);if(error)return error.message||'the service did not confirm it';ME.rig=rig;return null}});
@@ -2301,17 +2305,29 @@ async function viewDay(day){
   // The card's action row is the lead run's own: its XUDOS count, its thread, its share page.
   const leadRun=model.lead&&model.lead.run,ad=leadRun?await ackData([leadRun]):null;
   if(ME?.id!==profileId)return viewDay(day);
-  const actions=leadRun?GrinderFeed.actions({id:leadRun.id,to:leadRun.profile_id,count:ad.counts[leadRun.id]||0,acked:ad.mine.has(leadRun.id),mode:ME&&ME.id===leadRun.profile_id?'mine':'',commentHref:'#day-thread'}):'';
-  const deck=StriveDayCard.slides(model,tokens,savedCard),startAt=Math.max(0,Math.min(deck.slides.length-1,parseInt(params.get('card')||'0',10)||0));
+  const actions=leadRun?GrinderFeed.actions({id:leadRun.id,to:leadRun.profile_id,count:ad.counts[leadRun.id]||0,acked:ad.mine.has(leadRun.id),mode:ME&&ME.id===leadRun.profile_id?'mine':'',commentHref:'#day-thread',
+    // The owner's Share opens Sharing, where the reader's numbers sit beside the owner's. A reader's Share is the lead run's share page.
+    shareHref:mine?ownerLinks.sharing:null}):'';
+  // The page in view rides in the address as &page=<project token>, so the same link opens the same project for the
+  // owner and for a reader. Every numbered link carries its own address; reload, back and forward keep the page.
+  const deck=StriveDayCard.slides(model,tokens,savedCard),startAt=StriveDayCard.pageIndex(deck,params.get('page'),params.get('card'));
+  const pageHref=key=>{const q=new URLSearchParams(location.search);q.delete('card');key?q.set('page',key):q.delete('page');return '/?'+q.toString()};
+  // The owner looking at their own card through a reader's address is told so, with the way back.
+  const previewing=!mine&&!!profileId&&other===profileId?`<p class="hint dc-previewing" role="status">You are previewing this card as a reader sees it. <a href="/?day=${day}${extra}">Back to your card</a></p>`:'';
   const parts=StriveDay.render(model,{esc,mine,dayLabel:label,leadWith,split:true,leadHref:k=>`/?day=${day}${extra}${head}&lead=${k}`,publicHref:null});
-  app.innerHTML=nav+StriveDayCard.render(deck,{...cardOpts,start:startAt,actions,setupHref:mine?`/?day=${day}${extra}&setup=1`:null})
-    +(mine?`<p class="hint day-share-link"><a href="/?day=${day}${extra}&setup=1">Set up this card</a> · <a href="/?day=${day}${extra}&share=1">Choose what readers see</a> · <a href="/?day=${day}${extra}&p=${encodeURIComponent(profileId)}">See what others see</a></p>`:'')
+  app.innerHTML=nav+previewing+StriveDayCard.render(deck,{...cardOpts,start:startAt,actions,pageHref,menu:ownerLinks,setupHref:mine?ownerLinks.edit:null,visualHref:mine?ownerLinks.visual:null})
     +parts.ask+`<details class="day-everything"><summary>Everything in this run: each project, where the commits landed, how the time was spent</summary>${StriveDayCard.detail(deck,esc)}${parts.done}${parts.strip}${parts.how}</details>`;
-  // The selected view rides in the address, so coming back from a run returns to the same view.
-  StriveDayCard.wire($('day-card'),{onChange:at=>{const q=new URLSearchParams(location.search);at?q.set('card',at):q.delete('card');history.replaceState(null,'','/?'+q.toString())}});
+  // A page change made on the card adds a step to the browser's history. A change that came from Back or
+  // Forward does not, it only follows the address. Both go through the card's one page function.
+  const pager=StriveDayCard.wire($('day-card'),{onChange:(at,key,{push})=>{if(push)history.pushState({dayPage:key},'',pageHref(key))}});
+  if(DAY_POP)window.removeEventListener('popstate',DAY_POP);
+  DAY_POP=()=>{const q=new URLSearchParams(location.search),card=$('day-card');if(!card||!card.isConnected||q.get('day')!==day||(q.get('p')||null)!==(other||null)||q.has('setup')||q.has('share'))return;
+    pager.go(StriveDayCard.pageIndex(deck,q.get('page'),q.get('card')),{push:false})};
+  window.addEventListener('popstate',DAY_POP);
   if(model.lead&&$('day-thread'))void social.thread(model.lead.run.id,$('day-thread'),{compact:true});
   window.StriveRunPhotos?.mountCovers?.({client:sb,root:app});
   void window.StriveRunPhotos?.mountThumbs?.({client:sb,root:app});
+  void window.StriveRunPhotos?.mountVisuals?.({client:sb,root:app});
   wireKudos();
 }
 async function viewProjects(){

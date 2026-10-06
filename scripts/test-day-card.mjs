@@ -20,14 +20,14 @@ assert.equal(whole.pie.unit,'commits');assert.deepEqual(whole.pie.parts.map(p=>[
 const gamma=d.slides.find(s=>s.name==='gamma');assert.equal(gamma.facts.commits.value,null,'a project with no commit count is unknown, not zero');
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const html=C.render(d,{esc,mine:false,author:'TEST DATA Author',windowLabel:'Monday'});
-assert.match(html,/>not recorded</);assert.match(C.detail(d,esc),/Marks show when, never who\./);assert.match(C.detail(d,esc),/not one person's hours/);assert.match(html,/1 of 5/);assert.match(html,/class="dc-open"[^>]*>Open the run/);assert.ok(!/kudos/i.test(html.replace(/fc-kudos-mine/g,'')),'the word is XUDOS');assert.match(C.render(d,{esc,mine:false,author:'a',windowLabel:'w',actions:'<i>ROW</i>'}),/<footer class="fc-foot"><i>ROW<\/i><\/footer>/,'the action row is handed in, drawn by the shared function');
-assert.ok(html.indexOf('class="dc-said"')<html.indexOf('class="dc-facts"')&&html.indexOf('class="dc-facts"')<html.indexOf('class="dc-graph"'),'the result, then the numbers, then one small graph');
+assert.match(html,/>not recorded</);assert.match(C.detail(d,esc),/Marks show when, never who\./);assert.match(C.detail(d,esc),/not one person's hours/);assert.match(html,/<b>Overview<\/b> · 1 of 5/);assert.match(html,/class="dc-open"[^>]*>Open the run/);assert.ok(!/kudos/i.test(html.replace(/fc-kudos-mine/g,'')),'the word is XUDOS');assert.match(C.render(d,{esc,mine:false,author:'a',windowLabel:'w',actions:'<i>ROW</i>'}),/<footer class="fc-foot"><i>ROW<\/i><\/footer>/,'the action row is handed in, drawn by the shared function');
+assert.ok(html.indexOf('class="dc-pages"')<html.indexOf('class="dc-said"')&&html.indexOf('class="dc-said"')<html.indexOf('class="dc-facts"')&&html.indexOf('class="dc-facts"')<html.indexOf('class="dc-visual"')&&html.indexOf('class="dc-visual"')<html.indexOf('class="dc-high"'),'anatomy in order: page selector, headline, numbers, one main visual, highlights');
 assert.ok(!html.includes('dc-pie')&&!html.includes('dc-lane')&&!html.includes('role="tab"'),'no ring, no lane rows and no tab row on the card');
 assert.match(html,/class="dc-area"/);assert.match(html,/class="dc-mark"/);assert.match(html,/captured sessions, up to \d at once/);assert.match(html,/commits landed/);
 // a note or a caption is never promoted to the headline
 const noted=C.slides(D.compute([{...runs[0],story_result:null,caption:'TEST DATA a mission statement',note:'TEST DATA note'}],'2026-10-05',label),new Map([[label(runs[0].project),T('beta')]]),null);
 assert.ok(noted.slides.every(s=>!s.result),'only the result field makes a headline');
-assert.ok(!html.includes('dc-photo'),'no picture unless the author chose one');assert.ok(!html.includes('Set up this card'),'a reader gets no setup link');
+assert.ok(!html.includes('data-visual-photo'),'no picture unless the author chose one');assert.ok(!html.includes('dc-menu')&&!html.includes('setup='),'a reader gets no owner menu and no setup link');
 assert.equal((html.match(/class="dc-slide"/g)||[]).length,5);assert.equal((html.match(/<section class="dc-slide"[^>]* hidden /g)||[]).length,4,'one view is open at a time');
 const reader0=D.compute(runs.filter(r=>r.id==='b1'),'2026-10-05',label),rt0=new Map([['beta',T('beta')]]);
 // the author's choices
@@ -38,17 +38,56 @@ assert.equal(e.slides[0].result,'One run across 3 projects');assert.equal(e.slid
 assert.ok(C.render(e,{esc,mine:true,author:'a',windowLabel:'w',setupHref:'/x'}).includes('Draft headline')&&!C.render(e,{esc,mine:false,author:'a',windowLabel:'w'}).includes('Draft headline'),'only the owner is told the headline is a draft');
 const hashed=C.slides(D.compute([{...runs[2],story_result:'TEST DATA one thing done. Live is unchanged at 2e784e7.'},runs[0]],'2026-10-05',label),tokens,{lead:T('alpha')});assert.deepEqual(hashed.slides[0].highlights.map(h=>h.text),['TEST DATA alpha first','TEST DATA one thing done.'],'a sentence with a commit hash stays off the card');assert.match(hashed.slides.find(s=>s.name==='beta').result,/2e784e7/,'and stays on the project itself');assert.equal(e.slides[0].facts.projects.value,3,'a hidden project is not in the totals');assert.equal(e.slides[0].facts.commits.value,12);
 assert.deepEqual(e.choices.facts,{whole:['runs','peak','elapsed'],project:['runs']},'at most three numbers, and a whole-run number is not offered on a project');
-assert.equal(e.slides[1].highlights.length,0);assert.ok(!C.render(e,{esc,mine:true,author:'a',windowLabel:'w'}).includes('dc-photo'),'a choice that is not a real picture id shows nothing; the old on or off switch no longer picks a picture');
-const U='11111111-2222-4333-8444-555555555555',P='99999999-2222-4333-8444-555555555555',pm=D.compute(runs.map(r=>r.id==='a2'?{...r,id:U}:r),'2026-10-05',label),pd=C.slides(pm,tokens,{...chosen,photo:{run:U,id:P}}),ph=C.render(pd,{esc,mine:false,author:'a',windowLabel:'w'});
-assert.match(ph,new RegExp(`data-slide="0"[^]*?data-thumb-run="${U}" data-thumb-photo="${P}"[^]*?data-slide="1"`),'the chosen screenshot is on the overview');assert.equal((ph.match(/dc-photo/g)||[]).length,2,'and on the view of the project whose run it is from, nowhere else');
-assert.ok(!C.render(C.slides(reader0,rt0,{...chosen,photo:{run:U,id:P}}),{esc,mine:false,author:'a',windowLabel:'w'}).includes(U),'a reader who cannot see that run gets no trace of the picture');
+assert.equal(e.slides[1].highlights.length,0);assert.ok(!C.render(e,{esc,mine:true,author:'a',windowLabel:'w'}).includes('data-visual-photo'),'a choice that is not a real picture id shows nothing; the old on or off switch no longer picks a picture');
+const U='11111111-2222-4333-8444-555555555555',P='99999999-2222-4333-8444-555555555555',pm=D.compute(runs.map(r=>r.id==='a2'?{...r,id:U,visibility:'private'}:r),'2026-10-05',label);
+const shows=(h,i)=>new RegExp(`data-slide="${i}"(?:(?!data-slide=)[^])*data-visual-run="${U}" data-visual-photo="${P}"`).test(h),R=(deck,mine=false)=>C.render(deck,{esc,mine,author:'a',windowLabel:'w'});
+// A choice saved before version 2: one picture, no way to say photo. It migrates to a screenshot, shown whole, on its own project only.
+const old=C.slides(pm,tokens,{...chosen,photo:{run:U,id:P}}),oh=R(old);
+assert.equal(old.choices.v,2);assert.equal(old.choices.visual,'screenshot','an old saved picture is kept as a screenshot, whatever the old switch said');assert.equal(old.choices.hero,false);
+assert.ok(!shows(oh,0)&&shows(oh,1),'after migration the overview is the measured trace and the picture leads its own project');assert.equal((oh.match(/data-visual-photo=/g)||[]).length,1,'and it is nowhere else');
+assert.match(oh,/data-kind="screenshot"[^>]*data-state="loading"/);assert.match(oh,/Screenshot chosen by the author, shown whole\./);
+assert.match(oh,/<div class="dc-fallback" hidden><svg class="dc-graph"/,'the measured trace sits behind the picture, so a picture that cannot be fetched leaves the trace');
+// Version 2: the author says photo or screenshot, where to hold the frame, and whether the overview takes it too.
+const v2={...chosen,v:2,photo:{run:U,id:P},visual:'photo',hero:true,focus:'top'},pd=C.slides(pm,tokens,v2),ph=R(pd);
+assert.ok(shows(ph,0)&&shows(ph,1),'with hero on, the photo leads the overview and its own project');assert.equal((ph.match(/data-visual-photo=/g)||[]).length,2);
+assert.match(ph,/data-kind="photo"[^>]*data-focus="top"/);assert.match(ph,/Photo chosen by the author\. Atmosphere, not a measurement\./,'a photo is labelled as atmosphere, not proof');
+assert.equal((ph.match(/data-slide="0"(?:(?!data-slide=)[^])*/)[0].match(/class="dc-visual"/g)||[]).length,1,'one main visual on a page, never a thumbnail beside a graph');
+assert.match(R(pd,true),/Its run is Only you, so readers get the measured trace instead\./,'the owner is told when the picture is on a run readers cannot see');assert.ok(!ph.includes('Only you'),'a reader is never told about private work');
+assert.ok(!R(C.slides(pm,tokens,{...v2,visual:'data'})).includes(U+'" data-visual'),'data mode shows the trace and keeps the picture out of the page');
+assert.deepEqual(C.clean({...v2,visual:'video',focus:'<x>',hero:'yes'}).visual,'data');assert.equal(C.clean({...v2,focus:'<x>'}).focus,'center');assert.equal(C.clean({v:2,visual:'photo',hero:true}).hero,false,'a mode with no picture is data, and cannot lead the overview');
+assert.ok(!R(C.slides(reader0,rt0,v2)).includes(U)&&!R(C.slides(reader0,rt0,v2)).includes(P),'a reader who cannot see that run gets no trace of the picture: not its id, not its run');
+assert.match(R(C.slides(reader0,rt0,v2)),/data-kind="data"/,'and gets the measured trace in its place');
+// No trace and no picture: one honest sentence, with a way forward for the owner only.
+const bare=D.compute([{id:'z1',project:'zeta',started_at:at(9),story_result:'TEST DATA zeta said'}],'2026-10-05',label),bt=new Map([['zeta',T('alpha')]]),bd=C.slides(bare,bt,null);
+assert.match(C.render(bd,{esc,mine:true,author:'a',windowLabel:'w',visualHref:'/v'}),/data-kind="none"><p class="dc-empty">No measured trace and no picture on this page yet\. <a href="\/v">Choose a visual<\/a>/);
+assert.ok(!R(bd).includes('Choose a visual')&&R(bd).includes('No measured trace and no picture'),'a reader gets the sentence without the owner link');
+assert.match(C.render(d,{esc,mine:true,author:'a',windowLabel:'w',visualHref:'/v'}),/Add a photo or a screenshot to this page/);assert.ok(!html.includes('Add a photo'),'the prompt to add a visual is the owner\'s only');
+// PAGE SELECTOR: numbered links with their own names and addresses, built from the pages this reader has.
+const nav=C.render(d,{esc,mine:false,author:'a',windowLabel:'w',start:2,pageHref:(k,i)=>`/?day=x&page=${k}`});
+assert.deepEqual([...nav.matchAll(/class="dc-page" href="([^"]*)" data-goto="(\d)" aria-label="([^"]*)" (aria-current="page")?/g)].map(m=>[m[3],m[1],!!m[4]]),
+ [['1 Overview','/?day=x&amp;page=',false],['2 beta',`/?day=x&amp;page=${T('beta')}`,false],['3 alpha',`/?day=x&amp;page=${T('alpha')}`,true],['4 gamma',`/?day=x&amp;page=${T('gamma')}`,false],['5 Turning points','/?day=x&amp;page=points',false]],'each page is a link named by its number and its page, and only the selected one is current');
+assert.match(nav,/<b>alpha<\/b> · 3 of 5/,'the project name stays in words beside the numbers');
+assert.equal(C.pageIndex(d,T('alpha')),2);assert.equal(C.pageIndex(d,'points'),4);assert.equal(C.pageIndex(d,'ffffffffffff'),0,'an unknown page name opens page 1');assert.equal(C.pageIndex(d,null,'3'),3,'the older numbered address still opens');assert.equal(C.pageIndex(d,null,'99'),4);
+// One reducer for every way of moving.
+const st={at:1,count:5},Rd=C.reduce,edge={at:0,count:5};
+assert.equal(Rd(st,{type:'next'}).at,2);assert.equal(Rd(st,{type:'prev'}).at,0);assert.equal(Rd(edge,{type:'prev'}),edge,'the first page does not wrap, and no change returns the same state');assert.equal(Rd({at:4,count:5},{type:'next'}).at,4,'the last page does not wrap');
+assert.equal(Rd(st,{type:'goto',at:4}).at,4);assert.equal(Rd(st,{type:'goto',at:99}).at,4);assert.equal(Rd(st,{type:'key',key:'ArrowRight'}).at,2);assert.equal(Rd(st,{type:'key',key:'ArrowLeft'}).at,0);
+assert.equal(Rd(st,{type:'key',key:'ArrowRight',guarded:true}),st,'an arrow typed in a field, a menu or a media control does not turn the page');assert.equal(Rd(st,{type:'key',key:'ArrowLeft',modified:true}),st,'Alt and an arrow is the browser\'s own Back');
+assert.equal(Rd(st,{type:'swipe',dx:-80,dy:5}).at,2);assert.equal(Rd(st,{type:'swipe',dx:80,dy:5}).at,0);assert.equal(Rd(st,{type:'swipe',dx:-80,dy:70}),st,'a scroll is not a swipe');assert.equal(Rd(st,{type:'swipe',dx:-20,dy:0}),st);
+// Owner menu: four entries, one function, owner only.
+const links={edit:'/e',visual:'/v',reader:'/r',sharing:'/s'},mh=C.render(d,{esc,mine:true,author:'a',windowLabel:'w',menu:links});
+assert.deepEqual([...mh.matchAll(/role="menuitem" href="([^"]*)" [^>]*>([^<]*)</g)].map(m=>[m[2],m[1]]),[['Edit card','/e'],['Choose visual','/v'],['Preview as reader','/r'],['Sharing','/s']]);
+assert.match(mh,/aria-haspopup="menu" aria-expanded="false"[^>]*aria-label="Card options"/);assert.ok(!C.render(d,{esc,mine:false,author:'a',windowLabel:'w',menu:links}).includes('dc-menu'),'a reader never gets the owner menu, even if links are handed in');
 
 // privacy: a reader's model holds public runs only; a saved choice naming private work matches nothing and shows nothing
 const reader=D.compute(runs.filter(r=>r.id==='b1'),'2026-10-05',label),rt=new Map([['beta',T('beta')]]);
 const r=C.slides(reader,rt,chosen),rh=C.render(r,{esc,mine:false,author:'a',windowLabel:'w'});
-assert.deepEqual(r.slides.map(s=>s.name),['beta'],'one public project: no carousel and no empty views');assert.ok(!rh.includes('dc-nav')&&!rh.includes('alpha')&&!rh.includes('delta')&&!rh.includes('gamma'));
+assert.deepEqual(r.slides.map(s=>s.name),['beta'],'one public project: no carousel and no empty views');assert.ok(!rh.includes('dc-pages')&&!rh.includes('class="dc-page"')&&!rh.includes('alpha')&&!rh.includes('delta')&&!rh.includes('gamma'));
 assert.ok(!JSON.stringify(chosen).includes('alpha'),'saved choices hold tokens, never a project name');
-assert.deepEqual(C.clean({lead:'alpha',order:['<script>',T('beta'),T('beta'),7],hidden:'x',visual:'huge',facts:{whole:['nope']},highlights:'yes'}),{lead:null,order:[T('beta')],hidden:[],visual:'trace',facts:{whole:C.DEFAULTS.whole,project:C.DEFAULTS.project},highlights:true,photo:null,title:''},'anything unexpected in saved choices is dropped');
+assert.deepEqual(C.clean({lead:'alpha',order:['<script>',T('beta'),T('beta'),7],hidden:'x',visual:'huge',facts:{whole:['nope']},highlights:'yes'}),{v:2,lead:null,order:[T('beta')],hidden:[],visual:'data',hero:false,focus:'center',facts:{whole:C.DEFAULTS.whole,project:C.DEFAULTS.project},highlights:true,photo:null,title:''},'anything unexpected in saved choices is dropped');
 assert.equal(C.render(C.slides(D.compute([],'2026-10-05',label),new Map(),null),{esc,mine:true,windowLabel:'w'}),'');
 assert.ok(![html,rh].some(h=>h.includes('undefined')||h.includes('NaN')));
-console.log('PASS: view order, lead project, measured facts with unknowns, author choices, hidden projects out of totals, reader privacy, saved choices hold no names');
+// A reader with several public projects is numbered over those only.
+const two=D.compute(runs.filter(r=>['b1','c1'].includes(r.id)),'2026-10-05',label),twoH=R(C.slides(two,tokens,{order:[T('alpha'),T('delta')],lead:T('alpha')}));
+assert.deepEqual([...twoH.matchAll(/class="dc-page"[^>]*aria-label="(\d [^"]*)"/g)].map(m=>m[1]),['1 Overview','2 beta','3 gamma'],'numbering comes from visible pages only: a hidden or private project takes no number and leaves no name');assert.ok(!twoH.includes('alpha')&&!twoH.includes('delta'));
+console.log('PASS: anatomy order, page selector names and addresses, one reducer, owner menu, visual modes, old choices migrate, private picture never leaks, honest empty state, view order, lead project, measured facts with unknowns, author choices, hidden projects out of totals, reader privacy, saved choices hold no names');

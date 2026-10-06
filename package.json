@@ -8,6 +8,7 @@
     "test:launch": "node scripts/test-launch-backend.mjs && node scripts/test-github-friends.mjs && node scripts/test-x-identity-guard.mjs && node scripts/test-readiness.mjs && node scripts/test-photo-cleanup-auth.mjs",
     "test:database": "node scripts/test-database.mjs",
     "test:journey": "node scripts/check-persisted-journey.mjs",
+    "test:cards": "node scripts/test-day-card.mjs && node scripts/test-card-system.mjs && node scripts/test-day-share.mjs && node scripts/test-day.mjs",
     "test:shared-schema": "node scripts/test-shared-schema.mjs",
     "build": "node scripts/build-site.mjs",
     "test:identity": "node scripts/test-identity.mjs",

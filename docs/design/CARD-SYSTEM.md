@@ -1,0 +1,151 @@
+# STRIVE card system
+
+Rules for every card surface. Read this before you change a card, a page selector, an owner control or a picture on a card.
+
+The rules live in three places that must agree:
+
+- This document: the rule and its reason.
+- `site/design.css`: the tokens and the COMPONENT RULES block.
+- `site/day-card.js`, `site/feed-card.js`, `site/run-photos.js`: the one function that draws each part.
+
+`scripts/test-card-system.mjs` fails if a token or class named here is missing from the styles. `scripts/test-day-card.mjs` checks the rules themselves. Run both after any change:
+
+```sh
+node scripts/test-day-card.mjs && node scripts/test-card-system.mjs && node scripts/test-day-share.mjs
+```
+
+If a screen needs something these rules do not allow, change the rule here first, then the code. Do not style around it.
+
+## 1. Card anatomy
+
+Every page of every card has the same parts in the same order.
+
+| # | Part | Rule | Drawn by |
+|---|---|---|---|
+| 1 | Identity and date | Author name and the day or days. One line. | `StriveDayCard.render` |
+| 2 | Page selector | Only when the card has more than one page. See section 2. | `StriveDayCard.render` |
+| 3 | Headline | One short sentence the author wrote. Never invented. A project headline is the first sentence of the result field. | `StriveDayCard.render` |
+| 4 | Numbers | Two or three measured facts. A missing value says "not recorded". Unknown is never zero. | `StriveDayCard.render` |
+| 5 | Main visual | Exactly ONE region. See section 4. | `visual()` in `site/day-card.js` |
+| 6 | Highlights | At most two short lines, each opens its run. Overview only. | `StriveDayCard.render` |
+| 7 | Action row | XUDOS, Comment, Share. The approved look. Do not restyle it. | `GrinderFeed.actions` |
+
+A card with one project and a card with many projects are built by the same function from the same parts. The one-project card has no selector.
+
+Tokens:
+
+| Token | Use |
+|---|---|
+| `--card-max` | Widest a card gets on the day page |
+| `--card-pad` | Side padding inside a card |
+| `--card-gap` | Space between a card and the action row, and under a card |
+| `--card-headline` | Headline size |
+| `--card-fact` | Size of a number |
+| `--action-h` | Height of each action in the action row, feed card and day card alike |
+
+## 2. Page selector
+
+Classes: `.dc-pages`, `.dc-pos`, `.dc-dots`, `.dc-page`, `.dc-arrow`.
+
+- Numbered links, 1 to N. Blue outline. The selected one is filled blue and carries `aria-current="page"`.
+- Each link has an accessible name made of its number and its page: `1 Overview`, `2 STRIVE`. An agent or a screen reader asks for a page by that name.
+- The page name stays visible in words beside the numbers: `STRIVE · 2 of 4`.
+- Previous and Next buttons stay. They are disabled at the ends. Pages do not wrap around.
+- A long card wraps onto more rows inside the card. It never scrolls sideways and a target never gets smaller than `--page-dot`. The gap is `--page-gap`.
+- Every link is a real `href`. A page is named in the address by its project token: `&page=<token>`. The overview has no `page` value. The older form `&card=<number>` is still read.
+- A page change on the card adds one step to the browser history. Back, Forward and Reload keep the page.
+- One function changes the page: `reduce()` in `site/day-card.js`. Links, arrows, the keyboard, a swipe and the browser's Back all send it an action. Do not add a second way to move.
+- Arrow keys are left alone when focus is in a field, a menu, a radio group, a slider or a media control, and when a modifier key is held. The list is `GUARDED` in `site/day-card.js`.
+- Numbering comes only from the pages this reader can see. A private or hidden project takes no number and its name is in no label.
+
+Reason for tokens in the address: the owner has more pages than a reader. A position would open a different project for each of them. A token opens the same project for both, and a token does not reveal a name.
+
+## 3. Owner menu and saving
+
+Class: `.dc-menu`. Drawn only by `StriveDayCard.ownerMenu`.
+
+One button, named "Card options", with four entries in this order:
+
+| Entry | Address | What it does |
+|---|---|---|
+| Edit card | `&setup=1` | Headline, project order, numbers, highlights, main visual |
+| Choose visual | `&setup=visual` | The same screen, opened at the main visual |
+| Preview as reader | `&p=<own profile id>` | The card as anyone else gets it |
+| Sharing | `&share=1` | Choose what readers see, with the owner and reader numbers side by side |
+
+- The same menu is on the card, on Edit card and on Sharing. Do not add loose owner links around a card.
+- Only the owner gets the menu. `render` does not draw it when `mine` is false, even if links are passed in.
+- The owner's Share button in the action row opens Sharing, so the comparison of owner and reader numbers is one press from the card.
+
+Saving on Edit card:
+
+- Nothing is written until Save is pressed. The preview is the real card with the unsaved choices.
+- The state is always one of four, shown in words beside the buttons: `saved`, `unsaved`, `saving`, `error`.
+- Cancel puts the last saved choices back.
+- A failed save keeps every choice on the screen and says how to try again.
+- Leaving the page with unsaved choices asks first.
+- A save writes display choices to the owner's profile. It never touches a run and never changes who can see one. Audience changes only on Sharing.
+
+## 4. Main visual
+
+Class: `.dc-visual`. One of three modes. The author chooses the mode. Nothing guesses it.
+
+| Mode | What it is | How it is shown |
+|---|---|---|
+| Data | The measured trace: captured sessions and commits on one clock | Default everywhere. Needs no upload. |
+| Screenshot | A capture of a screen the author picked from their own runs | Shown whole, never cropped. `object-fit: contain`, at most `--visual-shot-max` high, on `--visual-wash`. |
+| Photo | A photograph the author picked from their own runs | Fills a `--visual-photo-ratio` frame. `object-fit: cover`. The author picks the part to keep in the frame and checks the crop in the preview. |
+
+Rules:
+
+- One main visual per page. Never a small picture beside a graph.
+- No image is ever stretched.
+- The overview shows Data unless the author turns on "Lead the overview with this picture too".
+- A picture leads the page of the project whose run holds it. It shows nowhere else.
+- A photo is atmosphere. Its caption says so: "Atmosphere, not a measurement." It is never evidence that work happened.
+- A picture is only ever one the author already added to one of their runs and then picked here. No stock image, no generated image, no camera roll scan, no automatic publish.
+- A picture marked "Personal photo" on its run starts in Photo mode when picked. Any other picture starts in Screenshot mode. Both are the author's own earlier words and both can be changed.
+- No picture is ever required. Data is enough. A mode with no picture picked saves as Data.
+- Fallback order: chosen picture, then the measured trace, then one plain sentence: "No measured trace and no picture on this page yet." The owner also gets a link to choose a visual.
+
+Privacy:
+
+- A picture follows the audience of its run. The card adds no second switch.
+- A reader's card is built from the runs that reader can see. If the picture's run is not among them, the card carries no trace of the picture: not its id and not its run id. The page shows the measured trace.
+- If a picture cannot be fetched for any other reason, the trace behind it is shown. A page never has an empty frame.
+- The owner is told when their picture sits on a run that is Only you.
+
+Old saved choices: before version 2 a card could hold one picture under the heading "Screenshot". Those choices are read as Screenshot mode, overview on Data. `clean()` in `site/day-card.js` does this on read. Nothing is rewritten until the owner saves.
+
+## 5. Reading and acting, for people and agents
+
+| Who | Can | Cannot |
+|---|---|---|
+| Anyone, signed out | Read a shared card at its address. Open every page and every public run. | See private runs, private pictures, or any owner control. |
+| Signed in, any account | Send XUDOS and comment on a public run. | Edit another person's card. |
+| Owner | Everything in the owner menu. | Change audience from Edit card. That is Sharing only. |
+
+- Controls are real links and buttons with names. An agent finds them by role and name, with no knowledge of class names.
+- An agent that reviews a card reads it. It sends no XUDOS and no comment unless its owner asked for that in so many words.
+- A review says which addresses it opened and what it did there.
+- The served guide is `/agents.md`, built by `scripts/build-agent-frontdoor.mjs`. The kit copy is `templates/grokbot/post-agent-run/references/REVIEW.md`.
+
+## 6. What follows these rules today, and what does not
+
+Follows the rules:
+
+- Day card: overview page, project pages, turning points page (`/?day=`).
+- Edit card (`&setup=1`) and its live preview.
+- Sharing (`&share=1`): owner menu and the reader link.
+- Action row on the feed card and the day card: one function, one height token.
+
+Not yet moved over. These still differ and are listed here so nobody mistakes them for the pattern:
+
+- Feed card body (`site/feed-card.js`): shares the action row only. Its headline, numbers and hero follow older rules.
+- Run page (`/?run=`): its owner controls are separate links and buttons, with no owner menu.
+- Public run page (`/r/<id>`, `server/public-run.mjs`): server drawn, older layout, its own action row markup in `page` mode.
+- Run share page (`/?share=1&run=`): older layout. A reader's Share on a day card still goes here, for the lead run only.
+- Profile page and "My runs" list: no card anatomy.
+- Everything under "Everything in this run" on the day page: older sheet layout.
+- One picture per card. A card cannot yet hold a different picture for each project.
+- The overview headline "One run across N projects" is a counted draft, shown to the owner as a draft.

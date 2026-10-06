@@ -405,7 +405,7 @@
       : `<button class="fc-act kudo${o.acked ? " on" : ""}" data-run="${id}" data-to="${esc(o.to)}" aria-label="${o.acked ? "XUDOS sent" : "Send XUDOS"}${said}">${heart}${n}</button>`;
     const talk = o.mode === "preview"
       ? `<span class="fc-act" aria-label="Comment">${TALK_ICON}<span>Comment</span></span><span class="fc-act" aria-label="Share">${SHARE_ICON}<span>Share</span></span>`
-      : `<a class="fc-act" href="${o.commentHref ? esc(o.commentHref) : `/?run=${id}#grind-thread`}" aria-label="Comment"${o.commentHref ? " data-comment" : ""}>${TALK_ICON}<span>Comment</span></a><a class="fc-act" href="/?share=1&amp;run=${id}" aria-label="Share">${SHARE_ICON}<span>Share</span></a>`;
+      : `<a class="fc-act" href="${o.commentHref ? esc(o.commentHref) : `/?run=${id}#grind-thread`}" aria-label="Comment"${o.commentHref ? " data-comment" : ""}>${TALK_ICON}<span>Comment</span></a><a class="fc-act" href="${o.shareHref ? esc(o.shareHref) : `/?share=1&amp;run=${id}`}" aria-label="Share">${SHARE_ICON}<span>Share</span></a>`;
     return xudos + talk;
   }
 

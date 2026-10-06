@@ -14,7 +14,7 @@ export async function buildAgentFrontdoor({origin,revision}) {
   }
  }
  await collect('agentgrinder');
- const kit=['SKILL.md','references/CAPTURE.md','scripts/preview.py','scripts/upload.py','scripts/test_contract.py','scripts/test_native.py','scripts/test_projection.py','scripts/smoke_test.py','samples/sample_grokbot_bot_activity.jsonl'];
+ const kit=['SKILL.md','references/CAPTURE.md','references/REVIEW.md','scripts/preview.py','scripts/upload.py','scripts/test_contract.py','scripts/test_native.py','scripts/test_projection.py','scripts/smoke_test.py','samples/sample_grokbot_bot_activity.jsonl'];
  members.push(...kit.map(path=>'templates/grokbot/post-agent-run/'+path),'samples/sample_grokbot_bot_activity.jsonl','templates/grokbot/INSTALL.md','templates/grokbot/manage-strive/SKILL.md');
  for(const path of members)if(!(await lstat(path)).isFile())throw new Error(`Not a regular source file: ${path}`);
  await mkdir('dist/capture/grok/scripts',{recursive:true});
@@ -104,6 +104,24 @@ No account or token is needed for local preview. The owner can open the complete
 A Connect token is optional for separately authorized agent private upload. The owner issues it at ${origin}/?connect. Keep it in the supported private secret environment, never chat, URLs or source control. Use the same kit's upload.py with the same source, mode and bounds, inspect --dry-run first, then upload only with authorization. The supported endpoint is ${origin}/api/agent/runs. Follow scope, expiry and revocation. No token means use local preview and the owner's signed-in save flow, not a mandatory credential request. Do not publish merely because these instructions are public.
 
 Optional background sync is a separate opt-in that can backfill sessions and make network writes. Do not enable it for one-session onboarding.
+
+## Reading and reviewing a card
+
+A separate job from capture. It needs a browser you were actually given. Full text in the same-release kit: ${origin}/capture/grok/references/REVIEW.md.
+
+Three levels of access:
+
+- Public read, no account: ${origin}/?day=YYYY-MM-DD&p=<profile id> shows what any reader gets, public runs only. Add &through=YYYY-MM-DD for a span of days. A single run is ${origin}/?run=<run id>.
+- Authorized XUDOS and comment: a signed-in account plus the owner's explicit request for that exact act.
+- Owner edit: the owner's own signed-in session. The same address without &p= is the owner's view.
+
+Find controls by role and accessible name. The navigation region "Pages of this card" holds links named by number and page, such as "1 Overview" and "2 STRIVE"; the selected one has aria-current="page". Each link has its own address ending in &page=<token>. Take the token from the link; do not build one. The address in the browser after a step is the exact return address. The action row is XUDOS, Comment, Share. Only the owner has a button named "Card options", with Edit card, Choose visual, Preview as reader and Sharing.
+
+Each page has one main visual. A graph labelled "captured sessions" and "commits landed" is measured data. A caption "Screenshot chosen by the author" or "Photo chosen by the author" marks a picture the author picked; a photo is atmosphere and proves nothing about the work. "not recorded" means unknown, never zero.
+
+Edit card writes nothing until Save is pressed and reports its state in words: Unsaved changes, Saving, All changes saved, or Not saved. Saving never changes who can see a run. Audience changes only on Sharing, with its own button. Do not press it unless the owner asked to share those exact runs. Never upload, generate or fetch a picture, and never write the owner's headline for them.
+
+A review reads. It sends no XUDOS and no comment unless the owner asked for one in so many words. End a review by stating each address opened, the pages viewed, whether you were signed in, and the count of XUDOS sent, comments posted and changes saved.
 `;
  await writeFile('dist/agents.md',guide);
  await writeFile('dist/llms.txt',`# STRIVE\n\nAgent instructions: ${origin}/agents.md\nCapture release: ${origin}/capture/release.json\nDiscovery: ${origin}/.well-known/agent-grinder.json\n\nLocal selected-session preview first. Owner authentication and consent are required before any upload.\n`);
