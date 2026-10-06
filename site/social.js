@@ -98,7 +98,7 @@ window.GrinderSocial = function ({
   }
 
   const RESPONSE_RETURN_KEY = "ag_response_return";
-  const SOCIAL_RETURN_RE = /^\?(post|mine|following|inbox|run|u|example|people|account|connect|explore|boards|projects?|crews?)(=|&|$)/;
+  const SOCIAL_RETURN_RE = /^\?(day|post|mine|following|inbox|run|u|example|people|account|connect|explore|boards|projects?|crews?)(=|&|$)/;
   function isSocialReturn(pending) {
     return typeof pending === "string" && SOCIAL_RETURN_RE.test(pending);
   }
@@ -1104,9 +1104,14 @@ window.GrinderSocial = function ({
       };
       slot.append(form);
     } else {
-      const note = document.createElement("p");
-      note.textContent = compact ? "Sign in to comment." : "Sign in to reply.";
+      // A reader who is signed out can start sign-in from here; the shell brings them back to this page.
+      const note = document.createElement("p"), go = document.createElement("button");
+      go.type = "button";
+      go.className = "thread-signin";
+      go.textContent = compact ? "Sign in to comment" : "Sign in to reply";
+      go.onclick = () => { if (typeof showSignIn === "function") showSignIn({ reason: "social" }); };
       if (compact) note.className = "thread-empty";
+      note.append(go);
       slot.append(note);
     }
   }

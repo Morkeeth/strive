@@ -16,9 +16,19 @@
     return {runs:seen.filter(i=>!i.git).length,git:seen.filter(i=>i.git).length,projects:projects.size,hidden:items.length-seen.length,
       results:seen.filter(i=>i.result).length};
   }
+  // The owner's totals beside the reader's, counted per project the way the card counts them: commits
+  // from git history where the project has any in view, otherwise the count its runs recorded.
+  // A run with no project named is in neither row, as on the card.
+  function compare(items,wanted){
+    const count=list=>{const by=new Map();for(const i of list){if(!i.project)continue;const g=by.get(i.project)||{git:null,runs:null,n:0};
+        if(i.git)g.git=(g.git||0)+(i.commits||0);else{g.n++;if(i.commits!==null&&i.commits!==undefined)g.runs=(g.runs||0)+i.commits}by.set(i.project,g)}
+      const known=[...by.values()].filter(g=>g.git!==null||g.runs!==null);
+      return {projects:by.size,commits:known.length?known.reduce((a,g)=>a+(g.git!==null?g.git:g.runs),0):null,runs:[...by.values()].reduce((a,g)=>a+g.n,0)}};
+    return {yours:count(items),readers:count(items.filter(i=>wanted.has(i.id)))};
+  }
   function collect(model){
     const items=[];
-    for(const i of model.items)items.push({id:i.run.id,project:i.label||'',git:false,visibility:i.run.visibility,result:i.result,title:i.run.title||'',at:i.start,seconds:i.seconds,harness:i.run.harness||''});
+    for(const i of model.items)items.push({id:i.run.id,project:i.label||'',git:false,commits:i.commits,visibility:i.run.visibility,result:i.result,title:i.run.title||'',at:i.start,seconds:i.seconds,harness:i.run.harness||''});
     for(const g of model.recovered)items.push({id:g.run.id,project:g.label||'',git:true,visibility:g.run.visibility,result:g.result,title:g.run.title||'',at:g.from,until:g.until,commits:g.commits});
     return items;
   }
@@ -43,6 +53,8 @@
       const p=preview(items,wanted),d=plan(items,wanted);
       if(lead&&!wanted.has(lead))lead=null;
       pv.innerHTML=`<p class="meta">What a reader will find</p><p class="ds-count">${p.runs+p.git?`${p.projects} project${p.projects===1?'':'s'}, ${p.runs} run${p.runs===1?'':'s'}${p.git?`, ${p.git} window${p.git===1?'':'s'} of git history`:''}`:'Nothing. The whole day is Only you.'}</p>
+        ${p.runs+p.git?(c=>{const n=(v,w)=>v===null?`commits not recorded`:`${v} ${w}${v===1?'':'s'}`,row=(who,t)=>`<tr><th scope="row">${who}</th><td>${n(t.projects,'project')}</td><td>${n(t.commits,'commit')}</td><td>${n(t.runs,'run')}</td></tr>`;
+          return `<table class="ds-compare" id="ds-compare"><caption>The numbers on the card</caption>${row('You see',c.yours)}${row('Readers see',c.readers)}</table><p class="hint">A reader's card counts shared runs only, so its totals are smaller than yours. Nothing private is added to them.</p>`})(compare(items,wanted)):''}
         <p class="hint">${p.results} of the shared runs carry a written result. ${p.hidden} item${p.hidden===1?' stays':'s stay'} Only you.${lead?'':p.results?' Pick which run leads the day: its own sentence becomes the headline.':''}</p>`;
       const n=d.toPublic.length+d.toPrivate.length;
       apply.textContent=n?`Make ${d.toPublic.length} public${d.toPrivate.length?` and ${d.toPrivate.length} Only you`:''}`:'No change to make';apply.disabled=!n||busy;
@@ -66,7 +78,7 @@
     };
     paint();
   }
-  const api={plan,preview,collect,mount};
+  const api={plan,preview,compare,collect,mount};
   if(typeof module==='object'&&module.exports)module.exports=api;
   root.StriveDayShare=api;
 })(typeof window==='object'?window:globalThis);

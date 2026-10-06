@@ -128,6 +128,9 @@
     const c=deck.choices,at=Math.max(0,Math.min(S.length-1,start|0)),many=S.length>1;
     const fact=(s,id)=>{const f=s.facts[id],none=f.value===null||f.value===undefined,note=!none&&SHORT[f.note];
       return `<div><div class="k">${esc(FACTS[id].label)}${note?`<span> · ${esc(note)}</span>`:''}</div><div class="v${none?' dc-unk':''}">${none?'not recorded':esc(String(f.value))}</div></div>`};
+    // A project's headline is the first sentence the author wrote. The rest of the same result sits under
+    // it, smaller and two lines at most; the whole text is on the run the card opens. Nothing is reworded.
+    const lede=s=>{const m=s.kind==='project'&&String(s.result).match(/^([\s\S]*?[.!?])\s+(\S[\s\S]*)$/);return m?[m[1],m[2]]:[s.result,'']};
     const slide=(s,i)=>{
       if(s.kind==='points')return `<section class="dc-slide" data-slide="${i}" data-name="${esc(s.name)}" ${i===at?'':'hidden'} aria-label="Turning points">
         <ol class="dc-points">${s.points.map(p=>`<li><a href="${esc(runHref(p.run.id))}"><span class="dc-when">${esc(p.at.toLocaleDateString(undefined,{weekday:'short'}))} ${hm(p.at)} · ${esc(p.name)}</span>${esc(p.text)}</a></li>`).join('')}</ol>
@@ -135,7 +138,7 @@
       const ids=(s.kind==='whole'?c.facts.whole:c.facts.project).filter(id=>s.facts[id]),high=s.kind==='whole'?s.highlights.filter(h=>h.text!==s.result).slice(0,2):[];
       const photo=s.photo?`<a class="dc-photo" href="${esc(runHref(s.photo.run))}" data-thumb-run="${esc(s.photo.run)}" data-thumb-photo="${esc(s.photo.id)}" aria-label="Open the run this screenshot is from"></a>`:'';
       return `<section class="dc-slide" data-slide="${i}" data-name="${esc(s.name)}" ${s.open?`data-open="${esc(runHref(s.open.id))}"`:''} ${i===at?'':'hidden'} aria-label="${esc(s.name)}">
-        <div class="dc-story">${photo}${s.result?`<p class="dc-said">${esc(s.result)}${s.draft&&mine&&setupHref?` <a class="dc-draft" href="${esc(setupHref)}">Draft headline. Write your own</a>`:''}</p>`:`<p class="dc-said dc-none">${mine?'No result written yet. Open the run and say what came out of it.':'No result written.'}</p>`}</div>
+        <div class="dc-story">${photo}${s.result?`<p class="dc-said">${esc(lede(s)[0])}${s.draft&&mine&&setupHref?` <a class="dc-draft" href="${esc(setupHref)}">Draft headline. Write your own</a>`:''}</p>${lede(s)[1]?`<p class="dc-rest">${esc(lede(s)[1])}</p>`:''}`:`<p class="dc-said dc-none">${mine?'No result written yet. Open the run and say what came out of it.':'No result written.'}</p>`}</div>
         <div class="dc-facts">${ids.map(id=>fact(s,id)).join('')}</div>
         ${overview(s)}
         ${high.length?`<ul class="dc-high">${high.map(h=>`<li><a href="${esc(runHref(h.run.id))}">${h.name?`<b>${esc(h.name)}</b> `:''}${esc(h.text)}</a></li>`).join('')}</ul>`:''}</section>`};

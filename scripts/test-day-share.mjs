@@ -24,3 +24,11 @@ assert.equal(D.compute(runs,'2026-10-05',label,null,'not-a-run').lead.run.id,'b'
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 assert.match(D.render(D.compute(runs,'2026-10-05',label,null,'a'),{esc,mine:false,dayLabel:'d',leadWith:'result'}),/<h1>TEST DATA said by the author<\/h1>/,'the headline is the sentence the author wrote on the run that leads');
 console.log('PASS: nothing changes on open, exact plan and reader preview, retry only the difference, author names the lead run');
+
+// The share screen shows the owner's totals beside the reader's, so the smaller reader card is no surprise.
+{
+  const rows=[{id:'a',project:'P',git:false,commits:null},{id:'b',project:'P',git:true,commits:7},{id:'c',project:'Q',git:false,commits:1},{id:'d',project:'Q',git:false,commits:null},{id:'e',project:'',git:false,commits:3}];
+  assert.deepEqual(S.compare(rows,new Set(['c','d'])),{yours:{projects:2,commits:8,runs:3},readers:{projects:1,commits:1,runs:2}});
+  assert.deepEqual(S.compare(rows,new Set(['a'])).readers,{projects:1,commits:null,runs:1},'a commit count nobody recorded stays unknown, never zero');
+  assert.deepEqual(S.compare(rows,new Set()).readers,{projects:0,commits:null,runs:0});
+}

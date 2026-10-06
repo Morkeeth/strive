@@ -1020,7 +1020,7 @@ function ackPickerHtml(r,suggested,selected){
     return `<button type="button" class="ack-chip ${on?'on':''}" data-reason="${id}">${esc(m.label)}<small>${esc(m.evidence)}</small></button>`;
   }).join('');
   return `<div class="ack-picker" data-run="${r.id}" data-to="${r.profile_id}">
-    <p><b>Send XUDOS</b> — choose what you appreciated.</p>
+    <p><b>Send XUDOS</b>. Choose what you appreciated.</p>
     <div class="ack-chips">${chips}</div>
     <button type="button" class="ack-send" ${selected?'':'disabled'}>Send XUDOS</button>
     <button type="button" class="ghost ack-cancel" style="margin-left:8px">Cancel</button>
@@ -2793,7 +2793,7 @@ async function route(){ RUN_VIEW_GENERATION++;window.StriveRunPhotos?.disposeAll
   if(await StriveDayDrafts.open({client:sb,me:()=>ME,app:()=>$('app'),frame,railHtml,esc,status,signIn:()=>showSignIn(),decode:decodeImportPayload,
     validate:run=>GrinderContract.validate(run),projectLabel:v=>GrinderContract.projectLabel(v),rejectPaths:v=>GrinderContract.rejectPaths(v),safeRepoUrl,explain:e=>GrinderContract.message?GrinderContract.message(e):String(e?.message||e||'')})) return;
   if(await importRun()) return;
-  if(social&&typeof social.applyStoredSocialReturn==='function'){social.applyStoredSocialReturn();}else if(ME){try{const pending=sessionStorage.getItem('ag_social_return');if(pending&&/^\?(post|mine|following|inbox|run|u|example|people|account|connect|explore|boards|projects?|crews?)(=|&|$)/.test(pending)){history.replaceState(null,'','/'+pending);sessionStorage.removeItem('ag_social_return');}}catch(_){}}
+  if(social&&typeof social.applyStoredSocialReturn==='function'){social.applyStoredSocialReturn();}else if(ME){try{const pending=sessionStorage.getItem('ag_social_return');if(pending&&/^\?(day|post|mine|following|inbox|run|u|example|people|account|connect|explore|boards|projects?|crews?)(=|&|$)/.test(pending)){history.replaceState(null,'','/'+pending);sessionStorage.removeItem('ag_social_return');}}catch(_){}}
   const q=new URLSearchParams(location.search);
   if(q.has('example')){
     if(q.get('example')==='share') return GrinderExample.viewShare();
