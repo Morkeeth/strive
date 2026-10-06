@@ -346,3 +346,7 @@ button,summary{touch-action:manipulation}
 @media(max-width:720px){.j-pair img{aspect-ratio:auto;max-height:70vh;object-fit:contain}.j-steps a{grid-template-columns:30px 1fr}.j-step b{font-size:16px}}
 
 .day-hero:has(.run-before-after) .day-head{order:-1}
+
+.day-mark{position:absolute;top:11px;height:5px;min-width:3px;background:var(--ink);opacity:.55}
+.day-thumb:empty{display:none}.day-thumb{display:block;margin-top:8px}.day-thumb img{display:block;width:100%;max-width:300px;max-height:190px;object-fit:cover;object-position:top;border:1px solid var(--rule)}
+.day-all{margin-top:12px;font-size:14px}.day-all summary{cursor:pointer;color:var(--blue)}.day-all .day-repos{margin-top:8px}

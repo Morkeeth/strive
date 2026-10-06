@@ -24,7 +24,9 @@
     for(const r of runs||[]){
       const start=startOf(r);if(!start)continue;const on=localDay(start);if(on<day||on>end)continue;
       const evidence=evidenceOf(r);
-      if(evidence){recovered.push({run:r,start,label:projectLabel(r.project)||String(r.title||'Recovered build'),raw:projectLabel(r.project)?r.project:null,commits:evidence.repo_commits});continue;}
+      if(evidence){const from=new Date(Date.parse(evidence.repo_window_start));recovered.push({run:r,start,from:Number.isFinite(from.getTime())?from:start,until:new Date(Date.parse(evidence.repo_window_end)),
+        label:projectLabel(r.project)||String(r.title||'Recovered build'),raw:projectLabel(r.project)?r.project:null,commits:evidence.repo_commits,
+        result:typeof r.story_result==='string'?r.story_result.trim():''});continue;}
       const seconds=secondsOf(r),label=projectLabel(r.project)||'',result=resultOf(r).trim();
       items.push({run:r,start,end:new Date(start.getTime()+seconds*1000),seconds,label,raw:r.project,result,models:modelsOf(r),
         commits:Number.isFinite(r.commits)?Math.max(0,r.commits):null});
@@ -46,7 +48,8 @@
     const timed=items.filter(i=>i.seconds>0);
     const edges=timed.flatMap(i=>[[i.start.getTime(),1],[i.end.getTime(),-1]]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
     let now=0,peak=0,peakAt=null;for(const [t,d] of edges){now+=d;if(now>peak){peak=now;peakAt=new Date(t)}}
-    const first=items.length?items[0].start:null,last=items.reduce((m,i)=>!m||i.end>m?i.end:m,null);
+    const marked=recovered.filter(g=>g.commits);
+    const first=[...items.map(i=>i.start),...marked.map(g=>g.from)].sort((a,b)=>a-b)[0]||null,last=[...items.map(i=>i.end),...marked.map(g=>g.until)].sort((a,b)=>b-a)[0]||null;
     const from=first?new Date(first.getFullYear(),first.getMonth(),first.getDate(),first.getHours()):null;
     const until=last?new Date(Math.ceil(last.getTime()/3600000)*3600000):null;
     const models=new Map();for(const i of items)for(const m of i.models)models.set(m,(models.get(m)||0)+1);
@@ -59,8 +62,16 @@
     for(const i of lines){const key=i.label||'run:'+i.run.id,g=grouped.get(key)||{label:i.label,raw:i.raw,runs:[],seconds:0,commits:0,models:new Set(),harnesses:new Set(),result:'',open:null};
       g.runs.push(i);g.seconds+=i.seconds;g.commits+=i.commits||0;i.models.forEach(m=>g.models.add(m));if(i.run.harness)g.harnesses.add(i.run.harness);
       if(i.result){g.result=i.result;g.open=i.run}grouped.set(key,g)}
-    const groups=[...grouped.values()].map(g=>({...g,open:g.open||g.runs[g.runs.length-1].run,models:[...g.models],harnesses:[...g.harnesses],
-      allPrivate:g.runs.every(i=>i.run.visibility==='private')})).sort((a,b)=>(b.result?1:0)-(a.result?1:0)||a.runs[0].start-b.runs[0].start);
+    // Git history is drawn on its project's lane as marks: when commits landed, never who made them.
+    // A project that has git history and no captured session still gets a lane, made of marks only.
+    const marksBy=new Map();
+    for(const g of recovered){if(!g.commits)continue;const list=marksBy.get(g.label)||[];list.push(g);marksBy.set(g.label,list)}
+    for(const [name,list] of marksBy){if(grouped.has(name))continue;const said=[...list].reverse().find(m=>m.result);
+      grouped.set(name,{label:name,raw:list.find(m=>m.raw!=null)?.raw??null,runs:[],seconds:0,commits:0,models:new Set(),harnesses:new Set(),result:said?said.result:'',open:(said||list[list.length-1]).run,gitOnly:true})}
+    const groups=[...grouped.values()].map(g=>{const marks=(marksBy.get(g.label)||[]).slice().sort((a,b)=>a.from-b.from);
+      return {...g,marks,gitCommits:marks.length?marks.reduce((a,m)=>a+m.commits,0):null,open:g.open||g.runs[g.runs.length-1].run,models:[...g.models],harnesses:[...g.harnesses],
+        begins:g.runs.length?g.runs[0].start:marks[0].from,allPrivate:g.runs.length?g.runs.every(i=>i.run.visibility==='private'):marks.every(m=>m.run.visibility==='private')}})
+      .sort((a,b)=>(b.result?1:0)-(a.result?1:0)||a.begins-b.begins);
     return {day,through:end,items,recovered,lines,groups,plumbing,projects,peak,peakAt,from,until,lead,
       commits:projects.reduce((a,p)=>a+p.commits,0)+unlabelled,commitsUnknown:items.filter(i=>i.commits===null&&!(i.label&&by.get(i.label).fromGit!==null)).length,
       toolCalls:items.reduce((a,i)=>a+(i.run.tool_calls||i.run.ridge_tool_calls||0),0),
@@ -87,23 +98,25 @@
     // Over more than one day the first label carries the weekday and is long, so its neighbour is left out.
     const axis=hours.filter((_,i)=>i%step===0).filter((_,i)=>!(many&&i===1)).map(h=>`<span style="left:${at(h).toFixed(2)}%">${tick(h)}</span>`).join('');
     const bar=i=>`<i class="day-bar" style="left:${at(i.start).toFixed(2)}%;width:${Math.max(0.8,at(i.end)-at(i.start)).toFixed(2)}%"></i>`;
-    const line=g=>{const chips=[...g.harnesses.map(h=>`<span class="day-chip">${esc(h)}</span>`),...g.models.map(m=>`<span class="day-chip">${esc(m)}</span>`),
-        g.commits?`<span class="day-chip day-chip-on">${plural(g.commits,'commit')}</span>`:'',g.allPrivate?'<span class="day-chip">Only you</span>':'',
-        g.runs.length>1&&g.label?`<a class="day-chip day-more" href="/?project=${encodeURIComponent(g.raw)}&scope=${mine?'mine':'public'}">${g.runs.length} runs</a>`:''].join('');
-      const first=g.runs[0].start,last=g.runs.reduce((m,i)=>i.end>m?i.end:m,g.runs[0].end);
+    const mark=m=>`<i class="day-mark" style="left:${at(m.from).toFixed(2)}%;width:${Math.max(0.5,at(m.until)-at(m.from)).toFixed(2)}%" title="${plural(m.commits,'commit')}, from git history"></i>`;
+    const lane=g=>g.runs.filter(i=>i.seconds>0).map(bar).join('')+g.marks.map(mark).join('');
+    const ends=g=>{const a=[...g.runs.map(i=>i.start),...g.marks.map(m=>m.from)].sort((x,y)=>x-y)[0],b=[...g.runs.map(i=>i.end),...g.marks.map(m=>m.until)].sort((x,y)=>y-x)[0];return [a,b]};
+    const line=g=>{const commits=g.gitCommits!==null?g.gitCommits:g.commits,[first,last]=ends(g);
+      const chips=[...g.harnesses.map(h=>`<span class="day-chip">${esc(h)}</span>`),...g.models.map(m=>`<span class="day-chip">${esc(m)}</span>`),
+        commits?`<span class="day-chip day-chip-on">${plural(commits,'commit')}${g.gitCommits!==null?', from git history':''}</span>`:'',g.allPrivate?'<span class="day-chip">Only you</span>':'',
+        g.runs.length>1&&g.raw!=null?`<a class="day-chip day-more" href="/?project=${encodeURIComponent(g.raw)}&scope=${mine?'mine':'public'}">${g.runs.length} runs</a>`:''].join('');
       return `<div class="day-line"><a class="day-what day-open" href="/?run=${encodeURIComponent(g.open.id)}"><b>${esc(g.label||'No project named')}</b>`
         +(g.result?`<span>${esc(g.result)}</span>`:`<span class="day-missing">${mine?'No result written yet. Open the run to say what came out of it.':'No result written.'}</span>`)
-        +`</a><span class="day-when"><span class="day-track">${g.runs.filter(i=>i.seconds>0).map(bar).join('')}</span><span class="day-facts">${chips}<span class="day-t">${hm(first)}${g.seconds>0?` to ${hm(last)}`:''} · ${span(g.seconds)}</span></span></span></div>`};
+        +`<span class="day-thumb" data-thumb-run="${esc(g.open.id)}"></span></a><span class="day-when"><span class="day-track">${lane(g)}</span><span class="day-facts">${chips}<span class="day-t">${hm(first)} to ${hm(last)}${g.seconds>0?` · ${span(g.seconds)}`:''}</span></span></span></div>`};
     // A project with a written result gets a full row. One without gets a single quiet line, so a
     // long list of touched projects cannot outweigh one project that says what came out of it.
-    const quiet=g=>{const first=g.runs[0].start,last=g.runs.reduce((m,i)=>i.end>m?i.end:m,g.runs[0].end);
-      return `<div class="day-quiet"><a class="day-open" href="/?run=${encodeURIComponent(g.open.id)}">${esc(g.label||'No project named')}</a><span class="day-track">${g.runs.filter(i=>i.seconds>0).map(bar).join('')}</span><span class="day-t">${g.runs.length>1?`${g.runs.length} runs · `:''}${span(g.seconds)}</span></div>`};
+    const quiet=g=>`<div class="day-quiet"><a class="day-open" href="/?run=${encodeURIComponent(g.open.id)}">${esc(g.label||'No project named')}</a><span class="day-track">${lane(g)}</span><span class="day-t">${g.gitOnly?`${plural(g.gitCommits,'commit')}, git`:`${g.runs.length>1?`${g.runs.length} runs · `:''}${span(g.seconds)}`}</span></div>`;
     // The lead run's project is read first; the rest keep their order in time.
     const leads=g=>D.lead&&g.runs.some(i=>i.run.id===D.lead.run.id)?0:1;
     const told=D.groups.filter(g=>g.result).sort((a,b)=>leads(a)-leads(b)),untold=D.groups.filter(g=>!g.result);
     const strip=withCommits.length?`<div class="head"><h2>Where the commits landed</h2><span class="meta">${plural(withCommits.length,'project')}</span></div><div class="card day-commits">
       <div class="day-strip" role="img" aria-label="One segment per project, width by commits">${withCommits.map((p,i)=>`<i style="flex:${p.commits};background:${shade(i,withCommits.length)}" title="${esc(p.name)}: ${p.commits}"></i>`).join('')}</div>
-      <ul class="day-repos">${withCommits.map((p,i)=>`<li><i style="background:${shade(i,withCommits.length)}"></i>${p.raw!=null?`<a href="/?project=${encodeURIComponent(p.raw)}&scope=${mine?'mine':'public'}">${esc(p.name)}</a>`:`<span class="day-name">${esc(p.name)}</span>`}<span class="meta">${p.fromGit!==null?'from git history':plural(p.runs,'run')}</span><b>${p.commits}</b></li>`).join('')}</ul>
+      <details class="day-all"><summary>${plural(D.commits,'commit')} in ${plural(withCommits.length,'project')}. See each one.</summary><ul class="day-repos">${withCommits.map((p,i)=>`<li><i style="background:${shade(i,withCommits.length)}"></i>${p.raw!=null?`<a href="/?project=${encodeURIComponent(p.raw)}&scope=${mine?'mine':'public'}">${esc(p.name)}</a>`:`<span class="day-name">${esc(p.name)}</span>`}<span class="meta">${p.fromGit!==null?'from git history':plural(p.runs,'run')}</span><b>${p.commits}</b></li>`).join('')}</ul></details>
       ${D.commitsUnknown?`<p class="hint">${plural(D.commitsUnknown,'run')} recorded no commit count, so ${D.commitsUnknown===1?'it is':'they are'} not in this strip. Unknown is not zero.</p>`:''}${D.recovered.length?`<p class="hint">${plural(D.recovered.length,'project')} counted from git history, recovered by the owner. Git history says a commit exists on that day. It does not say which run made it.</p>`:''}</div>`:'';
     const sum=D.lineSeconds+D.plumbingSeconds,share=sum?D.lineSeconds/sum:0,C=2*Math.PI*42;
     const spent=sum&&D.plumbing.length?`<div class="day-spent"><svg viewBox="0 0 120 120" role="img" aria-label="Recorded time: named work against plumbing"><circle r="42" cx="60" cy="60" fill="none" stroke="var(--rule)" stroke-width="16"/><circle r="42" cx="60" cy="60" fill="none" stroke="var(--blue)" stroke-width="16" stroke-dasharray="${(share*C).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 60 60)"/></svg>
@@ -115,8 +128,8 @@
       ${D.peak>=3?`<p class="day-badge"><b>PARALLELISER</b><span>${D.peak} runs going at once at ${hm(D.peakAt)}</span></p>`:''}
       <div class="ptotals num day-nums"><div><div class="v">${D.commits>0?withCommits.length:D.projects.length}</div><div class="k">Projects</div></div>${D.commits>0||!D.toolCalls?`<div><div class="v">${D.commits}</div><div class="k">Commits</div></div>`:`<div><div class="v">${D.toolCalls}</div><div class="k">Tool calls recorded</div></div>`}<div><div class="v">${D.items.length}</div><div class="k">Runs</div></div><div><div class="v">${D.hours}</div><div class="k">Hours, first to last</div></div></div>
       ${mine&&publicHref?`<p class="hint">You see every run of the day. <a href="${esc(publicHref)}">See what others see</a>: only the runs you made public.</p>`:''}</div></section>`;
-    const doneHtml=`<div class="head"><h2>What got done</h2><span class="meta">${plural(D.groups.length,'project')} · ${plural(D.lines.length,'run')}</span></div>
-      <div class="card day-sheet">${D.lines.length?`<div class="day-axis">${axis}</div>${told.map(line).join('')}${untold.length?`<details class="day-untold" ${mine||!told.length?'open':''}><summary>${told.length?`${plural(untold.length,'more project')} worked on, no result written`:`${plural(untold.length,'project')} worked on, no result written yet`}</summary>${untold.map(quiet).join('')}${mine?'<p class="hint">Open a run and write what came out of it. It moves up and gets a full row.</p>':''}</details>`:''}`:'<div class="empty"><h3>No named work on this day</h3><p>A run appears here once it has a project or a written result.</p></div>'}
+    const doneHtml=`<div class="head"><h2>What got done</h2><span class="meta">${plural(told.length,'result')} · ${plural(D.groups.length,'project')}</span></div>
+      <div class="card day-sheet">${D.groups.length?`<div class="day-axis">${axis}</div>${told.map(line).join('')}${untold.length?`<details class="day-untold" ${mine||!told.length?'open':''}><summary>${told.length?`${plural(untold.length,'more project')} with work or commits, no result written`:`${plural(untold.length,'project')} with work or commits, no result written yet`}</summary>${untold.map(quiet).join('')}${mine?'<p class="hint">Open a run and write what came out of it. It moves up and gets a full row.</p>':''}</details>`:''}`:'<div class="empty"><h3>No named work on this day</h3><p>A run appears here once it has a project or a written result.</p></div>'}
       ${D.plumbing.length?`<details class="day-plumbing"><summary><b>Plumbing</b> ${plural(D.plumbing.length,'run')} with no project and no written result · ${span(D.plumbingSeconds)}<span class="day-track">${D.plumbing.filter(i=>i.seconds>0).map(bar).join('')}</span></summary>
         <ul>${D.plumbing.map(i=>`<li><a href="${esc(editHref(i.run.id))}">${esc(i.run.harness||'Run')} · ${hm(i.start)} · ${span(i.seconds)}</a></li>`).join('')}</ul>
         <p class="hint">Lineage is not recorded: which run started which is unknown, so these stay side by side.</p></details>`:''}</div>`;

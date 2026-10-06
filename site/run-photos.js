@@ -158,5 +158,22 @@
       if(active)slot.innerHTML=figures.join('<span class="j-arrow" aria-hidden="true">→</span>');
     }catch(_){}
   }
-  root.StriveRunPhotos={mount,mountCovers,mountPair,disposeAll};
+  // One small picture beside a result line: the run's result image, else its first photo. It is
+  // evidence the reader can open, so it links nowhere itself; the line around it opens the run.
+  async function mountThumbs({client,root:host=document}){
+    let active=true;const controller=new AbortController(),urls=new Set();
+    const dispose=()=>{active=false;controller.abort();for(const url of urls)URL.revokeObjectURL(url);urls.clear();disposers.delete(dispose)};
+    disposers.add(dispose);
+    await Promise.all([...host.querySelectorAll('[data-thumb-run]')].slice(0,24).map(async slot=>{
+      try{
+        const list=await fetch(`/api/run-photos?run_id=${encodeURIComponent(slot.dataset.thumbRun)}`,{headers:await headers(client),signal:controller.signal});
+        if(!active||!list.ok)return;const photos=((await list.json())?.photos||[]).filter(p=>p.role!=='personal');
+        const photo=photos.find(p=>p.role==='result')||photos.find(p=>p.role==='after')||photos[0],path=photo&&photoPath(photo);if(!path)return;
+        const res=await fetch(path,{headers:await headers(client),signal:controller.signal});if(!active||!res.ok)return;
+        const url=URL.createObjectURL(await res.blob());urls.add(url);
+        const image=document.createElement('img');image.src=url;image.alt=roles[photo.role]||'Run photo';image.loading='lazy';slot.replaceChildren(image);
+      }catch(_){}
+    }));
+  }
+  root.StriveRunPhotos={mount,mountCovers,mountPair,mountThumbs,disposeAll};
 })(typeof window!=="undefined"?window:globalThis);

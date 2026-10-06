@@ -59,4 +59,13 @@ assert.match(dr,/<h1>TEST DATA the one that says something<\/h1>/,'leading with 
 assert.match(dr,/81 commits across 5 projects\./);assert.equal((dr.match(/class="day-line"/g)||[]).length,1,'only the project with a written result gets a full row');
 assert.equal((dr.match(/class="day-quiet"/g)||[]).length,4);assert.match(dr,/<details class="day-untold" >/,'for a reader the unwritten projects are folded');
 assert.match(D.render(depth,{esc,mine:false,dayLabel:'d',leadWith:'numbers'}),/<h1>81 commits across 5 projects\.<\/h1>/);
-console.log('PASS: depth over count; night window, lead order; recovered git history; day membership, unknown commits, plumbing fold, peak, lead run, models, escaping and owner-only links');
+const zg=g.groups.find(x=>x.label==='zup'),bg=g.groups.find(x=>x.label==='Work on bagel');
+assert.equal(zg.marks.length,1);assert.equal(zg.gitCommits,17);assert.equal(zg.runs.length,2,'git marks sit on the lane of the project that also has sessions');
+assert.equal(bg.gitOnly,true);assert.equal(bg.runs.length,0);assert.equal(bg.gitCommits,48,'a project with git history and no captured session still gets a lane');
+assert.match(gr,/class="day-mark"/);assert.match(gr,/48 commits, git/);
+const failed=D.compute([{id:'f1',project:'arc',title:'Work on arc',story_result:'TEST DATA both arms ended in ERROR.',...ev(4)}],'2026-10-05',label);
+const fr=D.render(failed,{esc,mine:false,dayLabel:'d',leadWith:'journey'});
+assert.match(fr,/TEST DATA both arms ended in ERROR\./,'a written result on a git-history row is shown, failure included');assert.match(fr,/4 commits, from git history/);
+assert.ok(!/Claude Code|Codex/.test(fr),'a git-history lane names no harness and no session');
+assert.equal(failed.items.length,0);assert.equal(failed.peak,0);
+console.log('PASS: git marks without session attribution; depth over count; night window, lead order; recovered git history; day membership, unknown commits, plumbing fold, peak, lead run, models, escaping and owner-only links');

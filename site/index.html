@@ -2275,6 +2275,7 @@ async function viewDay(day){
   app.innerHTML=nav+StriveDay.render(model,{esc,mine,dayLabel:label,leadWith,leadHref:k=>`/?day=${day}${extra}&lead=${k}`,publicHref:mine?`/?day=${day}${extra}&p=${encodeURIComponent(profileId)}&lead=${leadWith}`:null});
   if(model.lead&&$('day-thread'))void social.thread(model.lead.run.id,$('day-thread'));
   window.StriveRunPhotos?.mountCovers?.({client:sb,root:app});
+  void window.StriveRunPhotos?.mountThumbs?.({client:sb,root:app});
 }
 async function viewProjects(){
   const app=$('app'); frame(railHtml('projects'),null); setPrimarySection('projects'); app.innerHTML=skeletonCard();
