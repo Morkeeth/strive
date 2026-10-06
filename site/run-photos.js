@@ -215,11 +215,13 @@
         +(found.length?'':`<p class="meta">No picture on these runs yet. ${runs&&runs[0]?`<a href="/?run=${encodeURIComponent(runs[0].id)}">Open a run to add one</a>, then choose it here. `:''}The card works without one.</p>`);
       slot.querySelectorAll('[name=pc-photo]').forEach(r=>r.addEventListener('change',e=>{e.stopPropagation();const f=found[+r.value];chosen=r.value===''||!f?null:{run:f.run.id,id:f.photo.id};onPick(chosen,f&&r.value!==''?{role:f.photo.role,width:f.photo.width,height:f.photo.height}:null)}))};
     (async()=>{
-      await Promise.all((runs||[]).slice(0,60).map(async run=>{
+      // Every run on the card is asked, eight at a time, so a long day does not lose the pictures on its later runs.
+      const queue=(runs||[]).slice(0,240),ask=async run=>{
         try{const res=await fetch(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:await headers(client),signal:controller.signal});if(!active||!res.ok)return;
           for(const photo of ((await res.json())?.photos||[])){const path=photoPath(photo);if(!path)continue;
             const img=await fetch(path,{headers:await headers(client),signal:controller.signal});if(!active||!img.ok)continue;const url=URL.createObjectURL(await img.blob());urls.add(url);found.push({run,photo,url})}
-        }catch(_){}}));
+        }catch(_){}};
+      let next=0;await Promise.all(Array.from({length:8},async()=>{while(active&&next<queue.length)await ask(queue[next++])}));
       found.sort((a,b)=>runs.indexOf(a.run)-runs.indexOf(b.run));paint();
     })();
     return next=>{chosen=next||null;paint()};
