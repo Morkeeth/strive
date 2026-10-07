@@ -159,3 +159,14 @@ assert.equal(form.current().projectVisuals[tokens.get('alpha')],undefined);
 slot.querySelector('[name=cs-visual][value=photo]').checked=true;
 slot.querySelector('[name=cs-visual][value=photo]').dispatchEvent(new window.Event('change',{bubbles:true}));
 assert.equal(form.current().projectVisuals[tokens.get('alpha')],undefined);
+
+// The chapter labels, not anonymous numbers, tell a reader what they will open.
+assert.deepEqual([...card.querySelectorAll('.dc-page')].map(a=>a.textContent),names);
+const chapterIndex=card.querySelector('.dc-chapters');chapterIndex.open=true;
+press(card.querySelector('.dc-page[data-goto="1"]'));
+assert.equal(chapterIndex.open,false,'choosing a chapter closes the index');
+const chapter=card.querySelector('.dc-slide[data-slide="1"]');
+assert.equal(chapter.querySelector('.dc-project-name').textContent,names[1]);
+assert.equal(chapter.querySelector('.dc-measured').open,false,'metrics do not displace the story');
+assert.ok(chapter.querySelector('.dc-visual').compareDocumentPosition(chapter.querySelector('.dc-measured')) & window.Node.DOCUMENT_POSITION_FOLLOWING,'the visual precedes measured details');
+assert.ok(card.querySelectorAll('.dc-chapter-list a').length>=3,'overview gives direct project chapter links');

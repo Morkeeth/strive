@@ -25,8 +25,8 @@ Every page of every card has the same parts in the same order.
 | 1 | Identity and date | Author name and the day or days. One line. | `StriveDayCard.render` |
 | 2 | Page selector | Only when the card has more than one page. See section 2. | `StriveDayCard.render` |
 | 3 | Headline | A level 2 heading. One short sentence the author wrote. Never invented. A project headline is the first sentence of the result field. | `StriveDayCard.render` |
-| 4 | Numbers | Two or three measured facts, each a group named with its label and value. A missing value says "not recorded". Unknown is never zero. | `StriveDayCard.render` |
-| 5 | Main visual | Exactly ONE region. See section 4. | `visual()` in `site/day-card.js` |
+| 4 | Main visual | Exactly ONE visual region per project chapter. The overview is a named chapter list, with its optional selected cover. | `visual()` in `site/day-card.js` |
+| 5 | Measured activity | Selected measured facts in an expandable detail below the story and image. A missing value says "not recorded". Unknown is never zero. | `StriveDayCard.render` |
 | 6 | Highlights | At most two short lines, each opens its run. Overview only. | `StriveDayCard.render` |
 | 7 | Action row | XUDOS, Comment, Share. The approved look. Do not restyle it. | `GrinderFeed.actions` |
 
@@ -54,14 +54,14 @@ Tokens:
 
 Classes: `.dc-pages`, `.dc-pos`, `.dc-dots`, `.dc-page`, `.dc-arrow`.
 
-- Numbered links, 1 to N. Blue outline. The selected one is filled blue and carries `aria-current="page"`.
+- Named project links inside a compact Choose chapter disclosure. The selected link carries `aria-current="page"`; names, not numbered circles, tell the reader where to go. The overview also links each included chapter with its author-written outcome when present.
 - Each link has an accessible name made of its number and its page: `1 Overview`, `2 STRIVE`. An agent or a screen reader asks for a page by that name.
 - The page name stays visible in words beside the numbers: `STRIVE · 2 of 4`.
 - Previous and Next buttons stay. They are disabled at the ends. Pages do not wrap around.
-- A long card wraps onto more rows inside the card. It never scrolls sideways and a target never gets smaller than `--page-dot`. The gap is `--page-gap`.
+- The chapter list stays inside the card and wraps long project names. It never scrolls sideways and a target never gets smaller than `--page-dot`. The gap is `--page-gap`.
 - Every link is a real `href`. A page is named in the address by its project token: `&page=<token>`. The overview has no `page` value. The older form `&card=<number>` is still read.
 - A page change the reader makes adds one step to the browser history. Back, Forward and Reload keep the page.
-- The card may turn its own page every 15 seconds (`auto` in `wire`, action `auto` in `reduce()`). This is the only move that goes round from the last page to the first. Rules for it:
+- The day view does not turn chapters automatically. Optional playback remains available to explicit callers (`auto` in `wire`, action `auto` in `reduce()`). This is the only move that goes round from the last page to the first. Rules for it:
   - It adds no history step. It only keeps the address in step with `replaceState`.
   - It waits while the pointer is on the card, while focus is inside the card and while the tab is hidden.
   - It never starts for a reader who asked for reduced motion.
@@ -99,7 +99,7 @@ Saving on Edit card:
 - Cancel puts the last saved choices back.
 - A failed save keeps every choice on the screen and says how to try again.
 - Leaving the page with unsaved choices asks first.
-- A save writes display choices to the owner's profile. It never touches a run and never changes who can see one. Audience changes only on Sharing.
+- A save writes display choices to the owner-only day-card table. It never touches a run and never changes who can see one. Audience changes only on Sharing.
 
 ## 4. Main visual
 
@@ -177,5 +177,9 @@ Not yet moved over. These still differ and are listed here so nobody mistakes th
 - Run share page (`/?share=1&run=`): older layout. A reader's Share on a day card still goes here, for the lead run only.
 - Profile page and "My runs" list: no card anatomy.
 - Everything under "Everything in this run" on the day page: older sheet layout.
-- The author picks one picture per card on Edit card. Other project pages can only show their own run's cover. Picking a different card picture for each project on Edit card does not exist yet.
+- Per-project photo, screenshot and data choices now persist independently in owner-only storage. Reader choices are filtered by public run membership in the requested local date window.
 - The overview headline "One run across N projects" is a counted draft, shown to the owner as a draft.
+
+## 7. Project chapters · approved direction, 7 October
+
+A project chapter names the project, uses only its author-written result as its outcome, leads with the selected visual, and offers the actual output link or project continuation. Missing outcomes stay quiet and honest; owner links open the existing run story editor. Still-open text remains an author declaration. The overview provides named chapter links rather than activity totals as its first content. Project following stores only the viewer’s own subscriptions; subsequent views always re-read public runs. Following never grants access to private work.

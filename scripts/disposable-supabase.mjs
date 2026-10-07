@@ -11,6 +11,7 @@ export const CASEY = "11000000-0000-0000-0000-000000000001";
 export const RILEY = "11000000-0000-0000-0000-000000000002";
 const TABLES = new Set([
   "profiles",
+  "project_follows",
   "runs",
   "run_photos",
   "close_friends",
@@ -591,7 +592,7 @@ async function updateRows(db, table, row, filters, select) {
 
 async function deleteRows(db, table, filters) {
   const { sql, params } = whereClause(filters);
-  const q = `delete from ${ident(table)}${sql} returning id`;
+  const q = `delete from ${ident(table)}${sql} returning *`;
   return (await db.query(q, params)).rows;
 }
 
