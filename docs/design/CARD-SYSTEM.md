@@ -25,16 +25,16 @@ Every page of every card has the same parts in the same order.
 | 1 | Identity and date | Author name and the day or days. One line. | `StriveDayCard.render` |
 | 2 | Page selector | Only when the card has more than one page. See section 2. | `StriveDayCard.render` |
 | 3 | Headline | A level 2 heading. One short sentence the author wrote. Never invented. A project headline is the first sentence of the result field. | `StriveDayCard.render` |
-| 4 | Main visual | Exactly ONE visual region per project chapter. The overview is a named chapter list, with its optional selected cover. | `visual()` in `site/day-card.js` |
-| 5 | Measured activity | Selected measured facts in an expandable detail below the story and image. A missing value says "not recorded". Unknown is never zero. | `StriveDayCard.render` |
+| 4 | Main visual | One selected project image, its measured share ring, and up to three project facts together on one compact screen. | `visual()` in `site/day-card.js` |
+| 5 | Measured activity | Selected measured facts visible beside the share ring under the image. A missing value says "not recorded". Unknown is never zero. | `StriveDayCard.render` |
 | 6 | Highlights | At most two short lines, each opens its run. Overview only. | `StriveDayCard.render` |
 | 7 | Action row | XUDOS, Comment, Share. The approved look. Do not restyle it. | `GrinderFeed.actions` |
 
-A card with one project and a card with many projects are built by the same function from the same parts. The one-project card has no selector.
+A card with one project and a card with many projects use the same renderer. One project has no selector. Multiple projects open directly on the selected project; right/left arrows change its image, chart and data together. No overview or turning-points page interrupts project navigation.
 
 If saved sessions have no project names at all, show one "Runs without a project" card with their recorded facts and trace. Do not count that group as a project or invent a result. This fallback must not reveal projects the author explicitly hid.
 
-One exception: the "Turning points" page. It is a list of links to the runs where the author wrote a result. It has no headline, no numbers and no main visual.
+Turning points and whole-day totals remain available in the expanded evidence below the card; they are not carousel pages.
 
 Tokens:
 
@@ -54,12 +54,12 @@ Tokens:
 
 Classes: `.dc-pages`, `.dc-pos`, `.dc-dots`, `.dc-page`, `.dc-arrow`.
 
-- Named project links inside a compact Choose chapter disclosure. The selected link carries `aria-current="page"`; names, not numbered circles, tell the reader where to go. The overview also links each included chapter with its author-written outcome when present.
+- Named project links inside a compact Choose chapter disclosure. The selected link carries `aria-current="page"`; names, not numbered circles, tell the reader where to go. There is no separate overview list in the carousel.
 - Each link has an accessible name made of its number and its page: `1 Overview`, `2 STRIVE`. An agent or a screen reader asks for a page by that name.
 - The page name stays visible in words beside the numbers: `STRIVE · 2 of 4`.
 - Previous and Next buttons stay. They are disabled at the ends. Pages do not wrap around.
 - The chapter list stays inside the card and wraps long project names. It never scrolls sideways and a target never gets smaller than `--page-dot`. The gap is `--page-gap`.
-- Every link is a real `href`. A page is named in the address by its project token: `&page=<token>`. The overview has no `page` value. The older form `&card=<number>` is still read.
+- Every link is a real `href`. A page is named in the address by its project token: `&page=<token>`. An absent `page` value opens the selected lead project. The older form `&card=<number>` is still read.
 - A page change the reader makes adds one step to the browser history. Back, Forward and Reload keep the page.
 - The day view does not turn chapters automatically. Optional playback remains available to explicit callers (`auto` in `wire`, action `auto` in `reduce()`). This is the only move that goes round from the last page to the first. Rules for it:
   - It adds no history step. It only keeps the address in step with `replaceState`.
@@ -111,22 +111,22 @@ Class: `.dc-visual`. One of three modes. The author chooses the mode. Nothing gu
 | Screenshot | A capture of a screen the author picked from their own runs | Shown whole, never cropped. `object-fit: contain`, at most `--visual-shot-max` high, on `--visual-wash`. |
 | Photo | A photograph the author picked from their own runs | Fills a `--visual-photo-ratio` frame. `object-fit: cover`. The author picks the part to keep in the frame and checks the crop in the preview. |
 
-The split (`.dc-share`, drawn only by `share()` in `site/day-card.js`) is part of Data mode. It is one ring.
+The split (`.dc-share`, drawn only by `share()` in `site/day-card.js`) stays visible with the selected image. It is one ring.
 
-- It divides the run by ONE measured quantity and names it under the ring: commits where any project has a commit count, otherwise session time summed across runs.
+- It divides the run by ONE measured quantity and names it under the ring: captured tool calls when at least two projects have complete positive tool-call measurements; otherwise commits, then captured session time. A partial project total is excluded and named, never filled with zero.
 - A project with no recorded value is not drawn. It is counted in words: "2 projects not counted: no commit count recorded." Unknown is never a zero slice.
 - At most five projects are named. The rest are one grey slice, "N more".
-- On the overview each named project that has a page is a link to that page. It goes through `reduce()` like every other move.
+- Project selection goes through `reduce()` like every other move.
 - On a project page the ring is small and shows that project's share in words: "7% of the run's commits: 24 of 366".
 - Session time is first message to last, summed across runs. It is not one person's hours and the ring's note says where the number comes from.
 - With fewer than two measured projects there is no ring.
-- A page that leads with a picture shows no ring. One main visual per page still holds.
+- A page with a picture also shows the measured share ring and project facts.
 
 Rules:
 
-- One main visual per page. Never a small picture beside a graph.
+- One image per project screen, followed by one compact ring-and-data band. The measured trace is the image fallback, not a second mandatory panel.
 - No image is ever stretched.
-- The overview shows Data unless the author turns on "Lead the overview with this picture too".
+- Legacy overview choices are preserved for compatibility but do not add a second copy of the picture to the project carousel.
 - A picture leads the page of the project whose run holds it. It shows nowhere else.
 - A photo is atmosphere. Its caption says so: "Atmosphere, not a measurement." It is never evidence that work happened.
 - A picture is only ever one the author already added to one of their runs and then picked here. No stock image, no generated image, no camera roll scan, no automatic publish.
@@ -160,7 +160,7 @@ Old saved choices: before version 2 a card could hold one picture under the head
 
 Follows the rules:
 
-- Day card: overview page, project pages, turning points page (`/?day=`).
+- Day card: project screens (`/?day=`), with whole-day evidence below.
 - Edit card (`&setup=1`) and its live preview.
 - Sharing (`&share=1`): owner menu and the reader link.
 - Action row on the feed card, the run page and the day card: one function, one height token.
@@ -182,4 +182,8 @@ Not yet moved over. These still differ and are listed here so nobody mistakes th
 
 ## 7. Project chapters · approved direction, 7 October
 
-A project chapter names the project, uses only its author-written result as its outcome, leads with the selected visual, and offers the actual output link or project continuation. Missing outcomes stay quiet and honest; owner links open the existing run story editor. Still-open text remains an author declaration. The overview provides named chapter links rather than activity totals as its first content. Project following stores only the viewer’s own subscriptions; subsequent views always re-read public runs. Following never grants access to private work.
+A project chapter names the project, uses only its author-written result as its outcome, leads with the selected visual, and offers the actual output link or project continuation. Missing outcomes stay quiet and honest; owner links open the existing run story editor. Still-open text remains an author declaration. The card opens directly on its lead project and moves between projects with arrows. Project following stores only the viewer’s own subscriptions; subsequent views always re-read public runs. Following never grants access to private work.
+
+## 8. Oscar review correction · 7 October night build
+
+This correction supersedes older overview and collapsed-data descriptions above: one project screen contains one selected image, a measured-share pie and useful project data. Right-side arrows advance all three together. No overview list or extra turning-points slide interrupts the projects. The same renderer draws day cards and Edit card previews; feed day collections open this exact project card. The chart names its denominator and missing data stays unknown. Existing saved picture choices and run audiences remain authoritative.

@@ -27,12 +27,12 @@ const pager=C.wire(card,{onChange:(n,key,o)=>changes.push([n,key,o.push])});
 const shown=()=>[...card.querySelectorAll('.dc-slide')].filter(s=>!s.hidden).map(s=>s.dataset.name);
 const current=()=>[...card.querySelectorAll('.dc-page[aria-current]')].map(a=>a.getAttribute('aria-label'));
 const names=deck.slides.map(s=>s.name),last=names.length-1;
-assert.ok(names.length>=4,'this fixture has an overview and several pages');
+assert.ok(names.length===3,'this fixture has three project screens');
 const press=(el,init={})=>{const e=new window.MouseEvent('click',{bubbles:true,cancelable:true,...init});el.dispatchEvent(e);return e};
 const key=(el,k,init={})=>{const e=new window.KeyboardEvent('keydown',{key:k,bubbles:true,cancelable:true,...init});el.dispatchEvent(e);return e};
 
 // ---- one page function: links, arrows, keyboard, back and forward
-assert.deepEqual(shown(),['Overview']);assert.deepEqual(current(),['1 Overview']);
+assert.deepEqual(shown(),[names[0]]);assert.deepEqual(current(),[`1 ${names[0]}`]);
 const link2=card.querySelector('.dc-page[data-goto="1"]'),e2=press(link2);
 assert.ok(e2.defaultPrevented,'a plain press on a numbered link changes the page in place');assert.deepEqual(shown(),[names[1]]);assert.deepEqual(current(),[`2 ${names[1]}`],'aria-current follows the page');
 assert.deepEqual(changes.at(-1),[1,deck.slides[1].key,true],'a press reports the page by its token and asks for a history step');
@@ -41,21 +41,21 @@ press(card.querySelector(`.dc-page[data-goto="${last}"]`));assert.deepEqual(show
 const n=changes.length;press(card.querySelector(`.dc-page[data-goto="${last}"]`));assert.equal(changes.length,n,'pressing the page you are on adds no history step');
 press(card.querySelector('[data-step="-1"]'));assert.deepEqual(shown(),[names[last-1]]);
 const newTab=press(link2,{metaKey:true});assert.ok(!newTab.defaultPrevented,'a press that asks for a new tab is left to the browser');assert.deepEqual(shown(),[names[last-1]]);
-pager.go(0,{push:false});assert.deepEqual(shown(),['Overview']);assert.deepEqual(changes.at(-1),[0,'',false],'Back and Forward move the card without adding a step');
+pager.go(0,{push:false});assert.deepEqual(shown(),[names[0]]);assert.deepEqual(changes.at(-1),[0,deck.slides[0].key,false],'Back and Forward move the card without adding a step');
 assert.ok(key(card,'ArrowRight').defaultPrevented);assert.deepEqual(shown(),[names[1]],'an arrow key on the card turns the page');
-key(card,'ArrowLeft');assert.deepEqual(shown(),['Overview']);
-const alt=key(card,'ArrowRight',{altKey:true});assert.ok(!alt.defaultPrevented);assert.deepEqual(shown(),['Overview'],'Alt and an arrow is left to the browser');
+key(card,'ArrowLeft');assert.deepEqual(shown(),[names[0]]);
+const alt=key(card,'ArrowRight',{altKey:true});assert.ok(!alt.defaultPrevented);assert.deepEqual(shown(),[names[0]],'Alt and an arrow is left to the browser');
 // arrows inside a field, a menu or a media control are not taken
 for(const html of ['<textarea></textarea>','<input type="text">','<select><option>a</option></select>','<video controls></video>','<audio controls></audio>','<div role="slider" tabindex="0"></div>']){
   const box=document.createElement('div');box.innerHTML=html;card.querySelector('.fc-foot').append(box);const e=key(box.firstChild,'ArrowRight');
-  assert.ok(!e.defaultPrevented,`an arrow in ${html} is not prevented`);assert.deepEqual(shown(),['Overview'],`an arrow in ${html} does not turn the page`);box.remove()}
+  assert.ok(!e.defaultPrevented,`an arrow in ${html} is not prevented`);assert.deepEqual(shown(),[names[0]],`an arrow in ${html} does not turn the page`);box.remove()}
 
 // ---- owner menu: a real button and real links
 const btn=card.querySelector('.dc-menu-btn'),list=card.querySelector('[role=menu]');
 assert.equal(list.hidden,true);press(btn);assert.equal(list.hidden,false);assert.equal(btn.getAttribute('aria-expanded'),'true');
 assert.equal(document.activeElement,list.querySelector('[role=menuitem]'),'opening the menu moves focus to its first entry');
 key(document.activeElement,'ArrowDown');assert.equal(document.activeElement.textContent,'Choose visual');
-key(document.activeElement,'ArrowRight');assert.deepEqual(shown(),['Overview'],'arrows inside the menu belong to the menu');
+key(document.activeElement,'ArrowRight');assert.deepEqual(shown(),[names[0]],'arrows inside the menu belong to the menu');
 key(document.activeElement,'Escape');assert.equal(list.hidden,true);assert.equal(document.activeElement,btn,'Escape closes the menu and returns focus to its button');
 press(btn);press(document.body);assert.equal(list.hidden,true,'a press outside closes the menu');
 assert.equal(C.render(deck,{esc,mine:false,author:'a',windowLabel:'w',menu:links}).includes('Card options'),false,'a reader has no menu');
@@ -167,6 +167,6 @@ press(card.querySelector('.dc-page[data-goto="1"]'));
 assert.equal(chapterIndex.open,false,'choosing a chapter closes the index');
 const chapter=card.querySelector('.dc-slide[data-slide="1"]');
 assert.equal(chapter.querySelector('.dc-project-name').textContent,names[1]);
-assert.equal(chapter.querySelector('.dc-measured').open,false,'metrics do not displace the story');
+assert.equal(chapter.querySelector('.dc-measured').tagName,'DIV','metrics stay visible with the image');
 assert.ok(chapter.querySelector('.dc-visual').compareDocumentPosition(chapter.querySelector('.dc-measured')) & window.Node.DOCUMENT_POSITION_FOLLOWING,'the visual precedes measured details');
-assert.ok(card.querySelectorAll('.dc-chapter-list a').length>=3,'overview gives direct project chapter links');
+assert.equal(card.querySelectorAll('.dc-chapter-list a').length,0,'no duplicate overview list');

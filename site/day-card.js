@@ -89,14 +89,16 @@
     const per=featured.map(project);
     // The pie: how the run divides between its projects. Commits where any project has a count,
     // otherwise summed session time. The unit is always named beside it.
-    const byCommits=groups.some(g=>commitsOf(g)&&commitsOf(g).n>0),weight=g=>byCommits?(commitsOf(g)?commitsOf(g).n:0):g.seconds;
-    const sum=groups.reduce((a,g)=>a+weight(g),0),pie={unit:byCommits?'commits':'session time',total:sum,source:byCommits?(groups.every(g=>!commitsOf(g)||commitsOf(g).from==='git')?'git history':groups.some(g=>commitsOf(g)&&commitsOf(g).from==='git')?'git history and runs':'recorded by the runs'):'first message to last, summed across runs',
-      parts:groups.map(g=>({key:tk(g),name:g.label,value:weight(g),share:sum?weight(g)/sum:0,known:byCommits?!!commitsOf(g):g.seconds>0}))};
+    const toolsOf=g=>{const values=g.runs.map(i=>i.run.tool_calls??i.run.ridge_tool_calls);return values.length&&values.every(v=>Number.isFinite(v)&&v>=0)?values.reduce((a,v)=>a+v,0):null};
+    const byTools=groups.filter(g=>(toolsOf(g)||0)>0).length>=2;
+    const byCommits=!byTools&&groups.some(g=>commitsOf(g)&&commitsOf(g).n>0),weight=g=>byTools?(toolsOf(g)||0):byCommits?(commitsOf(g)?commitsOf(g).n:0):g.seconds;
+    const sum=groups.reduce((a,g)=>a+weight(g),0),pie={unit:byTools?'tool calls':byCommits?'commits':'session time',total:sum,source:byTools?'captured tool calls; activity, not quality':byCommits?(groups.every(g=>!commitsOf(g)||commitsOf(g).from==='git')?'git history':groups.some(g=>commitsOf(g)&&commitsOf(g).from==='git')?'git history and runs':'recorded by the runs'):'first message to last, summed across runs',
+      parts:groups.map(g=>({key:tk(g),name:g.label,value:weight(g),share:sum?weight(g)/sum:0,known:byTools?toolsOf(g)!==null:byCommits?!!commitsOf(g):g.seconds>0}))};
     per.forEach(p=>{p.pie=pie});
     // Turning points, as one view: every run in the card where the author wrote what came out, newest last.
     const turning=groups.flatMap(g=>g.runs.filter(i=>wrote(i.run)).map(i=>({text:wrote(i.run),run:i.run,at:i.end,name:g.label}))).sort((a,b)=>a.at-b.at);
     const points=turning.length>1?[{kind:'points',key:'points',name:'Turning points',points:turning.slice(-5),total:turning.length,facts:{},highlights:[],open:null,pie}]:[];
-    if(groups.length<=1)return {choices:c,slides:[...per,...points],lead:leadTok};     // one project: no project carousel
+    if(groups.length<=1)return {choices:c,slides:per,points,lead:leadTok};     // one project: no project carousel
     const all=groups.reduce((s,g)=>{const cm=commitsOf(g);return cm?s+cm.n:s},0),known=groups.some(g=>commitsOf(g));
     const runs=groups.flatMap(g=>g.runs),first=[...groups.map(g=>ends(g)[0])].sort((x,y)=>x-y)[0],last=[...groups.map(g=>ends(g)[1])].sort((x,y)=>y-x)[0];
     const edges=runs.filter(i=>i.seconds>0).flatMap(i=>[[i.start.getTime(),1],[i.end.getTime(),-1]]).sort((x,y)=>x[0]-y[0]||x[1]-y[1]);let now=0,peak=0;for(const [,d] of edges){now+=d;peak=Math.max(peak,now)}
@@ -106,7 +108,7 @@
       highlights:c.highlights?per.filter(p=>p.result).map(p=>({text:brief(p.result),run:p.open,name:p.name})).filter(h=>h.text).slice(0,3):[],
       facts:{projects:{value:groups.length},commits:{value:known?all:null,note:fromGit===counted?'from git history':fromGit?'git history and runs':'recorded by the runs'},session:{value:seconds>0?span(seconds):null,note:"summed across runs, not one person's hours"},
         elapsed:{value:first&&last?span((last-first)/1000):null},runs:{value:runs.length},tools:{value:runs.reduce((s,i)=>s+(i.run.tool_calls||i.run.ridge_tool_calls||0),0)||null},peak:{value:peak||null}}};
-    return {choices:c,slides:[whole,...per,...points],lead:leadTok};
+    return {choices:c,slides:per,summary:whole,points,lead:leadTok};
   }
   // Graphs. Time runs left to right on the clock the slide covers. Blue is a captured session; a dark
   // tick is a window in which commits landed. Neither says who did the work.
@@ -145,7 +147,7 @@
   }
   // Under the card, for the reader who asks: every project on its own line of the same clock.
   function detail(deck,esc){
-    const s=deck.slides.find(x=>x.kind==='whole');if(!s)return '';
+    const s=deck.summary||deck.slides.find(x=>x.kind==='whole');if(!s)return '';
     return `<div class="head"><h2>Every project on one clock</h2><span class="meta">${plural(s.groups.length,'project')}${s.quiet?`, ${s.quiet} known from commits only`:''}</span></div>
       <div class="card dc-detail">${wholeGraph(s,esc,60)}<p class="dc-key"><span><i class="dc-k-run"></i>captured session</span><span><i class="dc-k-mark"></i>commits landed, from git history</span></p>
       <p class="dc-more">Marks show when, never who. Session time is first message to last and is summed across runs, so it is not one person's hours.</p></div>`;
@@ -200,22 +202,22 @@
     const P=s.pie;if(!P||!P.total)return '';
     // Three kinds of project: a measured share, a measured zero, and no measurement. They are never merged.
     const known=P.parts.filter(p=>p.known&&p.value>0).sort((a,b)=>b.value-a.value),zero=P.parts.filter(p=>p.known&&!(p.value>0)).length,left=P.parts.filter(p=>!p.known).length;if(known.length<2)return '';
-    const mine=s.kind==='project'?known.find(p=>p.key===s.key):null,unit=P.unit==='commits'?'commits':'session time';
-    const amount=v=>P.unit==='commits'?String(v):span(v),C=2*Math.PI*40;let acc=0;
+    const mine=s.kind==='project'?known.find(p=>p.key===s.key):null,unit=P.unit;
+    const amount=v=>P.unit!=='session time'?String(v):span(v),C=2*Math.PI*40;let acc=0;
     const top=known.slice(0,5),rest=known.slice(5),drawn=rest.length?[...top,{key:'',name:`${rest.length} more`,value:rest.reduce((a,p)=>a+p.value,0),share:rest.reduce((a,p)=>a+p.share,0),other:true}]:top;
     const ring=(s.kind==='project'?known:drawn).map((p,i,all)=>{const len=p.share*C,d=`<circle r="40" cx="50" cy="50" fill="none" stroke="${s.kind==='project'?(mine&&p.key===mine.key?'var(--blue)':'var(--rule)'):p.other?'var(--rule)':shade(i,Math.max(2,top.length))}" stroke-width="14" stroke-dasharray="${Math.max(0,len-1.2).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}" transform="rotate(-90 50 50)"/>`;acc+=len;return d}).join('');
-    const what=P.unit==='commits'?'commit count':'session time',not=(zero?` ${plural(zero,'project')} with ${P.unit==='commits'?'0 commits':'no session time'}.`:'')+(left?` ${plural(left,'project')} not counted: no ${what} recorded.`:'');
+    const what=P.unit==='tool calls'?'tool-call count':P.unit==='commits'?'commit count':'session time',not=(zero?` ${plural(zero,'project')} with ${P.unit==='tool calls'?'0 tool calls':P.unit==='commits'?'0 commits':'no session time'}.`:'')+(left?` ${plural(left,'project')} not counted: no ${what} recorded.`:'');
     if(s.kind==='project'){
-      const own=P.parts.find(p=>p.key===s.key),says=mine?`<b>${Math.round(mine.share*100)}%</b> of the run's ${unit}: ${amount(mine.value)} of ${amount(P.total)}`:own&&own.known?`<b>0%</b> of the run's ${unit}: ${P.unit==='commits'?'0 commits recorded':'no session time recorded'} for this project`:`Not in the split: no ${what} recorded for this project`;
-      return `<div class="dc-share dc-share-one"><svg class="dc-pie" viewBox="0 0 100 100" role="img" aria-label="${mine?`${esc(s.name)}: ${Math.round(mine.share*100)} percent of the run's ${unit}`:`${esc(s.name)} is not in the split`}">${ring}</svg><p class="dc-share-says">${says}<span>${esc(P.source)}</span></p></div>`}
+      const own=P.parts.find(p=>p.key===s.key),says=mine?`<b>${Math.round(mine.share*100)}%</b> of the run's ${unit}: ${amount(mine.value)} of ${amount(P.total)}`:own&&own.known?`<b>0%</b> of the run's ${unit}: ${P.unit==='tool calls'?'0 tool calls recorded':P.unit==='commits'?'0 commits recorded':'no session time recorded'} for this project`:`Not in the split: no ${what} recorded for this project`;
+      return `<div class="dc-share dc-share-one"><svg class="dc-pie" viewBox="0 0 100 100" role="img" aria-label="${mine?`${esc(s.name)}: ${Math.round(mine.share*100)} percent of the run's ${unit}`:`${esc(s.name)} is not in the split`}">${ring}</svg><p class="dc-share-says">${says}<span>Share of ${amount(P.total)} ${P.unit!=='session time'?P.unit:'of session time'}, ${esc(P.source)}.${not}</span></p></div>`}
     const row=(p,i)=>{const at=p.other?-1:jump(p.key),name=at>=0?`<a class="dc-jump" href="${esc(jump.href(p.key,at))}" data-goto="${at}">${esc(p.name)}</a>`:esc(p.name);
       return `<li><i style="background:${p.other?'var(--rule)':shade(i,Math.max(2,top.length))}"></i><span class="dc-share-n">${name}</span><span class="dc-share-v">${Math.round(p.share*100)}% · ${amount(p.value)}</span></li>`};
     return `<div class="dc-share"><svg class="dc-pie" viewBox="0 0 100 100" role="img" aria-label="${plural(known.length,'project')} by ${unit}"><title>${plural(known.length,'project')} by ${unit}</title>${ring}<text x="50" y="49" text-anchor="middle" class="dc-pie-n">${known.length}</text><text x="50" y="62" text-anchor="middle" class="dc-pie-k">projects</text></svg>
-      <ol class="dc-share-list">${drawn.map(row).join('')}</ol><p class="dc-share-note">Share of ${amount(P.total)} ${P.unit==='commits'?'commits':'of session time'}, ${esc(P.source)}.${not}</p></div>`;
+      <ol class="dc-share-list">${drawn.map(row).join('')}</ol><p class="dc-share-note">Share of ${amount(P.total)} ${P.unit!=='session time'?P.unit:'of session time'}, ${esc(P.source)}.${not}</p></div>`;
   }
   const CAPTION={photo:'Photo chosen by the author. Atmosphere, not a measurement.',screenshot:'Screenshot chosen by the author, shown whole.'};
   function visual(s,{esc,mine,visualHref,runHref,jump}){
-    const split=jump?share(s,esc,jump):'',line=overview(s),trace=split||line?split+line:'',v=s.visual;
+    const line=overview(s),trace=line,v=s.visual;
     if(v&&v.cover)return `<figure class="dc-visual" data-kind="${trace?'data':'none'}" data-state="fallback" data-visual-run="${esc(v.run)}" data-visual-cover data-alt="Cover the author chose on this run${v.of?`, ${esc(v.of)}`:''}">
         <a class="dc-picture" href="${esc(runHref(v.run))}" aria-label="Open the run this picture is from" hidden></a>
         <div class="dc-fallback">${trace?`${trace}${mine&&visualHref?`<p class="dc-prompt"><a href="${esc(visualHref)}">Add a photo or a screenshot to this page</a></p>`:''}`:`<p class="dc-empty">No measured trace and no picture on this page yet.${mine&&visualHref?` <a href="${esc(visualHref)}">Choose a visual</a>`:''}</p>`}</div>
@@ -223,7 +225,7 @@
     if(v){const noun=v.kind==='photo'?'Photo':'Screenshot';
       return `<figure class="dc-visual" data-kind="${v.kind}" data-state="loading" data-visual-run="${esc(v.run)}" data-visual-photo="${esc(v.id)}" data-focus="${esc(v.focus)}" data-alt="${noun} chosen by the author${v.of?` for ${esc(v.of)}`:''}">
         <a class="dc-picture" href="${esc(runHref(v.run))}" aria-label="Open the run this ${noun.toLowerCase()} is from"></a>
-        <div class="dc-fallback" hidden>${line||'<p class="dc-empty">This picture could not be shown and this page has no measured trace.</p>'}</div>
+        <div class="dc-fallback" hidden>${line||'<p class="dc-empty">No measured trace on this page.</p>'}<p class="dc-empty">Selected picture unavailable.${mine&&visualHref?` <a href="${esc(visualHref)}">Choose a current picture</a>`:''}</p></div>
         <figcaption>${CAPTION[v.kind]}${mine&&v.lone?' <span class="dc-lone">Its run is Only you, so readers get the measured trace instead.</span>':''}</figcaption></figure>`}
     if(trace)return `<div class="dc-visual" data-kind="data">${trace}${mine&&visualHref&&s.kind!=='whole'?`<p class="dc-prompt"><a href="${esc(visualHref)}">Add a photo or a screenshot to this page</a></p>`:''}</div>`;
     return `<div class="dc-visual" data-kind="none"><p class="dc-empty">No measured trace and no picture on this page yet.${mine&&visualHref?` <a href="${esc(visualHref)}">Choose a visual</a>`:''}</p></div>`;
@@ -246,14 +248,14 @@
       const ids=(s.kind==='whole'?c.facts.whole:c.facts.project).filter(id=>s.facts[id]),high=s.kind==='whole'?s.highlights.filter(h=>h.text!==s.result).slice(0,2):[];
       const next=s.kind==='project'&&typeof s.open?.story_next==='string'?s.open.story_next.trim():'';
       let output=null;try{const u=new URL(s.open?.output_url);if(['http:','https:'].includes(u.protocol)&&!u.username&&!u.password)output=u.href}catch(_){}
-      const chapters=s.kind==='whole'?`<ol class="dc-chapter-list">${S.filter(p=>p.kind==='project').map(p=>`<li><a class="dc-jump" href="${esc(pageHref(p.key,S.indexOf(p)))}" data-goto="${S.indexOf(p)}"><b>${esc(p.name)}</b><span>${p.result?esc(lede(p)[0]):'Captured work · outcome not added'}</span><i aria-hidden="true">↗</i></a></li>`).join('')}</ol>`:'';
+
       return `<section class="dc-slide" data-slide="${i}" data-key="${esc(s.key)}" data-name="${esc(s.name)}" ${s.open?`data-open="${esc(runHref(s.open.id))}"`:''} ${i===at?'':'hidden'} aria-label="${esc(s.name)}">
         <div class="dc-story">${s.kind==='project'?`<p class="dc-project-name">${esc(s.name)}</p>`:''}${s.result?`<h2 class="dc-said">${esc(lede(s)[0])}</h2>${s.draft&&mine&&setupHref?`<p class="dc-draft-row"><a class="dc-draft" href="${esc(setupHref)}">Draft headline. Write your own</a></p>`:''}${lede(s)[1]?`<p class="dc-rest">${esc(lede(s)[1])}</p>`:''}`:`<p class="dc-said dc-none">${mine?'Work saved. Add what happened, even if it is unfinished.':'Captured work. The author has not added an outcome.'}</p>`}${mine&&s.kind==='project'&&s.open?`<a class="dc-write" href="${esc(runHref(s.open.id))}#run-edit">${s.result?'Edit the story':'Write what happened'} →</a>`:''}</div>
         ${s.kind!=='whole'||s.visual?visual(s,{esc,mine,visualHref,runHref,jump}):''}
-        ${chapters}
+
+        <div class="dc-measured" aria-label="Measured project activity">${share(s,esc,jump)}<div class="dc-facts">${ids.map(id=>fact(s,id)).join('')}</div></div>
         ${next?`<div class="dc-next"><b>Still open</b><p>${esc(next)}</p></div>`:''}
         ${s.kind==='project'?`<div class="dc-chapter-actions">${output?`<a class="dc-output" href="${esc(output)}" target="_blank" rel="noopener noreferrer">Try what was built ↗</a>`:''}${s.group?.raw?`<a href="${esc(projectHref(s.group.raw))}">Continue this project →</a>`:''}</div>`:''}
-        <details class="dc-measured"><summary>Measured activity</summary><div class="dc-facts">${ids.map(id=>fact(s,id)).join('')}</div>${s.kind==='whole'&&!s.visual?visual(s,{esc,mine,visualHref,runHref,jump}):''}</details>
         ${high.length?`<ul class="dc-high">${high.map(h=>`<li><a href="${esc(runHref(h.run.id))}">${h.name?`<b>${esc(h.name)}</b> `:''}${esc(h.text)}</a></li>`).join('')}</ul>`:''}</section>`};
     const lead=S.find(x=>x.open),open=S[at].open||(lead&&lead.open);
     // The selector is a list of real links. Each has an address of its own and a name a screen reader or an
@@ -264,6 +266,7 @@
         <details class="dc-chapters"><summary>Choose chapter</summary><ol class="dc-dots">${S.map((s,i)=>`<li><a class="dc-page" href="${esc(pageHref(s.key,i))}" data-goto="${i}" aria-label="${i+1} ${esc(s.name)}" ${i===at?'aria-current="page"':''}>${esc(s.name)}</a></li>`).join('')}</ol></details></nav>`:'';
     return `<article class="card dc" id="day-card" tabindex="0" data-at="${at}" data-count="${S.length}" aria-roledescription="${many?'carousel':'card'}">
       <header class="dc-head"><p class="meta">${esc(author||'')}${author?' · ':''}${esc(windowLabel)}</p>${mine?ownerMenu(menu,esc,menuAt):''}</header>
+      ${c.title?`<p class="dc-day-title">${esc(c.title)}</p>`:''}
       ${pages}
       ${S.map(slide).join('')}
       ${lead?`<p class="dc-more-link"><a class="dc-open" href="${esc(runHref(open.id))}" data-fallback="${esc(runHref(lead.open.id))}">Open the run: timeline, evidence, pictures →</a></p>`:''}
