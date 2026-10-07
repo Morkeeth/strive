@@ -2284,7 +2284,7 @@ async function viewDay(day){
   // projects one step left or right. The author's display choices are saved on the profile under this
   // window. A reader gets them from the same profile row the runs already carry.
   const cardKey=`${day}_${through||day}`,ownerProfile=mine?ME:((data||[])[0]||{}).profiles||null;
-  const {data:savedCard,error:cardError}=await sb.rpc('read_day_card',{owner_id:owner,card_key:cardKey});
+  const {data:savedCard,error:cardError}=await sb.rpc('read_day_card',{owner_id:owner,card_key:cardKey,viewer_timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'});
   if(cardError){status('Card choices could not load. Reload before editing.',true);app.innerHTML=nav+'<div class="card">Card choices could not load. Your saved runs are unchanged.</div>';return;}
   const tokens=new Map();for(const g of model.groups)if(g.label)tokens.set(g.label,await StriveDayCard.token(owner,cardKey,g.label));
   if(ME?.id!==profileId)return viewDay(day);

@@ -30,16 +30,27 @@ begin
 end $$;
 revoke all on function strava.save_day_card(text,jsonb) from public,anon;
 grant execute on function strava.save_day_card(text,jsonb) to authenticated;
-create function strava.read_day_card(owner_id uuid,card_key text) returns jsonb
+create function strava.read_day_card(owner_id uuid,card_key text,viewer_timezone text default 'UTC') returns jsonb
 language plpgsql security definer set search_path=strava,pg_temp as $$
-declare c jsonb; result jsonb; allowed text[]; field text; entry record; visuals jsonb:='{}'; photo jsonb;
+declare c jsonb; result jsonb; allowed text[]; field text; entry record; visuals jsonb:='{}'; photo jsonb; in_scope uuid[]; day_from date; day_through date;
 begin
  select d.choices into c from strava.day_card_choices d where d.profile_id=owner_id and d.card_key=read_day_card.card_key;
  if c is null then return null; end if;
  if owner_id=strava.grinder_profile_id() then return c; end if;
+ -- Match day.js: a session belongs to its start day, not every day its duration overlaps.
+ -- Historical reconstruction belongs to repo_window_end minus one millisecond.
+ if not exists(select 1 from pg_timezone_names where name=viewer_timezone) then raise exception 'Unknown time zone'; end if;
+ day_from:=split_part(card_key,'_',1)::date;day_through:=split_part(card_key,'_',2)::date;
+ if day_through<day_from or day_through>day_from+6 then return null; end if;
+ select array_agg(r.id) into in_scope from strava.runs r
+ where r.profile_id=owner_id and r.visibility='public' and strava.grinder_can_read_run(r.id)
+ and ((case when r.trace_basis='historical-reconstruction' and r.history_evidence->>'repo_window_end' is not null
+   then (r.history_evidence->>'repo_window_end')::timestamptz-interval '1 millisecond'
+   else coalesce(r.started_at,r.created_at) end) at time zone viewer_timezone)::date between day_from and day_through;
+ in_scope:=coalesce(in_scope,array[]::uuid[]);
  -- Only already-public project names determine the reader's allowed tokens. Private names are never returned.
  select array_agg(distinct substr(encode(sha256(convert_to(owner_id::text||'|'||card_key||'|'||r.project,'UTF8')),'hex'),1,12))
- into allowed from strava.runs r where r.profile_id=owner_id and r.visibility='public' and strava.grinder_can_read_run(r.id) and r.project is not null;
+ into allowed from strava.runs r where r.profile_id=owner_id and r.id=any(in_scope) and r.project is not null;
  allowed:=coalesce(allowed,array[]::text[]);
  if cardinality(allowed)=0 then return null; end if;
  -- The free-form headline remains private. A partial public card uses its measured default headline.
@@ -50,13 +61,13 @@ begin
  end loop;
  if c->>'lead'=any(allowed) then result:=result||jsonb_build_object('lead',c->'lead'); end if;
  -- Public photos must belong to an already-public run of this author. RLS checks at image read still apply.
- if exists(select 1 from strava.run_photos p join strava.runs r on r.id=p.run_id where r.profile_id=owner_id and r.visibility='public' and strava.grinder_can_read_run(r.id) and r.id::text=c->'photo'->>'run' and p.id::text=c->'photo'->>'id') then
+ if exists(select 1 from strava.run_photos p join strava.runs r on r.id=p.run_id where r.profile_id=owner_id and r.id=any(in_scope) and r.id::text=c->'photo'->>'run' and p.id::text=c->'photo'->>'id') then
   result:=result||jsonb_build_object('photo',jsonb_build_object('run',c->'photo'->>'run','id',c->'photo'->>'id'),'visual',case when c->>'visual' in ('photo','screenshot') then c->>'visual' else 'data' end,'hero',c->>'hero'='true','focus',case when c->>'focus' in ('top','bottom','left','right') then c->>'focus' else 'center' end);
  end if;
  for entry in select key,value from jsonb_each(case when jsonb_typeof(c->'projectVisuals')='object' then c->'projectVisuals' else '{}' end) loop
   if not(entry.key=any(allowed)) then continue; end if;
   if entry.value->>'visual'='data' then visuals:=visuals||jsonb_build_object(entry.key,jsonb_build_object('visual','data')); 
-  elsif exists(select 1 from strava.run_photos p join strava.runs r on r.id=p.run_id where r.profile_id=owner_id and r.visibility='public' and strava.grinder_can_read_run(r.id) and r.id::text=entry.value->'photo'->>'run' and p.id::text=entry.value->'photo'->>'id'
+  elsif exists(select 1 from strava.run_photos p join strava.runs r on r.id=p.run_id where r.profile_id=owner_id and r.id=any(in_scope) and r.id::text=entry.value->'photo'->>'run' and p.id::text=entry.value->'photo'->>'id'
     and substr(encode(sha256(convert_to(owner_id::text||'|'||card_key||'|'||r.project,'UTF8')),'hex'),1,12)=entry.key) then
    visuals:=visuals||jsonb_build_object(entry.key,jsonb_build_object('photo',jsonb_build_object('run',entry.value->'photo'->>'run','id',entry.value->'photo'->>'id'),'visual',case when entry.value->>'visual' in ('photo','screenshot') then entry.value->>'visual' else 'data' end,'focus',case when entry.value->>'focus' in ('top','bottom','left','right') then entry.value->>'focus' else 'center' end));
   end if;
@@ -68,7 +79,7 @@ begin
  end loop;
  return result||jsonb_build_object('projectVisuals',visuals,'facts',photo);
 end $$;
-revoke all on function strava.read_day_card(uuid,text) from public;
-grant execute on function strava.read_day_card(uuid,text) to anon,authenticated;
+revoke all on function strava.read_day_card(uuid,text,text) from public;
+grant execute on function strava.read_day_card(uuid,text,text) to anon,authenticated;
 notify pgrst, 'reload schema';
 commit;
