@@ -31,7 +31,9 @@
     if(flying.has(key))return flying.get(key);
     const job=(async()=>{
       const hit=image?kept.get(key):null,headers={...(opts.headers||{}),...(hit?{'If-None-Match':hit.etag}:{})};
-      const res=await fetch(full,{...opts,headers});
+      // A shared read outlives any one subscriber. Each subscriber checks its own active flag.
+      const {signal,...sharedOptions}=opts;
+      const res=await fetch(full,{...sharedOptions,headers});
       if(hit&&res.status===304){kept.delete(key);kept.set(key,hit);return {ok:true,status:200,revalidated:true,blob:async()=>hit.body}}
       if(!res.ok){kept.delete(key);return res}
       if(!image){const body=await res.json();return {ok:true,status:200,json:async()=>body}}
@@ -265,7 +267,7 @@
       const queue=(runs||[]).slice(0,240),ask=async run=>{
         try{const res=await get(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:await headers(client),signal:controller.signal});if(!active||!res.ok)return;
           for(const photo of ((await res.json())?.photos||[])){const path=photoPath(photo);if(!path)continue;
-            const img=await get(path,{headers:await headers(client),signal:controller.signal},320);if(!active||!img.ok)continue;const url=URL.createObjectURL(await img.blob());urls.add(url);found.push({run,photo,url})}
+            const img=await get(path,{headers:await headers(client),signal:controller.signal},320);if(!active||!img.ok)continue;const blob=await img.blob();if(!active)continue;const url=URL.createObjectURL(blob);urls.add(url);found.push({run,photo,url})}
         }catch(_){}};
       let next=0;await Promise.all(Array.from({length:8},async()=>{while(active&&next<queue.length)await ask(queue[next++])}));
       found.sort((a,b)=>runs.indexOf(a.run)-runs.indexOf(b.run));loading=false;paint();

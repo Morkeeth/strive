@@ -132,7 +132,7 @@ for(const cls of [...new Set(doc.match(/`\.(dc|fc|cs|pc)-[a-z-]+`/g)||[])].map(c
 assert.match(readFileSync(new URL('../AGENTS.md',import.meta.url),'utf8'),/docs\/design\/CARD-SYSTEM\.md/,'AGENTS.md sends the next agent to the rules');
 // The page that saves display choices writes the profile and nothing else.
 const index=readFileSync(new URL('../site/index.html',import.meta.url),'utf8'),saveFn=index.slice(index.indexOf('save:async choices=>'),index.indexOf('return;}',index.indexOf('save:async choices=>')));
-assert.match(saveFn,/sb\.from\('profiles'\)\.update\(\{rig\}\)/);assert.ok(!/from\('runs'\)|visibility/.test(saveFn),'saving display choices never touches a run or its audience');
+assert.match(saveFn,/sb\.rpc\('save_day_card'/);assert.ok(!/from\('runs'\)|visibility/.test(saveFn),'saving display choices never touches a run or its audience');
 console.log('PASS: one page function for links, arrows, keys and history; keys left alone in fields, menus and media; owner menu; same anatomy for one and many projects; save states, Cancel, failed save, leave warning; rules documented and bound to the styles');
 
 // Each project owns its choice; merely changing the page selector does not edit the card.
@@ -141,6 +141,7 @@ const beforePage=form.current();
 target.value=tokens.get('alpha');target.dispatchEvent(new window.Event('change',{bubbles:true}));
 assert.deepEqual(form.current(),beforePage);
 pick({run:U,id:P},{role:'result'});
+assert.equal(slot.querySelector('#cs-default').disabled,false,'new choice can immediately be reset');
 const alphaChoice=JSON.parse(JSON.stringify(form.current().projectVisuals[tokens.get('alpha')]));
 target.value=tokens.get('beta');target.dispatchEvent(new window.Event('change',{bubbles:true}));
 assert.equal(form.current().projectVisuals[tokens.get('beta')],undefined);
@@ -150,3 +151,11 @@ target.value=tokens.get('alpha');target.dispatchEvent(new window.Event('change',
 assert.equal(slot.querySelector('[name=cs-visual][value=screenshot]').checked,true);
 press(save);await settle();assert.equal(state(),'saved');
 press(cancel);assert.equal(state(),'saved');
+
+// Use default removes the override, and choosing Photo alone does not replace an inherited cover with Data.
+target.value=tokens.get('alpha');target.dispatchEvent(new window.Event('change',{bubbles:true}));
+press(slot.querySelector('#cs-default'));
+assert.equal(form.current().projectVisuals[tokens.get('alpha')],undefined);
+slot.querySelector('[name=cs-visual][value=photo]').checked=true;
+slot.querySelector('[name=cs-visual][value=photo]').dispatchEvent(new window.Event('change',{bubbles:true}));
+assert.equal(form.current().projectVisuals[tokens.get('alpha')],undefined);

@@ -2284,7 +2284,8 @@ async function viewDay(day){
   // projects one step left or right. The author's display choices are saved on the profile under this
   // window. A reader gets them from the same profile row the runs already carry.
   const cardKey=`${day}_${through||day}`,ownerProfile=mine?ME:((data||[])[0]||{}).profiles||null;
-  const savedCard=ownerProfile&&ownerProfile.rig&&ownerProfile.rig.day_cards?ownerProfile.rig.day_cards[cardKey]:null;
+  const {data:savedCard,error:cardError}=await sb.rpc('read_day_card',{owner_id:owner,card_key:cardKey});
+  if(cardError){status('Card choices could not load. Reload before editing.',true);app.innerHTML=nav+'<div class="card">Card choices could not load. Your saved runs are unchanged.</div>';return;}
   const tokens=new Map();for(const g of model.groups)if(g.label)tokens.set(g.label,await StriveDayCard.token(owner,cardKey,g.label));
   if(ME?.id!==profileId)return viewDay(day);
   const author=ownerProfile?(ownerProfile.display_name||ownerProfile.name||ownerProfile.handle||ownerProfile.github_handle||''):'';
@@ -2295,9 +2296,7 @@ async function viewDay(day){
     StriveDayCard.mountSetup({slot:$('card-setup'),model,tokens,saved:savedCard,esc,renderOpts:cardOpts,readerHref:ownerLinks.reader,menu:ownerLinks,focusOn:params.get('setup')==='visual'?'visual':'',
       onPreview:host=>void window.StriveRunPhotos?.mountVisuals?.({client:sb,root:host}),
       photos:(host,runs,selected,onPick)=>window.StriveRunPhotos?.mountChooser?.({client:sb,slot:host,runs,selected,onPick}),
-      save:async choices=>{const rig={...(ME.rig||{})},cards={...(rig.day_cards||{}),[cardKey]:choices};
-        for(const k of Object.keys(cards).sort().slice(0,-40))delete cards[k];rig.day_cards=cards;
-        const {error}=await sb.from('profiles').update({rig}).eq('id',ME.id);if(error)return error.message||'the service did not confirm it';ME.rig=rig;return null}});
+      save:async choices=>{const {error}=await sb.rpc('save_day_card',{card_key:cardKey,choices});return error?(error.message||'the service did not confirm it'):null}});
     return;}
   // The card's action row is the lead run's own: its XUDOS count, its thread, its share page.
   const leadRun=model.lead&&model.lead.run,ad=leadRun?await ackData([leadRun]):null;

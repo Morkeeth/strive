@@ -318,7 +318,7 @@
     const load=raw=>{const c=clean(raw),first=slides(model,tokens,raw);
       order=all.slice().sort((a,b)=>{const i=x=>{const n=c.order.indexOf(tk(x));return n<0?1e6:n};return i(a)-i(b)}).map(tk);hidden=new Set(c.hidden.filter(t=>order.includes(t)));
       projectVisuals=c.projectVisuals;visualTarget='';visualTouched=false;globalVisual={photo:c.photo,visual:c.visual,focus:c.focus};title=c.title;lead=first.lead;photo=c.photo;highlights=c.highlights;facts={whole:[...c.facts.whole],project:[...c.facts.project]};visualKind=c.visual;hero=c.hero;focus=c.focus};
-    const keepVisual=()=>{const value={photo,visual:photo?visualKind:'data',focus};if(visualTarget){if(visualTouched||projectVisuals[visualTarget])projectVisuals[visualTarget]=value}else globalVisual=value};
+    const keepVisual=()=>{const value={photo,visual:photo?visualKind:'data',focus};if(visualTarget){if((visualTouched||projectVisuals[visualTarget])&&(photo||visualKind==='data'))projectVisuals[visualTarget]=value}else globalVisual=value};
     const current=()=>{keepVisual();return ({v:2,projectVisuals:{...projectVisuals},lead:lead&&!hidden.has(lead)?lead:null,order:[...order],hidden:[...hidden],title,photo:globalVisual.photo,visual:globalVisual.visual,hero:!!globalVisual.photo&&globalVisual.visual!=='data'&&hero,focus:globalVisual.focus,highlights,facts:{whole:[...facts.whole],project:[...facts.project]}})};
     load(saved);base=JSON.stringify(current());let kept=saved;
     slot.innerHTML=`<div class="head cs-head"><h1>Edit card</h1>${ownerMenu(menu,esc,focusOn==='visual'?'visual':'edit')}</div>
@@ -330,6 +330,7 @@
           <label class="cs-mode"><input type="radio" name="cs-visual" value="data"> <b>Data</b><span>The measured trace of the sessions and commits. Nothing to add.</span></label>
           <label class="cs-mode"><input type="radio" name="cs-visual" value="photo"> <b>Photo</b><span>A photograph you took. It fills the frame, cropped where you say. It is atmosphere, not proof.</span></label>
           <label class="cs-mode"><input type="radio" name="cs-visual" value="screenshot"> <b>Screenshot</b><span>A capture of a screen. It is shown whole, never cropped.</span></label></div>
+        <button type="button" class="act" id="cs-default">Use default visual</button>
         <p class="hint" id="cs-visual-note" role="status" aria-label="What the card will show"></p>
         <div id="cs-photos"></div>
         <div class="cs-frame" id="cs-frame" role="radiogroup" aria-label="Part of the photo to keep in the frame"><span class="meta">Keep in the frame</span>${Object.keys(FOCUS).map(k=>`<label><input type="radio" name="cs-focus" value="${k}"> ${k==='center'?'Centre':k[0].toUpperCase()+k.slice(1)}</label>`).join('')}</div>
@@ -355,7 +356,8 @@
       host.innerHTML=render(deck,{...renderOpts,mine:false,start:at,pageHref:(k,i)=>`#page-${i+1}`});wire(host.querySelector('#day-card'),{onChange:n=>{at=n}});if(onPreview)onPreview(host);
     }
     function paint(){
-      slot.querySelector('#cs-title').value=title;slot.querySelector('#cs-visual-target').value=visualTarget;
+      keepVisual();
+      slot.querySelector('#cs-title').value=title;slot.querySelector('#cs-visual-target').value=visualTarget;slot.querySelector('#cs-default').hidden=!visualTarget;slot.querySelector('#cs-default').disabled=!projectVisuals[visualTarget];
       list.innerHTML=order.map((t,i)=>`<li data-t="${t}"><label><input type="checkbox" data-inc ${hidden.has(t)?'':'checked'} aria-label="Include ${esc(name(t))}"> <b>${esc(name(t))}</b></label>
         <label class="cs-lead"><input type="radio" name="cs-lead" value="${t}" ${lead===t&&!hidden.has(t)?'checked':''} ${hidden.has(t)?'disabled':''}> main project</label>
         <span class="cs-move"><button type="button" data-move="-1" ${i===0?'disabled':''} aria-label="Move ${esc(name(t))} up">↑</button><button type="button" data-move="1" ${i===order.length-1?'disabled':''} aria-label="Move ${esc(name(t))} down">↓</button></span></li>`).join('');
@@ -368,6 +370,8 @@
       slot.querySelector('#cs-visual-note').textContent=visualKind==='data'?(photo?'The card shows the measured trace. Your picture stays chosen in case you switch back.':'The card shows the measured trace.')
         :photo?(visualKind==='photo'?'The photo leads the page of its own project. Check the crop in the preview below.':'The screenshot leads the page of its own project, shown whole.')+(lone()?' Its run is Only you, so readers get the measured trace instead. The preview below shows it to you alone.':'')
         :'Pick a picture below. Until then the card keeps the measured trace, and nothing stops you saving.';
+      if(visualTarget&&!projectVisuals[visualTarget]&&!visualTouched)slot.querySelector('#cs-visual-note').textContent='Using the default visual for this project. Choose a picture or Data to override it.';
+      if(!visualTarget&&Object.keys(projectVisuals).length){const own=all.find(g=>g.runs.some(i=>i.run.id===photo?.run)||g.marks.some(m=>m.run.id===photo?.run));if(own&&projectVisuals[tk(own)]&&visualKind!=='data')slot.querySelector('#cs-visual-note').textContent='This default picture is overridden on its project page. It can still lead the overview if you choose that below.';else slot.querySelector('#cs-visual-note').textContent+=' Projects with their own choice keep that choice.';}
       preview();mark();
     }
     slot.querySelector('#cs-title').addEventListener('input',e=>{title=e.target.value.replace(/\s+/g,' ').trim().slice(0,140);preview();mark()});
@@ -380,6 +384,7 @@
       else return;paint()});
     slot.addEventListener('click',async e=>{const m=e.target.closest('[data-move]');
       if(m){const li=m.closest('li'),i=order.indexOf(li.dataset.t),j=i+ +m.dataset.move;if(j<0||j>=order.length)return;[order[i],order[j]]=[order[j],order[i]];paint();slot.querySelector(`li[data-t="${order[j]}"] [data-move="${m.dataset.move}"]`)?.focus();return}
+      if(e.target.id==='cs-default'){delete projectVisuals[visualTarget];visualTouched=false;photo=null;visualKind='data';focus='center';mountPhotos();paint();return}
       if(e.target===cancelBtn){load(kept);state='saved';failure='';paint();mountPhotos();return}
       if(e.target===saveBtn){const sending=current();state='saving';mark();let error;try{error=await save(sending)}catch(err){error=String(err&&err.message||err||'the service could not be reached')}
         if(error){state='error';failure=String(error).replace(/[.\s]+$/,'')}else{state='saved';kept=sending;base=JSON.stringify(sending)}mark()}});
