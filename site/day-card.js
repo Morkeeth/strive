@@ -33,8 +33,9 @@
     const photo=o.photo&&UUID.test(o.photo.run)&&UUID.test(o.photo.id)?{run:o.photo.run,id:o.photo.id}:null;
     // Choices saved before version 2 had one picture under the heading "Screenshot" and no way to say photo.
     // They keep their picture, shown whole as a screenshot, and the overview goes back to the measured trace.
+    const projectVisuals={};for(const [key,value] of Object.entries(o.projectVisuals||{}).slice(0,60)){if(!tok(key)||!value||typeof value!=='object')continue;const photo=value.photo&&UUID.test(value.photo.run)&&UUID.test(value.photo.id)?{run:value.photo.run,id:value.photo.id}:null;projectVisuals[key]={photo,visual:photo&&VISUALS.includes(value.visual)?value.visual:'data',focus:FOCUS[value.focus]?value.focus:'center'}}
     const v2=o.v===2,visual=!photo?'data':v2?(VISUALS.includes(o.visual)?o.visual:'data'):'screenshot';
-    return {v:2,lead:tok(o.lead)?o.lead:null,order:list(o.order),hidden:list(o.hidden),visual,hero:v2&&o.hero===true&&visual!=='data',focus:v2&&FOCUS[o.focus]?o.focus:'center',
+    return {v:2,projectVisuals,lead:tok(o.lead)?o.lead:null,order:list(o.order),hidden:list(o.hidden),visual,hero:v2&&o.hero===true&&visual!=='data',focus:v2&&FOCUS[o.focus]?o.focus:'center',
       facts:{whole:facts('whole')||DEFAULTS.whole,project:facts('project')||DEFAULTS.project},highlights:o.highlights!==false,photo,title:typeof o.title==='string'?o.title.replace(/\s+/g,' ').trim().slice(0,140):''};
   }
   // The slides, in order. Pure: the same model and choices always give the same card.
@@ -74,9 +75,11 @@
     // is confirmed, and keeps it when there is none.
     // An author who picked a picture and then set the card to Data has said: no pictures.
     const cover=g=>{if(c.photo&&c.visual==='data')return null;const r=told(g).open;return r&&r.id&&g.runs.some(i=>i.run.id===r.id)?{kind:'screenshot',run:r.id,id:'',cover:true,focus:'center',of:g.label,lone:false}:null};
-    const project=g=>{const [a,b]=ends(g),cm=commitsOf(g);
+    const project=g=>{const [a,b]=ends(g),cm=commitsOf(g),choice=c.projectVisuals[tk(g)];
+      const selectedRun=choice&&choice.photo&&[...g.runs.map(i=>i.run),...g.marks.map(m=>m.run)].find(r=>r.id===choice.photo.run);
+      const selectedVisual=selectedRun&&choice.visual!=='data'?{kind:choice.visual,run:selectedRun.id,id:choice.photo.id,focus:choice.focus,lone:!!selectedRun.visibility&&selectedRun.visibility!=='public',of:g.label}:null;
       const said=[...g.runs].filter(i=>wrote(i.run)).map(i=>({text:wrote(i.run),run:i.run,at:i.start})).concat(g.marks.filter(m=>m.result).map(m=>({text:m.result,run:m.run,at:m.until}))).sort((x,y)=>y.at-x.at);
-      return {kind:'project',key:tk(g),name:g.label,group:g,visual:picture(g)||cover(g),open:told(g).open,from:a,until:b,result:told(g).result,highlights:c.highlights?said.slice(0,3):[],
+      return {kind:'project',key:tk(g),name:g.label,group:g,visual:choice?selectedVisual:picture(g)||cover(g),open:told(g).open,from:a,until:b,result:told(g).result,highlights:c.highlights?said.slice(0,3):[],
         facts:{commits:cm?{value:cm.n,note:cm.from==='git'?'from git history':'recorded by the runs'}:{value:null},session:{value:g.seconds>0?span(g.seconds):null,note:'summed across runs'},
           elapsed:{value:a&&b?span((b-a)/1000):null},runs:{value:g.runs.length,note:g.marks.length?`plus ${plural(g.marks.length,'git window')}`:''},
           tools:{value:g.runs.reduce((s,i)=>s+(i.run.tool_calls||i.run.ridge_tool_calls||0),0)||null}}}};
@@ -309,17 +312,20 @@
   let pending=null;
   function mountSetup({slot,model,tokens,saved,esc,save,renderOpts,readerHref,onPreview,photos,menu=null,focusOn=''}){
     const all=model.groups.filter(g=>g.label),tk=g=>tokens.get(g.label)||'',name=t=>all.find(g=>tk(g)===t).label;
+    let projectVisuals={},visualTarget='',globalVisual=null,visualTouched=false;
     let order,hidden,title,lead,photo,highlights,facts,visualKind,hero,focus,base,state='saved',failure='',repaintPhotos=null;
     // load puts the form back to a set of saved choices. It runs once at the start and again on Cancel.
     const load=raw=>{const c=clean(raw),first=slides(model,tokens,raw);
       order=all.slice().sort((a,b)=>{const i=x=>{const n=c.order.indexOf(tk(x));return n<0?1e6:n};return i(a)-i(b)}).map(tk);hidden=new Set(c.hidden.filter(t=>order.includes(t)));
-      title=c.title;lead=first.lead;photo=c.photo;highlights=c.highlights;facts={whole:[...c.facts.whole],project:[...c.facts.project]};visualKind=c.visual;hero=c.hero;focus=c.focus};
-    const current=()=>({v:2,lead:lead&&!hidden.has(lead)?lead:null,order:[...order],hidden:[...hidden],title,photo,visual:photo?visualKind:'data',hero:!!photo&&visualKind!=='data'&&hero,focus,highlights,facts:{whole:[...facts.whole],project:[...facts.project]}});
+      projectVisuals=c.projectVisuals;visualTarget='';visualTouched=false;globalVisual={photo:c.photo,visual:c.visual,focus:c.focus};title=c.title;lead=first.lead;photo=c.photo;highlights=c.highlights;facts={whole:[...c.facts.whole],project:[...c.facts.project]};visualKind=c.visual;hero=c.hero;focus=c.focus};
+    const keepVisual=()=>{const value={photo,visual:photo?visualKind:'data',focus};if(visualTarget){if(visualTouched||projectVisuals[visualTarget])projectVisuals[visualTarget]=value}else globalVisual=value};
+    const current=()=>{keepVisual();return ({v:2,projectVisuals:{...projectVisuals},lead:lead&&!hidden.has(lead)?lead:null,order:[...order],hidden:[...hidden],title,photo:globalVisual.photo,visual:globalVisual.visual,hero:!!globalVisual.photo&&globalVisual.visual!=='data'&&hero,focus:globalVisual.focus,highlights,facts:{whole:[...facts.whole],project:[...facts.project]}})};
     load(saved);base=JSON.stringify(current());let kept=saved;
     slot.innerHTML=`<div class="head cs-head"><h1>Edit card</h1>${ownerMenu(menu,esc,focusOn==='visual'?'visual':'edit')}</div>
       <p class="hint">This changes what the card shows and in which order. It changes no measurement and it shares nothing: who can see a run is set under Sharing.</p>
       <div class="card ds-form"><h2>Headline of the overview</h2><input id="cs-title" class="cs-title" maxlength="140" placeholder="Left empty: One run across the number of projects" aria-label="Headline of the overview"><h2>Projects</h2><ol class="cs-list" id="cs-list"></ol>
         <h2 id="visual" tabindex="-1">Main visual <span class="meta">one per page</span></h2>
+        <label>Choose a page<select id="cs-visual-target"><option value="">Overview and default picture</option>${all.map(g=>`<option value="${tk(g)}">${esc(g.label)}</option>`).join('')}</select></label>
         <div class="cs-modes" role="radiogroup" aria-label="Main visual">
           <label class="cs-mode"><input type="radio" name="cs-visual" value="data"> <b>Data</b><span>The measured trace of the sessions and commits. Nothing to add.</span></label>
           <label class="cs-mode"><input type="radio" name="cs-visual" value="photo"> <b>Photo</b><span>A photograph you took. It fills the frame, cropped where you say. It is atmosphere, not proof.</span></label>
@@ -349,7 +355,7 @@
       host.innerHTML=render(deck,{...renderOpts,mine:false,start:at,pageHref:(k,i)=>`#page-${i+1}`});wire(host.querySelector('#day-card'),{onChange:n=>{at=n}});if(onPreview)onPreview(host);
     }
     function paint(){
-      slot.querySelector('#cs-title').value=title;
+      slot.querySelector('#cs-title').value=title;slot.querySelector('#cs-visual-target').value=visualTarget;
       list.innerHTML=order.map((t,i)=>`<li data-t="${t}"><label><input type="checkbox" data-inc ${hidden.has(t)?'':'checked'} aria-label="Include ${esc(name(t))}"> <b>${esc(name(t))}</b></label>
         <label class="cs-lead"><input type="radio" name="cs-lead" value="${t}" ${lead===t&&!hidden.has(t)?'checked':''} ${hidden.has(t)?'disabled':''}> main project</label>
         <span class="cs-move"><button type="button" data-move="-1" ${i===0?'disabled':''} aria-label="Move ${esc(name(t))} up">↑</button><button type="button" data-move="1" ${i===order.length-1?'disabled':''} aria-label="Move ${esc(name(t))} down">↓</button></span></li>`).join('');
@@ -358,7 +364,7 @@
       // The visual: the mode the author asked for, and what the card can honestly show with it.
       const shown=photo?visualKind:'data';slot.querySelectorAll('[name=cs-visual]').forEach(r=>{r.checked=r.value===visualKind});
       slot.querySelectorAll('[name=cs-focus]').forEach(r=>{r.checked=r.value===focus});slot.querySelector('#cs-frame').hidden=shown!=='photo';
-      slot.querySelector('#cs-hero').checked=hero;slot.querySelector('#cs-hero-row').hidden=shown==='data';
+      slot.querySelector('#cs-hero').checked=hero;slot.querySelector('#cs-hero-row').hidden=!!visualTarget||shown==='data';
       slot.querySelector('#cs-visual-note').textContent=visualKind==='data'?(photo?'The card shows the measured trace. Your picture stays chosen in case you switch back.':'The card shows the measured trace.')
         :photo?(visualKind==='photo'?'The photo leads the page of its own project. Check the crop in the preview below.':'The screenshot leads the page of its own project, shown whole.')+(lone()?' Its run is Only you, so readers get the measured trace instead. The preview below shows it to you alone.':'')
         :'Pick a picture below. Until then the card keeps the measured trace, and nothing stops you saving.';
@@ -366,14 +372,15 @@
     }
     slot.querySelector('#cs-title').addEventListener('input',e=>{title=e.target.value.replace(/\s+/g,' ').trim().slice(0,140);preview();mark()});
     slot.addEventListener('change',e=>{if(e.target.id==='cs-title')return;const t=e.target,li=t.closest('li[data-t]');
+      if(t.id==='cs-visual-target'){keepVisual();visualTarget=t.value;visualTouched=false;const v=visualTarget?(projectVisuals[visualTarget]||{photo:null,visual:'data',focus:'center'}):globalVisual;photo=v.photo;visualKind=v.visual;focus=v.focus;mountPhotos();paint();return}
       if(t.dataset.inc!==undefined){t.checked?hidden.delete(li.dataset.t):hidden.add(li.dataset.t)}
       else if(t.name==='cs-lead'){lead=t.value}else if(t.id==='cs-high'){highlights=t.checked}else if(t.id==='cs-hero'){hero=t.checked}
-      else if(t.name==='cs-visual'){visualKind=t.value}else if(t.name==='cs-focus'){focus=t.value}
+      else if(t.name==='cs-visual'){visualKind=t.value;visualTouched=true}else if(t.name==='cs-focus'){focus=t.value;visualTouched=true}
       else if(t.dataset.fact){const k=t.closest('.cs-facts').dataset.k;facts[k]=t.checked?[...facts[k],t.dataset.fact].slice(0,3):facts[k].filter(f=>f!==t.dataset.fact)}
       else return;paint()});
     slot.addEventListener('click',async e=>{const m=e.target.closest('[data-move]');
       if(m){const li=m.closest('li'),i=order.indexOf(li.dataset.t),j=i+ +m.dataset.move;if(j<0||j>=order.length)return;[order[i],order[j]]=[order[j],order[i]];paint();slot.querySelector(`li[data-t="${order[j]}"] [data-move="${m.dataset.move}"]`)?.focus();return}
-      if(e.target===cancelBtn){load(kept);state='saved';failure='';paint();if(repaintPhotos)repaintPhotos(photo);return}
+      if(e.target===cancelBtn){load(kept);state='saved';failure='';paint();mountPhotos();return}
       if(e.target===saveBtn){const sending=current();state='saving';mark();let error;try{error=await save(sending)}catch(err){error=String(err&&err.message||err||'the service could not be reached')}
         if(error){state='error';failure=String(error).replace(/[.\s]+$/,'')}else{state='saved';kept=sending;base=JSON.stringify(sending)}mark()}});
     // Leaving with unsaved choices asks first. Links in this app are full page loads, so this one question covers them all.
@@ -382,7 +389,8 @@
     paint();
     // A picture is picked from the pictures already on these runs. One the author marked as a personal photo starts
     // as a photo, any other starts as a screenshot, shown whole. Both are the author's own earlier words and both can be changed above.
-    if(photos)repaintPhotos=photos(slot.querySelector('#cs-photos'),all.flatMap(g=>[...g.runs.map(i=>i.run),...g.marks.map(m=>m.run)].map(r=>({id:r.id,label:g.label}))),photo,(pick,meta)=>{photo=pick;if(pick&&visualKind==='data')visualKind=meta&&meta.role==='personal'?'photo':'screenshot';paint()});
+    function mountPhotos(){if(photos)repaintPhotos=photos(slot.querySelector('#cs-photos'),all.filter(g=>!visualTarget||tk(g)===visualTarget).flatMap(g=>[...g.runs.map(i=>i.run),...g.marks.map(m=>m.run)].map(r=>({id:r.id,label:g.label}))),photo,(pick,meta)=>{visualTouched=true;photo=pick;if(pick&&visualKind==='data')visualKind=meta&&meta.role==='personal'?'photo':'screenshot';paint()});}
+    mountPhotos();
     if(focusOn==='visual'){const h=slot.querySelector('#visual');h.scrollIntoView({block:'start'});h.focus({preventScroll:true})}
     return {state:()=>state,current};
   }

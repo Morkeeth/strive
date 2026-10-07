@@ -74,7 +74,7 @@ let pick=null,reselected=[];
 const savedBefore={v:2,title:'TEST DATA saved headline',order:[],hidden:[],facts:{whole:['projects','commits','elapsed'],project:['commits','session','runs']}};
 const form=C.mountSetup({slot,model,tokens,saved:savedBefore,esc,renderOpts:{esc,author:'a',windowLabel:'w'},menu:links,readerHref:'/r',
  save:async choices=>{sent.push(JSON.parse(JSON.stringify(choices)));if(answer instanceof Error)throw answer;return answer},
- photos:(hostEl,list,selected,onPick)=>{pick=onPick;return sel=>reselected.push(sel)}});
+ photos:(hostEl,list,selected,onPick)=>{reselected.push(selected);pick=onPick;return sel=>reselected.push(sel)}});
 const state=()=>slot.querySelector('#cs-state').dataset.state,said=()=>slot.querySelector('#cs-state').textContent,save=slot.querySelector('#cs-save'),cancel=slot.querySelector('#cs-cancel'),title=slot.querySelector('#cs-title');
 const leave=()=>{const e=new window.Event('beforeunload',{cancelable:true});window.dispatchEvent(e);return e.defaultPrevented};
 const settle=()=>new Promise(r=>setTimeout(r,0));
@@ -100,7 +100,7 @@ assert.equal(form.current().focus,'top');assert.equal(save.disabled,false);asser
 answer=new Error('network down');press(save);await settle();assert.equal(state(),'error');assert.match(said(),/network down/,'a thrown failure is caught and shown, not lost');
 // then it works
 answer=null;press(save);await settle();assert.equal(state(),'saved');assert.equal(said(),'All changes saved.');assert.equal(leave(),false);
-const body=sent.at(-1);assert.deepEqual(Object.keys(body).sort(),['facts','focus','hero','hidden','highlights','lead','order','photo','title','v','visual'],'a save carries display choices only');
+const body=sent.at(-1);assert.deepEqual(Object.keys(body).sort(),['facts','focus','hero','hidden','highlights','lead','order','photo','projectVisuals','title','v','visual'],'a save carries display choices only');
 assert.ok(!JSON.stringify(body).match(/visibility|public|private|alpha|beta|gamma/),'a save names no audience and no project');
 assert.deepEqual([body.v,body.visual,body.hero,body.focus,body.photo],[2,'photo',true,'top',{run:U,id:P}]);
 assert.deepEqual(C.clean(body),{...body},'what is saved reads back unchanged');
@@ -134,3 +134,19 @@ assert.match(readFileSync(new URL('../AGENTS.md',import.meta.url),'utf8'),/docs\
 const index=readFileSync(new URL('../site/index.html',import.meta.url),'utf8'),saveFn=index.slice(index.indexOf('save:async choices=>'),index.indexOf('return;}',index.indexOf('save:async choices=>')));
 assert.match(saveFn,/sb\.from\('profiles'\)\.update\(\{rig\}\)/);assert.ok(!/from\('runs'\)|visibility/.test(saveFn),'saving display choices never touches a run or its audience');
 console.log('PASS: one page function for links, arrows, keys and history; keys left alone in fields, menus and media; owner menu; same anatomy for one and many projects; save states, Cancel, failed save, leave warning; rules documented and bound to the styles');
+
+// Each project owns its choice; merely changing the page selector does not edit the card.
+const target=slot.querySelector('#cs-visual-target');
+const beforePage=form.current();
+target.value=tokens.get('alpha');target.dispatchEvent(new window.Event('change',{bubbles:true}));
+assert.deepEqual(form.current(),beforePage);
+pick({run:U,id:P},{role:'result'});
+const alphaChoice=JSON.parse(JSON.stringify(form.current().projectVisuals[tokens.get('alpha')]));
+target.value=tokens.get('beta');target.dispatchEvent(new window.Event('change',{bubbles:true}));
+assert.equal(form.current().projectVisuals[tokens.get('beta')],undefined);
+pick({run:'22222222-2222-4333-8444-555555555555',id:P},{role:'personal'});
+assert.deepEqual(JSON.parse(JSON.stringify(form.current().projectVisuals[tokens.get('alpha')])),alphaChoice);
+target.value=tokens.get('alpha');target.dispatchEvent(new window.Event('change',{bubbles:true}));
+assert.equal(slot.querySelector('[name=cs-visual][value=screenshot]').checked,true);
+press(save);await settle();assert.equal(state(),'saved');
+press(cancel);assert.equal(state(),'saved');

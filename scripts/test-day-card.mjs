@@ -108,7 +108,7 @@ const reader=D.compute(runs.filter(r=>r.id==='b1'),'2026-10-05',label),rt=new Ma
 const r=C.slides(reader,rt,chosen),rh=C.render(r,{esc,mine:false,author:'a',windowLabel:'w'});
 assert.deepEqual(r.slides.map(s=>s.name),['beta'],'one public project: no carousel and no empty views');assert.ok(!rh.includes('dc-pages')&&!rh.includes('class="dc-page"')&&!rh.includes('alpha')&&!rh.includes('delta')&&!rh.includes('gamma'));
 assert.ok(!JSON.stringify(chosen).includes('alpha'),'saved choices hold tokens, never a project name');
-assert.deepEqual(C.clean({lead:'alpha',order:['<script>',T('beta'),T('beta'),7],hidden:'x',visual:'huge',facts:{whole:['nope']},highlights:'yes'}),{v:2,lead:null,order:[T('beta')],hidden:[],visual:'data',hero:false,focus:'center',facts:{whole:C.DEFAULTS.whole,project:C.DEFAULTS.project},highlights:true,photo:null,title:''},'anything unexpected in saved choices is dropped');
+assert.deepEqual(C.clean({lead:'alpha',order:['<script>',T('beta'),T('beta'),7],hidden:'x',visual:'huge',facts:{whole:['nope']},highlights:'yes'}),{v:2,projectVisuals:{},lead:null,order:[T('beta')],hidden:[],visual:'data',hero:false,focus:'center',facts:{whole:C.DEFAULTS.whole,project:C.DEFAULTS.project},highlights:true,photo:null,title:''},'anything unexpected in saved choices is dropped');
 assert.equal(C.render(C.slides(D.compute([],'2026-10-05',label),new Map(),null),{esc,mine:true,windowLabel:'w'}),'');
 assert.ok(![html,rh].some(h=>h.includes('undefined')||h.includes('NaN')));
 // A reader with several public projects is numbered over those only.
@@ -126,3 +126,18 @@ assert.equal(unnamedDeck.slides[0].result,'','caption does not become a claimed 
 assert.match(unnamedHtml,/2 captured sessions/);
 assert.equal(C.slides(model,tokens,{hidden:[...tokens.values()]}).slides.length,0,'fallback never restores deliberately hidden projects');
 console.log('PASS: card anatomy, navigation, privacy, visual choices, and unnamed saved sessions');
+
+{
+// A stored picture cannot jump to a different project or a reader without its run.
+const ra='11111111-2222-4333-8444-555555555555',rb='22222222-2222-4333-8444-555555555555',pa='33333333-2222-4333-8444-555555555555',pb='44444444-2222-4333-8444-555555555555';
+const picRuns=[{id:ra,project:'alpha',started_at:at(9),duration_s:50,visibility:'private'},{id:rb,project:'beta',started_at:at(10),duration_s:60,visibility:'public'}];
+const selected={v:2,projectVisuals:{[T('alpha')]:{photo:{run:ra,id:pa},visual:'photo',focus:'top'},[T('beta')]:{photo:{run:rb,id:pb},visual:'screenshot',focus:'center'}}};
+const pd=C.slides(D.compute(picRuns,'2026-10-05',label),tokens,selected);
+assert.equal(pd.slides.find(s=>s.name==='alpha').visual.id,pa);
+assert.equal(pd.slides.find(s=>s.name==='beta').visual.id,pb);
+const readerPhotos=C.render(C.slides(D.compute(picRuns.filter(r=>r.visibility==='public'),'2026-10-05',label),tokens,selected),{esc,mine:false});
+assert.ok(!readerPhotos.includes(ra)&&!readerPhotos.includes(pa));
+selected.projectVisuals[T('beta')].photo={run:ra,id:pa};
+assert.equal(C.slides(D.compute(picRuns,'2026-10-05',label),tokens,selected).slides.find(s=>s.name==='beta').visual,null);
+
+}

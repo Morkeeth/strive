@@ -248,9 +248,10 @@
   // uploaded, moved or changed here: the choice is the picture's id. Thumbnails are the real pictures,
   // whole, large enough to tell two screenshots apart. Returns a function that sets the selection again.
   function mountChooser({client,slot,runs,selected,onPick}){
+    slot.__strivePhotoChooserDispose?.();
     let active=true,loading=true,chosen=selected||null;const controller=new AbortController(),urls=new Set();
     const dispose=()=>{active=false;controller.abort();for(const url of urls)URL.revokeObjectURL(url);urls.clear();disposers.delete(dispose)};
-    disposers.add(dispose);slot.innerHTML='<p class="meta">Looking for pictures on these runs…</p>';
+    disposers.add(dispose);slot.__strivePhotoChooserDispose=dispose;slot.innerHTML='<p class="meta">Looking for pictures on these runs…</p>';
     const found=[],on=f=>!!chosen&&chosen.id===f.photo.id&&chosen.run===f.run.id;
     const paint=()=>{if(!active)return;if(loading){slot.innerHTML='<p class="meta">Looking for pictures on these runs…</p>';return;}
       const unavailable=!!chosen&&!found.some(on);
