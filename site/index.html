@@ -1744,10 +1744,10 @@ function playStrip(){
 }
 function landingHTML(){
   return `<div class="home ${ME?'home-member':''}">
-    ${ME?`<section class="home-welcome"><div><h1>From the workbench</h1><p>Real sessions. Work in progress. Something to share.</p></div><a class="act blue home-first-run" href="/?connect">Add a run</a></section>`:`<section class="home-hero"><h1>Strava is for people who ran.<br><i>__BRAND__</i> is for people who didn't.</h1><p class="home-explanation">Real sessions with your coding agent. The work, the photos, the people behind it.</p><a class="act blue home-first-run" href="/?connect">Bring one session</a><span class="home-private">Preview first. Share when you choose.</span></section>`}
+    ${ME?`<section class="home-welcome"><p>Real work, shared by the people building.</p><a class="act blue home-first-run" href="/?connect">Add a run</a></section>`:`<section class="home-hero"><h1>Strava is for people who ran.<br><i>__BRAND__</i> is for people who didn't.</h1><p class="home-explanation">Real sessions with your coding agent. The work, the photos, the people behind it.</p><a class="act blue home-first-run" href="/?connect">Bring one session</a><span class="home-private">Preview first. Share when you choose.</span></section>`}
     <div class="home-layout">
-      <section class="home-sec landing-feature" aria-labelledby="h-popular" id="landing-feature"><div class="land-head"><h2 id="h-popular">On the workbench</h2><a href="/?explore">All runs →</a></div><div class="home-sort" role="group" aria-label="Order public cards"><button type="button" data-home-sort="popular" aria-pressed="true">Most XUDOS</button><button type="button" data-home-sort="latest" aria-pressed="false">Latest</button></div><div id="landing-feature-body">${skeletonCard()}</div><p id="public-run-count" class="public-run-count" role="status"></p></section>
-      <aside class="home-around" aria-label="Around STRIVE">
+      <section class="home-sec landing-feature" aria-labelledby="h-popular" id="landing-feature"><div class="land-head"><h2 id="h-popular">On the workbench</h2><a href="/?explore">All runs →</a></div><div class="home-feed-tools"><div class="home-sort" role="group" aria-label="Order public cards"><button type="button" data-home-sort="popular" aria-pressed="true">Most XUDOS</button><button type="button" data-home-sort="latest" aria-pressed="false">Latest</button></div><a class="home-community-jump" href="#home-people-clubs">Clubs &amp; people ↓</a></div><div id="landing-feature-body">${skeletonCard()}</div><p id="public-run-count" class="public-run-count" role="status"></p></section>
+      <aside class="home-around" id="home-people-clubs" aria-label="Around STRIVE" tabindex="-1">
         <section id="home-community" aria-label="Clubs and events"></section>
         <section class="home-sec" aria-labelledby="h-builders"><div class="land-head"><h2 id="h-builders">People building</h2><a href="/?people">Find people</a></div><div id="home-builders"></div></section>
         <section class="home-sec" id="home-week-section" aria-labelledby="h-week"><div class="land-head"><h2 id="h-week">This week</h2></div><div id="home-week"><div class="wk-skel"></div></div></section>
@@ -1842,7 +1842,8 @@ async function feedCards(runs,ad,{ownerView=false}={}){
 // A stranger lands on what is going on, then people, then runs. Real rows only (site/home.js).
 async function viewLanding(){
   const app=$('app');
-  frame(railHtml('feed'),null,true);
+  frame(null,null,true);
+  $('shell').classList.add('home-shell');
   setPrimarySection('feed');
   app.innerHTML=feedTabs('home')+landingHTML();
   const H=window.GrinderHome, now=Date.now();

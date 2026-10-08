@@ -97,3 +97,27 @@
 .home-sort button{min-height:36px;padding:6px 14px;border:0;border-radius:6px;background:transparent;color:var(--soft);font-size:13px}
 .home-sort button[aria-pressed="true"]{background:var(--box);color:var(--blue);box-shadow:0 1px 4px #00206016}
 .home-sort button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+/* Home has one feed and one community column; no nested third sidebar. */
+#shell.home-shell{display:block;max-width:960px;padding:0 24px}
+#shell.home-shell #app{max-width:none;width:100%;margin:0;padding:20px 0 90px}
+.home{container-type:inline-size}
+.home-layout{grid-template-columns:minmax(0,1fr);gap:24px}
+.home-around{border-left:0;border-top:1px solid var(--rule);padding:22px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.home-around .home-sec,.home-around .home-join{margin:0}
+.home-feed-tools{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.home-community-jump{font-size:12px;min-height:42px;display:inline-flex;align-items:center;color:var(--blue);white-space:nowrap}
+.home-hero{padding-bottom:16px;margin-bottom:18px}
+.home-hero h1{font-size:28px;line-height:1.15;max-width:none;margin-bottom:8px}
+.home-hero .home-explanation{font-size:14px;max-width:none;margin:6px 0 10px}
+.home-welcome{margin-bottom:12px}
+.home-welcome p{font-size:13px}
+.home-around{scroll-margin-top:76px}
+@container(min-width:890px){
+ .home-layout{grid-template-columns:minmax(0,1fr) 250px;gap:28px}
+ .home-around{display:block;border-left:1px solid var(--rule);border-top:0;padding:0 0 0 22px}
+ .home-around .home-sec{margin-top:26px}
+ .home-around .home-join{margin-top:24px}
+ .home-community-jump{display:none}
+}
+@media(max-width:700px){#shell.home-shell{padding:0 12px}#shell.home-shell #app{padding-top:14px}.home-hero h1{font-size:23px;letter-spacing:-.7px}.home-hero .home-explanation{font-size:13px;line-height:1.4}.home-hero .home-private{display:none}.home-around{grid-template-columns:1fr}.home-welcome p{max-width:23ch;font-size:12px}.home-sort button{min-height:42px;padding:5px 10px}.home-community-jump{font-size:11px}}
