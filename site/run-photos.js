@@ -232,7 +232,7 @@
       try{
         const list=await get(`/api/run-photos?run_id=${encodeURIComponent(figure.dataset.visualRun)}`,{headers:await headers(client),signal:controller.signal});
         if(!active)return;if(!list.ok)return fall();
-        const photos=(await list.json())?.photos||[],photo=own?photos.find(p=>p.is_cover):photos.find(p=>p.id===figure.dataset.visualPhoto),path=photo&&photoPath(photo);if(!path)return fall();
+        const photos=(await list.json())?.photos||[],photo=own?lead(photos,'cover'):photos.find(p=>p.id===figure.dataset.visualPhoto),path=photo&&photoPath(photo);if(!path)return fall();
         const res=await get(path,{headers:await headers(client),signal:controller.signal},960);if(!active)return;if(!res.ok)return fall();
         const url=URL.createObjectURL(await res.blob());urls.add(url);
         const image=document.createElement('img');image.alt=figure.dataset.alt||'Picture chosen by the author';image.decoding='async';
