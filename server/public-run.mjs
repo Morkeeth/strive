@@ -388,7 +388,7 @@ export function homeCard(){
    el('div',{style:{display:'flex',color:'#123cff',fontSize:30,fontWeight:800,letterSpacing:6}},BRAND),
    el('div',{style:{display:'flex',fontSize:64,fontWeight:700,marginTop:26,lineHeight:1.1}},TAGLINE),
    el('div',{style:{display:'flex',fontSize:26,color:'#687083',marginTop:24,lineHeight:1.35}},
-     `Strava is for people who ran. ${BRAND} is for people who didn't.`),
+     'Real sessions. The work behind them. The people building next.'),
    el('div',{style:{display:'flex',fontSize:20,color:'#687083',marginTop:'auto'}},
      'Capture a Cursor, Claude Code, Codex or Grok Bot session · private until you choose to share')));
 }

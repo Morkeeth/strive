@@ -1,6 +1,6 @@
 # STRIVE
 
-**Strava is for people who ran. STRIVE is for people who didn't.**
+**Your work, in good company.**
 
 Your real agent session, a run map, a photo and the story behind the work. Save it privately, choose who sees it, and follow what your friends are building. Free to use, with no model API key required for capture.
 
@@ -10,8 +10,8 @@ Your real agent session, a run map, a photo and the story behind the work. Save 
 
 1. Open **https://striverun.app**. Give that same link to your Cursor agent or your STRIVE Grok companion and ask it to prepare a private preview of its own recorded session. [Agent instructions](https://striverun.app/agents.md) identify the capture package and SHA-256 for the website release.
 2. Confirm the project, session and selected portion. The agent reads supported records on its own computer. It cannot reach sessions on another machine simply because you gave it a link. If access or a format is unsupported, it must say so. Sample data is for trying the parser, not posting as your work.
-3. Open the preview. Sign in using a provider actually offered by the site, choose your name and handle, and check that this is your account. Review the measured facts, title and description. **Save run** starts the run privately under **Only me**.
-4. Add your selected photos to the saved run. Review it again, then choose **Close friends**, **Followers** or **Public** when you want to share. Follow a friend, give Thanks or reply, and come back to see what they made next.
+3. Open the preview. Sign in using a provider offered by the site, choose your name and handle, and check that this is your account. Review the measured facts, then add your story and optional images. Select at most one personal photo plus supporting screenshots or results.
+4. Choose your audience: **Only me** is the default. **Close friends**, **Followers** and **Public** are deliberate choices. When you save with images, the run stays private until the images finish saving. Follow a friend, give XUDOS or reply, and come back to see what they made next.
 
 Measurements stay bound to their captured source; titles, descriptions, photos and audience are yours to manage. Tool calls are activity, not a score for quality or proof the task succeeded. Unknown timing, human turns or worker counts must stay unknown. Local preview, saved run and public sharing are separate actions.
 

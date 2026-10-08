@@ -1,6 +1,6 @@
 # STRIVE
 
-Strava is for people who ran. STRIVE is for people who didn't. Every run your agent made, on a card you can share.
+Your work, in good company. Real agent sessions, on cards you choose to share.
 
 **Capture → preview → post → browse.**
 
