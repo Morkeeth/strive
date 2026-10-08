@@ -7,6 +7,7 @@ const require=createRequire(import.meta.url);
 const Row=require('../site/import-row.js');
 const Contract=require('../site/run-contract.js');
 const fixture={schema_version:1,harness:'Codex',trace_basis:'elapsed',measurement_revision:'e'.repeat(64),rhythm:[1,2],code_route:{v:1,projects:[{id:'p1',label:'TEST DATA project',basis:'declared'}],stops:[{id:'s1',project:'p1',kind:'edit',label:'TEST DATA observed edit',basis:'measured',evidence:['TEST DATA source record 1']},{id:'s2',project:'p1',kind:'commit',label:'TEST DATA observed commit',basis:'measured',evidence:['TEST DATA source record 2']}],connectors:[],finish:{stop:'s2',kind:'unfinished',label:'TEST DATA observation ended'}}};
+fixture.code_route.stops[1].source={v:1,consent:'explicit',commits:[{sha:'a'.repeat(40),subject:'Show saved project changes',url:'https://github.com/example/test-data/commit/'+'a'.repeat(40)}],files_changed:1,files:['site/card.js']};
 const supplied=process.argv[2]?JSON.parse(await readFile(process.argv[2],'utf8')):null;
 const run=supplied?.runs?.[0]||supplied?.run||supplied||fixture;
 assert.ok(run.code_route?.stops?.length,'capture must contain checkpoints');
@@ -14,6 +15,17 @@ Contract.validate(run);
 const unsafe=structuredClone(run);
 unsafe.code_route.stops[0].evidence=['/Users/private/source.jsonl'];
 assert.throws(()=>Contract.validate(unsafe),/path|private/i,'import refuses a local source path');
+// Negative source cases exercise the actual importer, not a copied validator.
+for (const mutate of [
+ s=>{s.consent='implicit'}, s=>{s.commits[0].url='https://evil.example/commit/'+s.commits[0].sha},
+ s=>{s.commits[0].url='https://github.com/example/test-data/commit/'+'b'.repeat(40)},
+ s=>{s.commits[0].subject='/Users/oscar/local'}, s=>{s.files=['../outside']},
+ s=>{s.files=['folder/secret.env']}, s=>{s.files_changed=0}, s=>{s.extra='hidden'},
+ s=>{s.commits[0].subject='Bad\nsubject'}, s=>{s.commits.push({...s.commits[0]})}
+]) {
+ const bad=structuredClone(fixture); mutate(bad.code_route.stops[1].source);
+ assert.throws(()=>Contract.validate(bad),'unsafe source must fail the importer');
+}
 const {db,as,anonymous}=await bootDisposable();
 try{
  await seedJourneyActors(db);await as(CASEY);

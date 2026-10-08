@@ -161,6 +161,40 @@
     if (PRIVATE_LANE.test(text)) throw new Error(field + " must not carry private lane labels.");
     return text;
   }
+  function validateCheckpointSource(source) {
+    const object = (value, keys, field) => {
+      if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(k => !keys.includes(k)))
+        throw new Error(field + ' has unsupported fields.');
+    };
+    object(source, ['v','consent','commits','files_changed','files'], 'stop.source');
+    if (source.v !== 1 || source.consent !== 'explicit') throw new Error('stop.source requires explicit consent.');
+    if (!Number.isSafeInteger(source.files_changed) || source.files_changed < 0 || source.files_changed > 1000000) throw new Error('stop.source.files_changed must be an observed count.');
+    if (!Array.isArray(source.commits) || source.commits.length > 5) throw new Error('stop.source holds at most 5 commits.');
+    const seen = new Set();
+    for (const commit of source.commits) {
+      object(commit, ['sha','subject','url'], 'source commit');
+      if (typeof commit.sha !== 'string' || !/^[a-f0-9]{40}$/.test(commit.sha) || seen.has(commit.sha)) throw new Error('source commit needs a unique full SHA.');
+      seen.add(commit.sha);
+      if (commit.subject != null) {
+        const subject = rejectRouteText(commit.subject, 'commit subject');
+        if (subject.length > 160 || /[^\x20-\x7e]/.test(subject)) throw new Error('commit subject must be one short line.');
+      }
+      if (commit.url != null) {
+        if (typeof commit.url !== 'string' || !/^https:\/\/github\.com\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/commit\/[a-f0-9]{40}$/.test(commit.url) || !commit.url.endsWith('/'+commit.sha))
+          throw new Error('commit URL must identify the exact GitHub commit.');
+        rejectRouteText(commit.url, 'commit URL');
+      }
+    }
+    if (source.files != null) {
+      if (!Array.isArray(source.files) || source.files.length > 20 || source.files.length > source.files_changed || new Set(source.files).size !== source.files.length)
+        throw new Error('source files must be a bounded observed selection.');
+      for (const file of source.files) {
+        const name = rejectRouteText(file, 'source file');
+        if (name.length > 160 || name !== file || name.split('/').some(p => !/^[A-Za-z0-9_][A-Za-z0-9_.-]*$/.test(p)))
+          throw new Error('source file must be a safe repository-relative path.');
+      }
+    }
+  }
   function validateCodeRoute(value) {
     if (!value || typeof value !== "object" || Array.isArray(value))
       throw new Error("code_route must be an object.");
@@ -213,6 +247,10 @@
           const text = rejectRouteText(line, "stop.evidence");
           if (text.length > 120) throw new Error("stop.evidence lines are too long.");
         });
+      }
+      if (stop.source != null) {
+        if (stop.basis !== 'measured') throw new Error('stop.source requires a measured checkpoint.');
+        validateCheckpointSource(stop.source);
       }
     }
     const connectors = value.connectors || [];
