@@ -68,3 +68,11 @@ button.ghost,.act.ghost{background:transparent;color:var(--soft);border-color:va
 @media(max-width:800px){.feedback-launch{display:none!important}.post-trail-label span{font-size:11px}.post-trail-axis{font-size:11px}.activity-post .post-visual img{height:170px!important;max-height:170px!important}.activity-post .post-visual .dc-picture{max-height:170px}.post-caption{font-size:12px}.post-facts dt{font-size:11px}}
 
 .activity-post .post-visual[data-kind="photo"][data-focus] img{object-fit:cover!important}
+/* Composer controls have their own hierarchy; only Continue/Save use a solid action. */
+.post-composer .post-flow-nav button,.post-setup-tabs button{background:transparent!important;border-color:transparent!important;color:var(--soft)!important;box-shadow:none}
+.post-composer .post-flow-nav button[aria-current="step"]{color:var(--ink)!important;font-weight:600}
+.post-composer .post-flow-nav button>span{background:#fff;color:var(--soft);border-color:var(--rule)}
+.post-composer .post-flow-nav button.is-done>span{background:var(--blue-wash);color:var(--blue);border-color:var(--blue-soft)}
+.post-composer .post-flow-nav button[aria-current="step"]>span{background:var(--blue);color:#fff;border-color:var(--blue)}
+.post-composer .post-photo-grid button.act,.post-composer .post-flow-actions .act:not(.blue){background:transparent!important;border:1px solid var(--rule)!important;color:var(--soft)!important;box-shadow:none}
+.post-setup-tabs button[aria-selected="true"]{background:#fff!important;color:var(--ink)!important;box-shadow:0 1px 4px #0000000b}
