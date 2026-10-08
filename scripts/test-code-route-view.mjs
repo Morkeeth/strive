@@ -54,7 +54,7 @@ const privatePath=structuredClone(enriched);privatePath.code_route.stops[0].sour
 const malicious=structuredClone(enriched);malicious.code_route.stops[1].source.commits[0].subject='<img src=x onerror=alert(1)>';
 assert.equal(new JSDOM(V.render(malicious)).window.document.querySelectorAll('img').length,0,'source messages remain text');
 const long=clone();long.code_route.stops=[1,2,3,4,5].map(n=>({...stop(n,'commit',n%2?'p1':'p2'),source:{v:1,consent:'explicit',commits:[commit('a','Recorded change '+n)],files_changed:0}}));long.code_route.connectors=[];long.code_route.finish.stop='s5';
-const compact=new JSDOM(V.render(long,{compact:true})).window.document;assert.equal(compact.querySelectorAll('[data-project-leg]').length,2);assert.equal(compact.querySelectorAll('[data-source-stop]').length,5);assert.match(compact.querySelector('.crv-more-work').textContent,/3 more commits/);assert.equal(compact.querySelector('.crv-more-work').getAttribute('href'),'/?run='+long.id);
+const compact=new JSDOM(V.render(long,{compact:true})).window.document;assert.equal(compact.querySelectorAll('[data-project-leg]').length,2);assert.equal(compact.querySelectorAll('[data-source-stop]').length,5);assert.match(compact.querySelector('.crv-more-work').textContent,/3 more commits/);assert.equal(compact.querySelector('.crv-more-work').tagName,'P');assert.equal(compact.querySelector('.crv-more-work').hasAttribute('href'),false,'the card already has one clear full-run action');
 assert.equal(new JSDOM(V.render(long)).window.document.querySelectorAll('[data-project-leg]').length,5,'full run preserves all legs');
 console.log('PASS: named project legs, exact commit subjects and links, file consent, local-commit fallback, no inferred outcome and bounded feed preview.');
 

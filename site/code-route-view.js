@@ -75,7 +75,7 @@
     const list=shown.map(leg=>`<li class="crv-work-leg" data-project-leg="${esc(leg.project)}"><h3>${esc(m.projects.find(p=>p.id===leg.project).label)}</h3><ul>${compact?leg.units.map(u=>u.edits?editContext(u.edits):workStop(u.stop,{compact:true})).join(''):leg.stops.map(s=>workStop(s)).join('')}</ul></li>`).join('');
     const remaining=compact?units.filter(u=>!visible.includes(u)):[],commits=remaining.filter(u=>u.commit).length,observations=remaining.reduce((n,u)=>n+(u.edits?.length||(!u.commit?1:0)),0);
     const rest=[commits?`${commits} more ${commits===1?'commit':'commits'}`:'',observations?`${observations} other ${observations===1?'observation':'observations'}`:''].filter(Boolean).join(' and ');
-    const more=remaining.length?`<a class="crv-more-work" href="/?run=${encodeURIComponent(runId)}">Full run · ${rest} →</a>`:'';
+    const more=remaining.length?`<p class="crv-more-work">${rest} in full run</p>`:'';
     return `<ol class="crv-work-legs">${list}</ol>${more}`;
   }
   function render(run,{compact=false}={}){

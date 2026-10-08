@@ -260,6 +260,6 @@ are not guessed. Approved repository-relative file names provide change context,
 an explicit subset count when bounded. No prompts, patch contents or local paths render.
 The feed shows at most two meaningful commit messages in their observed order,
 including within one busy project. Source basis appears once in the section header.
-File lists and generic edit precursors remain in full view, with an explicit link and
-omitted commit/observation counts. Individual source records are preserved.
+File lists and generic edit precursors remain in full view, with omitted commit/observation counts
+and the card's single View full run action. Individual source records are preserved.
 full run and share preserve every leg in order, including a later return to a project.
