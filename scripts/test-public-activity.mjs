@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {html,readPublicPhotos} from '../server/public-run.mjs';
+const id='11111111-1111-4111-8111-111111111111',first='22222222-2222-4222-8222-222222222222',cover='33333333-3333-4333-8333-333333333333';
+const run={id,visibility:'public',title:'TEST DATA work',caption:'TEST DATA caption',tool_calls:121,prompts:0,duration_s:600,profiles:{handle:'test-author',display_name:'TEST DATA'},rhythm:[1,2,1]};
+const photos=await readPublicPhotos(run,async()=>new Response(JSON.stringify([{id:first,run_id:id,is_cover:false,width:400,height:300},{id:cover,run_id:id,is_cover:true,width:400,height:300}])));
+assert.equal(photos[1].is_cover,true,'public reader keeps the author-selected cover flag');
+const page=html(run,{photos,kudos:0});
+assert.ok(page.indexOf('Open in STRIVE')<page.indexOf('class="card fc"'),'full app entry precedes the card and evidence');
+assert.ok(page.includes('href="/?run='+id+'">Open in STRIVE'),'entry opens this exact run');
+assert.ok(page.indexOf('aria-label="Recorded facts"')<page.indexOf('fc-route-secondary'),'measured stats precede the trace');
+assert.ok(page.includes('<dt>Tool calls</dt><dd>121</dd>'));
+assert.ok(page.indexOf('/api/run-photos?id='+cover)<page.indexOf('/api/run-photos?id='+first),'selected cover leads the public gallery even when metadata is unordered');
+assert.ok(!page.includes('<script'),'shared public page stays script-free');
+console.log('PASS: public share opens the same run, leads with recorded stats, and preserves selected cover');

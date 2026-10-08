@@ -2,11 +2,18 @@
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
+import {html as publicHtml,neutralHtml,readPublic,readPublicPhotos,readKudos,validId} from '../server/public-run.mjs';
 const origin='https://striverun.app',live=await (await fetch(origin)).text();
 const url=live.match(/const SB_URL="([^"]+)"/)[1],key=live.match(/const SB_KEY="([^"]+)"/)[1];
 const root=resolve('dist'),port=Number(process.env.PORT)||8128;
 const server=createServer(async(req,res)=>{try{
  const u=new URL(req.url,'http://127.0.0.1:'+port);
+ if(u.pathname.startsWith('/r/')&&req.method==='GET'){
+  const id=u.pathname.slice(3);if(!validId(id)){res.writeHead(404);return res.end('No run');}
+  const publicFetch=(request,options={})=>{const parsed=new URL(request);return fetch(url+parsed.pathname+parsed.search,{...options,method:'GET',headers:{...options.headers,apikey:key,authorization:'Bearer '+key}})};
+  const run=await readPublic(id,publicFetch);res.setHeader('Content-Type','text/html');if(!run)return res.end(neutralHtml(id));
+  const [photos,kudos]=await Promise.all([readPublicPhotos(run,publicFetch),readKudos(id,publicFetch)]);return res.end(publicHtml(run,{photos,kudos}));
+ }
  if(u.pathname.startsWith('/public-read/')){
   const path=u.pathname.slice('/public-read'.length),readRpc=['/rest/v1/rpc/read_day_card','/rest/v1/rpc/strava_profile_by_handle'].includes(path)&&req.method==='POST';
   if(!((req.method==='GET'||req.method==='HEAD')&&(path.startsWith('/rest/v1/')||path==='/auth/v1/settings'))&&!readRpc){res.writeHead(403);return res.end('Read-only preview');}
