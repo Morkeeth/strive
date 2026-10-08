@@ -11,4 +11,12 @@ assert.ok(page.indexOf('aria-label="Recorded facts"')<page.indexOf('fc-route-sec
 assert.ok(page.includes('<dt>Tool calls</dt><dd>121</dd>'));
 assert.ok(page.indexOf('/api/run-photos?id='+cover)<page.indexOf('/api/run-photos?id='+first),'selected cover leads the public gallery even when metadata is unordered');
 assert.ok(!page.includes('<script'),'shared public page stays script-free');
+const extra='44444444-4444-4444-8444-444444444444';
+const candid=[{id:first,run_id:id,role:'personal',is_cover:false},{id:cover,run_id:id,role:'personal',is_cover:true},{id:extra,run_id:id,role:'result',is_cover:false}];
+const candidPage=html(run,{photos:candid});
+assert.ok(candidPage.includes('/api/run-photos?id='+cover),'the author-chosen candid remains visible');
+assert.ok(!candidPage.includes('/api/run-photos?id='+first),'a second candid is not displayed');
+assert.ok(candidPage.includes('/api/run-photos?id='+extra),'supporting result remains visible');
+assert.ok(!html(run,{photos:[candid[0]]}).includes('/api/run-photos?id='+first),'a personal cover is never guessed');
+assert.deepEqual(candid.map(p=>p.is_cover),[false,true,false],'rendering leaves saved choices untouched');
 console.log('PASS: public share opens the same run, leads with recorded stats, and preserves selected cover');
