@@ -251,3 +251,12 @@ their existing view. No old runs are reconstructed or given a new audience.
 Check `node scripts/test-code-route-view.mjs`. With an actual local collector export,
 `python3 scripts/check-code-route-view.py <capture.json>` exercises the real importer
 preview and local renderings at 1280, 390 and 320px without saving or publishing.
+
+Optional consented `stop.source` details can turn a count-only receipt into readable
+recorded work. Exact Git commit subjects lead each project leg, explicitly labelled
+“Recorded commit message”; they never establish successful checks, deployment or task
+completion. A supplied public GitHub URL opens that exact full commit SHA. Missing URLs
+are not guessed. Approved repository-relative file names provide change context, with
+an explicit subset count when bounded. No prompts, patch contents or local paths render.
+The feed shows the first three observed project legs and links to all remaining work;
+full run and share preserve every leg in order, including a later return to a project.

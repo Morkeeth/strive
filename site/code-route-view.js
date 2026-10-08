@@ -24,13 +24,42 @@
     if((route.connectors||[]).some(c=>indexes.get(c.to)!==indexes.get(c.from)+1))return null;
     return {projects:route.projects,stops,connectors:route.connectors||[],finish:route.finish};
   }
-  function render(run){
-    const m=model(run);if(!m)return '';
+  function projectLegs(m){
     const legs=[];
-    for(const stop of m.stops){let leg=legs[legs.length-1];if(!leg||leg.project!==stop.project){leg={project:stop.project,stops:[]};legs.push(leg);}leg.stops.push(stop);}
-    const receipt=legs.map(leg=>{const project=m.projects.find(p=>p.id===leg.project);return `<li class="crv-receipt-leg"><strong class="crv-receipt-project">${esc(project.label)}</strong><ul>${leg.stops.map(s=>`<li data-receipt-stop="${esc(s.id)}"><span>${esc(s.label)}</span>${s.kind==='commit'?`<code title="${esc(s.fact.slice(12))}">${esc(s.fact.slice(12,19))}</code>`:''}</li>`).join('')}</ul></li>`;}).join('');
-    const sources=m.stops.map(s=>{const project=m.projects.find(p=>p.id===s.project);return `<li data-source-stop="${esc(s.id)}"><div class="crv-source-title"><span class="crv-source-order">${s.order}</span><strong>${esc(s.label)}</strong></div><dl><div><dt>Kind</dt><dd>${s.kind==='edit'?'Edit observed':'Commit recorded'} · measured checkpoint</dd></div><div><dt>Project</dt><dd>${esc(project.label)} · ${project.basis==='measured'?'measured project binding':'author-chosen label'}</dd></div><div><dt>Observed at</dt><dd><time datetime="${esc(s.observedAt)}">${esc(s.observedAt.replace('T',' ').replace(/(?:Z|\+00:00)$/,' UTC'))}</time></dd></div><div><dt>Order</dt><dd>Checkpoint ${s.order} · source record ${s.record}</dd></div><div><dt>Evidence</dt><dd>${esc(s.fact)}</dd></div><div><dt>Source SHA256</dt><dd><code>${esc(s.sourceSha)}</code></dd></div></dl></li>`;}).join('');
-    return `<section class="checkpoint-route checkpoint-receipt" data-route-collector="git-checkpoints-v1" aria-label="Activity receipt"><header><strong>Activity receipt</strong><span>In observation order</span></header><ol class="crv-receipt">${receipt}</ol><details class="crv-sources"><summary>Inspect capture sources</summary><p>Measured by an explicitly enabled local Git collector. Project labels are author-chosen. Checkpoints show when changes were observed, not when each action happened. The capture does not establish what shipped or whether the task is complete.</p><ol>${sources}</ol><p class="crv-capture-end">End of captured observations. Task completion is not established.</p></details></section>`;
+    for(const stop of m.stops){
+      let leg=legs[legs.length-1];
+      if(!leg||leg.project!==stop.project){leg={project:stop.project,stops:[]};legs.push(leg);}
+      leg.stops.push(stop);
+    }
+    return legs;
+  }
+  function commitLink(commit){
+    return typeof commit.url==='string'&&/^https:\/\/github\.com\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/commit\/[a-f0-9]{40}$/.test(commit.url)&&commit.url.endsWith('/'+commit.sha)
+      ?`<a class="crv-open-commit" href="${esc(commit.url)}" target="_blank" rel="noopener noreferrer">Open commit <span aria-hidden="true">↗</span></a>`:'';
+  }
+  function fileContext(source,limit=20){
+    if(!source||!source.files?.length)return '';
+    const files=source.files.slice(0,limit);
+    return `<p class="crv-file-context"><span>Observed changes${source.files_changed>files.length?` · ${files.length} of ${source.files_changed} observed files shown`:''}</span>${files.map(file=>`<code>${esc(file)}</code>`).join('')}</p>`;
+  }
+  function workStop(s,{compact=false}={}){
+    const commits=s.source?.commits||[];
+    const changes=commits.map(c=>`<div class="crv-work-commit" data-commit="${esc(c.sha)}">${c.subject?`<p class="crv-commit-subject">${esc(c.subject)}</p>`:''}<div class="crv-commit-meta"><span>${c.subject?'Recorded commit message':'Commit recorded'}</span>${commitLink(c)||`<code title="${esc(c.sha)}">${esc(c.sha.slice(0,7))}</code>`}</div></div>`).join('');
+    return `<li class="crv-work-stop" data-receipt-stop="${esc(s.id)}">${changes||`<p class="crv-observed-label">${esc(s.label)}</p>`}${fileContext(s.source,compact?3:20)}</li>`;
+  }
+  function workLegs(m,legs,{compact=false,runId=''}={}){
+    const visible=compact?legs.slice(0,3):legs;
+    const list=visible.map(leg=>`<li class="crv-work-leg" data-project-leg="${esc(leg.project)}"><h3>${esc(m.projects.find(p=>p.id===leg.project).label)}</h3><ul>${leg.stops.map(s=>workStop(s,{compact})).join('')}</ul></li>`).join('');
+    const more=visible.length<legs.length?`<a class="crv-more-work" href="/?run=${encodeURIComponent(runId)}">View ${legs.length-visible.length} more observed project ${legs.length-visible.length===1?'leg':'legs'} →</a>`:'';
+    return `<ol class="crv-work-legs">${list}</ol>${more}`;
+  }
+  function render(run,{compact=false}={}){
+    const m=model(run);if(!m)return '';
+    const legs=projectLegs(m);
+    const rich=m.stops.some(s=>s.source?.commits?.some(c=>c.subject));
+    const receipt=legs.map(leg=>{const project=m.projects.find(p=>p.id===leg.project);return `<li class="crv-receipt-leg"><strong class="crv-receipt-project">${esc(project.label)}</strong><ul>${leg.stops.map(s=>`<li data-receipt-stop="${esc(s.id)}"><span>${esc(s.label)}</span>${s.source?.commits?.length?s.source.commits.map(c=>commitLink(c)||`<code title="${esc(c.sha)}">${esc(c.sha.slice(0,7))}</code>`).join(''):s.kind==='commit'?`<code title="${esc(s.fact.slice(12))}">${esc(s.fact.slice(12,19))}</code>`:''}${fileContext(s.source,compact?3:20)}</li>`).join('')}</ul></li>`;}).join('');
+    const sources=m.stops.map(s=>{const project=m.projects.find(p=>p.id===s.project);return `<li data-source-stop="${esc(s.id)}"><div class="crv-source-title"><span class="crv-source-order">${s.order}</span><strong>${esc(s.label)}</strong></div><dl><div><dt>Kind</dt><dd>${s.kind==='edit'?'Edit observed':'Commit recorded'} · measured checkpoint</dd></div><div><dt>Project</dt><dd>${esc(project.label)} · ${project.basis==='measured'?'measured project binding':'author-chosen label'}</dd></div><div><dt>Observed at</dt><dd><time datetime="${esc(s.observedAt)}">${esc(s.observedAt.replace('T',' ').replace(/(?:Z|\+00:00)$/,' UTC'))}</time></dd></div><div><dt>Order</dt><dd>Checkpoint ${s.order} · source record ${s.record}</dd></div><div><dt>Evidence</dt><dd>${esc(s.fact)}</dd></div>${s.source?`<div><dt>Source details</dt><dd>${s.source.commits.map(c=>`<p>${c.subject?esc(c.subject)+' · ':''}<code>${esc(c.sha)}</code>${commitLink(c)}</p>`).join('')}${fileContext(s.source)}</dd></div>`:''}<div><dt>Source SHA256</dt><dd><code>${esc(s.sourceSha)}</code></dd></div></dl></li>`;}).join('');
+    return `<section class="checkpoint-route ${rich?'checkpoint-work':'checkpoint-receipt'}" data-route-collector="git-checkpoints-v1" aria-label="${rich?'Recorded work':'Activity receipt'}"><header><strong>${rich?'Recorded work':'Activity receipt'}</strong><span>In observation order</span></header>${rich?workLegs(m,legs,{compact,runId:run.id}):`<ol class="crv-receipt">${receipt}</ol>`}<details class="crv-sources"><summary>Inspect capture sources</summary><p>Measured by an explicitly enabled local Git collector. Project labels are author-chosen. Checkpoints show when changes were observed, not when each action happened. The capture does not establish what shipped or whether the task is complete.</p><ol>${sources}</ol><p class="crv-capture-end">End of captured observations. Task completion is not established.</p></details></section>`;
   }
   const api={model,render,claimed};root.StriveCodeRoute=api;if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

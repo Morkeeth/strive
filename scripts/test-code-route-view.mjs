@@ -28,3 +28,32 @@ assert.match(w.StrivePost.render({...run,code_route:null,rhythm:[1,3,2]}),/Activ
 assert.doesNotMatch(w.StrivePost.render({...run,code_route:null,rhythm:[1,3,2]}),/checkpoint-route/);
 assert.match(readFileSync('site/index.html','utf8'),/code_route:run.code_route\|\|null/,'import preview carries exact route');
 console.log('PASS: strict capture provenance, recorded order, explicit connections, inspectable source, preview/feed/detail/share parity and legacy fallback.');
+
+// Synthetic contract cases test rendering rules; browser proof uses an actual collector export.
+const enriched=clone();
+const commit=(letter,subject)=>({sha:letter.repeat(40),subject,url:'https://github.com/example/recorded-work/commit/'+letter.repeat(40)});
+enriched.code_route.stops[0].source={v:1,consent:'explicit',commits:[],files_changed:3,files:['site/code-route-view.js']};
+enriched.code_route.stops[1].source={v:1,consent:'explicit',commits:[commit('a','Make calendar keyboard navigation follow selected day')],files_changed:2,files:['calendar.js','calendar.test.js']};
+enriched.code_route.stops[2]={...stop(3,'commit'),evidence:[...stop(3,'commit').evidence.slice(0,4),'Git commit: '+'b'.repeat(40)]};
+enriched.code_route.stops[2].source={v:1,consent:'explicit',commits:[commit('b','Replace sparse diagrams with activity receipts')],files_changed:1,files:['site/code-route-view.js']};
+const rich=new JSDOM(V.render(enriched)).window.document;
+assert.equal(rich.querySelectorAll('svg').length,0,'named work does not restore meaningless geometry');
+assert.deepEqual([...rich.querySelectorAll('[data-project-leg]')].map(e=>e.dataset.projectLeg),['p1','p2','p1'],'real project returns remain in source order');
+assert.deepEqual([...rich.querySelectorAll('.crv-commit-subject')].map(e=>e.textContent),['Make calendar keyboard navigation follow selected day','Replace sparse diagrams with activity receipts'],'exact messages explain what changed before sources are opened');
+assert.equal(rich.querySelector('.crv-work-commit a').href,'https://github.com/example/recorded-work/commit/'+'a'.repeat(40));
+assert.match(rich.querySelector('.crv-work-commit').textContent,/Recorded commit message/,'a commit message is not declared a verified outcome');
+assert.match(rich.querySelector('.crv-work-legs').textContent,/calendar\.test\.js/);
+assert.doesNotMatch(rich.querySelector('.crv-work-legs').textContent,/Deployed|Tests passed|Task complete/);
+const withoutLinks=structuredClone(enriched);withoutLinks.code_route.stops.forEach(s=>s.source.commits.forEach(c=>delete c.url));
+assert.equal(new JSDOM(V.render(withoutLinks)).window.document.querySelectorAll('.crv-open-commit').length,0,'no URL is fabricated for a local commit');
+const noNames=clone();noNames.code_route.stops[0].source={v:1,consent:'explicit',commits:[],files_changed:3};
+assert.match(V.render(noNames),/checkpoint-receipt/,'source counts alone do not imply a meaningful story');
+const wrongLink=structuredClone(enriched);wrongLink.code_route.stops[1].source.commits[0].url='https://github.com/example/recorded-work/commit/'+'b'.repeat(40);
+assert.equal(V.model(wrongLink),null,'a URL for another commit fails closed');
+const privatePath=structuredClone(enriched);privatePath.code_route.stops[0].source.files=['/Users/private/file'];assert.equal(V.model(privatePath),null);
+const malicious=structuredClone(enriched);malicious.code_route.stops[1].source.commits[0].subject='<img src=x onerror=alert(1)>';
+assert.equal(new JSDOM(V.render(malicious)).window.document.querySelectorAll('img').length,0,'source messages remain text');
+const long=clone();long.code_route.stops=[1,2,3,4,5].map(n=>({...stop(n,'commit',n%2?'p1':'p2'),source:{v:1,consent:'explicit',commits:[commit('a','Recorded change '+n)],files_changed:0}}));long.code_route.connectors=[];long.code_route.finish.stop='s5';
+const compact=new JSDOM(V.render(long,{compact:true})).window.document;assert.equal(compact.querySelectorAll('[data-project-leg]').length,3);assert.equal(compact.querySelectorAll('[data-source-stop]').length,5);assert.match(compact.querySelector('.crv-more-work').textContent,/2 more observed project legs/);assert.equal(compact.querySelector('.crv-more-work').getAttribute('href'),'/?run='+long.id);
+assert.equal(new JSDOM(V.render(long)).window.document.querySelectorAll('[data-project-leg]').length,5,'full run preserves all legs');
+console.log('PASS: named project legs, exact commit subjects and links, file consent, local-commit fallback, no inferred outcome and bounded feed preview.');
