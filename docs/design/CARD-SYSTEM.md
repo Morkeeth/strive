@@ -235,9 +235,13 @@ selected-run posts, full run and public share. The view accepts the v1 route onl
 all stops carry the explicit `git-checkpoints-v1` consent marker, source SHA256,
 strictly increasing source record and checkpoint order, UTC observation time and the
 recorded edit or commit reference. A checkpoint can observe several changes together;
-it does not invent an order between those actions. Only supplied adjacent connectors
-are drawn. Projects form rows, observation order forms the horizontal axis. Neither
-position nor spacing represents geography, elapsed time, causality or completion.
+it does not invent an order between those actions. Generic counts and sparse edit/commit
+observations render as an Activity receipt, with the project, recorded change and actual
+commit reference visible. There is no numbered diagram, including in share images.
+Consecutive observations may form a project leg; returning to a project remains a later
+leg, never a regrouped history. Richer work must explain what changed with direct source
+links before it earns a route view. Neither geometry nor labels invent geography,
+elapsed time, causality or completion. This follows Oscar's 8 October 22:45 correction.
 
 Native source disclosures preserve the exact checkpoint order and source references,
 including on script-free share pages. Project labels remain author-chosen. Old runs

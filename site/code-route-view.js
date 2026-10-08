@@ -1,4 +1,4 @@
-/* Consented Git checkpoints. Coordinates encode project and observation order only. */
+/* Consented Git observations. Sparse captures are receipts, never a numbered map. */
 (function(root){
   'use strict';
   const MARKER='Collector: git-checkpoints-v1; consent: explicit';
@@ -26,16 +26,11 @@
   }
   function render(run){
     const m=model(run);if(!m)return '';
-    const W=320,top=25,row=36,H=top+(m.projects.length-1)*row+17,left=29,right=303;
-    const projectIndex=new Map(m.projects.map((p,i)=>[p.id,i]));
-    const points=m.stops.map((s,i)=>({...s,x:m.stops.length===1?(left+right)/2:left+i*(right-left)/(m.stops.length-1),y:top+projectIndex.get(s.project)*row}));
-    const byId=new Map(points.map(p=>[p.id,p]));
-    const paths=m.connectors.map(c=>{const a=byId.get(c.from),b=byId.get(c.to);return `<path class="crv-path" d="M${a.x} ${a.y} L${b.x} ${b.y}"/>`;}).join('');
-    const lanes=m.projects.map((p,i)=>`<path class="crv-lane" d="M${left} ${top+i*row} H${right}"/><text class="crv-lane-number" x="3" y="${top+i*row+4}">${String.fromCharCode(65+i)}</text>`).join('');
-    const dots=points.map((p,i)=>`<g data-checkpoint="${esc(p.id)}"><title>${esc('Checkpoint '+p.order+' · '+p.label)}</title>${p.kind==='commit'?`<path class="crv-commit" d="M${p.x} ${p.y-6} l6 6 -6 6 -6 -6Z"/>`:`<circle class="crv-edit" cx="${p.x}" cy="${p.y}" r="4.5"/>`}${points.length<=8||i===0||i===points.length-1?`<text class="crv-order" x="${p.x}" y="${p.y-12}" text-anchor="middle">${p.order}</text>`:''}</g>`).join('');
-    const projects=m.projects.map((p,i)=>`<li><span>${String.fromCharCode(65+i)}</span>${esc(p.label)}</li>`).join('');
+    const legs=[];
+    for(const stop of m.stops){let leg=legs[legs.length-1];if(!leg||leg.project!==stop.project){leg={project:stop.project,stops:[]};legs.push(leg);}leg.stops.push(stop);}
+    const receipt=legs.map(leg=>{const project=m.projects.find(p=>p.id===leg.project);return `<li class="crv-receipt-leg"><strong class="crv-receipt-project">${esc(project.label)}</strong><ul>${leg.stops.map(s=>`<li data-receipt-stop="${esc(s.id)}"><span>${esc(s.label)}</span>${s.kind==='commit'?`<code title="${esc(s.fact.slice(12))}">${esc(s.fact.slice(12,19))}</code>`:''}</li>`).join('')}</ul></li>`;}).join('');
     const sources=m.stops.map(s=>{const project=m.projects.find(p=>p.id===s.project);return `<li data-source-stop="${esc(s.id)}"><div class="crv-source-title"><span class="crv-source-order">${s.order}</span><strong>${esc(s.label)}</strong></div><dl><div><dt>Kind</dt><dd>${s.kind==='edit'?'Edit observed':'Commit recorded'} · measured checkpoint</dd></div><div><dt>Project</dt><dd>${esc(project.label)} · ${project.basis==='measured'?'measured project binding':'author-chosen label'}</dd></div><div><dt>Observed at</dt><dd><time datetime="${esc(s.observedAt)}">${esc(s.observedAt.replace('T',' ').replace(/(?:Z|\+00:00)$/,' UTC'))}</time></dd></div><div><dt>Order</dt><dd>Checkpoint ${s.order} · source record ${s.record}</dd></div><div><dt>Evidence</dt><dd>${esc(s.fact)}</dd></div><div><dt>Source SHA256</dt><dd><code>${esc(s.sourceSha)}</code></dd></div></dl></li>`;}).join('');
-    return `<section class="checkpoint-route" data-route-collector="git-checkpoints-v1" aria-label="Code Route"><header><strong>Code Route</strong><span>${m.stops.length} ${m.stops.length===1?'checkpoint':'checkpoints'} · observation order</span></header><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(m.stops.length+' recorded checkpoints across '+m.projects.length+' projects. Position shows observation order, not time or geography.')}" >${lanes}${paths}${dots}</svg><ol class="crv-projects" aria-label="Projects">${projects}</ol><div class="crv-legend"><span><i class="crv-edit-key" aria-hidden="true"></i>Edit observed</span><span><i class="crv-commit-key" aria-hidden="true"></i>Commit recorded</span></div><details class="crv-sources"><summary>Inspect checkpoints and sources</summary><p>Measured by an explicitly enabled local Git collector. Project labels are author-chosen. Checkpoints show when changes were observed, not when each action happened. Connections show successive observations, not cause or completion.</p><ol>${sources}</ol><p class="crv-capture-end">End of captured observations. Task completion is not established.</p></details></section>`;
+    return `<section class="checkpoint-route checkpoint-receipt" data-route-collector="git-checkpoints-v1" aria-label="Activity receipt"><header><strong>Activity receipt</strong><span>In observation order</span></header><ol class="crv-receipt">${receipt}</ol><details class="crv-sources"><summary>Inspect capture sources</summary><p>Measured by an explicitly enabled local Git collector. Project labels are author-chosen. Checkpoints show when changes were observed, not when each action happened. The capture does not establish what shipped or whether the task is complete.</p><ol>${sources}</ol><p class="crv-capture-end">End of captured observations. Task completion is not established.</p></details></section>`;
   }
   const api={model,render,claimed};root.StriveCodeRoute=api;if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

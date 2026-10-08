@@ -255,7 +255,7 @@ const outputKind=run=>{
 };
 const codeRoutePlot=run=>{
  const measured=Checkpoints.model(run);
- if(Checkpoints.claimed(run)&&!measured)return null;
+ if(Checkpoints.claimed(run))return null; // Sparse checkpoint counts are a receipt, not a route diagram.
  const route=measured||run&&run.code_route;
  if(!route||(!measured&&route.v!==1)||route.unavailable||!Array.isArray(route.projects)||!Array.isArray(route.stops)||!route.projects.length||!route.stops.length)return null;
  const idx=Object.fromEntries(route.projects.map((p,i)=>[p.id,i]));
