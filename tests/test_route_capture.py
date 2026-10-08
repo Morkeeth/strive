@@ -137,3 +137,34 @@ def test_multiple_projects_observation_order_and_only_observed_scope(tmp_path):
     assert data['stats']['projects_touched']==2 and data['stats']['files_changed']==2
     assert [s['project'] for s in data['stops']]==['p1','p2']
     assert [s['evidence'][2] for s in data['stops']]==['Record: 3; order: 1; basis: checkpoint order','Record: 4; order: 2; basis: checkpoint order']
+
+
+@pytest.mark.parametrize('harness', ['codex', 'cursor'])
+def test_generic_native_capture_does_not_invent_code_route(tmp_path, monkeypatch, harness):
+    from agentgrinder import cursor_chats, ingest
+    from agentgrinder.push import export_run
+
+    _, repo, source, _, _ = setup(tmp_path)
+    written = str(repo / 'work.py')
+    if harness == 'codex':
+        rows = [
+            {'type': 'session_meta', 'payload': {'cwd': str(repo)}},
+            {'type': 'event_msg', 'payload': {'type': 'user_message', 'message': 'change it'}},
+            {'type': 'event_msg', 'payload': {'type': 'patch_apply_end', 'success': True, 'changes': {written: {}}}},
+            {'type': 'response_item', 'payload': {'type': 'custom_tool_call', 'call_id': 'commit', 'name': 'exec', 'input': '{"cmd":"git commit -m fixture"}'}},
+        ]
+        run = ingest.parse_codex_session(str(source), records=rows)
+    else:
+        # Exclude the user's live store; retain the real native parser and metric logic.
+        monkeypatch.setattr(cursor_chats, 'build_ridge', lambda *args, **kwargs: None)
+        rows = [
+            {'role': 'user', 'message': {'content': [{'type': 'text', 'text': '<user_query>change it</user_query>'}]}},
+            {'role': 'assistant', 'message': {'content': [
+                {'type': 'tool_use', 'id': 'edit', 'name': 'Write', 'input': {'path': written}},
+                {'type': 'tool_use', 'id': 'commit', 'name': 'Shell', 'input': {'command': 'git commit -m fixture'}},
+            ]}},
+        ]
+        run = ingest.parse_cursor_session(str(source), records=rows, cursor_db=tmp_path / 'absent.db')
+    assert run['files_touched'] == 1 and run['commits'] == 1
+    assert 'code_route' not in run
+    assert 'code_route' not in export_run(run)

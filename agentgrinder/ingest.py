@@ -605,11 +605,12 @@ def parse_cursor_session(path: str, athlete: str = "you", records=None, cursor_d
         run["capabilities"]["timed_ridge"] = True
     else:
         run["capabilities"]["timed_ridge"] = False
-    from .code_route import attach_measured_code_route
     from .capture_metadata import recorded
     from .native_sittings import records as read_records
     run["capture_metadata"] = recorded(records if records is not None else read_records(path), "cursor")
-    return attach_measured_code_route(run)
+    # Aggregate file/commit counts do not establish checkpoint order or capture consent.
+    # Only the explicit future-only Code Route collector attaches new route checkpoints.
+    return run
 
 
 # ---- Grok Bot origin ---------------------------------------------------------
@@ -919,9 +920,7 @@ def parse_codex_session(path: str, athlete: str = "you", records=None) -> dict:
         reach_value, reach_reason = None, reachmod.R_CWD_NOT_REPO
 
     route_ix, route_names = folder_route(edits)
-    from .code_route import attach_measured_code_route
-
-    return attach_measured_code_route({
+    return {
         "athlete": athlete,
         "title": title,
         "harness": "Codex",
@@ -947,7 +946,7 @@ def parse_codex_session(path: str, athlete: str = "you", records=None) -> dict:
         "reach_reason": reach_reason,
         "route": route_ix,
         "route_legend": route_names,
-    })
+    }
 
 
 def _dedupe(seq):
