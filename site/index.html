@@ -14,7 +14,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="__BRAND__">
 <meta property="og:title" content="__BRAND__ · __TAGLINE__">
-<meta property="og:description" content="Strava is for people who ran. __BRAND__ is for people who didn't. Drop a Cursor, Claude Code or Codex session; get the card, the map and a line to paste. Private until you choose an audience.">
+<meta property="og:description" content="Preview a real coding session, add your story and images, then choose who can see your run on __BRAND__.">
 <meta property="og:url" content="__ORIGIN__/">
 <meta property="og:image" content="__ORIGIN__/api/og">
 <meta property="og:image:type" content="image/png">
@@ -23,7 +23,7 @@
 <meta property="og:image:alt" content="__BRAND__ · __TAGLINE__">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="__BRAND__ · __TAGLINE__">
-<meta name="twitter:description" content="Strava is for people who ran. __BRAND__ is for people who didn't. Drop a Cursor, Claude Code or Codex session; get the card, the map and a line to paste. Private until you choose an audience.">
+<meta name="twitter:description" content="Preview a real coding session, add your story and images, then choose who can see your run on __BRAND__.">
 <meta name="twitter:image" content="__ORIGIN__/api/og">
 <meta name="twitter:image:alt" content="__BRAND__ · __TAGLINE__">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1282,7 +1282,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     runUploadIdentity(r),
     StriveContext.setup(r),
     `<div class="sub run-effort-context"><span class="card-harness">${esc(r.harness||'Coding agent')}</span>${r.harness==='Grok Bot'?' · bot activity':''} · ${esc(started)}</div>`,
-    codeRoute?codeRouteDetail:'',
+    codeRoute?codeRouteDetail:'<p class="run-route-source">No work route was captured for this run. Activity bins do not identify which files, tasks or build steps happened.</p>',
     codeRoute&&ridge?ridge:'',
     fiveRow(r),
     coachBlock(r),
@@ -1707,7 +1707,7 @@ function playStrip(){
 }
 function landingHTML(){
   return `<div class="home ${ME?'home-member':''}">
-    ${ME?'':`<section class="home-hero"><h1>Strava is for people who ran.<br><i>__BRAND__</i> is for people who didn't.</h1></section>`}
+    ${ME?'':`<section class="home-hero"><h1>Follow what people are building.</h1></section>`}
     <div class="home-layout">
       <section class="home-sec landing-feature" aria-labelledby="h-popular" id="landing-feature"><div class="land-head"><h2 id="h-popular">${ME?'Your feed':'Public runs'}</h2></div><div id="landing-feature-body">${skeletonCard()}</div><p id="public-run-count" class="public-run-count" role="status"></p></section>
       <aside class="home-around" id="home-people-clubs" aria-label="Around STRIVE" tabindex="-1">

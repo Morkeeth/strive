@@ -40,3 +40,8 @@ assert.equal(D.commitSummary([history('h',8,12,5),{...session('partial',11,3),du
 const hashes=['a'.repeat(40),'b'.repeat(40)],withHashes=id=>({...session(id,9),commits_list:hashes.map(hash=>({hash}))});
 assert.equal(D.commitSummary([withHashes('a'),withHashes('b')]).value,2,'shared commit hashes count once even with overlap');
 console.log('PASS: actual chronology, exact ties, honest max-three hero facts, independent trace bases, no fabricated route, and distinct commit coverage.');
+
+const app=readFileSync('site/index.html','utf8'),page=new JSDOM(app).window.document;
+for(const name of ['og:description','twitter:description'])assert.doesNotMatch(page.querySelector(`meta[property="${name}"],meta[name="${name}"]`).content,/strava/i);
+assert.doesNotMatch(app.match(/<section class="home-hero">([\s\S]*?)<\/section>/)[1],/strava/i);
+assert.match(app,/No work route was captured for this run\./);
