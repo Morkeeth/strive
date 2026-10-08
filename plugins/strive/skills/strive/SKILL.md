@@ -18,3 +18,26 @@ Never download another runtime, install dependencies or read a credential file.
 Optional capture: only when asked, `project "Name" /project/root --hooks` enables the installed native completion hooks for that exact project. They queue a local transcript reference, never parse on the critical path or send data. `collect` captures queued latest sittings; review those explicit drafts normally. Running `project "Name" /project/root` again turns hooks off. Multi-root events matching several opted-in projects are refused because attribution is ambiguous. No background daemon or global config hook is installed.
 
 `status` lists draft IDs and queue errors. `remove ID` removes a local draft, not a hosted run. Installation removal uses the installer and preserves capture history and other plugins. Do not claim installation is verified until the real client's plugin inventory and invocation confirm it.
+
+
+For Code Route, get explicit consent BEFORE new work. Register the exact named Git project(s),
+then run `route-start --project "Name" --harness codex|cursor|claude --source /exact/native.jsonl --consent`.
+Repeat `--project` to select more than one repository. The source is anchored at its current
+byte boundary; earlier transcript records and earlier repository edits do not become new
+checkpoints. For a delegated session, select that exact source only; never combine its parent
+and child as separate captures. The selected repository is author-chosen, not inferred from a tool count.
+
+Call `route-checkpoint CAPTURE_ID` after a meaningful edit and again after a commit. It observes
+tracked-file fingerprints and newly reachable Git commits. No background watcher or hook infers
+stops. New tracked files without a previous fingerprint establish a baseline, not an invented edit.
+If one observation sees both edits and commits, it remains one commit checkpoint; their action
+order is unknown. Do not relabel an observed repository commit as a deployment or shipped result.
+
+`route-review CAPTURE_ID` closes the window and freezes the source journal, native metrics,
+Code Route and private review. Its JSON includes the local importable run file and source witness.
+Token totals for this selected window remain unknown; recorded model names are included only
+when present in new source records. No transcript text, file paths or file content is exported.
+Review the actual checkpoints before `save REVIEW --approve REVIEW`; save remains private and
+requires the same explicit request as ordinary captures. Retrying a review never samples later work.
+Use `route-status` to inspect open/closed captures. Never retrofit these new checkpoints onto an
+old public run. The equivalent source CLI is `python3 -m agentgrinder code-route start|checkpoint|review|status`.

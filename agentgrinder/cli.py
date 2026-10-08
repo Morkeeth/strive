@@ -182,6 +182,8 @@ def main(argv=None) -> int:
     add_sync_parser(sub)
     from .rig_config import add_parser as add_rig_parser
     add_rig_parser(sub)
+    from .route_capture import add_parser as add_route_parser
+    add_route_parser(sub)
     rv = sub.add_parser("return-view",
                         help="after a later run: show practice, comparable change, unknowns, next practice")
     rv.add_argument("--practice", required=True, help="practice.json from practice accept")
@@ -360,6 +362,10 @@ def main(argv=None) -> int:
     pr.add_argument("-o", "--out", default="profile.html"); pr.add_argument("--no-open", action="store_true"); pr.add_argument("--open", action="store_true", help="open the result in a browser (default: print the path or link, open nothing)")
     args = p.parse_args(argv)
     _BROWSER.allowed = _browser_allowed(args)
+
+    if args.cmd == "code-route":
+        from .route_capture import run_cli
+        return run_cli(args)
 
     if args.cmd == "connect":
         from .connect import run_cli

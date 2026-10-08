@@ -21,6 +21,24 @@ For a direct private save, configure a Connect token as the environment variable
 
 Completion hooks are inert until a project is registered with `--hooks`. They queue only local references, are bounded to three seconds, and never call the network. Run `collect` to parse queued sessions. Remove opt-in by registering that project again without `--hooks`. Cursor transcripts must be enabled. Child transcripts are excluded to avoid counting a parent and its workers as independent sessions.
 
+## Record a new Code Route
+
+Version 0.3.0 can record checkpoints for work that starts after your consent. Register the project first, then select its exact native transcript:
+
+```sh
+python3 scripts/strive.py route-start --project "My project" --harness codex --source /path/to/session.jsonl --consent
+python3 scripts/strive.py route-checkpoint CAPTURE_ID
+python3 scripts/strive.py route-review CAPTURE_ID
+```
+
+Run a checkpoint after an edit, and another after a commit. Repeat `--project` at the start to select several repositories. The collector measures tracked-file fingerprints and newly reachable Git commits. Its axis is observation order, not guessed action time. A snapshot that sees edits and commits together produces one commit checkpoint. Newly tracked files without a previous fingerprint establish a baseline; they are not counted as earlier edits.
+
+The native source is anchored at its current byte boundary. Only later records count toward this run. An explicitly selected delegated transcript can be used for this bounded window; do not combine it with its parent. Missing model names and window-scoped token totals remain unknown. No old run is changed.
+
+`route-review` freezes the local source witness, metrics and Code Route, then creates the normal private review. It returns the importable run JSON, preview link and source digest. No upload occurs. Use `save REVIEW_ID --approve REVIEW_ID` only after reviewing and explicitly choosing to save privately. Repeating review returns the same bytes; later work needs a new consented capture. `route-status` lists open and closed captures.
+
+From a source checkout, use `python3 -m agentgrinder.plugin` in place of `python3 scripts/strive.py`, or use `python3 -m agentgrinder code-route start|checkpoint|review|status`. Completion hooks do not start Code Route capture or infer checkpoints.
+
 Uninstall with `python3 scripts/strive-plugin.py uninstall cursor` or `uninstall claude`; use the same `--config-dir` if applicable. Capture data stays in `~/.local/state/strive` (override with `STRIVE_STATE_DIR` or `--state`). Other plugins and user hooks are preserved. Installing files is distinct from the client loading and invoking the plugin.
 
 Formats checked against current official documentation:

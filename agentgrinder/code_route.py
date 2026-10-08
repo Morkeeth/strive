@@ -245,7 +245,7 @@ def validate_code_route(value: Any) -> dict:
     if not isinstance(stats, dict):
         _bad("stats must be an object.")
     _keys(stats, _ALLOWED_STATS, "stats")
-    normalised_stats = {k: _count(stats.get(k, 0), f"stats.{k}") for k in sorted(_ALLOWED_STATS)}
+    normalised_stats = {k: _count(stats[k], f"stats.{k}") for k in sorted(_ALLOWED_STATS) if k in stats}
 
     out = {
         "v": SCHEMA,

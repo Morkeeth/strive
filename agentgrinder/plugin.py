@@ -21,12 +21,12 @@ from urllib.parse import urlsplit
 import uuid
 from datetime import datetime
 
-VERSION = '0.2.0'
+VERSION = '0.3.0'
 MAX_SOURCE = 64 * 1024 * 1024
 FIELDS = {'harness', 'capture_metadata', 'project', 'turns_typed', 'duration_s',
           'tool_calls', 'files_touched', 'commits', 'started', 'rhythm', 'ridge',
           'ridge_basis', 'ridge_wall_seconds', 'worker_bins', 'commit_bins',
-          'ridge_tool_calls', 'trace_basis', 'schema_version', 'measurement_revision'}
+          'ridge_tool_calls', 'trace_basis', 'schema_version', 'measurement_revision', 'code_route'}
 
 
 def encoded(value):
@@ -113,8 +113,16 @@ def source_identity(rows, harness, path):
     return next(iter(ids)) if ids else path.stem
 
 
-def capture(db, root, name, harness, source, sitting=-1):
+def capture(db, root, name, harness, source, sitting=-1, code_route=None):
     name = label(name)
+    if code_route:
+        from .route_capture import session_file
+        with session_file(root,code_route) as folder:
+            state=json.loads((folder/'journal.json').read_text())
+        if (len(state['projects'])!=1 or state['projects'][0]['name']!=name or
+            Path(source).expanduser().resolve()!=Path(state['source']['path']) or harness!=state['source']['harness'] or sitting!=-1):
+            raise ValueError('Use the exact consented project, harness and source, without a sitting selector.')
+        return capture_route(db,root,code_route)
     if not db.execute('select 1 from projects where name=?', (name,)).fetchone():
         raise ValueError('Register the named project first.')
     path, raw, rows = read_source(source)
@@ -137,6 +145,7 @@ def capture(db, root, name, harness, source, sitting=-1):
         frozen.write_bytes(raw)
         os.chmod(frozen, 0o600)
         run = read_sitting(str(frozen), harness, pick=sitting)
+    run.pop('code_route', None) # legacy count summaries are not new consented checkpoints
     run['project'] = name
     run['project_proven'] = True  # explicitly declared, never inferred from a folder name
     run['input_digest'] = digest(raw)
@@ -154,6 +163,23 @@ def capture(db, root, name, harness, source, sitting=-1):
     return {'draft': key, 'project': name, 'status': 'unchanged' if prior and prior['payload'] == encoded(payload) else 'captured',
             'payload': payload, 'uploaded': 0}
 
+
+
+def capture_route(db, root, capture_id):
+    from .route_capture import freeze, session_file
+    frozen=freeze(root,capture_id)
+    with session_file(root,capture_id) as folder:
+        state=json.loads((folder/'journal.json').read_text())
+    name=state['projects'][0]['name'] if len(state['projects'])==1 else 'Selected projects'
+    payload={k:v for k,v in frozen['payload'].items() if k in FIELDS}
+    payload.update(title=name+' checkpoints',project=name,visibility='private')
+    key=digest(['consented-code-route',capture_id,frozen['projection_version']])
+    with db:
+        db.execute('insert or ignore into drafts values(?,?,?,?,?,?,?,?)',
+                   (key,name,state['source']['harness'],'route:'+capture_id,state['source']['path'],
+                    frozen['source_sha256'],payload.get('started') or state['consent']['at'],encoded(payload)))
+    return {'draft':key,'project':name,'payload':payload,'run_file':frozen['run_file'],
+            'source':frozen['source'],'source_sha256':frozen['source_sha256'],'uploaded':0}
 
 def origin(value):
     u = urlsplit(value)
@@ -329,7 +355,10 @@ def main(argv=None):
     p.add_argument('--state',help='private STRIVE data directory')
     sub = p.add_subparsers(dest='command',required=True)
     q = sub.add_parser('project'); q.add_argument('name'); q.add_argument('root'); q.add_argument('--hooks',action='store_true')
-    q = sub.add_parser('capture'); q.add_argument('--project',required=True); q.add_argument('--harness',choices=['claude','cursor','codex'],required=True); q.add_argument('--source',required=True); q.add_argument('--sitting',type=int,default=-1)
+    q = sub.add_parser('capture'); q.add_argument('--project',required=True); q.add_argument('--harness',choices=['claude','cursor','codex'],required=True); q.add_argument('--source',required=True); q.add_argument('--sitting',type=int,default=-1); q.add_argument('--code-route',help='Explicit consented route capture ID')
+    q = sub.add_parser('route-start'); q.add_argument('--project',action='append',required=True); q.add_argument('--harness',choices=['claude','cursor','codex'],required=True); q.add_argument('--source',required=True); q.add_argument('--consent',action='store_true')
+    for command in ('route-checkpoint','route-review'): sub.add_parser(command).add_argument('capture')
+    sub.add_parser('route-status')
     q = sub.add_parser('sessions'); q.add_argument('--project',required=True)
     q = sub.add_parser('sittings'); q.add_argument('--harness',choices=['claude','cursor','codex'],required=True); q.add_argument('--source',required=True)
     q = sub.add_parser('review'); q.add_argument('drafts',nargs='+'); q.add_argument('--base-url',default='https://striverun.app')
@@ -342,7 +371,24 @@ def main(argv=None):
         root = root_path(args.state)
         with connect(root) as db:
             if args.command=='project': result=project(db,args.name,args.root,args.hooks)
-            elif args.command=='capture': result=capture(db,root,args.project,args.harness,args.source,args.sitting)
+            elif args.command=='capture': result=capture(db,root,args.project,args.harness,args.source,args.sitting,args.code_route)
+            elif args.command=='route-start':
+                from .route_capture import start
+                projects=[]
+                for name in args.project:
+                    row=db.execute('select name,root from projects where name=?',(name,)).fetchone()
+                    if row is None: raise ValueError('Register each selected project before route-start.')
+                    projects.append(dict(row))
+                result=start(root,projects,args.source,args.harness,args.consent)
+            elif args.command=='route-checkpoint':
+                from .route_capture import checkpoint
+                result=checkpoint(root,args.capture)
+            elif args.command=='route-review':
+                captured=capture_route(db,root,args.capture)
+                result={**captured,**review(db,root,[captured['draft']])}
+            elif args.command=='route-status':
+                from .route_capture import status as route_status
+                result={'captures':route_status(root),'uploaded':0}
             elif args.command=='sessions': result=sessions(db,args.project)
             elif args.command=='sittings': result=list_sittings(args.harness,args.source)
             elif args.command=='review': result=review(db,root,args.drafts,args.base_url)

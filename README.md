@@ -27,6 +27,8 @@ The repository can be ahead of the website or the installed companion. Check the
 
 [Install STRIVE from source](plugins/strive/README.md) to select real sessions across named projects, review the cards together, and save privately. Run `python3 scripts/strive-plugin.py install cursor` or `python3 scripts/strive-plugin.py install claude` from this checkout, restart the client, then select its STRIVE skill (Claude Code: `/strive:strive`). These are native plugin packages with optional project-scoped completion hooks; they are not marketplace listings. Capture stays local. Private saving requires your separate review, and sharing stays a deliberate choice in STRIVE.
 
+For a measured Code Route, [start a consented capture before new work](plugins/strive/README.md#record-a-new-code-route). Record checkpoints after edits and commits, then review their source references and observation order. Existing runs are unchanged; no activity is guessed from a tool-call total.
+
 ## Photos, privacy and feedback
 
 Photos use the saved run's audience. The server resizes supported still images and removes embedded metadata from the uploaded derivative. Review what is visible in the picture too: removing metadata does not hide people, screens or addresses. Removing access cannot retract a copy somebody already saved. [Photo and deletion details](docs/RUN-PHOTOS.md) · [Privacy](PRIVACY.md).
