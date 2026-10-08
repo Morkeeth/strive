@@ -1,0 +1,12 @@
+{
+  "name": "strive",
+  "version": "0.1.0",
+  "description": "Turn selected real coding sessions into private run cards across named projects. Review first, save privately, share deliberately.",
+  "author": {
+    "name": "STRIVE"
+  },
+  "homepage": "https://striverun.app",
+  "repository": "https://github.com/Morkeeth/strive",
+  "license": "MIT",
+  "hooks": "./config/claude-hooks.json"
+}
