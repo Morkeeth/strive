@@ -58,7 +58,7 @@
     });
   }
 
-  function mountImport(scope){
+  function mountImport(scope,photoOptions={}){
     const body=scope.querySelector('.preview-story'),preview=scope.querySelector('#import-card-preview');
     if(!body||!preview||scope.querySelector('.post-composer'))return;
     const title=scope.querySelector('#i_title'),caption=scope.querySelector('#i_caption'),audience=scope.querySelector('#i_vis'),save=scope.querySelector('#i_pub'),recover=scope.querySelector('#i_recover');
@@ -69,7 +69,7 @@
     const composer=document.createElement('div');composer.className='post-composer';
     composer.innerHTML=`<nav class="post-flow-nav" aria-label="Run steps">${names.map((name,i)=>`<button type="button" data-post-step="${i}" aria-controls="post-pane-${i}"><span>${i+1}</span>${name}</button>`).join('')}</nav>
       <section class="post-flow-pane" id="post-pane-0" aria-label="Preview"><p class="post-flow-intro">Check the session you brought in. You can edit how it reads on the next step.</p><div class="post-flow-preview"></div><div class="post-flow-actions"><button type="button" class="act blue" data-post-next="1">Add your story</button></div></section>
-      <section class="post-flow-pane" id="post-pane-1" aria-label="Your story" hidden><h2 tabindex="-1">What happened?</h2><div class="post-flow-fields"></div><p class="hint">A note is optional. After saving, you can choose one personal photo and add screenshots separately.</p><div class="post-flow-actions"><button type="button" class="act" data-post-next="0">Back</button><button type="button" class="act blue" data-post-next="2">Choose audience</button></div></section>
+      <section class="post-flow-pane" id="post-pane-1" aria-label="Your story" hidden><h2 tabindex="-1">What happened?</h2><div class="post-flow-fields"></div><div class="post-photo-slot"></div><div class="post-flow-actions"><button type="button" class="act" data-post-next="0">Back</button><button type="button" class="act blue" data-post-next="2">Choose audience</button></div></section>
       <section class="post-flow-pane" id="post-pane-2" aria-label="Audience" hidden><h2 tabindex="-1">Who can see this?</h2><div class="post-flow-audience"></div><div class="post-flow-actions"><button type="button" class="act" data-post-next="1">Back</button></div><div class="post-flow-recovery"></div></section>`;
     composer.querySelector('.post-flow-preview').append(previewSection);
     const fields=composer.querySelector('.post-flow-fields');fields.append(title.closest('label'),caption.closest('label'));if(details)fields.append(details);
@@ -78,6 +78,7 @@
     composer.querySelector('#post-pane-2 .post-flow-actions').append(save);
     composer.querySelector('.post-flow-recovery').append(recover);
     sourcePanel.replaceWith(composer);
+    if(root.StrivePhotoDraft&&photoOptions.token)root.StrivePhotoDraft.mount({slot:composer.querySelector('.post-photo-slot'),...photoOptions});
     const storageKey='strive-post-step:'+root.location.hash;
     let step=0;
     try{const old=Number(root.sessionStorage.getItem(storageKey));if(Number.isInteger(old)&&old>=0&&old<3)step=old}catch(_){}
