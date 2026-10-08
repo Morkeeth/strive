@@ -601,6 +601,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/fair.js"></script>
 <script src="/home.js"></script>
 <script src="/dropin.js"></script>
+<script src="/photo-draft.js"></script>
 <script src="/post-flow.js"></script>
 <script src="/run-access.js"></script>
 <script src="/fork-run.js"></script>
@@ -2606,7 +2607,7 @@ async function importRun(){
   editFields.forEach(key=>$(key).addEventListener('input',()=>{saveImportEdits();paintImportPreview()}));
   $('i_share_rig').addEventListener('change',saveImportEdits);
   paintImportPreview();
-  window.StrivePostFlow?.mountImport(app);
+  window.StrivePostFlow?.mountImport(app,{token:m[1],profileId:ME?.id||null,eligible:!!run.measurement_revision&&!sample&&run.trace_basis!=='typed-by-author',isCurrent:current});
   $('i_pub').addEventListener('click',async()=>{
     if(!current())return;
     if(sample){status('Samples are preview-only. Capture your own session to save a run.',true);return;}
@@ -2625,6 +2626,28 @@ async function importRun(){
     if(!$('i_title').value.trim()||!audience){status('Add a title and choose who can see the run.',true);return}
     if(output&&!safeOutputUrl(output)){status('The output link must start with http:// or https://.',true);return}
     if(!(await requireCloseFriendsForSave(audience))||!current())return;
+    if(await StrivePhotoDraft.saveIfDraft({
+      token:m[1],profileId:ME.id,client:sb,audience,isCurrent:current,button:publishButton,recover:$('i_recover'),status,
+      buildRow:()=>StriveImportRow.build(run,{profileId:ME.id,title:$('i_title').value,project:editedProject(),caption,output,repo:safeRepoUrl(($('i_repo')?.value||'').trim())}),
+      onSaved:async({runId,visibility})=>{
+        // Run and images are saved. A later rig error is a separate, non-fatal update.
+        let rigNote='';
+        try{
+          const rig={...(ME.rig||{})};
+          if(run.rig_mcps!=null)rig.mcps=run.rig_mcps;
+          if(run.rig_skills!=null)rig.skills=run.rig_skills;
+          const notes=$('i_stack')?.value;if(notes)rig.notes=notes;
+          if($('i_share_rig')?.checked&&run.rig_mcp_names){rig.mcp_names=run.rig_mcp_names;rig.share_names=true;}
+          const {error:rigError}=await sb.from('profiles').update({rig}).eq('id',ME.id);
+          if(rigError)throw rigError;
+        }catch(_){rigNote=' Your rig counts and notes were not updated; edit them from your profile.';}
+        if(!current())return;
+        try{localStorage.setItem('ag_onboard_done','1');sessionStorage.removeItem('ag_import');sessionStorage.removeItem(draftKey)}catch(_){}
+        history.replaceState(null,'','/?run='+runId);fairConfirmRun(runId);
+        status((visibility==='private'?'Run and images saved for Only me.':'Run and images saved for '+audienceLabel(visibility)+'.')+rigNote);
+        await viewRun(runId);
+      }
+    }))return;
     const saveLabel=publishButton.textContent;
     publishButton.style.minWidth=publishButton.getBoundingClientRect().width+'px';
     publishButton.disabled=true;publishButton.setAttribute('aria-busy','true');publishButton.innerHTML='<span class="spin" aria-hidden="true"></span>Saving…';
