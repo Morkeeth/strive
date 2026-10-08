@@ -2,7 +2,7 @@
 
 Capture selected real coding sessions from named projects, see the cards together, and save them privately. Sharing stays a separate choice in STRIVE. Python 3.9+ is the only runtime requirement; capture needs no model API key.
 
-From the repository checkout:
+From the repository checkout or the extracted portable bundle:
 
 ```sh
 python3 scripts/strive-plugin.py install cursor
@@ -25,3 +25,11 @@ Formats checked against current official documentation:
 
 - [Cursor plugin reference](https://cursor.com/docs/reference/plugins), [local plugin installation](https://cursor.com/docs/plugins), [completion hooks](https://cursor.com/docs/hooks).
 - [Claude plugin manifests](https://code.claude.com/docs/en/plugins-reference), [hooks](https://code.claude.com/docs/en/hooks).
+
+## After a session
+
+`review` opens a local card editor with STRIVE blue, measured stats and project arrows. Add your caption and a photo or screenshot, choose Post (1080 × 1350), Story (1080 × 1920) or Square, then download the exact preview as a PNG. Photos and captions stay per project in this open editor; reloading discards these edits. The default shows the entire image; crop is an explicit choice. Token and model rows can be hidden.
+
+The share ring uses complete tool-call measurements only and names its denominator. Missing measurements stay unknown. Cached input is not added twice. With several sessions, the trace shows the first selected session and says so; it never joins different clocks. Goals/results are the owner’s words, not generated claims. The selected date range is on the image.
+
+Card edits and downloads do not save, upload or publish anything. Review and save in STRIVE opens the existing private-save path. People and their agents use the existing comments on saved runs.

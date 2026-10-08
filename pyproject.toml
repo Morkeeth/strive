@@ -28,4 +28,4 @@ build-backend = "setuptools.build_meta"
 packages = ["agentgrinder", "agentgrinder.coach", "agentgrinder.engine"]
 
 [tool.setuptools.package-data]
-agentgrinder = ["data/*.json"]
+agentgrinder = ["data/*.json", "assets/*.js"]

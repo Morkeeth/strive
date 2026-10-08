@@ -15,12 +15,19 @@ MARKER = '.strive-bundle.json'
 def build(target):
     target = Path(target).expanduser().resolve()
     if target.exists(): raise ValueError('Destination exists; choose a new bundle directory.')
+    portable = (REPO/'runtime/agentgrinder').is_dir()
+    if portable and REPO in target.parents:
+        raise ValueError('Build the new bundle outside this bundle directory.')
     target.parent.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(dir=target.parent,prefix='.strive-build-') as tmp:
         staged=Path(tmp)/'strive'
-        shutil.copytree(REPO/'plugins/strive',staged,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
-        shutil.copytree(REPO/'agentgrinder',staged/'runtime/agentgrinder',ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
-        shutil.copy2(REPO/'LICENSE',staged/'LICENSE')
+        if portable:
+            shutil.copytree(REPO,staged,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
+        else:
+            shutil.copytree(REPO/'plugins/strive',staged,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
+            shutil.copytree(REPO/'agentgrinder',staged/'runtime/agentgrinder',ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
+            shutil.copy2(REPO/'LICENSE',staged/'LICENSE')
+            shutil.copy2(__file__,staged/'scripts/strive-plugin.py')
         (staged/MARKER).write_text(json.dumps({'owner':'strive-plugin-installer','version':1})+'\n')
         staged.rename(target)
     return target

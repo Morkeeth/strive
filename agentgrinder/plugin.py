@@ -8,7 +8,6 @@ import argparse
 import base64
 import gzip
 import hashlib
-import html
 import json
 import os
 from pathlib import Path
@@ -22,7 +21,7 @@ from urllib.parse import urlsplit
 import uuid
 from datetime import datetime
 
-VERSION = '0.1.0'
+VERSION = '0.2.0'
 MAX_SOURCE = 64 * 1024 * 1024
 FIELDS = {'harness', 'capture_metadata', 'project', 'turns_typed', 'duration_s',
           'tool_calls', 'files_touched', 'commits', 'started', 'rhythm', 'ridge',
@@ -195,14 +194,8 @@ def review(db, root, ids, base='https://striverun.app'):
         group['models'] = sorted(group['models'])
         if not group['tool_calls_measured']: group['tool_calls']=None
         if not group['token_sessions']: group['input_tokens']=group['output_tokens']=None
-    e = html.escape
-    cards=[]
-    for name,g in groups.items():
-        calls=('Tool calls not recorded' if g['tool_calls'] is None else f"{g['tool_calls']} tool calls · recorded in {g['tool_calls_measured']} of {g['sessions']} sessions")
-        tokens=('Tokens not recorded' if not g['token_sessions'] else f"{g['input_tokens']} input tokens · {g['output_tokens']} output tokens · recorded in {g['token_sessions']} of {g['sessions']} sessions")
-        cards.append('<article><h2>'+e(name)+'</h2><p>'+str(g['sessions'])+' selected sessions</p><p>'+e(calls)+'</p><p>'+e(tokens)+'</p><p>'+e(', '.join(g['models']) or 'Model unknown')+'</p></article>')
-    cards=''.join(cards)
-    page = '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>STRIVE private review</title><style>body{font:16px/1.6 system-ui;background:#f7f7f5;color:#151515;max-width:760px;margin:40px auto;padding:20px}article{background:white;border:1px solid #ddd;padding:20px;margin:16px 0}a{color:#0047ff}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><h1>Your selected work</h1><p>'+str(len(drafts))+' sessions across '+str(len(groups))+' named projects. Local only; nothing uploaded. Counts describe selected sessions, not all work in those projects. Child sessions are excluded.</p>'+cards+'<p><a href="'+e(url)+'">Review selected cards in STRIVE</a></p><p>Save run starts as Only me. Sharing is a separate deliberate action in STRIVE.</p><details><summary>Exact private-save payloads</summary><pre>'+e(json.dumps(drafts,indent=2))+'</pre></details>'
+    from .post_session import render
+    page = render(drafts, groups, url)
     target = root/('review-'+token[:16]+'.html')
     target.write_text(page); os.chmod(target,0o600)
     return {'review':token,'projects':groups,'sessions':len(drafts),'file':str(target),'preview_url':url,'uploaded':0}
