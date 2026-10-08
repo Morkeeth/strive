@@ -64,7 +64,7 @@ def test_review_is_immutable_and_missing_counts_unknown(tmp_path):
     with pytest.raises(ValueError,match='Approve'):plugin.save(db,review['review'],'different','http://localhost')
 
 
-def test_hooks_are_opt_in_bounded_and_keep_only_references(tmp_path):
+def test_hooks_are_opt_in_bounded_and_keep_only_references(tmp_path,monkeypatch):
     root,db,path,r=selected(tmp_path)
     event={'cwd':str(tmp_path/'Orchard'),'transcript_path':str(path),'prompt':'SECRET','model':'unproven-model','user_email':'private@example.com'}
     assert not plugin.hook(db,'claude',event)['queued']
@@ -74,6 +74,9 @@ def test_hooks_are_opt_in_bounded_and_keep_only_references(tmp_path):
     assert db.execute('select count(*) from queue').fetchone()[0]==1
     assert 'SECRET' not in str([tuple(r) for r in db.execute('select * from queue')])
     assert not plugin.hook(db,'claude',dict(event,agent_id='child'))['queued']
+    monkeypatch.setenv('CURSOR_VERSION','2026.10.01')
+    assert not plugin.hook(db,'claude',event)['queued']
+    monkeypatch.delenv('CURSOR_VERSION')
     plugin.project(db,'Orchard',tmp_path/'Orchard')
     assert not plugin.hook(db,'claude',event)['queued']
 
@@ -139,3 +142,17 @@ def test_default_claude_install_keeps_native_auth_location(tmp_path,monkeypatch)
     assert 'CLAUDE_CONFIG_DIR' not in calls[-1][1]['env']
     installer.run_claude(tmp_path/'isolated','list')
     assert calls[-1][1]['env']['CLAUDE_CONFIG_DIR']==str(tmp_path/'isolated')
+
+
+def test_claude_install_cannot_auto_discover_duplicate_cursor_components(tmp_path):
+    spec=importlib.util.spec_from_file_location('installer',Path(__file__).parents[1]/'scripts/strive-plugin.py')
+    installer=importlib.util.module_from_spec(spec);spec.loader.exec_module(installer)
+    bundle=installer.build(tmp_path/'claude-bundle',vendor='claude')
+    cursor=json.loads((bundle/'.cursor-plugin/plugin.json').read_text())
+    claude=json.loads((bundle/'.claude-plugin/plugin.json').read_text())
+    for kind in ('skills','commands','agents','rules'):
+        assert cursor[kind]=='./cursor-disabled'
+        assert list((bundle/cursor[kind]).iterdir())==[]
+    assert cursor['hooks']=={'version':1,'hooks':{}}
+    assert claude['hooks']=='./config/claude-hooks.json'
+    assert (bundle/'skills/strive/SKILL.md').is_file()

@@ -441,6 +441,7 @@
     const body = `
     <${tag} class="fc-title">${esc(titleOf(r))}</${tag}>
     ${story?.summary(r) ? `<p class="fc-cap">${esc(story.summary(r))}</p>` : ""}
+    ${page?`<dl class="fc-activity-stats" aria-label="Recorded facts">${(contract()?.heroStats(r)||[]).map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>`:''}
     ${story?story.visual(r):''}
     ${r.feedback_question?`<p class="fc-question"><span>Feedback welcome</span>${esc(r.feedback_question)}</p>`:''}
     ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Typed by the author. No capture.</p>' : ''}${evidence?evidence.summary(r):''}

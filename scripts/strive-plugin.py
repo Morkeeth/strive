@@ -12,7 +12,7 @@ REPO = Path(__file__).resolve().parents[1]
 MARKER = '.strive-bundle.json'
 
 
-def build(target):
+def build(target, vendor=None):
     target = Path(target).expanduser().resolve()
     if target.exists(): raise ValueError('Destination exists; choose a new bundle directory.')
     portable = (REPO/'runtime/agentgrinder').is_dir()
@@ -28,7 +28,20 @@ def build(target):
             shutil.copytree(REPO/'agentgrinder',staged/'runtime/agentgrinder',ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
             shutil.copy2(REPO/'LICENSE',staged/'LICENSE')
             shutil.copy2(__file__,staged/'scripts/strive-plugin.py')
-        (staged/MARKER).write_text(json.dumps({'owner':'strive-plugin-installer','version':1})+'\n')
+        if vendor=='claude':
+            # Cursor automatically imports Claude packages. Its own manifest takes
+            # precedence there, while Claude still reads .claude-plugin/plugin.json.
+            # Explicit empty directories replace Cursor discovery; [] can fall back.
+            empty=staged/'cursor-disabled';empty.mkdir()
+            manifest=staged/'.cursor-plugin/plugin.json'
+            value=json.loads(manifest.read_text())
+            value.update(displayName='STRIVE for Claude Code (inactive in Cursor)',
+                         description='Claude Code integration only. Use the native STRIVE local plugin in Cursor.',
+                         skills='./cursor-disabled',commands='./cursor-disabled',
+                         agents='./cursor-disabled',rules='./cursor-disabled',
+                         hooks={'version':1,'hooks':{}})
+            manifest.write_text(json.dumps(value,indent=2)+'\n')
+        (staged/MARKER).write_text(json.dumps({'owner':'strive-plugin-installer','version':1,'vendor':vendor})+'\n')
         staged.rename(target)
     return target
 
@@ -47,12 +60,12 @@ def run_claude(config, *args):
 def install(vendor,config):
     config=Path(config).expanduser().resolve()
     if vendor=='cursor':
-        target=build(config/'plugins/local/strive')
+        target=build(config/'plugins/local/strive',vendor='cursor')
         return {'installed_files':str(target),'client_loaded':False,'next':'Reload Cursor, then open Customize → Plugins → STRIVE. Local imports must be allowed.'}
     # Claude owns its settings through its CLI. No manual rewrite of settings.json.
     market=config/'strive-marketplace'
     if market.exists(): raise ValueError('STRIVE marketplace exists. Uninstall before replacing it.')
-    target=build(market/'strive')
+    target=build(market/'strive',vendor='claude')
     (market/'.claude-plugin').mkdir()
     (market/'.claude-plugin/marketplace.json').write_text(json.dumps({'name':'strive-local','owner':{'name':'STRIVE'},'plugins':[{'name':'strive','source':'./strive','description':'Selected real session cards'}]},indent=2)+'\n')
     run_claude(config,'marketplace','add',str(market))

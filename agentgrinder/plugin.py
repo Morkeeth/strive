@@ -246,6 +246,8 @@ def save(db, review_id, approved, base, token=None):
 
 def hook(db, harness, event):
     # Bounded stdin is enforced by main. Never store text, model choice, email, commands or tokens.
+    if harness=='claude' and (os.environ.get('CURSOR_VERSION') or event.get('cursor_version')):
+        return {'queued':False} # an imported Claude hook must not relabel Cursor records
     source = event.get('transcript_path')
     if not source or event.get('agent_id') or event.get('parent_conversation_id'):
         return {'queued':False}
