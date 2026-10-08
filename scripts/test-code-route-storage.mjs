@@ -38,6 +38,9 @@ try{
  const draft=await act('draft',payload);
  assert.deepEqual((await db.query('select payload from strava.grinder_agent_drafts where id=$1',[draft.id])).rows[0].payload.code_route,run.code_route);
  const saved=await act('publish',payload);assert.equal(saved.visibility,'private');
+ const retried=await act('publish',payload);
+ assert.equal(retried.id,saved.id,'retry resolves the same capture instead of duplicating it');
+ assert.equal(retried.existing,true);assert.equal(retried.visibility,'private');
  assert.deepEqual((await db.query('select code_route from strava.runs where id=$1',[saved.id])).rows[0].code_route,run.code_route);
  await assert.rejects(act('publish',{...payload,visibility:'public'}),/outside the granted scope/);
  await assert.rejects(act('publish',{...payload,code_route:unsafe.code_route}),/paths|private/i,'RPC refuses local source paths independently');
