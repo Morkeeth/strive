@@ -164,7 +164,7 @@
   function validateCheckpointSource(source) {
     const sourceText = (value, field) => {
       const text = rejectRouteText(value, field);
-      if (/(?:^|[\s"'])(?:\/(?:Users|home|private)\/|~[/\\]|[A-Za-z]:[\\/])/.test(text)) throw new Error(field + ' must not carry local paths.');
+      if (/(?:^|[\s"'])(?:\/|~[/\\]|[A-Za-z]:[\\/])/.test(text)) throw new Error(field + ' must not carry local paths.');
       if (/(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN)/.test(text)) throw new Error(field + ' must not carry credentials.');
       return text;
     };
