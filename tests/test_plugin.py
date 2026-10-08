@@ -127,3 +127,15 @@ def test_installer_is_contained_and_uninstall_preserves_other_plugins(tmp_path):
     assert not target.exists() and (other/'keep').read_text()=='do not change'
     assert settings.read_text()=='{"unrelated":true}'
     assert installer.install('cursor',config)['client_loaded'] is False
+
+
+def test_default_claude_install_keeps_native_auth_location(tmp_path,monkeypatch):
+    spec=importlib.util.spec_from_file_location('installer',Path(__file__).parents[1]/'scripts/strive-plugin.py')
+    installer=importlib.util.module_from_spec(spec);spec.loader.exec_module(installer)
+    calls=[]
+    monkeypatch.setattr(installer.subprocess,'run',lambda command,**kw:calls.append((command,kw)))
+    monkeypatch.setenv('CLAUDE_CONFIG_DIR','/unrelated/override')
+    installer.run_claude(Path.home()/'.claude','list')
+    assert 'CLAUDE_CONFIG_DIR' not in calls[-1][1]['env']
+    installer.run_claude(tmp_path/'isolated','list')
+    assert calls[-1][1]['env']['CLAUDE_CONFIG_DIR']==str(tmp_path/'isolated')

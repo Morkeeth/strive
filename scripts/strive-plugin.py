@@ -27,7 +27,13 @@ def build(target):
 
 
 def run_claude(config, *args):
-    env=dict(os.environ,CLAUDE_CONFIG_DIR=str(config))
+    env=dict(os.environ)
+    if Path(config).expanduser().resolve()==(Path.home()/'.claude').resolve():
+        # Claude's default auth file is ~/.claude.json. Setting CLAUDE_CONFIG_DIR
+        # even to ~/.claude changes that lookup to ~/.claude/.claude.json.
+        env.pop('CLAUDE_CONFIG_DIR',None)
+    else:
+        env['CLAUDE_CONFIG_DIR']=str(config)
     subprocess.run(['claude','plugin',*args],env=env,check=True)
 
 
