@@ -22,8 +22,9 @@ const own=await render('odawg');
 assert.match(own,/My projects/);assert.match(own,/scope=mine/);assert.match(own,/Odawg private work/i);assert.doesNotMatch(own,/Oscar private work|Shared public work/i);
 const oscar=await render('oscar');assert.match(oscar,/Oscar private work/i);assert.doesNotMatch(oscar,/Odawg private work/i);
 const publicPage=await render('odawg','?projects&scope=public');assert.match(publicPage,/Public projects/);assert.match(publicPage,/Shared public work/i);assert.doesNotMatch(publicPage,/Oscar private work|Odawg private work/i);
-const stranger=await render(null);assert.match(stranger,/Public projects/);assert.doesNotMatch(stranger,/Oscar private work|Odawg private work/i);
-console.log('PASS: each account sees its own projects; explicit public and signed-out views contain only public work');
+const stranger=await render(null);assert.match(stranger,/My projects/);assert.match(stranger,/Sign in to see your projects and private work/);assert.doesNotMatch(stranger,/Oscar private work|Odawg private work/i);
+const anonymousPublic=await render(null,'?projects&scope=public');assert.match(anonymousPublic,/Shared public work/i);assert.doesNotMatch(anonymousPublic,/Oscar private work|Odawg private work/i);
+console.log('PASS: accounts see only their own projects; signed-out My projects requests sign-in; explicit Public projects is public-only');
 
 if(process.env.STRIVE_QA_DIR){
  mkdirSync(process.env.STRIVE_QA_DIR,{recursive:true});

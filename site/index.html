@@ -2325,7 +2325,10 @@ async function viewProjects(){
   const profileId=ME?.id;
   const scope=new URLSearchParams(location.search).get('scope'),following=scope==='following';
   const mine=!!profileId&&!following&&scope!=='public';
-  if(!profileId&&!scope){history.replaceState(null,'','/?projects&scope=public');setPrimarySection('projects');}
+  if(!profileId&&scope!=='public'&&!following){
+    app.innerHTML='<div class="head"><h1>My projects</h1></div><div class="empty-state"><h2>Pick up where you left off</h2><p>Sign in to see your projects and private work.</p><button type="button" class="act blue" id="my-projects-signin">Sign in</button></div>';
+    $('my-projects-signin').onclick=()=>showSignIn();return;
+  }
   let names=null;
   if(following){
     if(!profileId){app.innerHTML='<div class="card"><h1>Following projects</h1><p>Sign in to see the projects you follow.</p><button class="act blue" id="following-projects-signin">Sign in</button></div>';$('following-projects-signin').onclick=()=>showSignIn({reason:'social'});return;}

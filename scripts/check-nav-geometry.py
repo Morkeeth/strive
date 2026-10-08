@@ -40,7 +40,7 @@ with sync_playwright() as p:
             results.append(result)
             assert result['menus'] == 1 and result['oldMenus'] == 0, result
             assert result['primary'] == ['Feed', 'My runs', 'Discover', 'People'], result
-            assert result['selected'] == ['public-projects' if name == 'projects' else name], result
+            assert result['selected'] == [name], result
             assert not result['overflow'], result
             assert all(t['height'] >= 44 for t in result['targets']), result
             if width < 761:
