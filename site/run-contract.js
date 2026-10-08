@@ -175,17 +175,18 @@
       object(commit, ['sha','subject','url'], 'source commit');
       if (typeof commit.sha !== 'string' || !/^[a-f0-9]{40}$/.test(commit.sha) || seen.has(commit.sha)) throw new Error('source commit needs a unique full SHA.');
       seen.add(commit.sha);
-      if (commit.subject != null) {
+      if (Object.hasOwn(commit, 'subject')) {
         const subject = rejectRouteText(commit.subject, 'commit subject');
-        if (subject.length > 160 || /[^\x20-\x7e]/.test(subject)) throw new Error('commit subject must be one short line.');
+        if (subject !== commit.subject || subject.length > 160 || /[^\x20-\x7e]/.test(subject)) throw new Error('commit subject must be one short line.');
       }
-      if (commit.url != null) {
+      if (Object.hasOwn(commit, 'url')) {
         if (typeof commit.url !== 'string' || !/^https:\/\/github\.com\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/commit\/[a-f0-9]{40}$/.test(commit.url) || !commit.url.endsWith('/'+commit.sha))
           throw new Error('commit URL must identify the exact GitHub commit.');
+        if (commit.url.split('/').slice(3,5).some(p => p === '.' || p === '..')) throw new Error('commit URL must name a repository.');
         rejectRouteText(commit.url, 'commit URL');
       }
     }
-    if (source.files != null) {
+    if (Object.hasOwn(source, 'files')) {
       if (!Array.isArray(source.files) || source.files.length > 20 || source.files.length > source.files_changed || new Set(source.files).size !== source.files.length)
         throw new Error('source files must be a bounded observed selection.');
       for (const file of source.files) {
@@ -251,6 +252,10 @@
       if (stop.source != null) {
         if (stop.basis !== 'measured') throw new Error('stop.source requires a measured checkpoint.');
         validateCheckpointSource(stop.source);
+        const recorded = (stop.evidence || []).find(line => /^Git commit: [a-f0-9]{40}$/.test(line));
+        if (stop.kind === 'commit' && (!recorded || !stop.source.commits.some(c => c.sha === recorded.slice(12))))
+          throw new Error('source commit must match this checkpoint evidence.');
+        if (stop.kind === 'edit' && stop.source.commits.length) throw new Error('edit checkpoint cannot carry commit sources.');
       }
     }
     const connectors = value.connectors || [];
