@@ -125,7 +125,7 @@
     let active=true;const controller=new AbortController(),urls=new Set(),images=new Set();
     const dispose=()=>{active=false;controller.abort();for(const url of urls)URL.revokeObjectURL(url);urls.clear();for(const image of images)image.remove();disposers.delete(dispose)};
     disposers.add(dispose);
-    const cards=[...host.querySelectorAll('.fc[data-run-id]:not([data-photo-checked]), .card[data-run-id]:not([data-photo-checked]), .history-run[data-run-id]:not([data-photo-checked])')];
+    const cards=[...host.querySelectorAll('.fc[data-run-id]:not([data-photo-checked]), .card[data-run-id]:not(.dc):not([data-photo-checked]), .history-run[data-run-id]:not([data-photo-checked])')];
     await Promise.all(cards.map(async card=>{
       card.dataset.photoChecked='true';
       const generation=Symbol(),pendingUrls=new Set();coverGeneration.set(card,generation);

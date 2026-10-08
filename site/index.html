@@ -645,11 +645,11 @@ function projectStats(runs){
     .sort((a,b)=>b.n-a.n).slice(0,6);
 }
 function railHtml(active,runs){
-  const a=(href,label,on,count)=>`<a href="${href}"${on?' class="on"':''}>${esc(label)}${count!=null?`<span>${count}</span>`:''}</a>`;
+  const a=(href,label,on,count)=>`<a href="${href}"${on?' class="on" aria-current="page"':''}>${esc(label)}${count!=null?`<span>${count}</span>`:''}</a>`;
   return `<nav class="rail-main" aria-label="Product">`
     +a('/','Feed',active==='feed'||active==='following')
     +a('/?mine','My runs',active==='mine'||active==='runs')
-    +a('/?explore','Discover',active==='discover'||active==='people')+'</nav>';
+    +a('/?explore','Discover',active==='discover'||active==='people'||active==='boards')+'</nav>';
 }
 function setPrimarySection(section){
   document.querySelectorAll('[data-section]').forEach(el=>{
@@ -1512,7 +1512,7 @@ function shareStatsProfile(R,T,harnesses){
 // The number counts up to the value it already prints. `data-dec` is the decimal count the
 // real number carries: without it a 3.67 would land on 3.7 and the card would show a number
 // nobody measured.
-function countUp(){ document.querySelectorAll('[data-count]').forEach(el=>{
+function countUp(){ document.querySelectorAll('[data-count]:not(.dc)').forEach(el=>{
   const target=parseFloat(el.getAttribute('data-count')); if(isNaN(target)) return;
   const dec=el.dataset.dec!=null?parseInt(el.dataset.dec):(target%1!==0?1:0);
   if(el.dataset.counted===String(target))return;
@@ -1786,8 +1786,37 @@ async function loadLatestCardPreview(){
   slot.innerHTML='<p class="hint">No imported session yet. Run the command above to open one.</p>';
 }
 
-function feedCards(runs,ad){
-  return runs.map(r=>GrinderFeed.card(r,{acked:ad.mine.has(r.id),count:ad.counts[r.id]||0,mine:!!(ME&&ME.id===r.profile_id),url:location.origin+'/r/'+r.id})).join('');
+function bindCompactCard(card,deck,ad,{onChange=()=>{},shareHref=null}={}){
+  const bindActions=()=>{
+    const slide=deck.slides[Number(card.dataset.at)||0],run=slide?.open;
+    const old=card.querySelector('.dc-comments');
+    // Replace the thread node: a delayed old response cannot render into the next project's thread.
+    const thread=document.createElement('section');thread.className='dc-comments';thread.hidden=true;
+    thread.setAttribute('aria-label','Comments on '+(slide?.name||'this run'));old?.replaceWith(thread);
+    const foot=card.querySelector('.fc-foot');if(!run||!foot)return;
+    card.dataset.runId=run.id;card.dataset.projectId=slide.key;
+    foot.innerHTML=GrinderFeed.actions({id:run.id,to:run.profile_id,count:ad.counts[run.id]||0,acked:ad.mine.has(run.id),mode:ME?.id===run.profile_id?'mine':'',commentHref:'#'+card.id+'-comments',shareHref});
+    thread.id=card.id+'-comments';thread.dataset.runId=run.id;
+    const comments=foot.querySelector('[data-comment]');comments.setAttribute('aria-label','Comments on '+slide.name);comments.setAttribute('aria-expanded','false');comments.setAttribute('aria-controls',thread.id);
+    comments.onclick=e=>{e.preventDefault();e.stopPropagation();thread.hidden=!thread.hidden;comments.setAttribute('aria-expanded',String(!thread.hidden));if(!thread.hidden&&!thread.dataset.loaded){thread.dataset.loaded='1';void social.thread(run.id,thread,{compact:true})}};
+    wireKudos();
+  };
+  const pager=StriveDayCard.wire(card,{onChange:(...args)=>{bindActions();onChange(...args)}});bindActions();return pager;
+}
+async function feedCards(runs,ad){
+  const groups=new Map();
+  for(const r of runs){const day=StriveDay.localDay(new Date(r.started_at||r.created_at));const key=r.profile_id+'|'+day;if(!groups.has(key))groups.set(key,{day,runs:[]});groups.get(key).runs.push(r)}
+  const cards=[],mounts=[];let i=0;
+  for(const {day,runs:rows} of groups.values()){
+    const first=rows[0],owner=first.profile_id,model=StriveDay.compute(rows,day,v=>v||''),tokens=new Map();
+    for(const g of model.groups)if(g.label)tokens.set(g.label,await StriveDayCard.token(owner,day+'_'+day,g.label));
+    const deck=StriveDayCard.slides(model,tokens,null);if(!deck.slides.length)continue;
+    const cardId='feed-day-'+i++,p=first.profiles||{},author=p.display_name||p.name||p.handle||p.github_handle||'Builder';
+    cards.push(StriveDayCard.render(deck,{esc,mine:false,author,windowLabel:day,cardId,actions:' ',pageHref:key=>'/?day='+day+'&p='+encodeURIComponent(owner)+'&page='+key}));
+    mounts.push(()=>{const card=document.getElementById(cardId);if(!card)return;bindCompactCard(card,deck,ad,{onChange:()=>void StriveRunPhotos.mountVisuals({client:sb,root:card})});void StriveRunPhotos.mountVisuals({client:sb,root:card})});
+  }
+  setTimeout(()=>mounts.forEach(mount=>mount()),0);
+  return '<div class="strive-overview">'+cards.join('')+'</div>';
 }
 
 // A stranger lands on what is going on, then people, then runs. Real rows only (site/home.js).
@@ -1813,7 +1842,7 @@ async function viewLanding(){
     noteTraces(runs);
     const ad=await ackData(runs);
     const top=H?H.popular(runs,ad.counts,5):runs.slice(0,5);
-    if(body) body.innerHTML=feedCards(top,ad);
+    if(body) body.innerHTML=await feedCards(top,ad);
   }else if(body){
     body.innerHTML=runsFailed?failed:'<p class="home-none">No public run yet.</p>';
   }
@@ -2042,7 +2071,7 @@ async function viewExplore(){
   // The feed is the feed. A first-time poster gets the "Your run goes here" slot under the
   // cards, never a command line above them (25 Sep 2026).
   app.innerHTML=feedTabs('discover')+'<div class="discover-intro"><div><h2>See what people are building</h2><p class="hint">Real runs, the work behind them, and the people to follow.</p></div><a class="act" href="/?people">Find builders</a></div>'
-    +(R.length?feedCards(R,ad)+(R.length<4||first?GrinderFeed.nextSlot():'')
+    +(R.length?(await feedCards(R,ad))+(R.length<4||first?GrinderFeed.nextSlot():'')
       :'<div class="card"><div class="empty"><h3>Recent runs</h3><p>Public runs from builders show up here.</p><div class="cta"><a class="act blue" href="/?post">Post a run</a><a class="act" href="/?people">Find people</a></div></div></div>')+discoverySourcesHtml();
   wireKudos(); countUp();
 }
@@ -2160,12 +2189,12 @@ const MARATHON_SECS=3*3600;
 function boardRow(r,i,value){const h=profileHandle(r.profiles||{});return `<div class="board-row"><span class="board-rank num">${i+1}</span><span class="board-what"><a href="/?run=${r.id}">${esc(GrinderFeed.titleOf(r))}</a><small>${h?`<a href="/?u=${encodeURIComponent(h)}">@${esc(h)}</a>`:'metrics only'} · ${esc(r.harness||'agent')}</small></span><span class="board-value num">${esc(value)}</span></div>`}
 function boardHtml(title,note,rows,empty){return `<section class="card board"><div class="board-head"><h3>${esc(title)}</h3><small>${esc(note)}</small></div>${rows.length?rows.map(([r,v],i)=>boardRow(r,i,v)).join(''):`<p class="board-empty">${esc(empty)}</p>`}</section>`}
 async function viewBoards(){
-  const app=$('app'); frame(railHtml('feed'),null); setPrimarySection('feed'); app.innerHTML=skeletonCard()+skeletonCard();
+  const app=$('app'); frame(railHtml('boards'),null); setPrimarySection('discover'); app.innerHTML=feedTabs('boards')+skeletonCard()+skeletonCard();
   const since=weekStart();
   const [{data:recent,error},{data:longRuns,error:longError}]=await Promise.all([
     sb.from('runs').select(PROJECT_SELECT).eq('visibility','public').order('created_at',{ascending:false}).limit(300),
     sb.from('runs').select(PROJECT_SELECT).eq('visibility','public').or(`wall_time_s.gte.${MARATHON_SECS},duration_s.gte.${MARATHON_SECS}`).order('wall_time_s',{ascending:false,nullsFirst:false}).order('duration_s',{ascending:false,nullsFirst:false}).limit(100)]);
-  if(error){status(error.message,true);app.innerHTML='<div class="card"><div class="empty">Boards could not load.</div></div>';return;}
+  if(error){status(error.message,true);app.innerHTML=feedTabs('boards')+'<div class="card"><div class="empty">Activity could not load. Try again.</div></div>';return;}
   const all=(recent||[]).filter(r=>!typedOnlyRun(r)); noteTraces(all);
   const evidence=StriveEvidence.ranking(all,{since:since.getTime()});
   const top=(list,score,fmt,n=5)=>list.map(r=>[r,score(r)]).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,n).map(([r,v])=>[r,fmt(v)]);
@@ -2174,8 +2203,8 @@ async function viewBoards(){
   const longEvidence=StriveEvidence.ranking([...all,...(longRuns||[])]);
   const marathon=top(longEvidence.durationEligible.filter(r=>runSeconds(r)>=MARATHON_SECS),runSeconds,fmtSecs,10);
   const weekLabel=`${since.getDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][since.getMonth()]}`;
-  app.innerHTML=`<div class="head"><h1>Activity explorer</h1><span class="meta">Public runs · client-reported activity</span></div>
-    ${feedTabs('boards')}<p class="hint">Optional views of recorded activity. Longer sessions and more calls are not better work.</p><details class="ranking-explainer"><summary>How ranking works</summary><p class="hint">Every row opens its public source run. These are client-reported captures, not independently verified scores. Activity is not quality or human effort. A hash does not prove a count.</p><p class="hint">Within this sample, repeated run IDs and exact capture references count once per account. Parallel sessions and matching counts remain separate. Session times are never added into human work hours. A complete tool count can rank without duration when its session date is known. Duration rankings require timestamp-based session spans; unknown dates and incomplete observations stay outside weekly comparisons. Session span may include idle time. Upload dates never stand in for session dates.</p><p class="hint">Weekly rankings inspect the latest 300 public uploads. This week starts Monday ${esc(weekLabel)} in your time zone. Long sessions inspect up to 100 additional rows. Repeated references outside those samples can be missed. Changed source claims can evade these checks; this is not an anti-cheat guarantee.</p></details>
+  app.innerHTML=feedTabs('boards')+`<div class="head"><h1>Activity explorer</h1><span class="meta">Public runs · client-reported activity</span></div>
+    <p class="hint">Optional views of recorded activity. Longer sessions and more calls are not better work.</p><details class="ranking-explainer"><summary>How ranking works</summary><p class="hint">Every row opens its public source run. These are client-reported captures, not independently verified scores. Activity is not quality or human effort. A hash does not prove a count.</p><p class="hint">Within this sample, repeated run IDs and exact capture references count once per account. Parallel sessions and matching counts remain separate. Session times are never added into human work hours. A complete tool count can rank without duration when its session date is known. Duration rankings require timestamp-based session spans; unknown dates and incomplete observations stay outside weekly comparisons. Session span may include idle time. Upload dates never stand in for session dates.</p><p class="hint">Weekly rankings inspect the latest 300 public uploads. This week starts Monday ${esc(weekLabel)} in your time zone. Long sessions inspect up to 100 additional rows. Repeated references outside those samples can be missed. Changed source claims can evade these checks; this is not an anti-cheat guarantee.</p></details>
     ${evidence.excluded.length?`<p class="hint">${evidence.excluded.length} ${evidence.excluded.length===1?'entry':'entries'} left out of this week’s comparison. <a href="/?feed">They can still tell a story in the feed.</a></p>`:''}
     <div class="boards-grid">
       ${boardHtml('Longest run this week','reported session span, including idle',longest,'No comparable public session window this week yet.')}
@@ -2302,7 +2331,7 @@ async function viewDay(day){
       save:async choices=>{const {error}=await sb.rpc('save_day_card',{card_key:cardKey,choices});return error?(error.message||'the service did not confirm it'):null}});
     return;}
   // The card's action row is the lead run's own: its XUDOS count, its thread, its share page.
-  const leadRun=model.lead&&model.lead.run,ad=leadRun?await ackData([leadRun]):null;
+  const leadRun=model.lead&&model.lead.run,ad=await ackData(data||[]);
   if(ME?.id!==profileId)return viewDay(day);
   const actions=leadRun?GrinderFeed.actions({id:leadRun.id,to:leadRun.profile_id,count:ad.counts[leadRun.id]||0,acked:ad.mine.has(leadRun.id),mode:ME&&ME.id===leadRun.profile_id?'mine':'',commentHref:'#day-thread',
     // The owner's Share opens Sharing, where the reader's numbers sit beside the owner's. A reader's Share is the lead run's share page.
@@ -2313,19 +2342,14 @@ async function viewDay(day){
   const pageHref=key=>{const q=new URLSearchParams(location.search);q.delete('card');key?q.set('page',key):q.delete('page');return '/?'+q.toString()};
   // The owner looking at their own card through a reader's address is told so, with the way back.
   const previewing=!mine&&!!profileId&&other===profileId?`<p class="hint dc-previewing" role="status">You are previewing this card as a reader sees it. <a href="/?day=${day}${extra}">Back to your card</a></p>`:'';
-  const parts=StriveDay.render(model,{esc,mine,dayLabel:label,leadWith,split:true,leadHref:k=>`/?day=${day}${extra}${head}&lead=${k}`,publicHref:null});
-  app.innerHTML=nav+previewing+StriveDayCard.render(deck,{...cardOpts,start:startAt,actions,pageHref,menu:ownerLinks,setupHref:mine?ownerLinks.edit:null,visualHref:mine?ownerLinks.visual:null})
-    +parts.ask+`<details class="day-everything"><summary>Everything in this run: each project, where the commits landed, how the time was spent</summary>${StriveDayCard.detail(deck,esc)}${parts.done}${parts.strip}${parts.how}</details>`;
-  // A page change made on the card adds a step to the browser's history. A change that came from Back or
-  // Forward does not, it only follows the address. Both go through the card's one page function.
-  // Chapters stay still until the reader chooses the next one.
-  const pager=StriveDayCard.wire($('day-card'),{auto:0,onChange:(at,key,{push,auto})=>{if(push)history.pushState({dayPage:key},'',pageHref(key));else if(auto)history.replaceState(history.state,'',pageHref(key));
+  app.innerHTML=nav+previewing+StriveDayCard.render(deck,{...cardOpts,start:startAt,actions,pageHref,menu:ownerLinks,setupHref:mine?ownerLinks.edit:null,visualHref:mine?ownerLinks.visual:null});
+  const pager=bindCompactCard($('day-card'),deck,ad,{shareHref:mine?ownerLinks.sharing:null,onChange:(at,key,{push,auto})=>{if(push)history.pushState({dayPage:key},'',pageHref(key));else if(auto)history.replaceState(history.state,'',pageHref(key));
     void window.StriveRunPhotos?.mountVisuals?.({client:sb,root:$('day-card')})}});
   if(DAY_POP)window.removeEventListener('popstate',DAY_POP);
   DAY_POP=()=>{const q=new URLSearchParams(location.search),card=$('day-card');if(!card||!card.isConnected||q.get('day')!==day||(q.get('p')||null)!==(other||null)||q.has('setup')||q.has('share'))return;
     pager.go(StriveDayCard.pageIndex(deck,q.get('page'),q.get('card')),{push:false})};
   window.addEventListener('popstate',DAY_POP);
-  if(model.lead&&$('day-thread'))void social.thread(model.lead.run.id,$('day-thread'),{compact:true});
+
   // The folded sheet under the card reads its pictures when someone opens it, not on every visit to the day.
   app.querySelectorAll('details').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)void window.StriveRunPhotos?.mountThumbs?.({client:sb,root:d})}));
   window.StriveRunPhotos?.mountCovers?.({client:sb,root:app});

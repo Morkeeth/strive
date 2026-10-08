@@ -187,3 +187,7 @@ A project chapter names the project, uses only its author-written result as its 
 ## 8. Oscar review correction · 7 October night build
 
 This correction supersedes older overview and collapsed-data descriptions above: one project screen contains one selected image, a measured-share pie and useful project data. Right-side arrows advance all three together. No overview list or extra turning-points slide interrupts the projects. The same renderer draws day cards and Edit card previews; feed day collections open this exact project card. The chart names its denominator and missing data stays unknown. Existing saved picture choices and run audiences remain authoritative.
+
+## 9. Oscar correction · 8 October · compact overview
+
+Supersedes earlier image-first and expanded anatomy. A feed must work with 20 people posting: compact author/date/project, pie and concise metrics first, bounded image second, project arrows in each card. Details open the full run. Comments expand inside the card and bind to the selected run; changing project closes the old thread. Same shared renderer on day and feed. Screenshots remain whole; no crop can stand in for an original photograph. Mobile targets remain usable and carousel controls expose project/run identity.

@@ -232,7 +232,7 @@
   }
   // CARD ANATOMY, the same on every page of every card: identity and date, the page selector, one short
   // outcome, ONE main visual, project continuation, expandable activity, and the shared action row.
-  function render(deck,{esc,mine,author,windowLabel,start=0,setupHref,visualHref,menu=null,menuAt='',actions='',runHref=(id)=>`/?run=${encodeURIComponent(id)}`,pageHref=(key,i)=>`?card=${i}`,projectHref=(name)=>`/?project=${encodeURIComponent(name)}&scope=${mine?'mine':'public'}`}){
+  function render(deck,{esc,mine,author,windowLabel,start=0,compact=true,cardId='day-card',setupHref,visualHref,menu=null,menuAt='',actions='',runHref=(id)=>`/?run=${encodeURIComponent(id)}`,pageHref=(key,i)=>`?card=${i}`,projectHref=(name)=>`/?project=${encodeURIComponent(name)}&scope=${mine?'mine':'public'}`}){
     const S=deck.slides;if(!S.length)return '';
     const c=deck.choices,at=Math.max(0,Math.min(S.length-1,start|0)),many=S.length>1;
     const fact=(s,id)=>{const f=s.facts[id],none=f.value===null||f.value===undefined,note=!none&&SHORT[f.note];
@@ -246,14 +246,14 @@
         <ol class="dc-points">${s.points.map(p=>`<li><a href="${esc(runHref(p.run.id))}"><span class="dc-when">${esc(p.at.toLocaleDateString(undefined,{weekday:'short'}))} ${hm(p.at)} · ${esc(p.name)}</span>${esc(p.text)}</a></li>`).join('')}</ol>
         ${s.total>s.points.length?`<p class="dc-more">The latest ${s.points.length} of ${s.total}.</p>`:''}</section>`;
       const ids=(s.kind==='whole'?c.facts.whole:c.facts.project).filter(id=>s.facts[id]),high=s.kind==='whole'?s.highlights.filter(h=>h.text!==s.result).slice(0,2):[];
+      const visibleIds=compact?[...ids,...['runs','session','tools']].filter((id,i,all)=>all.indexOf(id)===i&&s.facts[id]&&s.facts[id].value!==null&&s.facts[id].value!==undefined).slice(0,2):ids;
       const next=s.kind==='project'&&typeof s.open?.story_next==='string'?s.open.story_next.trim():'';
       let output=null;try{const u=new URL(s.open?.output_url);if(['http:','https:'].includes(u.protocol)&&!u.username&&!u.password)output=u.href}catch(_){}
 
-      return `<section class="dc-slide" data-slide="${i}" data-key="${esc(s.key)}" data-name="${esc(s.name)}" ${s.open?`data-open="${esc(runHref(s.open.id))}"`:''} ${i===at?'':'hidden'} aria-label="${esc(s.name)}">
-        <div class="dc-story">${s.kind==='project'?`<p class="dc-project-name">${esc(s.name)}</p>`:''}${s.result?`<h2 class="dc-said">${esc(lede(s)[0])}</h2>${s.draft&&mine&&setupHref?`<p class="dc-draft-row"><a class="dc-draft" href="${esc(setupHref)}">Draft headline. Write your own</a></p>`:''}${lede(s)[1]?`<p class="dc-rest">${esc(lede(s)[1])}</p>`:''}`:`<p class="dc-said dc-none">${mine?'Work saved. Add what happened, even if it is unfinished.':'Captured work. The author has not added an outcome.'}</p>`}${mine&&s.kind==='project'&&s.open?`<a class="dc-write" href="${esc(runHref(s.open.id))}#run-edit">${s.result?'Edit the story':'Write what happened'} →</a>`:''}</div>
+      return `<section class="dc-slide" data-slide="${i}" data-key="${esc(s.key)}" data-name="${esc(s.name)}" ${s.open?`data-run-id="${esc(s.open.id)}" data-open="${esc(runHref(s.open.id))}"`:''} ${i===at?'':'hidden'} aria-label="${esc(s.name)}">
+        <div class="dc-story">${s.kind==='project'?`<p class="dc-project-name">${esc(s.name)}</p>`:''}${s.result?`<h2 class="dc-said">${esc(lede(s)[0])}</h2>${s.draft&&mine&&setupHref?`<p class="dc-draft-row"><a class="dc-draft" href="${esc(setupHref)}">Draft headline. Write your own</a></p>`:''}${lede(s)[1]?`<p class="dc-rest">${esc(lede(s)[1])}</p>`:''}`:`<p class="dc-said dc-none">${compact?'No description yet.':mine?'Work saved. Add what happened, even if it is unfinished.':'Captured work. The author has not added an outcome.'}</p>`}${mine&&s.kind==='project'&&s.open?`<a class="dc-write" href="${esc(runHref(s.open.id))}#run-edit">${s.result?'Edit the story':'Write what happened'} →</a>`:''}</div>
+        <div class="dc-measured" aria-label="Measured project activity">${share(s,esc,jump)}<div class="dc-facts">${visibleIds.map(id=>fact(s,id)).join('')}</div></div>
         ${s.kind!=='whole'||s.visual?visual(s,{esc,mine,visualHref,runHref,jump}):''}
-
-        <div class="dc-measured" aria-label="Measured project activity">${share(s,esc,jump)}<div class="dc-facts">${ids.map(id=>fact(s,id)).join('')}</div></div>
         ${next?`<div class="dc-next"><b>Still open</b><p>${esc(next)}</p></div>`:''}
         ${s.kind==='project'?`<div class="dc-chapter-actions">${output?`<a class="dc-output" href="${esc(output)}" target="_blank" rel="noopener noreferrer">Try what was built ↗</a>`:''}${s.group?.raw?`<a href="${esc(projectHref(s.group.raw))}">Continue this project →</a>`:''}</div>`:''}
         ${high.length?`<ul class="dc-high">${high.map(h=>`<li><a href="${esc(runHref(h.run.id))}">${h.name?`<b>${esc(h.name)}</b> `:''}${esc(h.text)}</a></li>`).join('')}</ul>`:''}</section>`};
@@ -262,20 +262,20 @@
     // agent can ask for: its number and the page it opens. The names come from this deck only, so a
     // reader's selector can never carry the name of a project they cannot see.
     const pages=many?`<nav class="dc-pages" aria-label="Pages of this card"><p class="dc-pos" aria-live="polite"><b>${esc(S[at].name)}</b> · ${at+1} of ${S.length}</p>
-        <div class="dc-steps"><button type="button" class="dc-arrow" data-step="-1" aria-label="Previous page" ${at===0?'disabled':''}>‹</button><button type="button" class="dc-arrow" data-step="1" aria-label="Next page" ${at===S.length-1?'disabled':''}>›</button><button type="button" class="dc-auto" data-auto hidden aria-pressed="false">Pause</button></div>
+        <div class="dc-steps"><button type="button" class="dc-arrow" data-step="-1" aria-label="Previous project" ${at===0?'disabled':''}>‹</button><button type="button" class="dc-arrow" data-step="1" aria-label="Next project" ${at===S.length-1?'disabled':''}>›</button><button type="button" class="dc-auto" data-auto hidden aria-pressed="false">Pause</button></div>
         <details class="dc-chapters"><summary>Choose chapter</summary><ol class="dc-dots">${S.map((s,i)=>`<li><a class="dc-page" href="${esc(pageHref(s.key,i))}" data-goto="${i}" aria-label="${i+1} ${esc(s.name)}" ${i===at?'aria-current="page"':''}>${esc(s.name)}</a></li>`).join('')}</ol></details></nav>`:'';
-    return `<article class="card dc" id="day-card" tabindex="0" data-at="${at}" data-count="${S.length}" aria-roledescription="${many?'carousel':'card'}">
+    return `<article class="card dc${compact?' dc-compact':''}" id="${esc(cardId)}" tabindex="0" data-at="${at}" data-count="${S.length}" aria-roledescription="${many?'carousel':'card'}">
       <header class="dc-head"><p class="meta">${esc(author||'')}${author?' · ':''}${esc(windowLabel)}</p>${mine?ownerMenu(menu,esc,menuAt):''}</header>
       ${c.title?`<p class="dc-day-title">${esc(c.title)}</p>`:''}
       ${pages}
       ${S.map(slide).join('')}
-      ${lead?`<p class="dc-more-link"><a class="dc-open" href="${esc(runHref(open.id))}" data-fallback="${esc(runHref(lead.open.id))}">Open the run: timeline, evidence, pictures →</a></p>`:''}
-      ${actions?`<footer class="fc-foot">${actions}</footer>`:''}</article>`;
+      ${lead?`<p class="dc-more-link"><a class="dc-open" href="${esc(runHref(open.id))}" data-fallback="${esc(runHref(lead.open.id))}">Open full run →</a></p>`:''}
+      ${actions?`<footer class="fc-foot">${actions}</footer>`:''}<section class="dc-comments" hidden aria-label="Comments on selected run"></section></article>`;
   }
   // Wires one card. Returns {go, at}: go(n,{push}) is what the page calls when the browser goes back or forward.
   function wire(card,{onChange,auto=0}={}){
     if(!card)return null;wireMenu(card);
-    card.addEventListener('click',e=>{const say=e.target.closest('[data-comment]');if(say){const box=document.querySelector('#day-thread textarea');if(box){e.preventDefault();box.scrollIntoView({block:'center'});box.focus()}}});
+    card.addEventListener('click',e=>{const say=e.target.closest('[data-comment]');if(say){const box=card.querySelector('.dc-comments textarea');if(box){e.preventDefault();box.scrollIntoView({block:'center'});box.focus()}}});
     let state={at:+card.dataset.at||0,count:+card.dataset.count||1};const api={go:()=>{},at:()=>state.at};if(state.count<2)return api;
     const paint=()=>{const at=state.at;card.dataset.at=at;
       card.querySelectorAll('.dc-slide').forEach(s=>{s.hidden=+s.dataset.slide!==at});

@@ -168,5 +168,5 @@ assert.equal(chapterIndex.open,false,'choosing a chapter closes the index');
 const chapter=card.querySelector('.dc-slide[data-slide="1"]');
 assert.equal(chapter.querySelector('.dc-project-name').textContent,names[1]);
 assert.equal(chapter.querySelector('.dc-measured').tagName,'DIV','metrics stay visible with the image');
-assert.ok(chapter.querySelector('.dc-visual').compareDocumentPosition(chapter.querySelector('.dc-measured')) & window.Node.DOCUMENT_POSITION_FOLLOWING,'the visual precedes measured details');
+assert.ok(chapter.querySelector('.dc-measured').compareDocumentPosition(chapter.querySelector('.dc-visual')) & window.Node.DOCUMENT_POSITION_FOLLOWING,'the measured details precede the visual');
 assert.equal(card.querySelectorAll('.dc-chapter-list a').length,0,'no duplicate overview list');
