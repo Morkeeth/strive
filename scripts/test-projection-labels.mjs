@@ -2,7 +2,7 @@ import vm from 'node:vm';import {readFileSync} from 'node:fs';import assert from
 const box={window:{}};vm.createContext(box);for(const f of ['run-contract.js','feed-card.js','sharing.js'])vm.runInContext(readFileSync('site/'+f,'utf8'),box);
 const run={id:'fixture',title:'Title can change',caption:'Caption can change',harness:'Grok Bot',tool_calls:1,ridge:Array(50).fill(0).map((_,i)=>i===0?1:0),ridge_basis:'turn-order',trace_basis:'observed native events; timestamps unavailable',visibility:'private',profiles:{handle:'fixture'}};
 assert.match(box.GrinderContract.ridge(run),/Activity along observed message order/);assert.match(box.GrinderContract.ridge(run),/lower bound/);
-assert.ok(JSON.stringify(box.GrinderContract.heroStats(run)).includes('Observed calls (minimum)'));
+assert.ok(!JSON.stringify(box.GrinderContract.heroStats(run)).includes('calls'),'minimum technical counts stay in details, not hero facts');
 assert.ok(box.window.GrinderSharing.traceSeries(run).label.includes('Observed calls (minimum)'));
 assert.ok(JSON.stringify(card(run)).includes('observed calls (minimum)'));
 assert.ok(JSON.stringify(card(run)).includes('Missing records may be omitted; distinct requests are a lower bound.'));

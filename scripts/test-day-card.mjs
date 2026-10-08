@@ -7,7 +7,7 @@ const at=(h,m=0)=>new Date(2026,9,5,h,m).toISOString();
 const ev=(c,a,b)=>({trace_basis:'historical-reconstruction',history_evidence:{repo_window_start:at(a),repo_window_end:at(b),first_observed_at:at(8),last_observed_at:at(17),history_entries:5,repo_commits:c,repo_revision:'a'.repeat(40),source_ref:'b'.repeat(64)}});
 const runs=[{id:'a1',project:'alpha',started_at:at(9),duration_s:3600,tool_calls:10,story_result:'TEST DATA alpha first'},{id:'a2',project:'alpha',started_at:at(12),duration_s:1800,tool_calls:5,story_result:'TEST DATA alpha second'},
  {id:'b1',project:'beta',started_at:at(9,30),duration_s:3600,commits:2,story_result:'TEST DATA beta said',feedback_question:'q?'},{id:'c1',project:'gamma',started_at:at(10),duration_s:600},
- {id:'ga',project:'alpha',title:'w',...ev(6,10,11)},{id:'gd',project:'delta',title:'w',...ev(4,13,14)}];
+ {id:'ga',project:'alpha',title:'w',...ev(6,9,13)},{id:'gd',project:'delta',title:'w',...ev(4,13,14)}];
 const label=v=>v||'',model=D.compute(runs,'2026-10-05',label);
 const tokens=new Map();for(const g of model.groups)tokens.set(g.label,await C.token('owner','2026-10-05_2026-10-05',g.label));
 const T=n=>tokens.get(n);assert.match(T('alpha'),/^[a-f0-9]{12}$/);assert.notEqual(T('alpha'),await C.token('other-owner','2026-10-05_2026-10-05','alpha'),'a token is tied to its owner and window');
@@ -159,3 +159,9 @@ assert.match(C.render(deck,{esc,mine:false}),/60%/);assert.match(C.render(deck,{
 
 // A partial project sum must not look like a complete count; recorded zero takes precedence over fallback.
 {const data=[{id:'m1',project:'mixed',started_at:at(9),duration_s:60,tool_calls:12},{id:'m2',project:'mixed',started_at:at(10),duration_s:60,tool_calls:null},{id:'z1',project:'zero',started_at:at(11),duration_s:60,tool_calls:0,ridge_tool_calls:17}];const m=D.compute(data,'2026-10-05',label),t=new Map();for(const g of m.groups)t.set(g.label,await C.token('owner','k',g.label));const x=C.slides(m,t,null);assert.equal(x.slides.find(s=>s.name==='mixed').facts.tools.value,null);assert.equal(x.slides.find(s=>s.name==='zero').facts.tools.value,0);}
+
+const flow=C.flow(d,{esc,mine:false,author:'TEST DATA',windowLabel:'Monday'});
+assert.equal((flow.match(/class="dc-slide"/g)||[]).length,3);
+assert.ok(!flow.includes('dc-pages')&&!flow.includes('data-next')&&!flow.includes('data-prev'),'reader day projects are all visible in normal scroll');
+assert.ok(!/<section class="dc-slide"[^>]* hidden/.test(flow));
+assert.ok(!flow.includes('aria-label="Tool calls:')&&!flow.includes('aria-label="Runs: 1"'));

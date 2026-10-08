@@ -183,19 +183,19 @@ window.GrinderPeople = function ({
     app().innerHTML =
       peopleTabs("people") +
       `<div class="head"><h2>Find people</h2></div>
-      <section class="card pad people-networks"><h3>People from your networks</h3>
-        <p>${linked.length ? `Linked to ${esc(linked.join(" and "))}. ` : ""}GitHub matching only checks verified STRIVE accounts when you ask. It never follows anyone automatically. X friend matching is unavailable.</p>
-        <div class="cta">${githubAction}${self ? '<a class="act ghost" href="/?account">Manage linked accounts</a>' : ""}</div>
-        <div id="people-network-result" class="people-network-result" aria-live="polite"></div>
-      </section>
-      <details class="people-search-panel" ${q0 ? "open" : ""}><summary>Search by STRIVE username</summary><form id="people-search" class="people-search" role="search">
+      <details class="people-search-panel" open><summary>Search by STRIVE username</summary><form id="people-search" class="people-search" role="search">
         <label for="people-query">Username or name</label>
         <div class="people-search-row">
           <input id="people-query" name="q" type="search" maxlength="80" autocomplete="off" spellcheck="false" placeholder="e.g. @casey or Ada" value="${esc(q0)}">
           <button type="submit">Search</button>
         </div>
       </form></details>
-      <div id="people-body" class="people-body" aria-live="polite">Loading…</div>`;
+      <div id="people-body" class="people-body" aria-live="polite">Loading…</div>
+      <section class="people-networks"><h3>Find friends on GitHub</h3>
+        <p>${self ? "Check for verified STRIVE accounts among your GitHub connections. You choose whom to follow." : "Sign in to follow people or find friends from GitHub."}</p>
+        <div class="cta">${githubAction}${self ? '<a class="act ghost" href="/?account">Manage linked accounts</a>' : ""}</div>
+        <div id="people-network-result" class="people-network-result" aria-live="polite"></div>
+      </section>`;
     const form = byId("people-search");
     const input = byId("people-query");
     const body = byId("people-body");
@@ -327,18 +327,9 @@ window.GrinderPeople = function ({
       } catch (_) {
         recent = null;
       }
-      if(recent!==null) recent = Array.isArray(recent) ? recent : [];
+      if(recent!==null) recent = Array.isArray(recent) ? recent.filter(person=>person.id!==self?.id) : [];
 
       const parts = [];
-      if (!self) {
-        parts.push(
-          emptyCard(
-            "Sign in to follow builders",
-            "You can still search public profiles. Sign in to follow someone and fill your Following feed.",
-            `<div class="cta"><button type="button" id="people-signin" class="act blue">Sign in</button><a class="act" href="/?explore">Browse public runs</a></div>`,
-          ),
-        );
-      }
 
       const followed = (following || [])
         .map((f) => f.followed || f)

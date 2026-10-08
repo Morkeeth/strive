@@ -790,39 +790,17 @@
   }
   // At most three recorded facts from THIS run. Prefer the run row and the route geometry
   // that was drawn, not a generalised aggregate that can disagree with the card.
+  // The headline strip is change and elapsed span; technical counters stay in detail.
   function heroStats(run) {
-    const cells = [];
-    const add = (label, value) => {
-      if (cells.length >= 3 || value == null || value === "") return;
-      cells.push([label, String(value)]);
-    };
-    const route = run && run.code_route;
-    const routeOk =
-      route &&
-      typeof route === "object" &&
-      !Array.isArray(route) &&
-      route.v === 1 &&
-      !route.unavailable;
-    const projects = routeOk && Array.isArray(route.projects) ? route.projects : [];
-    const stops = routeOk && Array.isArray(route.stops) ? route.stops : [];
-    if (projects.length > 1) add("Projects", projects.length);
-    const commits = recordedCount(run && run.commits);
-    if (commits != null) add("Commits", commits);
-    const files = recordedCount(run && run.files_touched);
-    if (files != null) add("Files", files);
-    const measured = stops.filter((s) => s && s.basis === "measured").length;
-    if (measured > 0) add("Measured stops", measured);
-    add("Session", sessionLabel(run));
-    const turns = recordedCount(run && (run.prompts ?? run.turns_typed));
-    if (turns != null) add("Turns", turns);
-    // Same source as /r/ and the share image: transcript count, else ridge_tool_calls.
-    const tools = recordedCount(toolCallCount(run));
-    if (tools != null) add(observedProjection(run) ? "Observed calls (minimum)" : "Tool calls", tools);
-    // Route.stats only fills gaps the run row left empty.
-    if (cells.length < 3 && routeOk && route.stats && typeof route.stats === "object") {
-      const stats = route.stats;
-      if (commits == null && recordedCount(stats.commits) != null) add("Commits", stats.commits);
-      if (files == null && recordedCount(stats.files_changed) != null) add("Files", stats.files_changed);
+    const cells=[],add=(label,value)=>{if(cells.length<3&&value!==null&&value!==undefined&&value!=='')cells.push([label,String(value)])};
+    const commits=recordedCount(run?.commits);if(commits!==null)add('Commits',commits);
+    const elapsed=sessionLabel(run);if(elapsed)add('Elapsed',elapsed);
+    const route=run?.code_route,projects=route?.v===1&&!route.unavailable&&Array.isArray(route.projects)?route.projects:[];
+    if(projects.length>1)add('Projects',projects.length);
+    const files=recordedCount(run?.files_touched);if(files!==null)add('Files touched',files);
+    if(cells.length<3&&route?.v===1&&route.stats){
+      if(commits===null)add('Commits',recordedCount(route.stats.commits));
+      if(files===null)add('Files changed',recordedCount(route.stats.files_changed));
     }
     return cells;
   }

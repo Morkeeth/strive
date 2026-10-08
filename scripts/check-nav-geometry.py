@@ -30,7 +30,7 @@ with sync_playwright() as p:
             result = page.evaluate('''() => ({
                 menus: document.querySelectorAll('#product-nav').length,
                 oldMenus: document.querySelectorAll('.desktop-nav,.tabbar,#rail nav,.feed-tabs,.section-tabs[aria-label="My runs"],.section-tabs[aria-label="Community"]').length,
-                primary: [...document.querySelectorAll('.product-nav-link>span')].map(e=>e.textContent),
+                primary: [...document.querySelectorAll('.product-nav-label')].map(e=>e.firstChild.textContent),
                 selected: [...document.querySelectorAll('#product-nav [aria-current="page"]')].map(e=>e.dataset.navPage),
                 appX: document.querySelector('#app').getBoundingClientRect().x,
                 overflow: document.documentElement.scrollWidth > innerWidth,
@@ -39,8 +39,8 @@ with sync_playwright() as p:
             result.update(width=width, route=name)
             results.append(result)
             assert result['menus'] == 1 and result['oldMenus'] == 0, result
-            assert result['primary'] == ['Feed', 'My runs', 'Discover'], result
-            assert result['selected'] == [name], result
+            assert result['primary'] == ['Feed', 'My runs', 'Discover', 'People'], result
+            assert result['selected'] == ['public-projects' if name == 'projects' else name], result
             assert not result['overflow'], result
             assert all(t['height'] >= 44 for t in result['targets']), result
             if width < 761:
@@ -50,7 +50,7 @@ with sync_playwright() as p:
         assert len({r['appX'] for r in results if r['width'] == width}) == 1, results
         # All destinations remain reachable by ordinary links. Browser history owns navigation.
         page.goto(base, wait_until='networkidle')
-        for group, destination in [('feed','following'), ('mine','day'), ('discover','people'), ('discover','boards')]:
+        for group, destination in [('feed','following'), ('mine','day'), ('people','people'), ('discover','boards')]:
             summary = page.locator(f'[data-nav-group="{group}"] summary')
             summary.click()
             panel = page.locator('details.product-nav-more[open] .product-nav-panel')

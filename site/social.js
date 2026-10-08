@@ -398,7 +398,7 @@ window.GrinderSocial = function ({
           .from("runs")
           .select("*,profiles!runs_profile_id_fkey(github_handle,name,rig,handle,display_name,avatar_url)")
           .eq("visibility", "public")
-          .order("created_at", { ascending: false })
+          .order("started_at", { ascending: false, nullsFirst: false }).order("id", { ascending: false })
           .limit(20),
       );
       return runs.length
@@ -433,7 +433,7 @@ window.GrinderSocial = function ({
           .select("*,profiles!runs_profile_id_fkey(github_handle,name,rig,handle,display_name,avatar_url)")
           .in("profile_id", followedIds)
           .eq("visibility", "public")
-          .order("created_at", { ascending: false })
+          .order("started_at", { ascending: false, nullsFirst: false }).order("id", { ascending: false })
           .limit(50),
       );
       if (runs.length) {

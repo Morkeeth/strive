@@ -212,3 +212,18 @@ Official reference read for this change: [feed stats](https://support.strava.com
 ## 12. Home composition · 8 October evening
 
 Home opens on real public project cards for signed-in and signed-out readers. Following remains an explicit filter. Community, official directories and builders sit beside the feed on wide screens and follow it on phones. Empty events and club rows never push the first real card below an onboarding stack. The blue card renderer and author visual choices are unchanged. Home ranks author-days by XUDOS then newest from the latest 300 public sessions, states that window, and keeps all loaded sessions of a selected day so choosing highlights does not discard that day's projects. It does not call this an all-time ranking or claim memberships that do not exist.
+
+
+## 8 October evening — scrolling selected-run posts
+
+This decision supersedes earlier public day aggregation, carousel arrows and technical hero facts above. The public post unit is one selected run. `activity-post.js` renders Feed, Following, Discover, profiles and project views with the same sequence: identity and actual date, human project/title, authored result, at most three recorded facts, an honest activity trail, chosen media, full-run action, and attached run-bound comments. Separate runs on the same project stay separate posts. `day-card.js` exposes `flow()` for vertically scrolling project summaries; the existing focused selector remains only in the card editor.
+
+`activity-order.js` orders by actual `started_at` descending, then ID descending, with unknown times last and explicitly labelled. Queries use the same order before applying limits. Capture/import time and XUDOS are not activity time. Profile pins are an explicitly labelled separate section.
+
+Hero facts use the shared `run-contract.js` contract: commits, accurately labelled elapsed span, observed files touched, or multiple measured projects, at most three. Unknown fields are absent. Technical counters remain in full detail. A project commit total requires distinct commit identities or non-overlapping observations. Repository history replaces only sessions it completely covers; overlapping windows without identities are unknown, and partial measured totals say their scope.
+
+The small activity trail is a plot of recorded bins, not invented geography or semantic work nodes. A ridge uses its own `ridge_basis` and clock, independent of legacy rhythm fields. Elapsed agent-tool rhythm has an elapsed axis; other rhythm has neutral capture-order wording. Turn-order data never receives a clock. Sparse runs say “No captured event route”. Source labels remain at least 11 px. Screenshots stay whole; personal photos require an explicit cover choice, at most one; supporting screenshots remain available. Existing Data choices suppress image fallback.
+
+Navigation has four whole-item dropdown targets: Feed, My runs, Discover, People. This is one menu on desktop and phone. Only the exact destination has `aria-current="page"`; its parent has `aria-current="location"`. Keyboard, Escape, outside click and browser history remain supported. Add run is the single global posting action. Clubs, Events and external community directories are hidden. The owner's profile clearly distinguishes private-inclusive view from public preview; profile sharing reads public rows only.
+
+Checks: `test-activity-post.mjs`, `test-compact-feed.mjs`, `test-project-account-scope.mjs`, `test-navigation.mjs`, `test-day-card.mjs`, `test-day.mjs`, and `check-nav-geometry.py`. Real anonymous rows, old saved photos, exact comment IDs and desktop/390/320 rendering are checked separately against the read-only preview.

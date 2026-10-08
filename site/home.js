@@ -28,8 +28,10 @@
   }
 
   // runs or events may be null: that read failed, and the line says so instead of "none".
-  function weekHtml(runs, events, now) {
-    const { days, today } = week(runs || [], events || [], now);
+  function weekHtml(runs, events, now, {showEvents=true}={}) {
+    const activityRuns=showEvents?(runs||[]):(runs||[]).filter(r=>Number.isFinite(Date.parse(r.started_at))).map(r=>({...r,created_at:r.started_at}));
+    const { days, today } = week(activityRuns, showEvents?(events || []):[], now);
+    if(!showEvents)days.splice(7);
     const max = Math.max(1, ...days.map((d) => d.runs));
     const cols = days.map((d) => {
       const wd = new Date(d.t).toLocaleDateString("en-GB", { weekday: "narrow" });
@@ -43,7 +45,7 @@
     const coming = days.reduce((a, d) => a + d.events.length, 0);
     const runPart = runs === null ? "Runs could not load" : ran ? ran + " public run" + (ran === 1 ? "" : "s") + " in the last 7 days" : "No public runs in the last 7 days";
     const eventPart = events === null ? "events could not load" : coming ? coming + " event" + (coming === 1 ? "" : "s") + " in the next 7" : "no events in the next 7";
-    const line = `${runPart} · ${eventPart}`;
+    const line = showEvents?`${runPart} · ${eventPart}`:runPart;
     return `<ol class="wk" aria-label="This week on __BRAND__">${cols}</ol><p class="wk-line">${esc(line)}</p>`;
   }
 
@@ -98,7 +100,7 @@
 
     const until = new Date(addDays(now, 8)).toISOString(); // the end of the seventh day ahead
     const runsQ = sb.from("runs").select("*, profiles!runs_profile_id_fkey(github_handle,name,rig,handle,display_name,avatar_url)")
-      .eq("visibility", "public").order("created_at", { ascending: false }).limit(300);
+      .eq("visibility", "public").order("started_at", { ascending: false, nullsFirst: false }).order("id", { ascending: false }).limit(300);
     const clubsQ = sb.from("grinder_crews").select("id,name,visibility,created_at,grinder_memberships(count)").eq("visibility", "public").order("created_at", { ascending: false }).limit(12);
     const eventsQ = sb.from("grinder_events").select("id,title,place,starts_at,crew_id,grinder_crews(name),grinder_event_people(count)")
       .gte("starts_at", new Date(now).toISOString()).lt("starts_at", until).order("starts_at", { ascending: true }).limit(20);

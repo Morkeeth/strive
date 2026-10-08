@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import vm from 'node:vm';
+import {createRequire} from 'node:module';
+const Activity=createRequire(import.meta.url)('../site/activity-order.js');
+globalThis.GrinderContract={projectLabel:s=>s};
+const ui={StriveActivity:Activity,history:{replaceState(){}},feedCards:async (rows,ad,{decorate=html=>html}={})=>rows.map(r=>decorate(`CARD:${r.id}:${r.visibility}`,r)).join(''),wireKudos(){},StriveProjectFollow:{mount(){}},showSignIn(){}};
 const html=readFileSync('site/index.html','utf8');
 const fn=html.slice(html.indexOf('async function viewProjects()'),html.indexOf('function toolLogoHtml'));
 const rows=[
@@ -11,14 +15,14 @@ const rows=[
 async function render(me,search='?projects'){
  const app={innerHTML:''};let filters=[];
  const query={select(){return this},eq(k,v){filters.push(r=>r[k]===v);return this},not(k,op,v){filters.push(r=>r[k]!==v);return this},order(){return this},limit(){return Promise.resolve({data:rows.filter(r=>filters.every(f=>f(r)))})}};
- const ctx=vm.createContext({ME:me?{id:me}:null,location:{search},URLSearchParams,$:()=>app,frame(){},railHtml(){},setPrimarySection(){},skeletonCard(){return ''},sb:{from:()=>query},status(){},GrinderContract:{projectLabel:s=>s},projectTotals:r=>({runs:r.length,builders:new Set(r.map(x=>x.profile_id)).size,tool_calls:0}),safeOutputUrl:s=>s,esc:s=>s});
+ const ctx=vm.createContext({...ui,ackData:async()=>({mine:new Set(),counts:{}}),ME:me?{id:me}:null,location:{search},URLSearchParams,$:()=>app,frame(){},railHtml(){},setPrimarySection(){},skeletonCard(){return ''},sb:{from:()=>query},status(){},GrinderContract:{projectLabel:s=>s},projectTotals:r=>({runs:r.length,builders:new Set(r.map(x=>x.profile_id)).size,tool_calls:0}),safeOutputUrl:s=>s,esc:s=>s});
  await vm.runInContext(fn+';viewProjects()',ctx);return app.innerHTML;
 }
 const own=await render('odawg');
-assert.match(own,/My projects/);assert.match(own,/scope=mine/);assert.match(own,/Odawg private work/);assert.doesNotMatch(own,/Oscar private work|Shared public work/);
-const oscar=await render('oscar');assert.match(oscar,/Oscar private work/);assert.doesNotMatch(oscar,/Odawg private work/);
-const publicPage=await render('odawg','?projects&scope=public');assert.match(publicPage,/Public projects/);assert.match(publicPage,/Shared public work/);assert.doesNotMatch(publicPage,/Oscar private work|Odawg private work/);
-const stranger=await render(null);assert.match(stranger,/Public projects/);assert.doesNotMatch(stranger,/Oscar private work|Odawg private work/);
+assert.match(own,/My projects/);assert.match(own,/scope=mine/);assert.match(own,/Odawg private work/i);assert.doesNotMatch(own,/Oscar private work|Shared public work/i);
+const oscar=await render('oscar');assert.match(oscar,/Oscar private work/i);assert.doesNotMatch(oscar,/Odawg private work/i);
+const publicPage=await render('odawg','?projects&scope=public');assert.match(publicPage,/Public projects/);assert.match(publicPage,/Shared public work/i);assert.doesNotMatch(publicPage,/Oscar private work|Odawg private work/i);
+const stranger=await render(null);assert.match(stranger,/Public projects/);assert.doesNotMatch(stranger,/Oscar private work|Odawg private work/i);
 console.log('PASS: each account sees its own projects; explicit public and signed-out views contain only public work');
 
 if(process.env.STRIVE_QA_DIR){
@@ -48,7 +52,7 @@ function harness({me='odawg',search='?project=Shared%20name',fail=false,delayQue
    return Promise.resolve(result);
   }
  }}};
- const ctx=vm.createContext({
+ const ctx=vm.createContext({...ui,
   ME:me?{id:me}:null,location:{search},URLSearchParams,$:()=>app,
   frame(){},railHtml(){},setPrimarySection(){},skeletonCard(){return 'Loading'},
   PROJECT_SELECT:'*',sb,status(){},noteTraces(){},GrinderContract:{projectLabel:s=>s},
@@ -84,7 +88,7 @@ const listPending=switchedList.startList();switchedList.ctx.ME={id:'odawg'};swit
 assert.equal(switchedList.queries(),2);
 assert.equal(switchedList.renders.some(s=>s.includes('Oscar private work')),false);
 assert.match(switchedList.app.innerHTML,/My projects/);
-assert.match(switchedList.app.innerHTML,/Odawg private work/);
+assert.match(switchedList.app.innerHTML,/Odawg private work/i);
 const switchedDetail=harness({me:'oscar',search:'?project=Shared%20name&scope=mine',delayQuery:true});
 const detailPending=switchedDetail.startDetail();switchedDetail.ctx.ME={id:'odawg'};switchedDetail.releaseQuery();await detailPending;
 assert.equal(switchedDetail.renders.some(s=>s.includes('CARD:oscar-private-run')),false);

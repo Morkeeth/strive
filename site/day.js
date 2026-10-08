@@ -14,6 +14,24 @@
   const secondsOf=r=>Math.max(0,Number(r.wall_time_s||r.duration_s||0)||0);
   const resultOf=r=>[r.story_result,r.caption,r.note].find(v=>typeof v==='string'&&v.trim())||'';
   const modelsOf=r=>{const m=r.capture_metadata&&Array.isArray(r.capture_metadata.models)?r.capture_metadata.models:(typeof r.model==='string'&&r.model?[r.model]:[]);return [...new Set(m.filter(v=>typeof v==='string'&&v))]};
+  // A project total needs disjoint observations or commit identities, never an unchecked sum.
+  function commitSummary(runs){
+    const rows=[...new Map((runs||[]).map(r=>[r.id,r])).values()];
+    const observations=rows.map(r=>{const e=evidenceOf(r),count=e?e.repo_commits:r.commits;
+      const from=e?Date.parse(e.repo_window_start):Date.parse(r.started_at),until=e?Date.parse(e.repo_window_end):from+secondsOf(r)*1000;
+      const hashes=Array.isArray(r.commits_list)?r.commits_list.map(c=>c.hash||c.sha).filter(h=>typeof h==='string'&&/^[a-f0-9]{7,40}$/i.test(h)):[];
+      return {count:Number.isFinite(count)&&count>=0?count:null,from,until,hashes,source:e?.source_ref||null,history:!!e};});
+    if(!observations.length)return {value:null,reason:'No recorded commit observations'};
+    const history=observations.filter(o=>o.history);
+    // A repository window replaces only sessions it completely covers. Disjoint work remains.
+    const selected=observations.filter(o=>o.history||!history.some(h=>Number.isFinite(o.from)&&Number.isFinite(o.until)&&h.from<=o.from&&h.until>=o.until));
+    const unique=[...new Map(selected.map((o,i)=>[o.source?JSON.stringify([o.source,o.from,o.until,o.count]):'row:'+i,o])).values()];
+    if(unique.some(o=>o.count===null))return {value:null,reason:'Commit count missing from one or more runs'};
+    if(unique.every(o=>o.count===0||o.hashes.length===o.count))return {value:new Set(unique.flatMap(o=>o.hashes)).size,reason:'Distinct recorded commit identities'};
+    const positive=unique.filter(o=>o.count>0).sort((a,b)=>a.from-b.from);
+    if(positive.length>1&&positive.some((o,i)=>!Number.isFinite(o.from)||!Number.isFinite(o.until)||positive.slice(0,i).some(p=>p.until>o.from)))return {value:null,reason:'Overlapping runs; unique commits cannot be counted'};
+    return {value:unique.reduce((sum,o)=>sum+o.count,0),reason:history.length?'Recorded repository history':'Recorded in non-overlapping runs'};
+  }
   function shift(day,delta){const [y,m,d]=day.split('-').map(Number);return localDay(new Date(y,m-1,d+delta))}
   // Everything the page shows is computed here from run rows, so it can be tested without a browser.
   // through is an optional last day, for work that runs past midnight. At most seven days.
@@ -21,7 +39,7 @@
     if(!DAY.test(day))throw new Error('A day is written YYYY-MM-DD');
     const end=through&&DAY.test(through)&&through>day&&through<=shift(day,6)?through:day;
     const items=[],recovered=[];
-    for(const r of runs||[]){
+    for(const r of new Map((runs||[]).map(r=>[r.id,r])).values()){
       const start=startOf(r);if(!start)continue;const on=localDay(start);if(on<day||on>end)continue;
       const evidence=evidenceOf(r);
       if(evidence){const from=new Date(Date.parse(evidence.repo_window_start));recovered.push({run:r,start,from:Number.isFinite(from.getTime())?from:start,until:new Date(Date.parse(evidence.repo_window_end)),
@@ -74,10 +92,12 @@
       return {...g,marks,gitCommits:marks.length?marks.reduce((a,m)=>a+m.commits,0):null,open:g.open||g.runs[g.runs.length-1].run,models:[...g.models],harnesses:[...g.harnesses],
         begins:g.runs.length?g.runs[0].start:marks[0].from,allPrivate:g.runs.length?g.runs.every(i=>i.run.visibility==='private'):marks.every(m=>m.run.visibility==='private')}})
       .sort((a,b)=>(b.result?1:0)-(a.result?1:0)||a.begins-b.begins);
+    for(const g of groups){const summary=commitSummary([...g.runs.map(i=>i.run),...g.marks.map(m=>m.run)]);g.commitCount=summary.value;g.commitReason=summary.reason;}
+    for(const p of projects){const summary=commitSummary([...items.filter(i=>i.label===p.name).map(i=>i.run),...recovered.filter(g=>g.label===p.name).map(g=>g.run)]);p.commits=summary.value;p.commitReason=summary.reason;}
     // The project the lead run belongs to speaks with the lead run's own sentence and opens it.
     if(lead&&lead.result){const own=groups.find(g=>g.runs.some(i=>i.run.id===lead.run.id));if(own){own.result=lead.result;own.open=lead.run}}
     return {day,through:end,items,recovered,lines,groups,plumbing,projects,peak,peakAt,from,until,lead,
-      commits:projects.reduce((a,p)=>a+p.commits,0)+unlabelled,commitsUnknown:items.filter(i=>i.commits===null&&!(i.label&&by.get(i.label).fromGit!==null)).length,
+      commits:projects.reduce((a,p)=>a+(p.commits||0),0)+unlabelled,commitsPartial:projects.some(p=>p.commits===null)||items.some(i=>!i.label&&i.commits===null),commitsUnknown:items.filter(i=>i.commits===null&&!(i.label&&by.get(i.label).fromGit!==null)).length,
       toolCalls:items.reduce((a,i)=>a+(i.run.tool_calls||i.run.ridge_tool_calls||0),0),
       hours:first&&last?Math.round((last-first)/360000)/10:0,
       lineSeconds:lines.reduce((a,i)=>a+i.seconds,0),plumbingSeconds:plumbing.reduce((a,i)=>a+i.seconds,0),
@@ -92,7 +112,7 @@
     const at=d=>Math.max(0,Math.min(100,(d-D.from)/total*100));
     const shade=(i,n)=>`oklch(${(0.42+0.42*i/Math.max(1,n-1)).toFixed(3)} ${(0.22-0.12*i/Math.max(1,n-1)).toFixed(3)} 264)`;
     const withCommits=D.projects.filter(p=>p.commits>0);
-    const headline=D.commits>0?(withCommits.length?`${plural(D.commits,'commit')} across ${plural(withCommits.length,'project')}.`:`${plural(D.commits,'commit')}.`)
+    const headline=D.commitsPartial&&D.commits>0?`${plural(D.commits,'recorded commit')} in measured work.`:D.commits>0?(withCommits.length?`${plural(D.commits,'commit')} across ${plural(withCommits.length,'project')}.`:`${plural(D.commits,'commit')}.`)
       :D.projects.length&&D.items.length?`${plural(D.items.length,'run')} across ${plural(D.projects.length,'project')}.`:`${plural(D.items.length,'run')}.`;
     const title=leadOf(leadWith)==='result'&&D.lead&&D.lead.result?D.lead.result:headline,under=title===headline?'':headline;
     const hours=[];if(D.from&&D.until)for(let t=D.from.getTime();t<=D.until.getTime();t+=3600000)hours.push(new Date(t));
@@ -147,7 +167,7 @@
     if(split)return {chooser,hero:heroHtml,done:doneHtml,ask:askHtml,strip,how:howHtml};
     return chooser+blocks.join('\n');
   }
-  const api={compute,render,localDay,shift,leadOf,isDay:v=>DAY.test(String(v||''))};
+  const api={commitSummary,compute,render,localDay,shift,leadOf,isDay:v=>DAY.test(String(v||''))};
   if(typeof module==='object'&&module.exports)module.exports=api;
   root.StriveDay=api;
 })(typeof window==='object'?window:globalThis);

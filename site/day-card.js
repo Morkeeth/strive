@@ -59,7 +59,7 @@
     const rank=g=>{const i=c.order.indexOf(tk(g));return i<0?1e6:i};
     const leadTok=c.lead&&groups.some(g=>tk(g)===c.lead)?c.lead:(model.lead&&groups.find(g=>g.runs.some(i=>i.run.id===model.lead.run.id))?tk(groups.find(g=>g.runs.some(i=>i.run.id===model.lead.run.id))):null);
     groups=groups.map((g,i)=>({g,i})).sort((a,b)=>(tk(b.g)===leadTok)-(tk(a.g)===leadTok)||rank(a.g)-rank(b.g)||(b.g.result?1:0)-(a.g.result?1:0)||a.i-b.i).map(x=>x.g);
-    const commitsOf=g=>g.gitCommits!==null?{n:g.gitCommits,from:'git'}:g.runs.some(i=>i.commits!==null)?{n:g.commits,from:'runs'}:null;
+    const commitsOf=g=>Object.hasOwn(g,'commitCount')?(g.commitCount===null?null:{n:g.commitCount,from:g.gitCommits!==null?'git':'runs'}):g.gitCommits!==null?{n:g.gitCommits,from:'git'}:g.runs.some(i=>i.commits!==null)?{n:g.commits,from:'runs'}:null;
     const ends=g=>{const a=[...g.runs.map(i=>i.start),...g.marks.map(m=>m.from)].sort((x,y)=>x-y)[0],b=[...g.runs.map(i=>i.end),...g.marks.map(m=>m.until)].sort((x,y)=>y-x)[0];return [a,b]};
     const told=g=>{if(g.result&&g.open&&wrote(g.open)===g.result)return {result:g.result,open:g.open};
       const last=[...g.runs].filter(i=>wrote(i.run)).sort((x,y)=>y.end-x.end)[0];if(last)return {result:wrote(last.run),open:last.run};
@@ -232,7 +232,7 @@
   }
   // CARD ANATOMY, the same on every page of every card: identity and date, the page selector, one short
   // outcome, ONE main visual, project continuation, expandable activity, and the shared action row.
-  function render(deck,{esc,mine,author,authorHref='',avatarHtml='',audienceLabel='',windowLabel,start=0,compact=true,cardId='day-card',setupHref,visualHref,menu=null,menuAt='',actions='',runHref=(id)=>`/?run=${encodeURIComponent(id)}`,pageHref=(key,i)=>`?card=${i}`,projectHref=(name)=>`/?project=${encodeURIComponent(name)}&scope=${mine?'mine':'public'}`}){
+  function render(deck,{esc,mine,author,authorHref='',avatarHtml='',audienceLabel='',windowLabel,start=0,compact=true,hideTechnical=false,cardId='day-card',setupHref,visualHref,menu=null,menuAt='',actions='',runHref=(id)=>`/?run=${encodeURIComponent(id)}`,pageHref=(key,i)=>`?card=${i}`,projectHref=(name)=>`/?project=${encodeURIComponent(name)}&scope=${mine?'mine':'public'}`}){
     const S=deck.slides;if(!S.length)return '';
     const c=deck.choices,at=Math.max(0,Math.min(S.length-1,start|0)),many=S.length>1;
     const fact=(s,id)=>{const f=s.facts[id],none=f.value===null||f.value===undefined,note=!none&&SHORT[f.note];
@@ -246,7 +246,7 @@
         <ol class="dc-points">${s.points.map(p=>`<li><a href="${esc(runHref(p.run.id))}"><span class="dc-when">${esc(p.at.toLocaleDateString(undefined,{weekday:'short'}))} ${hm(p.at)} · ${esc(p.name)}</span>${esc(p.text)}</a></li>`).join('')}</ol>
         ${s.total>s.points.length?`<p class="dc-more">The latest ${s.points.length} of ${s.total}.</p>`:''}</section>`;
       const ids=(s.kind==='whole'?c.facts.whole:c.facts.project).filter(id=>s.facts[id]),high=s.kind==='whole'?s.highlights.filter(h=>h.text!==s.result).slice(0,2):[];
-      const visibleIds=compact?[...ids,...['runs','tools','commits']].filter((id,i,all)=>all.indexOf(id)===i&&s.facts[id]&&s.facts[id].value!==null&&s.facts[id].value!==undefined).slice(0,3):ids;
+      const visibleIds=compact?[...ids.filter(id=>!hideTechnical||(id!=='tools'&&(id!=='runs'||s.facts.runs?.value>1))),...(hideTechnical?['commits','session']:['runs','tools','commits'])].filter((id,i,all)=>all.indexOf(id)===i&&s.facts[id]&&s.facts[id].value!==null&&s.facts[id].value!==undefined).slice(0,3):ids;
       const next=s.kind==='project'&&typeof s.open?.story_next==='string'?s.open.story_next.trim():'';
       let output=null;try{const u=new URL(s.open?.output_url);if(['http:','https:'].includes(u.protocol)&&!u.username&&!u.password)output=u.href}catch(_){}
 
@@ -271,6 +271,10 @@
       ${S.map(slide).join('')}
       ${lead?`<p class="dc-more-link"><a class="dc-open" href="${esc(runHref(open.id))}" data-fallback="${esc(runHref(lead.open.id))}">Open full run →</a></p>`:''}
       ${actions?`<footer class="fc-foot">${actions}</footer>`:''}<section class="dc-comments" hidden aria-label="Comments on selected run"></section></article>`;
+  }
+  // Read a day by scrolling through its projects; the editor keeps its focused preview.
+  function flow(deck,options){
+    return '<div class="day-project-flow">'+deck.slides.map((slide,i)=>render({...deck,slides:[{...slide,pie:null}],choices:{...deck.choices,title:i?'':deck.choices.title}},{...options,hideTechnical:true,cardId:'day-project-'+i,start:0,menu:i?null:options.menu})).join('')+'</div>';
   }
   // Wires one card. Returns {go, at}: go(n,{push}) is what the page calls when the browser goes back or forward.
   function wire(card,{onChange,auto=0}={}){
@@ -408,7 +412,7 @@
     if(focusOn==='visual'){const h=slot.querySelector('#visual');h.scrollIntoView({block:'start'});h.focus({preventScroll:true})}
     return {state:()=>state,current};
   }
-  const api={slides,render,detail,wire,wireMenu,ownerMenu,reduce,pageIndex,clean,token,mountSetup,FACTS,DEFAULTS,VISUALS,FOCUS,MENU,GUARDED};
+  const api={slides,render,flow,detail,wire,wireMenu,ownerMenu,reduce,pageIndex,clean,token,mountSetup,FACTS,DEFAULTS,VISUALS,FOCUS,MENU,GUARDED};
   if(typeof module==='object'&&module.exports)module.exports=api;
   root.StriveDayCard=api;
 })(typeof window==='object'?window:globalThis);

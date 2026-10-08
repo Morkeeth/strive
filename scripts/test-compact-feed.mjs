@@ -36,10 +36,15 @@ const choices={v:2,facts:{project:['tools','runs']},projectVisuals:{[key]:{visua
 let calls=0,fail=false;
 const client={rpc:async(name,args)=>{calls++;assert.equal(name,'read_day_card');assert.equal(args.owner_id,rows[0].profile_id);assert.equal(args.card_key,day+'_'+day);assert.ok(args.viewer_timezone);return fail?{error:{message:'unavailable'}}:{data:choices,error:null}}};
 const feedSource=source.slice(source.indexOf('async function feedCards('),source.indexOf('// A stranger lands'));
-const feed=new Function('sb','StriveDay','StriveDayCard','esc','setTimeout',feedSource+';return feedCards;')(client,Day,Card,s=>String(s),()=>{});
+const feedWindow=new JSDOM('',{runScripts:'outside-only'}).window;
+for(const file of ['run-contract.js','feed-card.js','day.js','day-card.js','activity-order.js','activity-post.js'])feedWindow.eval(readFileSync(new URL('../site/'+file,import.meta.url),'utf8'));
+const feed=new Function('sb','StriveDay','StriveDayCard','GrinderContract','StriveActivity','StrivePost','ME','setTimeout',feedSource+';return feedCards;')(client,Day,Card,feedWindow.GrinderContract,feedWindow.StriveActivity,feedWindow.StrivePost,null,()=>{});
 const rendered=await feed(rows,{});
 assert.ok(!rendered.includes('href="/?u="'),'unknown author handle is plain text, not a broken profile link');
 assert.equal(calls,1);assert.ok(rendered.includes(photo),'feed preserves saved specific photo');
-assert.ok(rendered.indexOf('aria-label="Tool calls: 7"')<rendered.indexOf('aria-label="Runs: 1"'),'feed preserves saved fact order');
+assert.ok(!rendered.includes('<dt>Tool calls</dt>')&&!rendered.includes('<dt>Runs</dt>'),'single-run post keeps technical counters out of its hero');
+const two=await feed([...rows,{...rows[0],id:'dddddddd-dddd-4ddd-8ddd-dddddddddddd',caption:'Second actual run'}],{});
+assert.equal((two.match(/class="card dc dc-compact activity-post"/g)||[]).length,2,'same project has two independent posts');
+assert.equal((two.match(new RegExp(photo,'g'))||[]).length,1,'saved photo never leaks onto a sibling run');
 fail=true;const failed=await feed(rows,{});assert.ok(failed.includes('Card choices could not load'));assert.ok(!failed.includes('dc-slide'),'failed choice read does not silently show ignored preferences');
 console.log('PASS: feed loads audience-filtered saved visuals and facts; failed read stays explicit');
