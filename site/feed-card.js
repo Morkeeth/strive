@@ -394,7 +394,8 @@
   // mode: "preview" (nothing saved, inert), "page" (the share page, no script), "mine" (your own run).
   function actions(o) {
     const id = esc(o.id), count = o.count === null || o.count === undefined ? null : whole(o.count) || 0;
-    const n = count === null ? "" : `<span class="num">${count}</span>`, said = count === null ? "" : `, ${count} so far`;
+    const unavailable=o.count===null;
+    const n = count === null ? (unavailable?'<span title="XUDOS count unavailable" aria-label="Count unavailable">—</span>':"") : `<span class="num">${count}</span>`, said = count === null ? (unavailable?", count unavailable":"") : `, ${count} so far`;
     const heart = `${KUDOS_ICON}<span>XUDOS</span>`;
     const xudos = o.mode === "preview"
       ? `<span class="fc-act" aria-label="Send XUDOS">${heart}</span>`

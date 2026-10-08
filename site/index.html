@@ -800,7 +800,7 @@ function handleAuthStateChange(event,session,refreshAndRoute){
 // The social feeds (home, Following, a club) draw the same feed card as the public feed.
 const social=GrinderSocial({client:sb,me:()=>ME,app:()=>$('app'),frame,railHtml,feedTabs,setPrimarySection,status,signInGitHub:()=>signInWithGitHub(),
   renderRuns:async runs=>{noteTraces(runs);const ad=await ackData(runs);setTimeout(()=>{wireKudos();countUp()},0);return feedCards(runs,ad)}});
-const people=GrinderPeople({client:sb,me:()=>ME,app:()=>$('app'),frame,railHtml,feedTabs,setPrimarySection,status,social,drawAvatar:avatar,renderRuns:async runs=>{noteTraces(runs);const ad=await ackData(runs);setTimeout(()=>{wireKudos();countUp()},0);return runs.map(r=>runCard(r,ad.mine.has(r.id),ad.counts[r.id])).join('')}});
+const people=GrinderPeople({client:sb,me:()=>ME,app:()=>$('app'),frame,railHtml,feedTabs,setPrimarySection,status,social,drawAvatar:avatar,renderRuns:async runs=>{noteTraces(runs);const ad=await ackData(runs);setTimeout(()=>{wireKudos();countUp()},0);return runs.map(r=>runCard(r,ad.mine.has(r.id),(ad.countsKnown===false?null:ad.counts[r.id]))).join('')}});
 const practices=GrinderPractices({client:sb,me:()=>ME,app:()=>$('app'),frame,status});
 const progress=GrinderProgress({client:sb,me:()=>ME,app:()=>$('app'),frame,status,signIn:showSignIn,signInGitHub:()=>signInWithGitHub()});
 const challenges=GrinderChallenges({client:sb,me:()=>ME,app:()=>$('app'),frame,status});
@@ -964,6 +964,7 @@ function suggestAckReasons(r){
   return [...new Set(out)].slice(0,3);
 }
 function ackListHtml(rows){
+  if(rows===null)return '<p class="hint">XUDOS could not load. Refresh to try again.</p>';
   if(!rows||!rows.length) return '<p class="hint" style="padding:0 17px 14px">No XUDOS yet. Be the first to respond to this run.</p>';
   return `<div class="ack-list">${rows.map(a=>{
     const p=a.profiles||{}, h=profileHandle(p)||'?', meta=ACK_REASONS[a.reason]||{label:a.reason,evidence:''};
@@ -971,10 +972,11 @@ function ackListHtml(rows){
   }).join('')}</div>`;
 }
 async function fetchAckList(runId){
-  const {data}=await sb.from('acks').select('id,reason,created_at,from_profile,profiles:from_profile(github_handle,name,rig,handle,display_name,avatar_url)').eq('run_id',runId).order('created_at',{ascending:false});
-  await fillTraces(data||[]);
-  return data||[];
+  try{const {data,error}=await sb.from('acks').select('id,reason,created_at,from_profile,profiles:from_profile(github_handle,name,rig,handle,display_name,avatar_url)').eq('run_id',runId).order('created_at',{ascending:false});
+    if(error||!Array.isArray(data))return null;await fillTraces(data);return data;
+  }catch(_){return null;}
 }
+
 // An ACK row names someone whose runs this page never fetched. Look their newest public run up
 // before the row is drawn, so a flat tile there means "no public grind", never "we did not ask".
 async function fillTraces(rows){
@@ -1027,12 +1029,13 @@ function shapeRow(sh){ return `<div class="ptotals">
 
 
 async function ackData(runs){
-  const ids=runs.map(r=>r.id); if(!ids.length) return {counts:{},mine:new Set()};
-  const {data:all}=await sb.from('acks').select('run_id').in('run_id',ids);
-  const counts={}; (all||[]).forEach(a=>counts[a.run_id]=(counts[a.run_id]||0)+1);
-  let mine=new Set();
-  if(ME){ const {data:m}=await sb.from('acks').select('run_id').eq('from_profile',ME.id).in('run_id',ids); mine=new Set((m||[]).map(a=>a.run_id)); }
-  return {counts,mine};
+  const ids=runs.map(r=>r.id);if(!ids.length)return {counts:{},mine:new Set(),countsKnown:true};
+  let counts={},countsKnown=false,mine=new Set();
+  try{const {data:all,error}=await sb.from('acks').select('run_id').in('run_id',ids);
+    if(!error&&Array.isArray(all)){countsKnown=true;for(const id of ids)counts[id]=0;all.forEach(a=>counts[a.run_id]=(counts[a.run_id]||0)+1);}}
+  catch(_){}
+  if(ME){try{const {data:m,error}=await sb.from('acks').select('run_id').eq('from_profile',ME.id).in('run_id',ids);if(!error&&Array.isArray(m))mine=new Set(m.map(a=>a.run_id));}catch(_){}}
+  return {counts,mine,countsKnown};
 }
 
 function curve(r){ r=(r&&r.length)?r:[1]; const w=800,h=60,p=6,n=r.length,mx=Math.max(...r)||1;
@@ -1315,7 +1318,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     ${StriveEvidence.summary(r)}
     ${xudosTip}
     ${opts.preview?'<div class="foot"><span class="meta">Preview · not saved</span></div>':`${followSlot||detailLink?`<div class="foot run-social-actions"><span class="acts">${followSlot}${detailLink}</span></div>`:''}
-      <footer class="fc-foot run-actions">${GrinderFeed.actions({id:r.id,to:r.profile_id,count:count||0,acked,mode:selfAck?'mine':'',commentHref:'#grind-thread'})}</footer>`}
+      <footer class="fc-foot run-actions">${GrinderFeed.actions({id:r.id,to:r.profile_id,count:count===null?null:count||0,acked,mode:selfAck?'mine':'',commentHref:'#grind-thread'})}</footer>`}
     ${explore}
     ${picker}</div>`; }
 
@@ -1758,7 +1761,7 @@ function bindCompactCard(card,deck,ad,{onChange=()=>{},shareHref=null}={}){
     thread.setAttribute('aria-label','Comments on '+(slide?.name||'this run'));old?.replaceWith(thread);
     const foot=card.querySelector('.fc-foot');if(!run||!foot)return;
     card.dataset.runId=run.id;card.dataset.projectId=slide.key;
-    foot.innerHTML=GrinderFeed.actions({id:run.id,to:run.profile_id,count:ad.counts[run.id]||0,acked:ad.mine.has(run.id),mode:ME?.id===run.profile_id?'mine':'',commentHref:'#'+card.id+'-comments',shareHref});
+    foot.innerHTML=GrinderFeed.actions({id:run.id,to:run.profile_id,count:ad.countsKnown===false?null:ad.counts[run.id]||0,acked:ad.mine.has(run.id),mode:ME?.id===run.profile_id?'mine':'',commentHref:'#'+card.id+'-comments',shareHref});
     thread.id=card.id+'-comments';thread.dataset.runId=run.id;
     const comments=foot.querySelector('[data-comment]');comments.setAttribute('aria-label','Comments on '+slide.name);comments.setAttribute('aria-expanded','false');comments.setAttribute('aria-controls',thread.id);
     comments.onclick=e=>{e.preventDefault();e.stopPropagation();thread.hidden=!thread.hidden;comments.setAttribute('aria-expanded',String(!thread.hidden));if(!thread.hidden&&!thread.dataset.loaded){thread.dataset.loaded='1';void social.thread(run.id,thread,{compact:true})}};
@@ -1915,11 +1918,11 @@ async function viewRun(id){
     : `<section class="run-primary-actions"><p class="meta">FROM THIS RUN</p><div class="cta">${shareable?`<a class="act blue" href="/?share=1&run=${r.id}">Share this run</a>`:''}<a class="act" href="${profileUrl}">Open builder profile</a></div><p class="hint">${r.visibility==='link'?'Followers. This run stays off the public profile. Follow from the card above.':'Follow, send XUDOS or share from the card above.'}</p></section>`;
   frame(typeof railHtml==='function'?railHtml(null):null,null);
   app.innerHTML=`<div class="head"><h2>Behind the run</h2><span class="meta">${esc(audienceLabel(r.visibility))}</span></div>`
-    +runCard(r,ad.mine.has(r.id),ad.counts[r.id]||acks.length,{picker:openAck,suggested,selected:preselect,ownerActions:owner,detail:true})
+    +runCard(r,ad.mine.has(r.id),ad.countsKnown===false?null:ad.counts[r.id]||0,{picker:openAck,suggested,selected:preselect,ownerActions:owner,detail:true})
     +nextAction
     +`<section id="run-photos"></section>`
     +`<section id="run-journey"></section>`
-    +`<section id="grind-thread"></section><div class="head"><h2>XUDOS</h2><span class="meta">${acks.length}</span></div><div class="panel">`+ackListHtml(acks)+`</div>`
+    +`<section id="grind-thread"></section><div class="head"><h2>XUDOS</h2><span class="meta">${acks===null?'Unavailable':acks.length}</span></div><div class="panel">`+ackListHtml(acks)+`</div>`
 ;
   const copyLink=$('run-copy-link');if(copyLink)copyLink.onclick=async()=>{try{const sharePath=r.visibility==='public'?'/r/'+r.id:'/?run='+r.id;await navigator.clipboard.writeText(location.origin+sharePath);copyLink.textContent='Link copied'}catch(_){status('Copy this page address to share your run.')}};
   if(window.StriveRunPhotos) await StriveRunPhotos.mount({client:sb,run:r,slot:$('run-photos'),owner,status,isCurrent:current,onChanged:async()=>{if(!current())return;const card=document.querySelector('[data-run-id="'+r.id+'"]');if(card){card.querySelectorAll('.run-media, .run-personal-photo, .run-photo-cover').forEach(image=>image.remove());delete card.dataset.photoChecked;await StriveRunPhotos.mountCovers({client:sb,root:document});}}});
@@ -2295,7 +2298,7 @@ async function viewDay(day){
   // The card's action row is the lead run's own: its XUDOS count, its thread, its share page.
   const leadRun=model.lead&&model.lead.run,ad=await ackData(data||[]);
   if(ME?.id!==profileId)return viewDay(day);
-  const actions=leadRun?GrinderFeed.actions({id:leadRun.id,to:leadRun.profile_id,count:ad.counts[leadRun.id]||0,acked:ad.mine.has(leadRun.id),mode:ME&&ME.id===leadRun.profile_id?'mine':'',commentHref:'#day-thread',
+  const actions=leadRun?GrinderFeed.actions({id:leadRun.id,to:leadRun.profile_id,count:ad.countsKnown===false?null:ad.counts[leadRun.id]||0,acked:ad.mine.has(leadRun.id),mode:ME&&ME.id===leadRun.profile_id?'mine':'',commentHref:'#day-thread',
     // The owner's Share opens Sharing, where the reader's numbers sit beside the owner's. A reader's Share is the lead run's share page.
     shareHref:mine?ownerLinks.sharing:null}):'';
   // The page in view rides in the address as &page=<project token>, so the same link opens the same project for the
@@ -2376,7 +2379,7 @@ async function viewProfile(handle){
   if(!current())return;
   if(profileRunsError){app.innerHTML='<div class="card"><div class="empty">This profile’s runs could not load. Refresh to try again.</div></div>';return;}
   noteTraces(runs); noteLooked([handle],mine?'all':'public');
-  const R=StriveActivity.sort(runs||[]); const publicCount=R.filter(r=>r.visibility==='public').length; const visibleExtra=!mine&&ME&&R.length>publicCount; const profileAcks=await ackData(R),acksR=R.reduce((sum,r)=>sum+(profileAcks.counts[r.id]||0),0);
+  const R=StriveActivity.sort(runs||[]); const publicCount=R.filter(r=>r.visibility==='public').length; const visibleExtra=!mine&&ME&&R.length>publicCount; const profileAcks=await ackData(R),acksR=profileAcks.countsKnown===false?null:R.reduce((sum,r)=>sum+(profileAcks.counts[r.id]||0),0);
   const sh=grindShape(R, acksR||0);
   // Pinned first (migration 015): only runs this reader can already see, newest pin first, at most 3.
   const PINNED=R.filter(r=>r.pinned_at).sort((a,b)=>String(b.pinned_at).localeCompare(String(a.pinned_at))).slice(0,3);
@@ -2393,7 +2396,7 @@ async function viewProfile(handle){
   const profileHtml=`${isOwner?`<div class="profile-view-mode"><span>${preview?'Public profile preview':'Your profile · includes private work'}</span><a href="/?u=${encodeURIComponent(handle)}${preview?'':'&preview=public'}">${preview?'Back to your profile':'Preview public profile'}</a></div>`:''}<div class="phero">${!isAgentProfile(prof)&&window.GrinderFeed?.face?GrinderFeed.face({profiles:prof},56):avatar(handle,{size:36,agent:isAgentProfile(prof)})}
       <div><h1>${esc(prof.display_name||prof.name||handle)}</h1><div class="h">@${esc(handle)}</div>${profileLinksHtml(prof,mine)}</div>${mine?'<div class="profile-actions"><button id="edit-profile-open" class="ghost">Edit profile</button></div>':''}</div>
     <div id="social-follow" class="social-follow"></div>
-    <section class="profile-activity-stats" aria-label="Activity in the loaded runs"><div><span>Runs</span><strong>${R.length}</strong></div><div><span>Projects</span><strong>${new Set(R.map(r=>GrinderContract.projectLabel(r.project)).filter(Boolean)).size}</strong></div><div><span>XUDOS received</span><strong>${acksR===null?'Not recorded':acksR}</strong></div></section><p class="profile-stats-scope">${mine?'Your latest':'Latest visible'} ${R.length} runs · ${mine?'Includes private work':'Only runs you can open'}</p>
+    <section class="profile-activity-stats" aria-label="Activity in the loaded runs"><div><span>Runs</span><strong>${R.length}</strong></div><div><span>Projects</span><strong>${new Set(R.map(r=>GrinderContract.projectLabel(r.project)).filter(Boolean)).size}</strong></div><div><span>XUDOS received</span><strong>${acksR===null?'Unavailable':acksR}</strong></div></section><p class="profile-stats-scope">${mine?'Your latest':'Latest visible'} ${R.length} runs · ${mine?'Includes private work':'Only runs you can open'}</p>
     <details class="profile-project-list"><summary>Projects & tools</summary>${profileProjectsHtml(R,mine)}
     ${setup?`<div class="head"><h2>Tools</h2></div><div class="profile-tools">${setup}</div>`:''}
     </details>${heatmapSvg(R)}
@@ -2403,7 +2406,7 @@ async function viewProfile(handle){
     <div class="head"><h2>${mine?'Your recent runs':(!preview&&ME?'Recent runs you can see':'Recent public runs')}</h2><span class="meta">${R.length||'none yet'}${mine?` · <a href="/?share=1&u=${encodeURIComponent(handle)}">Share public profile</a>`:''}</span></div>
     ${!mine&&(!ME||preview)?'<p class="hint profile-public-note">Only Public runs appear here. Followers-only runs stay off this profile.</p>':''}
     ${RECENT.length?(await (async()=>{const ad=await ackData(RECENT);return feedCards(RECENT,ad,{ownerView:!!mine});})()):R.length?'':(mine?GrinderFeed.nextSlot():`<div class="card"><div class="empty"><h3>${ME?'No runs you can see yet':'No public runs yet'}</h3><p>${ME?'Public runs and Close friends runs (if you are on their list) show here. Following only lists Public runs.':'You can follow this builder now; their public runs will appear in Following when they post.'}</p></div></div>`)}
-    <details class="profile-summary"><summary>Profile totals</summary><div class="ptotals num"><div><div class="k">Public runs</div><div class="v" data-count="${publicCount}">0</div></div>${visibleExtra?`<div><div class="k">Visible to you</div><div class="v" data-count="${R.length}">0</div></div>`:''}<div><div class="k">XUDOS received</div><div class="v" data-count="${acksR||0}">0</div></div></div></details>`;
+    <details class="profile-summary"><summary>Profile totals</summary><div class="ptotals num"><div><div class="k">Public runs</div><div class="v" data-count="${publicCount}">0</div></div>${visibleExtra?`<div><div class="k">Visible to you</div><div class="v" data-count="${R.length}">0</div></div>`:''}<div><div class="k">XUDOS received</div><div class="v"${acksR===null?'':` data-count="${acksR}"`}>${acksR===null?'Unavailable':'0'}</div></div></div></details>`;
   if(!current())return;app.innerHTML=profileHtml;
   wireKudos(); countUp();
   await social.followControl(prof,$('social-follow'));
