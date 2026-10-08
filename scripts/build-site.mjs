@@ -3,6 +3,7 @@ import {runtimeConfig} from '../server/runtime-config.mjs';
 import {BRAND,TAGLINE} from '../server/brand.mjs';
 import {deploymentGitSha} from '../server/deployment-identity.mjs';
 import {buildAgentFrontdoor} from './build-agent-frontdoor.mjs';
+import {execFileSync} from 'node:child_process';
 const config=runtimeConfig();
 await mkdir('dist',{recursive:true});
 await cp('site','dist',{recursive:true});
@@ -66,3 +67,4 @@ if(!built.includes(`content="${config.ORIGIN}/api/og"`)) throw new Error('The sh
 console.log(`Built ${BRAND} website with explicit strava schema; no privileged keys. Brand applied to ${replaced} file(s).`);
 
 await buildAgentFrontdoor({origin:config.ORIGIN,revision:gitSha});
+execFileSync('python3',['scripts/build-native-plugin.py'],{stdio:'inherit'});

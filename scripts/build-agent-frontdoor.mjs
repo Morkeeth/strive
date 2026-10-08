@@ -10,7 +10,7 @@ export async function buildAgentFrontdoor({origin,revision}) {
    const path=`${dir}/${entry.name}`;
    if(entry.isSymbolicLink())throw new Error(`Source kit refuses symlink: ${path}`);
    if(entry.isDirectory())await collect(path);
-   else if(/\.py$/.test(path)||/^agentgrinder\/data\/[^/]+\.json$/.test(path))members.push(path);
+   else if(/\.py$/.test(path)||/^agentgrinder\/data\/[^/]+\.json$/.test(path)||/^agentgrinder\/assets\/[^/]+\.js$/.test(path))members.push(path);
   }
  }
  await collect('agentgrinder');
@@ -36,6 +36,11 @@ export async function buildAgentFrontdoor({origin,revision}) {
 Start here when a person gives you this site's link. Record real work, preview it privately, then let its owner choose what to share. This guide grants no access to another computer or private sessions.
 
 ## Choose your harness before running commands
+
+Native Cursor and Claude Code plugin: ${origin}/plugins/strive.zip
+Version and SHA-256: ${origin}/plugins/release.json
+Installation: ${origin}/plugins/install.md
+The native plugin selects real sessions across named projects and opens a blue local post-session editor. It can export a social image without posting. Use the native plugin for repeated capture; one-time capture routes remain below.
 
 - Grok Bot: use the Grok route below. Its standalone Python helpers need no pip install, CLI installation or saved skill.
 - Cursor: use the Cursor route below, in the person's own workspace with an explicitly selected session.
