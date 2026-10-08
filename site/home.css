@@ -121,3 +121,4 @@
  .home-community-jump{display:none}
 }
 @media(max-width:700px){#shell.home-shell{padding:0 12px}#shell.home-shell #app{padding-top:14px}.home-hero h1{font-size:23px;letter-spacing:-.7px}.home-hero .home-explanation{font-size:13px;line-height:1.4}.home-hero .home-private{display:none}.home-around{grid-template-columns:1fr}.home-welcome p{max-width:23ch;font-size:12px}.home-sort button{min-height:42px;padding:5px 10px}.home-community-jump{font-size:11px}}
+@media(max-width:360px){#shell.home-shell{padding:0 8px}}

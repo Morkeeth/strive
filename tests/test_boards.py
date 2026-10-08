@@ -26,8 +26,9 @@ def test_boards_read_public_runs_only_and_use_the_card_time_rule():
 
 def test_boards_route_is_discoverable():
     assert "if(q.has('boards'))return viewBoards();" in INDEX
-    tabs = INDEX[INDEX.index("function feedTabs"):INDEX.index("function discoverySourcesHtml")]
-    assert "tab('/?boards','boards','Leaderboard')" in tabs
+    menu = INDEX[INDEX.index('<nav id="product-nav"'):INDEX.index('</nav>', INDEX.index('<nav id="product-nav"'))]
+    assert 'href="/?boards" data-nav-page="boards">Activity</a>' in menu
+
 
 
 def test_profile_carries_a_heatmap_of_visible_runs():
@@ -39,4 +40,4 @@ def test_profile_carries_a_heatmap_of_visible_runs():
 
 def test_product_states_the_rules():
     assert "not quality or human effort" in PRODUCT
-    assert "Feed, My runs and Profile" in PRODUCT
+    assert "Feed, My runs and Discover" in PRODUCT

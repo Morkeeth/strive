@@ -544,6 +544,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.fade{opacity:1}.capture-actions .act:hover{transform:none}}
 
 </style><link rel="stylesheet" href="/social.css"><link rel="stylesheet" href="/people.css"><link rel="stylesheet" href="/account.css"><link rel="stylesheet" href="/feed.css"><link rel="stylesheet" href="/dropin.css"><link rel="stylesheet" href="/home.css"><link rel="stylesheet" href="/run-photos.css"><link rel="stylesheet" href="/activity.css">
+<link rel="stylesheet" href="/navigation.css">
 <script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};</script>
 <script defer src="/_vercel/insights/script.js"></script>
 </head>
@@ -551,7 +552,20 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <div class="bar"><div class="bar-in">
   <a class="mark" href="/">__BRAND__</a>
   <span class="alpha-label">Alpha</span>
-  <nav class="desktop-nav" aria-label="Main"><a href="/" data-section="feed">Feed</a><a href="/?mine" data-section="mine">My runs</a><a href="/?explore" data-section="discover">Discover</a></nav>
+  <nav id="product-nav" class="product-nav" aria-label="Primary">
+    <div class="product-nav-group" data-nav-group="feed">
+      <a class="product-nav-link" href="/" data-nav-page="feed"><span>Feed</span><small data-nav-context hidden></small></a>
+      <details class="product-nav-more"><summary aria-label="Feed views"><span aria-hidden="true">⌄</span></summary><div class="product-nav-panel"><a href="/?following" data-nav-page="following">Following</a></div></details>
+    </div>
+    <div class="product-nav-group" data-nav-group="mine">
+      <a class="product-nav-link" href="/?mine" data-nav-page="mine"><span>My runs</span><small data-nav-context hidden></small></a>
+      <details class="product-nav-more"><summary aria-label="My runs views"><span aria-hidden="true">⌄</span></summary><div class="product-nav-panel"><a href="/?day" data-nav-page="day">Today</a><a href="/?projects" data-nav-page="projects">Projects</a></div></details>
+    </div>
+    <div class="product-nav-group" data-nav-group="discover">
+      <a class="product-nav-link" href="/?explore" data-nav-page="discover"><span>Discover</span><small data-nav-context hidden></small></a>
+      <details class="product-nav-more"><summary aria-label="Discover views"><span aria-hidden="true">⌄</span></summary><div class="product-nav-panel"><a href="/?people" data-nav-page="people">Find people</a><a href="/?boards" data-nav-page="boards">Activity</a></div></details>
+    </div>
+  </nav>
   <div class="right">
     <a class="icon-button" href="/?post" aria-label="Add a run" title="Add a run"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></a>
     <button id="notifications-toggle" class="icon-button" type="button" aria-label="Notifications" aria-expanded="false" aria-controls="notifications-drawer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 16.5h11l-1.2-1.8V10a4.3 4.3 0 0 0-8.6 0v4.7l-1.2 1.8Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 19h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span id="nav-inbox-badge" class="nav-badge" hidden aria-hidden="true"></span></button>
@@ -563,11 +577,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
     <button id="auth" class="ghost">Sign in</button>
   </div>
 </div></div>
-<nav id="mobile-product-nav" class="tabbar" aria-label="Primary">
-  <a href="/" data-section="feed"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Feed</a>
-  <a href="/?mine" data-section="mine"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5zM8 9h8M8 13h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>My runs</a>
-  <a href="/?explore" data-section="discover"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Discover</a>
-</nav>
+
 <div id="notifications-scrim" class="notice-scrim" hidden></div>
 <aside id="notifications-drawer" class="notice-drawer" aria-label="Notifications" aria-hidden="true" inert><div class="notice-head"><h2>Notifications</h2><div class="notice-actions"><button id="notifications-read-all" class="ghost" type="button">Mark all read</button><button id="notifications-close" class="icon-button" type="button" aria-label="Close notifications">×</button></div></div><div id="notifications-body" class="notice-body"><p class="notice-empty">Loading…</p></div></aside>
 <div id="status"></div>
@@ -579,6 +589,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <footer class="site-foot"><span class="site-foot-line">Your agent runs, shared on your terms.</span><a href="/agents.md">For agents</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/?feedback">Send feedback</a><a href="/privacy#deletion" id="delete-info">Delete your data</a><span id="deletewrap" hidden><a href="/?account#danger" id="delete">Delete my __BRAND__ profile</a></span></footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/navigation.js"></script>
 <script src="/run-contract.js"></script>
 <script src="/historical-import.js"></script>
 <script src="/run-evidence.js"></script>
@@ -630,12 +641,12 @@ async function fetchPublicRunCount(){
   }catch(_){ return null; }
 }
 const $=id=>document.getElementById(id);
-// THE SHELL. rail | feed | side. A view that has no rail or no side column says so and the grid
-// closes up; nothing in the rail or the side is drawn from anything but a row this page fetched.
+// Every view shares the primary menu and content origin. The optional side holds page content.
 function frame(rail,side,wide){
   const sh=$('shell'); if(!sh) return;
-  $('rail').innerHTML=rail||''; $('side').innerHTML=side||'';
-  sh.className='shell'+(rail?'':' norail')+(side?'':' noside')+(wide?' wide':'');
+  $('rail').innerHTML=''; $('side').innerHTML=side||'';
+  sh.className='shell norail'+(side?'':' noside')+(wide?' wide':'');
+  setPrimarySection();
 }
 function projectStats(runs){
   const by={};
@@ -645,22 +656,9 @@ function projectStats(runs){
   return Object.entries(by).map(([name,v])=>({name,n:v.n,vpt:v.den?(v.num/v.den).toFixed(2):null}))
     .sort((a,b)=>b.n-a.n).slice(0,6);
 }
-function railHtml(active,runs){
-  const a=(href,label,on)=>`<a href="${href}"${on?' class="on" aria-current="page"':''}>${esc(label)}<span aria-hidden="true">›</span></a>`;
-  const identity=ME?`<div class="rail-profile">${GrinderFeed.face({profiles:ME},64)}<a class="rail-name" href="/?u=${encodeURIComponent(profileHandle(ME))}">${esc(ME.display_name||ME.name||profileHandle(ME))}</a><span class="meta">@${esc(profileHandle(ME))}</span><a class="rail-profile-link" href="/?u=${encodeURIComponent(profileHandle(ME))}">View profile →</a></div>`:`<div class="rail-profile rail-welcome"><strong>Your agents ran.<br>Your story goes here.</strong><a class="act blue" href="/?connect">Add your first run</a></div>`;
-  return identity+`<nav class="rail-main" aria-label="Product">`
-    +a('/','Feed',active==='feed'||active==='following')
-    +a('/?mine','My runs',active==='mine'||active==='runs')
-    +a('/?explore','Discover',active==='discover'||active==='people'||active==='boards')
-    +a('/?projects','Projects',active==='projects')+'</nav><a class="rail-agent" href="/?connect">Connect your agent <span aria-hidden="true">↗</span></a>';
-}
-function setPrimarySection(section){
-  document.querySelectorAll('[data-section]').forEach(el=>{
-    const on=el.getAttribute('data-section')===section;
-    el.classList.toggle('on',on);
-    if(on) el.setAttribute('aria-current','page'); else el.removeAttribute('aria-current');
-  });
-}
+// Compatibility hooks for view modules: navigation is rendered once in the shared header.
+function railHtml(){ return ''; }
+function setPrimarySection(){ window.StriveNavigation.sync(); }
 // A real public run, posted from a real session, for anyone who wants to see a card before making
 // one. It replaced the bundled sample on 25 Sep 2026: a stranger should meet a real run first.
 const REAL_RUN='/r/3afa89e7-aff5-488d-bec3-da36196b8c5e';
@@ -680,10 +678,7 @@ function syncAuthNav(){
   document.querySelectorAll('[data-auth="1"]').forEach(el=>{el.hidden=!ME});
   document.querySelectorAll('[data-you-links]').forEach(el=>{el.innerHTML=menuLinks('you')});
 }
-function feedTabs(active){
-  const tab=(href,key,label)=>`<a href="${href}" class="${active===key?'on':''}" ${active===key?'aria-current="page"':''}>${label}</a>`;
-  return `<nav class="feed-tabs" aria-label="Feed filters">${tab('/','home','Home')}${tab('/?following','following','Following')}${tab('/?explore','discover','Discover')}${tab('/?people','people','Find people')}${tab('/?boards','boards','Activity')}</nav>`;
-}
+function feedTabs(){ return ''; }
 function discoverySourcesHtml(){
   const sources=[
     ['AI Tinkerers','Local AI builder groups and demos','https://aitinkerers.org/'],
@@ -694,12 +689,8 @@ function discoverySourcesHtml(){
   ];
   return `<details class="discovery-sources"><summary>Find a community or your next build challenge</summary><p class="hint">Official directories. Opening a link does not register you or join a community.</p><nav class="discovery-links" aria-label="Communities and competitions">${sources.map(([name,about,url])=>`<a href="${url}" target="_blank" rel="noopener noreferrer"><strong>${name}</strong><span>${about}</span></a>`).join('')}</nav></details>`;
 }
-function myRunsTabs(active){
-  return `<nav class="section-tabs" aria-label="My runs"><a href="/?mine" class="${active==='runs'?'on':''}" ${active==='runs'?'aria-current="page"':''}>My runs</a><a href="/?day=${StriveDay.localDay(new Date())}" class="${active==='day'?'on':''}" ${active==='day'?'aria-current="page"':''}>Today</a></nav>`;
-}
-function communityTabs(active){
-  return `<nav class="section-tabs" aria-label="Community"><a href="/?community" class="${active==='hub'?'on':''}" ${active==='hub'?'aria-current="page"':''}>Overview</a><a href="/?forum" class="${active==='forum'?'on':''}" ${active==='forum'?'aria-current="page"':''}>Forum</a><a href="/?crews" class="${active==='crews'?'on':''}" ${active==='crews'?'aria-current="page"':''}>Crews</a><a href="/?challenges" class="${active==='challenges'?'on':''}" ${active==='challenges'?'aria-current="page"':''}>Challenges</a></nav>`;
-}
+function myRunsTabs(){ return ''; }
+function communityTabs(){ return ''; }
 async function viewCommunity(){
   setPrimarySection('community');
   frame(railHtml('community'), sidePanels([]));
@@ -2102,7 +2093,7 @@ async function viewExplore(){
   frame(railHtml('discover',R), null);
   // The feed is the feed. A first-time poster gets the "Your run goes here" slot under the
   // cards, never a command line above them (25 Sep 2026).
-  app.innerHTML=feedTabs('discover')+'<div class="discover-intro"><h1>Activity feed</h1><span class="meta">Latest public runs</span></div>'
+  app.innerHTML=feedTabs('discover')+'<div class="discover-intro"><h1>Discover</h1><span class="meta">Latest public runs</span></div>'
     +(R.length?(await feedCards(R,ad))+(R.length<4||first?GrinderFeed.nextSlot():'')
       :'<div class="card"><div class="empty"><h3>Recent runs</h3><p>Public runs from builders show up here.</p><div class="cta"><a class="act blue" href="/?post">Post a run</a><a class="act" href="/?people">Find people</a></div></div></div>')+discoverySourcesHtml();
   wireKudos(); countUp();
@@ -2534,7 +2525,7 @@ async function refreshAuth(){
         : `<span id="nav-avatar" class="profile-fallback">${esc((shown?.display_name||shown?.handle||'ME').slice(0,2).toUpperCase())}</span>`;
     }
     $('account-menu').hidden=!current.user;$('auth').hidden=!!current.user;$('auth').textContent='Sign in';$('deletewrap').hidden=!ME;if($('delete-info'))$('delete-info').hidden=!!ME;
-    $('mobile-product-nav').hidden=false;syncAuthNav();status('');
+    syncAuthNav();status('');
     if(social.refreshUnread) social.refreshUnread();
   }catch(e){if(generation!==AUTH_GENERATION)return;AUTH_USER=null;ME=null;IDENTITY_SETUP=null;status(e.detail?.message||'Sign-in could not be restored. Try again.',true);}
 }
@@ -2890,7 +2881,7 @@ function mountHomeCommunity(){
     if(RUN_VIEW_GENERATION!==generation||$('home-community'))return;if(!body){if(++tries<40)setTimeout(place,100);return}
     const slot=document.createElement('section');slot.id='home-community';slot.innerHTML=H.community(data);body.before(slot)};place()});
 }
-async function route(){ RUN_VIEW_GENERATION++;window.StriveRunPhotos?.disposeAll?.();account.recover(); try{document.title=pageTitle(new URLSearchParams(location.search))}catch(_){}
+async function route(){ setPrimarySection(); RUN_VIEW_GENERATION++;window.StriveRunPhotos?.disposeAll?.();account.recover(); try{document.title=pageTitle(new URLSearchParams(location.search))}catch(_){}
   if(ME && social.refreshUnread) social.refreshUnread();
   if(IDENTITY_SETUP)return viewIdentitySetup();
   restoreImport();
@@ -2952,10 +2943,10 @@ window.addEventListener('hashchange',event=>{
 document.addEventListener('DOMContentLoaded',()=>{
   $('app').innerHTML=skeletonCard();
   syncAuthNav();
-  // The avatar menu is the only dropdown. Product destinations live in the rail.
-  const menus=[...document.querySelectorAll('details.account-menu')];
+  // The product menu and profile menu share dismissal and focus behavior.
+  const menus=[...document.querySelectorAll('details.account-menu, details.product-nav-more')];
   menus.forEach(m=>m.addEventListener('toggle',()=>{ if(m.open) menus.forEach(o=>{ if(o!==m) o.open=false; }); }));
-  document.addEventListener('click',e=>{ menus.forEach(m=>{ if(m.open && !m.contains(e.target)) m.open=false; }); });
+  document.addEventListener('click',e=>{ menus.forEach(m=>{ if(m.open && (!m.contains(e.target)||e.target.closest('a'))) m.open=false; }); });
   document.addEventListener('keydown',e=>{ if(e.key!=='Escape') return; menus.forEach(m=>{ if(m.open){ m.open=false; m.querySelector('summary')?.focus(); } }); });
   const drawer=$('notifications-drawer'), scrim=$('notifications-scrim'), noticeToggle=$('notifications-toggle');
   const closeNotifications=()=>{if(!drawer)return;drawer.classList.remove('open');drawer.setAttribute('aria-hidden','true');drawer.setAttribute('inert','');noticeToggle?.setAttribute('aria-expanded','false');if(scrim){scrim.classList.remove('open');setTimeout(()=>{if(!scrim.classList.contains('open'))scrim.hidden=true},210)}};

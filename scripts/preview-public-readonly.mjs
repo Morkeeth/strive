@@ -15,7 +15,7 @@ const server=createServer(async(req,res)=>{try{
   const [photos,kudos]=await Promise.all([readPublicPhotos(run,publicFetch),readKudos(id,publicFetch)]);return res.end(publicHtml(run,{photos,kudos}));
  }
  if(u.pathname.startsWith('/public-read/')){
-  const path=u.pathname.slice('/public-read'.length),readRpc=['/rest/v1/rpc/read_day_card','/rest/v1/rpc/strava_profile_by_handle'].includes(path)&&req.method==='POST';
+  const path=u.pathname.slice('/public-read'.length),readRpc=['/rest/v1/rpc/read_day_card','/rest/v1/rpc/strava_profile_by_handle','/rest/v1/rpc/grinder_recent_builders','/rest/v1/rpc/grinder_find_people'].includes(path)&&req.method==='POST';
   if(!((req.method==='GET'||req.method==='HEAD')&&(path.startsWith('/rest/v1/')||path==='/auth/v1/settings'))&&!readRpc){res.writeHead(403);return res.end('Read-only preview');}
   const chunks=[];for await(const c of req)chunks.push(c);
   const out=await fetch(url+path+u.search,{method:req.method,headers:{apikey:key,authorization:'Bearer '+key,'accept-profile':'strava','content-profile':'strava','content-type':'application/json',...(req.headers.accept?{accept:req.headers.accept}:{}),...(req.headers.prefer?{prefer:req.headers.prefer}:{})},...(readRpc?{body:Buffer.concat(chunks)}:{})});
