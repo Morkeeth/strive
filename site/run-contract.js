@@ -782,7 +782,7 @@
       run.wall_time_s,
       run.duration_s,
     ];
-    const value = candidates.find((v) => typeof v === "number" && Number.isFinite(v) && v >= 0);
+    const value = candidates.find((v) => typeof v === "number" && Number.isFinite(v) && v > 0);
     if (value == null) return null;
     if (value < 60) return Math.round(value) + "s";
     const minutes = Math.round(value / 60);
@@ -792,7 +792,7 @@
   // that was drawn, not a generalised aggregate that can disagree with the card.
   // The headline strip is change and elapsed span; technical counters stay in detail.
   function heroStats(run) {
-    const cells=[],add=(label,value)=>{if(cells.length<3&&value!==null&&value!==undefined&&value!=='')cells.push([label,String(value)])};
+    const cells=[],add=(label,value)=>{if(cells.length<3&&value!==null&&value!==undefined&&value!==''&&Number(value)!==0)cells.push([label,String(value)])};
     const commits=recordedCount(run?.commits);if(commits!==null)add('Commits',commits);
     const elapsed=sessionLabel(run);if(elapsed)add('Elapsed',elapsed);
     const route=run?.code_route,projects=route?.v===1&&!route.unavailable&&Array.isArray(route.projects)?route.projects:[];

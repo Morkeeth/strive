@@ -45,3 +45,9 @@ const app=readFileSync('site/index.html','utf8'),page=new JSDOM(app).window.docu
 for(const name of ['og:description','twitter:description'])assert.doesNotMatch(page.querySelector(`meta[property="${name}"],meta[name="${name}"]`).content,/strava/i);
 assert.doesNotMatch(app.match(/<section class="home-hero">([\s\S]*?)<\/section>/)[1],/strava/i);
 assert.match(app,/No work route was captured for this run\./);
+
+assert.equal(A.project('CODE-worktrees-strava-night-review-20260915'),'STRIVE night review');
+assert.equal(A.project('CODE-worktrees-helicon-20261008'),'Helicon');
+assert.equal(A.project('agentic-strava'),'STRIVE');
+const zeroFacts=C.heroStats({commits:0,files_touched:0,duration_s:0,tool_calls:100});assert.equal(zeroFacts.length,0,'recorded zero counters remain in detail, not hero facts');
+assert.deepEqual(JSON.parse(JSON.stringify(C.heroStats({commits:8,duration_s:1980,files_touched:0}))),[['Commits','8'],['Elapsed','33m']]);
