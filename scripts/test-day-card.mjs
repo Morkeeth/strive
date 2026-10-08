@@ -85,7 +85,7 @@ assert.match(C.render(bd,{esc,mine:true,author:'a',windowLabel:'w',visualHref:'/
 assert.ok(!R(bd).includes('Choose a visual')&&R(bd).includes('No measured trace and no picture'),'a reader gets the sentence without the owner link');
 assert.match(C.render(d,{esc,mine:true,author:'a',windowLabel:'w',visualHref:'/v'}),/Add a photo or a screenshot to this page/);assert.ok(!html.includes('Add a photo'),'the prompt to add a visual is the owner\'s only');
 // Names an agent or a screen reader can ask for: the headline is a heading, each number a named group.
-assert.match(html,/<h2 class="dc-said">TEST DATA beta said<\/h2>/);assert.match(html,/role="group" aria-label="Tool calls: 15"/);assert.ok(!html.includes('aria-label="Session time'),'duration is not a default overview metric');assert.match(C.render(d,{esc,compact:false}),/role="group" aria-label="Commits: not recorded"/,'full detail names unknown numbers');assert.ok(!html.includes('aria-label="Commits: not recorded"'),'compact cards reserve metric space for recorded values');
+assert.match(html,/<h2 class="dc-said"><a href="\/\?run=b1">TEST DATA beta said<\/a><\/h2>/);assert.match(html,/role="group" aria-label="Tool calls: 15"/);assert.ok(!html.includes('aria-label="Session time'),'duration is not a default overview metric');assert.match(C.render(d,{esc,compact:false}),/role="group" aria-label="Commits: not recorded"/,'full detail names unknown numbers');assert.ok(!html.includes('aria-label="Commits: not recorded"'),'compact cards reserve metric space for recorded values');
 // PAGE SELECTOR: numbered links with their own names and addresses, built from the pages this reader has.
 const nav=C.render(d,{esc,mine:false,author:'a',windowLabel:'w',start:2,pageHref:(k,i)=>`/?day=x&page=${k}`});
 assert.deepEqual([...nav.matchAll(/class="dc-page" href="([^"]*)" data-goto="(\d)" aria-label="([^"]*)" (aria-current="page")?/g)].map(m=>[m[3],m[1],!!m[4]]),
@@ -156,3 +156,6 @@ assert.match(C.render(deck,{esc,mine:false}),/60%/);assert.match(C.render(deck,{
  assert.ok(!C.render(captionDeck,{esc}).includes(captionRun.note));
  const resultDeck=C.slides(D.compute([{...captionRun,story_result:'TEST DATA explicit result'}],'2026-10-05',label),tokens,null);
  assert.equal(resultDeck.slides[0].result,'TEST DATA explicit result');}
+
+// A partial project sum must not look like a complete count; recorded zero takes precedence over fallback.
+{const data=[{id:'m1',project:'mixed',started_at:at(9),duration_s:60,tool_calls:12},{id:'m2',project:'mixed',started_at:at(10),duration_s:60,tool_calls:null},{id:'z1',project:'zero',started_at:at(11),duration_s:60,tool_calls:0,ridge_tool_calls:17}];const m=D.compute(data,'2026-10-05',label),t=new Map();for(const g of m.groups)t.set(g.label,await C.token('owner','k',g.label));const x=C.slides(m,t,null);assert.equal(x.slides.find(s=>s.name==='mixed').facts.tools.value,null);assert.equal(x.slides.find(s=>s.name==='zero').facts.tools.value,0);}

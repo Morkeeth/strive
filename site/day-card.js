@@ -75,6 +75,7 @@
     // is confirmed, and keeps it when there is none.
     // An author who picked a picture and then set the card to Data has said: no pictures.
     const cover=g=>{if(c.photo&&c.visual==='data')return null;const r=told(g).open;return r&&r.id&&g.runs.some(i=>i.run.id===r.id)?{kind:'screenshot',run:r.id,id:'',cover:true,focus:'center',of:g.label,lone:false}:null};
+    const toolsOf=g=>{const values=g.runs.map(i=>i.run.tool_calls??i.run.ridge_tool_calls);return values.length&&values.every(v=>Number.isFinite(v)&&v>=0)?values.reduce((a,v)=>a+v,0):null};
     const project=g=>{const [a,b]=ends(g),cm=commitsOf(g),choice=c.projectVisuals[tk(g)];
       const selectedRun=choice&&choice.photo&&[...g.runs.map(i=>i.run),...g.marks.map(m=>m.run)].find(r=>r.id===choice.photo.run);
       const selectedVisual=selectedRun&&choice.visual!=='data'?{kind:choice.visual,run:selectedRun.id,id:choice.photo.id,focus:choice.focus,lone:!!selectedRun.visibility&&selectedRun.visibility!=='public',of:g.label}:null;
@@ -82,14 +83,13 @@
       return {kind:'project',key:tk(g),name:g.label,group:g,visual:choice?selectedVisual:picture(g)||cover(g),open:told(g).open,from:a,until:b,result:told(g).result,highlights:c.highlights?said.slice(0,3):[],
         facts:{commits:cm?{value:cm.n,note:cm.from==='git'?'from git history':'recorded by the runs'}:{value:null},session:{value:g.seconds>0?span(g.seconds):null,note:'summed across runs'},
           elapsed:{value:a&&b?span((b-a)/1000):null},runs:{value:g.runs.length,note:g.marks.length?`plus ${plural(g.marks.length,'git window')}`:''},
-          tools:{value:g.runs.reduce((s,i)=>s+(i.run.tool_calls||i.run.ridge_tool_calls||0),0)||null}}}};
+          tools:{value:toolsOf(g)}}}};
     // A project gets its own view when it has a captured session or a written result. A project known
     // only from git history stays in the totals and the ring, without a view of its own.
     const featured=groups.filter(g=>g.runs.length||told(g).result),quiet=groups.length-featured.length;
     const per=featured.map(project);
     // The pie: how the run divides between its projects. Commits where any project has a count,
     // otherwise summed session time. The unit is always named beside it.
-    const toolsOf=g=>{const values=g.runs.map(i=>i.run.tool_calls??i.run.ridge_tool_calls);return values.length&&values.every(v=>Number.isFinite(v)&&v>=0)?values.reduce((a,v)=>a+v,0):null};
     const byTools=groups.filter(g=>(toolsOf(g)||0)>0).length>=2;
     const byCommits=!byTools&&groups.some(g=>commitsOf(g)&&commitsOf(g).n>0),weight=g=>byTools?(toolsOf(g)||0):byCommits?(commitsOf(g)?commitsOf(g).n:0):g.seconds;
     const sum=groups.reduce((a,g)=>a+weight(g),0),pie={unit:byTools?'tool calls':byCommits?'commits':'session time',total:sum,source:byTools?'captured tool calls; activity, not quality':byCommits?(groups.every(g=>!commitsOf(g)||commitsOf(g).from==='git')?'git history':groups.some(g=>commitsOf(g)&&commitsOf(g).from==='git')?'git history and runs':'recorded by the runs'):'first message to last, summed across runs',
@@ -176,10 +176,10 @@
   }
   // THE OWNER MENU. The same four entries wherever the owner meets their card. A reader is never given it.
   const MENU=[['edit','Edit card'],['visual','Choose visual'],['reader','Preview as reader'],['sharing','Sharing']];
-  function ownerMenu(hrefs,esc,current=''){
+  function ownerMenu(hrefs,esc,current='',id='dc-menu-list'){
     if(!hrefs)return '';
-    return `<div class="dc-menu"><button type="button" class="dc-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="dc-menu-list" aria-label="Card options">⋯</button>
-      <div class="dc-menu-list" id="dc-menu-list" role="menu" aria-label="Card options" hidden>${MENU.filter(([k])=>hrefs[k]).map(([k,label])=>`<a role="menuitem" href="${esc(hrefs[k])}" ${k===current?'aria-current="page"':''}>${label}</a>`).join('')}</div></div>`;
+    return `<div class="dc-menu"><button type="button" class="dc-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="${esc(id)}" aria-label="Card options">⋯</button>
+      <div class="dc-menu-list" id="${esc(id)}" role="menu" aria-label="Card options" hidden>${MENU.filter(([k])=>hrefs[k]).map(([k,label])=>`<a role="menuitem" href="${esc(hrefs[k])}" ${k===current?'aria-current="page"':''}>${label}</a>`).join('')}</div></div>`;
   }
   function wireMenu(host){
     const box=host&&host.querySelector('.dc-menu');if(!box||box.dataset.wired)return;box.dataset.wired='1';
@@ -209,7 +209,7 @@
     const what=P.unit==='tool calls'?'tool-call count':P.unit==='commits'?'commit count':'session time',not=(zero?` ${plural(zero,'project')} with ${P.unit==='tool calls'?'0 tool calls':P.unit==='commits'?'0 commits':'no session time'}.`:'')+(left?` ${plural(left,'project')} not counted: no ${what} recorded.`:'');
     if(s.kind==='project'){
       const own=P.parts.find(p=>p.key===s.key),says=mine?`<b>${Math.round(mine.share*100)}%</b> of the run's ${unit}: ${amount(mine.value)} of ${amount(P.total)}`:own&&own.known?`<b>0%</b> of the run's ${unit}: ${P.unit==='tool calls'?'0 tool calls recorded':P.unit==='commits'?'0 commits recorded':'no session time recorded'} for this project`:`Not in the split: no ${what} recorded for this project`;
-      return `<div class="dc-share dc-share-one"><svg class="dc-pie" viewBox="0 0 100 100" role="img" aria-label="${mine?`${esc(s.name)}: ${Math.round(mine.share*100)} percent of the run's ${unit}`:`${esc(s.name)} is not in the split`}">${ring}</svg><p class="dc-share-says">${says}<span>Share of ${amount(P.total)} ${P.unit!=='session time'?P.unit:'of session time'}, ${esc(P.source)}.${not}</span></p></div>`}
+      return `<div class="dc-share dc-share-one"><svg class="dc-pie" viewBox="0 0 100 100" role="img" aria-label="${mine?`${esc(s.name)}: ${Math.round(mine.share*100)} percent of the run's ${unit}`:`${esc(s.name)} is not in the split`}">${ring}</svg><p class="dc-share-says"><span class="dc-share-full">${says}</span>${mine?`<span class="dc-share-brief" aria-hidden="true"><b>${Math.round(mine.share*100)}%</b><em>of ${amount(P.total)} ${unit}</em></span>`:''}<span>Share of ${amount(P.total)} ${P.unit!=='session time'?P.unit:'of session time'}, ${esc(P.source)}.${not}</span></p></div>`}
     const row=(p,i)=>{const at=p.other?-1:jump(p.key),name=at>=0?`<a class="dc-jump" href="${esc(jump.href(p.key,at))}" data-goto="${at}">${esc(p.name)}</a>`:esc(p.name);
       return `<li><i style="background:${p.other?'var(--rule)':shade(i,Math.max(2,top.length))}"></i><span class="dc-share-n">${name}</span><span class="dc-share-v">${Math.round(p.share*100)}% · ${amount(p.value)}</span></li>`};
     return `<div class="dc-share"><svg class="dc-pie" viewBox="0 0 100 100" role="img" aria-label="${plural(known.length,'project')} by ${unit}"><title>${plural(known.length,'project')} by ${unit}</title>${ring}<text x="50" y="49" text-anchor="middle" class="dc-pie-n">${known.length}</text><text x="50" y="62" text-anchor="middle" class="dc-pie-k">projects</text></svg>
@@ -232,7 +232,7 @@
   }
   // CARD ANATOMY, the same on every page of every card: identity and date, the page selector, one short
   // outcome, ONE main visual, project continuation, expandable activity, and the shared action row.
-  function render(deck,{esc,mine,author,windowLabel,start=0,compact=true,cardId='day-card',setupHref,visualHref,menu=null,menuAt='',actions='',runHref=(id)=>`/?run=${encodeURIComponent(id)}`,pageHref=(key,i)=>`?card=${i}`,projectHref=(name)=>`/?project=${encodeURIComponent(name)}&scope=${mine?'mine':'public'}`}){
+  function render(deck,{esc,mine,author,authorHref='',avatarHtml='',audienceLabel='',windowLabel,start=0,compact=true,cardId='day-card',setupHref,visualHref,menu=null,menuAt='',actions='',runHref=(id)=>`/?run=${encodeURIComponent(id)}`,pageHref=(key,i)=>`?card=${i}`,projectHref=(name)=>`/?project=${encodeURIComponent(name)}&scope=${mine?'mine':'public'}`}){
     const S=deck.slides;if(!S.length)return '';
     const c=deck.choices,at=Math.max(0,Math.min(S.length-1,start|0)),many=S.length>1;
     const fact=(s,id)=>{const f=s.facts[id],none=f.value===null||f.value===undefined,note=!none&&SHORT[f.note];
@@ -246,12 +246,12 @@
         <ol class="dc-points">${s.points.map(p=>`<li><a href="${esc(runHref(p.run.id))}"><span class="dc-when">${esc(p.at.toLocaleDateString(undefined,{weekday:'short'}))} ${hm(p.at)} · ${esc(p.name)}</span>${esc(p.text)}</a></li>`).join('')}</ol>
         ${s.total>s.points.length?`<p class="dc-more">The latest ${s.points.length} of ${s.total}.</p>`:''}</section>`;
       const ids=(s.kind==='whole'?c.facts.whole:c.facts.project).filter(id=>s.facts[id]),high=s.kind==='whole'?s.highlights.filter(h=>h.text!==s.result).slice(0,2):[];
-      const visibleIds=compact?[...ids,...['runs','tools','commits']].filter((id,i,all)=>all.indexOf(id)===i&&s.facts[id]&&s.facts[id].value!==null&&s.facts[id].value!==undefined).slice(0,2):ids;
+      const visibleIds=compact?[...ids,...['runs','tools','commits']].filter((id,i,all)=>all.indexOf(id)===i&&s.facts[id]&&s.facts[id].value!==null&&s.facts[id].value!==undefined).slice(0,3):ids;
       const next=s.kind==='project'&&typeof s.open?.story_next==='string'?s.open.story_next.trim():'';
       let output=null;try{const u=new URL(s.open?.output_url);if(['http:','https:'].includes(u.protocol)&&!u.username&&!u.password)output=u.href}catch(_){}
 
       return `<section class="dc-slide" data-slide="${i}" data-key="${esc(s.key)}" data-name="${esc(s.name)}" ${s.open?`data-run-id="${esc(s.open.id)}" data-open="${esc(runHref(s.open.id))}"`:''} ${i===at?'':'hidden'} aria-label="${esc(s.name)}">
-        <div class="dc-story">${s.kind==='project'?`<p class="dc-project-name">${esc(s.name)}</p>`:''}${s.result?`<h2 class="dc-said">${esc(lede(s)[0])}</h2>${s.draft&&mine&&setupHref?`<p class="dc-draft-row"><a class="dc-draft" href="${esc(setupHref)}">Draft headline. Write your own</a></p>`:''}${lede(s)[1]?`<p class="dc-rest">${esc(lede(s)[1])}</p>`:''}`:`<p class="dc-said dc-none">${compact?'No description yet.':mine?'Work saved. Add what happened, even if it is unfinished.':'Captured work. The author has not added an outcome.'}</p>`}${mine&&s.kind==='project'&&s.open?`<a class="dc-write" href="${esc(runHref(s.open.id))}#run-edit">${s.result?'Edit the story':'Write what happened'} →</a>`:''}</div>
+        <div class="dc-story">${s.kind==='project'?`<p class="dc-project-name">${esc(s.name)}</p>`:''}${s.result?`<h2 class="dc-said">${s.open?`<a href="${esc(runHref(s.open.id))}">${esc(lede(s)[0])}</a>`:esc(lede(s)[0])}</h2>${s.draft&&mine&&setupHref?`<p class="dc-draft-row"><a class="dc-draft" href="${esc(setupHref)}">Draft headline. Write your own</a></p>`:''}${lede(s)[1]?`<p class="dc-rest">${esc(lede(s)[1])}</p>`:''}`:`<p class="dc-said dc-none">${compact?'No description yet.':mine?'Work saved. Add what happened, even if it is unfinished.':'Captured work. The author has not added an outcome.'}</p>`}${mine&&s.kind==='project'&&s.open?`<a class="dc-write" href="${esc(runHref(s.open.id))}#run-edit">${s.result?'Edit the story':'Write what happened'} →</a>`:''}</div>
         <div class="dc-measured" aria-label="Measured project activity">${share(s,esc,jump)}<div class="dc-facts">${visibleIds.map(id=>fact(s,id)).join('')}</div></div>
         ${s.kind!=='whole'||s.visual?visual(s,{esc,mine,visualHref,runHref,jump}):''}
         ${next?`<div class="dc-next"><b>Still open</b><p>${esc(next)}</p></div>`:''}
@@ -261,11 +261,11 @@
     // The selector is a list of real links. Each has an address of its own and a name a screen reader or an
     // agent can ask for: its number and the page it opens. The names come from this deck only, so a
     // reader's selector can never carry the name of a project they cannot see.
-    const pages=many?`<nav class="dc-pages" aria-label="Pages of this card"><p class="dc-pos" aria-live="polite"><b>${esc(S[at].name)}</b> · ${at+1} of ${S.length}</p>
-        <div class="dc-steps"><button type="button" class="dc-arrow" data-step="-1" aria-label="Previous project" ${at===0?'disabled':''}>‹</button><button type="button" class="dc-arrow" data-step="1" aria-label="Next project" ${at===S.length-1?'disabled':''}>›</button><button type="button" class="dc-auto" data-auto hidden aria-pressed="false">Pause</button></div>
-        <details class="dc-chapters"><summary>Choose chapter</summary><ol class="dc-dots">${S.map((s,i)=>`<li><a class="dc-page" href="${esc(pageHref(s.key,i))}" data-goto="${i}" aria-label="${i+1} ${esc(s.name)}" ${i===at?'aria-current="page"':''}>${esc(s.name)}</a></li>`).join('')}</ol></details></nav>`:'';
+    const pages=many?`<nav class="dc-pages" aria-label="Pages of this card">
+        <details class="dc-chapters"><summary aria-label="Choose project"><span class="dc-pos" aria-live="polite"><b>${esc(S[at].name)}</b> · ${at+1} of ${S.length}</span></summary><ol class="dc-dots">${S.map((s,i)=>`<li><a class="dc-page" href="${esc(pageHref(s.key,i))}" data-goto="${i}" aria-label="${i+1} ${esc(s.name)}" ${i===at?'aria-current="page"':''}>${esc(s.name)}</a></li>`).join('')}</ol></details>
+        <div class="dc-steps"><button type="button" class="dc-arrow" data-step="-1" aria-label="Previous project" ${at===0?'disabled':''}>‹</button><button type="button" class="dc-arrow" data-step="1" aria-label="Next project" ${at===S.length-1?'disabled':''}>›</button><button type="button" class="dc-auto" data-auto hidden aria-pressed="false">Pause</button></div></nav>`:'';
     return `<article class="card dc${compact?' dc-compact':''}" id="${esc(cardId)}" tabindex="0" data-at="${at}" data-count="${S.length}" aria-roledescription="${many?'carousel':'card'}">
-      <header class="dc-head"><p class="meta">${esc(author||'')}${author?' · ':''}${esc(windowLabel)}</p>${mine?ownerMenu(menu,esc,menuAt):''}</header>
+      <header class="dc-head">${avatarHtml?`<span class="dc-avatar">${avatarHtml}</span>`:''}<div class="dc-identity">${authorHref?`<a class="dc-author" href="${esc(authorHref)}">${esc(author||'Builder')}</a>`:`<strong class="dc-author">${esc(author||'Builder')}</strong>`}<p class="meta">${esc(windowLabel)} · Agent run</p></div>${mine?ownerMenu(menu,esc,menuAt,cardId+'-menu-list'):''}</header>${audienceLabel?`<p class="dc-audience">${esc(audienceLabel)}</p>`:''}
       ${c.title?`<p class="dc-day-title">${esc(c.title)}</p>`:''}
       ${pages}
       ${S.map(slide).join('')}

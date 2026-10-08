@@ -20,7 +20,7 @@
     if(!payload||payload.schema!=='strive-day-drafts-v1'||!DAY.test(String(payload.day||''))||!Array.isArray(payload.runs)||payload.runs.length>100
       ||!Array.isArray(history)||history.length>400||!(payload.runs.length+history.length))
       throw new Error('This is not a day review link from agentgrinder capture day.');
-    return {day:payload.day,project:typeof payload.project==='string'?payload.project:null,runs:payload.runs,history};
+    return {day:payload.day,...(payload.selection_label==='Selected sessions'?{selection_label:'Selected sessions'}:{}),project:typeof payload.project==='string'?payload.project:null,runs:payload.runs,history};
   }
   // A git-history row carries counts, times and hashes only. Its shape is checked here so a bad row
   // is refused on the page with a reason; the database guard remains the authority at save.
@@ -76,7 +76,7 @@
     for(const d of drafts){if(d.state!=='ready')continue;const hit=match(d.run,existing);if(hit){d.state='saved';d.id=hit.id;d.note='Already in My runs'}}
     const groups=new Map();for(const h of hist){const key=h.row?(h.row.project||'No project named'):'Unreadable rows';const g=groups.get(key)||{name:key,items:[]};g.items.push(h);groups.set(key,g)}
     const gitGroups=[...groups.values()],gitTicked=new Set(gitGroups.filter(g=>g.items.some(h=>h.state==='ready')).map(g=>g.name));
-    slot.innerHTML=`<div class="head"><h1>Review ${drafts.length} drafts${hist.length?` and ${hist.length} windows of git history`:''} for ${esc(day.day)}</h1></div>
+    slot.innerHTML=`<div class="head"><h1>Review ${drafts.length}${day.selection_label?' selected':''} drafts${hist.length?` and ${hist.length} windows of git history`:''}${day.selection_label?'':' for '+esc(day.day)}</h1></div>
       <p class="hint">Nothing is saved yet. Tick the drafts you want. Each one is saved as <b>Only me</b>; sharing is a separate choice you make later on each run.</p>
       ${lookupFailed?'<p class="hint" role="alert">Could not check which drafts are already saved. Saving is still safe to try: a draft saved before is refused or shown as a second run you can delete.</p>':''}
       <div class="card dd-bar"><label>Project for the ticked drafts<input id="dd-project" maxlength="120" value="${esc(day.project||'')}" placeholder="Leave empty to keep each draft's own project"></label>
@@ -86,7 +86,7 @@
       <div class="dd-foot"><button type="button" class="act blue" id="dd-save"></button><span id="dd-summary" role="status"></span></div>`;
     const histList=slot.querySelector('#dd-hist'),list=slot.querySelector('#dd-list'),project=slot.querySelector('#dd-project'),save=slot.querySelector('#dd-save'),summary=slot.querySelector('#dd-summary');
     const ticked=new Set(drafts.filter(d=>d.state==='ready').map(d=>d.i));
-    const facts=run=>[run.harness||'Harness unknown',clock(run.started),run.duration_s==null?'duration unknown':`${Math.round(run.duration_s/60)} min`,
+    const facts=run=>[run.harness||'Harness unknown',day.selection_label?new Date(run.started).toLocaleString([], {dateStyle:'medium',timeStyle:'short'}):clock(run.started),run.duration_s==null?'duration unknown':`${Math.round(run.duration_s/60)} min`,
       run.turns_typed==null?'typed turns unknown':`${run.turns_typed} typed turns`,run.tool_calls==null?'tool calls unknown':`${run.tool_calls} tool calls`,
       run.commits==null?'commits unknown':`${run.commits} commits`,((run.capture_metadata&&run.capture_metadata.models)||[]).join(', ')||'model unknown'].join(' · ');
     const exact=d=>{const row=rowFor(d.run,{...deps,profileId:owner,project:project.value});delete row.profile_id;return JSON.stringify(row,null,1)};
@@ -137,7 +137,7 @@
       }
       for(const g of gitGroups)if(!g.items.some(h=>h.state==='ready'||h.state==='failed'))gitTicked.delete(g.name);
       busy=false;paint();
-      summary.innerHTML=`${saved} saved for Only me${failed?`, ${failed} not saved. Their reasons are on the rows; press Save again to retry only those.`:'.'} <a href="/?day=${encodeURIComponent(day.day)}">Open the day</a>`;
+      summary.innerHTML=`${saved} saved for Only me${failed?`, ${failed} not saved. Their reasons are on the rows; press Save again to retry only those.`:'.'} ${day.selection_label?'<a href="/?mine">Open My runs</a>':`<a href="/?day=${encodeURIComponent(day.day)}">Open the day</a>`}`;
       status(failed?`${saved} saved, ${failed} not saved.`:`${saved} saved for Only me.`,!!failed);
     };
     paint();return true;

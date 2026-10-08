@@ -9,11 +9,11 @@ import {runPhotos} from '../server/run-photos.mjs';
 const {db}=await bootDisposable();await seedJourneyActors(db);
 const fixtureRuns=[];
 for(let i=1;i<=20;i++){
- const owner='33000000-0000-4000-a000-'+String(i).padStart(12,'0');
- await db.query("insert into strava.profiles(id,auth_uid,handle,display_name,name) values($1,$1,$2,$3,$3)",[owner,'test-builder-'+i,'TEST DATA Builder '+i]);
+ const owner=i===1?CASEY:'33000000-0000-4000-a000-'+String(i).padStart(12,'0');
+ if(i!==1)await db.query("insert into strava.profiles(id,auth_uid,handle,display_name,name) values($1,$1,$2,$3,$3)",[owner,'test-builder-'+i,'TEST DATA Builder '+i]);
  for(let j=0;j<2;j++){
  const id=(await db.query("insert into strava.runs(profile_id,title,visibility,harness,schema_version,measurement_revision,trace_basis,started_at,prompts,tool_calls,duration_s,project,story_result,rhythm) values($1,$2,'private','Codex',1,$3,'elapsed',now(),3,$4,$5,$6,$7,'[1,2,1]') returning id",[owner,'TEST DATA compact project '+j,(i*2+j).toString(16).padStart(64,'0'),20+i+j*17,1200+j*400,j?'Garden planner':'Photo journal',j?'Added a weekly view.':'A new way to arrange the week.'])).rows[0].id;
- await db.query("update strava.runs set visibility='public' where id=$1",[id]);
+ if(i!==1||j===0)await db.query("update strava.runs set visibility='public' where id=$1",[id]);
  fixtureRuns.push({id,owner,i,j});
  }
 }

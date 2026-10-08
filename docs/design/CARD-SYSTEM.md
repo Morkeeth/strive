@@ -191,3 +191,12 @@ This correction supersedes older overview and collapsed-data descriptions above:
 ## 9. Oscar correction · 8 October · compact overview
 
 Supersedes earlier image-first and expanded anatomy. A feed must work with 20 people posting: compact author/date/project, pie and concise metrics first, bounded image second, project arrows in each card. Details open the full run. Comments expand inside the card and bind to the selected run; changing project closes the old thread. Same shared renderer on day and feed. Screenshots remain whole; no crop can stand in for an original photograph. Mobile targets remain usable and carousel controls expose project/run identity.
+
+
+## 10. Eric reference · 8 October evening
+
+The activity feed follows Strava's readable sequence: author and date, project/title, measured stats, selected visual, social actions. STRIVE keeps its white/blue identity and project share ring. A desktop feed is one readable column; the shell has a profile/sidebar and top navigation. Small screens keep a bottom navigation and one card per row. The selected project changes its chart, facts and image together. Project names remain real links in an accessible chooser. Feed project selections survive Back, Forward and Reload using feed-scoped query parameters; full-card links retain their project token.
+
+Cards show up to three known author-selected facts, preserving their order, and omit unrecorded compact facts. Recorded zero is a measurement and is retained. The project's tool-call total is shown only when every captured run in that project carries a valid measurement; partial sums cannot pose as totals. Author-written run captions remain above the bounded image. Generic image-attribution lines stay out of the compact feed; full views keep image context. Profile recent activity uses the same saved-choice card renderer as the feed. Profile counts explicitly state their loaded window.
+
+Official reference read for this change: [feed stats](https://support.strava.com/en-us/articles/15401664-activity-stats-in-the-feed), [profile structure](https://support.strava.com/en-us/articles/15402175-your-strava-profile-page), and [activity history](https://support.strava.com/en-us/articles/15402014-viewing-your-activity-history-on-strava). STRIVE copies no logos or media. Public `/r/` remains server-rendered; its older layout is a remaining surface difference.

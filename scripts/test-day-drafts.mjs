@@ -62,3 +62,5 @@ assert.throws(()=>D.historyRow({...py[0],history_evidence:{...py[0].history_evid
 assert.equal(D.parse({schema:'strive-day-drafts-v1',day:'2026-10-05',runs:[],history:py}).history.length,3,'a link may carry git history alone');
 assert.throws(()=>D.parse({schema:'strive-day-drafts-v1',day:'2026-10-05',runs:[],history:[]}),/not a day review link/);
 console.log('PASS: git history rows match the browser importer; review link shape, already-saved matching, private-only rows, declared project label');
+
+const selected=D.parse({schema:'strive-day-drafts-v1',day:'2026-10-08',selection_label:'Selected sessions',runs:[run,{...run,started:'2026-10-07T10:00:00Z'}]});assert.equal(selected.selection_label,'Selected sessions');assert.equal(selected.runs[0].started,run.started,'a cross-date review retains each original date');assert.equal(D.parse({schema:'strive-day-drafts-v1',day:'2026-10-08',selection_label:'<script>',runs:[run]}).selection_label,undefined,'unrecognised labels are not surfaced');

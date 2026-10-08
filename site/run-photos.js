@@ -157,8 +157,8 @@
         if(!current())return;
         card.querySelectorAll('.run-media').forEach(el=>el.remove());
         const body=card.querySelector('.history-visual')||card.querySelector('.fc-body');
-        if(body){const lead=body.querySelector('.fc-cap')||body.querySelector('.fc-title');if(lead)lead.after(group);else body.prepend(group)}
-        else{const title=card.querySelector('.run-title-row');if(title)title.after(group);else card.prepend(group)}
+        if(body){const lead=body.querySelector('.fc-activity-stats')||body.querySelector('.fc-cap')||body.querySelector('.fc-title');if(lead)lead.after(group);else body.prepend(group)}
+        else{const title=card.querySelector('.run-metrics')||card.querySelector('.note')||card.querySelector('.run-title-row');if(title)title.after(group);else card.prepend(group)}
         images.add(group);
       }catch(_){}
     }));

@@ -38,6 +38,7 @@ const client={rpc:async(name,args)=>{calls++;assert.equal(name,'read_day_card');
 const feedSource=source.slice(source.indexOf('async function feedCards('),source.indexOf('// A stranger lands'));
 const feed=new Function('sb','StriveDay','StriveDayCard','esc','setTimeout',feedSource+';return feedCards;')(client,Day,Card,s=>String(s),()=>{});
 const rendered=await feed(rows,{});
+assert.ok(!rendered.includes('href="/?u="'),'unknown author handle is plain text, not a broken profile link');
 assert.equal(calls,1);assert.ok(rendered.includes(photo),'feed preserves saved specific photo');
 assert.ok(rendered.indexOf('aria-label="Tool calls: 7"')<rendered.indexOf('aria-label="Runs: 1"'),'feed preserves saved fact order');
 fail=true;const failed=await feed(rows,{});assert.ok(failed.includes('Card choices could not load'));assert.ok(!failed.includes('dc-slide'),'failed choice read does not silently show ignored preferences');
