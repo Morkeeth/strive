@@ -11,6 +11,8 @@ python3 scripts/strive-plugin.py install claude
 
 The Cursor installer copies a self-contained native plugin to `~/.cursor/plugins/local/strive`. Reload Cursor and check Customize → Plugins. Local imports must be allowed; a marketplace install with the same name takes precedence. Claude installation uses the actual `claude plugin marketplace add` and `claude plugin install` commands against a private local marketplace. Restart Claude Code, then invoke `/strive:strive`. For a disposable installation, add `--config-dir /temporary/config` to either installer command.
 
+Cursor can also import Claude plugins automatically. The Claude-installed copy therefore has an explicit empty Cursor component map. Its imported entry is labelled “STRIVE for Claude Code (inactive in Cursor)” and contributes no second skill or hook; use the native STRIVE local entry in Cursor. The installer does not change your third-party import setting or disable other plugins.
+
 Build a portable bundle without installing: `python3 scripts/strive-plugin.py build /new/bundle/strive`. It includes both native manifests and a full copy of the same Python capture runtime, with no symlinks or downloads. Both clients support a local `--plugin-dir /new/bundle/strive` for testing. There is no marketplace publication in this workflow.
 
 From the installed bundle, use `python3 scripts/strive.py --help`. Start with `doctor`, register each named project, choose a source with `sessions --project NAME`, capture selected sittings, then `review` their draft IDs. The review lists exactly which sessions and projects count, shows measured models only, and exposes the exact metrics bytes. The existing STRIVE batch preview lets you select and save cards as Only me.
