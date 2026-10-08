@@ -162,6 +162,12 @@
     return text;
   }
   function validateCheckpointSource(source) {
+    const sourceText = (value, field) => {
+      const text = rejectRouteText(value, field);
+      if (/(?:^|[\s"'])(?:\/(?:Users|home|private)\/|~[/\\]|[A-Za-z]:[\\/])/.test(text)) throw new Error(field + ' must not carry local paths.');
+      if (/(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN)/.test(text)) throw new Error(field + ' must not carry credentials.');
+      return text;
+    };
     const object = (value, keys, field) => {
       if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(k => !keys.includes(k)))
         throw new Error(field + ' has unsupported fields.');
@@ -176,21 +182,21 @@
       if (typeof commit.sha !== 'string' || !/^[a-f0-9]{40}$/.test(commit.sha) || seen.has(commit.sha)) throw new Error('source commit needs a unique full SHA.');
       seen.add(commit.sha);
       if (Object.hasOwn(commit, 'subject')) {
-        const subject = rejectRouteText(commit.subject, 'commit subject');
+        const subject = sourceText(commit.subject, 'commit subject');
         if (subject !== commit.subject || subject.length > 160 || /[^\x20-\x7e]/.test(subject)) throw new Error('commit subject must be one short line.');
       }
       if (Object.hasOwn(commit, 'url')) {
         if (typeof commit.url !== 'string' || !/^https:\/\/github\.com\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/commit\/[a-f0-9]{40}$/.test(commit.url) || !commit.url.endsWith('/'+commit.sha))
           throw new Error('commit URL must identify the exact GitHub commit.');
         if (commit.url.split('/').slice(3,5).some(p => p === '.' || p === '..')) throw new Error('commit URL must name a repository.');
-        rejectRouteText(commit.url, 'commit URL');
+        sourceText(commit.url, 'commit URL');
       }
     }
     if (Object.hasOwn(source, 'files')) {
       if (!Array.isArray(source.files) || source.files.length > 20 || source.files.length > source.files_changed || new Set(source.files).size !== source.files.length)
         throw new Error('source files must be a bounded observed selection.');
       for (const file of source.files) {
-        const name = rejectRouteText(file, 'source file');
+        const name = sourceText(file, 'source file');
         if (name.length > 160 || name !== file || name.split('/').some(p => !/^[A-Za-z0-9_][A-Za-z0-9_.-]*$/.test(p)))
           throw new Error('source file must be a safe repository-relative path.');
       }

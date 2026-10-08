@@ -23,6 +23,7 @@ for (const mutate of [
  s=>{s.commits[0].subject='/Users/oscar/local'}, s=>{s.files=['../outside']},
  s=>{s.files=['folder/secret.env']}, s=>{s.files_changed=0}, s=>{s.extra='hidden'},
  s=>{s.commits[0].subject='Bad\nsubject'}, s=>{s.commits.push({...s.commits[0]})},
+ s=>{s.commits[0].subject='Fix /Users/person/file'}, s=>{s.commits[0].subject='Fix ghp_'+'a'.repeat(30)},
  s=>{s.commits[0].subject=null}, s=>{s.commits[0].subject=' Padded subject '},
  s=>{s.commits[0].url=null}, s=>{s.files=null},
  s=>{s.commits[0].sha='b'.repeat(40);s.commits[0].url='https://github.com/example/test-data/commit/'+'b'.repeat(40)}
