@@ -207,3 +207,8 @@ Eric’s reference is the post-workout view people share on social media. Oscar:
 
 Pierre: readable purpose, model, harness and recorded token counts. Bean: responses stay in existing comments on saved runs. Oscar: compact cards, data above images, project switching, mobile controls. Uploaded Strava references are local design inputs only; no third-party names, photos or metrics are shipped as STRIVE content.
 Official reference read for this change: [feed stats](https://support.strava.com/en-us/articles/15401664-activity-stats-in-the-feed), [profile structure](https://support.strava.com/en-us/articles/15402175-your-strava-profile-page), and [activity history](https://support.strava.com/en-us/articles/15402014-viewing-your-activity-history-on-strava). STRIVE copies no logos or media. Public `/r/` remains a script-free single-run page. It shares the measured stat contract and white/blue shell, preserves public photo selection, and opens the full app through a prominent run-specific link. It does not duplicate the multi-project day carousel.
+
+
+## 12. Home composition · 8 October evening
+
+Home opens on real public project cards for signed-in and signed-out readers. Following remains an explicit filter. Community, official directories and builders sit beside the feed on wide screens and follow it on phones. Empty events and club rows never push the first real card below an onboarding stack. The blue card renderer and author visual choices are unchanged. Home ranks author-days by XUDOS then newest from the latest 300 public sessions, states that window, and keeps all loaded sessions of a selected day so choosing highlights does not discard that day's projects. It does not call this an all-time ranking or claim memberships that do not exist.

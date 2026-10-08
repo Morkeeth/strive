@@ -63,3 +63,37 @@
 .pinned{margin:0 0 18px}
 .home-community{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 24px;margin:0 0 18px;max-width:900px}.home-community .land-head{margin:0 0 6px}.home-community .land-head h2{font-size:14px}.home-community .home-none{border-top:0;padding:4px 0 8px;font-size:13px}.home-community .evs{margin:0}
 @media(max-width:720px){.home-community{grid-template-columns:1fr}}
+/* The home is a feed, with community beside it rather than empty sections before it. */
+.home{max-width:none}
+.home-hero{padding:0 0 24px;border-bottom:1px solid var(--rule);margin-bottom:22px}
+.home-hero h1{font-size:clamp(25px,3vw,36px);line-height:1.16;letter-spacing:-1px;max-width:29ch}
+.home-hero .home-explanation{font-size:15px;margin:12px 0 14px;max-width:60ch}
+.home-hero .home-private{display:inline-block;margin:0 0 0 14px;font-size:12px}
+.home-welcome{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 22px}
+.home-welcome h1{font-size:27px;letter-spacing:-.7px;margin:0 0 5px}
+.home-welcome p{margin:0;color:var(--soft);font-size:14px}
+.home-welcome .act{flex-shrink:0}
+.home-layout{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:28px;align-items:start}
+.home-layout>.home-sec{margin:0;min-width:0}
+.home .landing-feature .card{max-width:none}
+.home-around{min-width:0;padding-left:22px;border-left:1px solid var(--rule)}
+.home-around .home-community{display:flex;flex-direction:column-reverse;gap:22px;margin:0}
+.home-around .clubs{grid-template-columns:1fr}
+.home-around .land-head{margin:0 0 12px}
+.home-around .land-head h2{font-size:15px}
+.home-around .land-head a{font-size:12px}
+.home-around .home-sec{margin-top:26px}
+.home-around .fc-builder{font-size:13px}
+.home-around .home-join{padding:16px;margin-top:24px;border-top:3px solid var(--blue)}
+.home-around .home-join h2{font-size:16px}
+.home-around .home-join p{font-size:13px;line-height:1.5}
+.home-around .wk-plot{height:34px}
+.home-around .wk-line{font-size:12px;line-height:1.5}
+.home-around .discovery-sources{margin:14px 0 0;padding:10px 0 0}
+.home-around .discovery-links a{display:grid;gap:4px}
+@media(max-width:1120px){.home-layout{grid-template-columns:minmax(0,1fr)}.home-around{border-left:0;border-top:1px solid var(--rule);padding:24px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:24px}.home-around .home-sec,.home-around .home-join{margin:0}}
+@media(max-width:620px){.home-hero{padding-bottom:18px;margin-bottom:18px}.home-hero h1{font-size:26px}.home-hero .home-private{display:block;margin:8px 0 0}.home-welcome{margin-bottom:18px;align-items:flex-start}.home-welcome h1{font-size:23px}.home-welcome p{font-size:12px;max-width:25ch}.home-welcome .act{font-size:12px;padding:8px 12px}.home-around{grid-template-columns:1fr}.home-layout{gap:22px}.home .land-head{gap:10px}.home .land-head h2{font-size:16px}.home .land-head a{font-size:12px}}
+.home-sort{display:flex;gap:4px;padding:3px;background:var(--blue-wash);border-radius:8px;width:max-content;margin:0 0 16px}
+.home-sort button{min-height:36px;padding:6px 14px;border:0;border-radius:6px;background:transparent;color:var(--soft);font-size:13px}
+.home-sort button[aria-pressed="true"]{background:var(--box);color:var(--blue);box-shadow:0 1px 4px #00206016}
+.home-sort button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}

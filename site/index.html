@@ -682,7 +682,7 @@ function syncAuthNav(){
 }
 function feedTabs(active){
   const tab=(href,key,label)=>`<a href="${href}" class="${active===key?'on':''}" ${active===key?'aria-current="page"':''}>${label}</a>`;
-  return `<nav class="feed-tabs" aria-label="Feed filters">${tab('/?following','following','Following')}${tab('/?explore','discover','Discover')}${tab('/?people','people','Find people')}${tab('/?boards','boards','Activity')}</nav>`;
+  return `<nav class="feed-tabs" aria-label="Feed filters">${tab('/','home','Home')}${tab('/?following','following','Following')}${tab('/?explore','discover','Discover')}${tab('/?people','people','Find people')}${tab('/?boards','boards','Activity')}</nav>`;
 }
 function discoverySourcesHtml(){
   const sources=[
@@ -1743,17 +1743,18 @@ function playStrip(){
     if(st) st.textContent = i===steps.length-1 ? x.querySelector('.o').textContent : x.querySelector('.n').textContent; },320+i*520));
 }
 function landingHTML(){
-  // Explain one real session and offer capture before the community and public runs.
-  // Keep the approved personality and source-backed community rows.
-  return `<div class="home">
-    <section class="home-hero"><h1>Strava is for people who ran. <i>__BRAND__</i> is for people who didn't.</h1><p class="home-explanation">A run is one real session with your coding agent. See its activity map, add your story and a photo, and follow what your friends are building.</p><a class="act blue home-first-run" href="/?connect">Bring one session</a><p class="home-private">Preview it first. Save it privately. Share when you choose.</p></section>
-    <section class="home-sec" id="home-week-section" aria-labelledby="h-week"><div class="land-head"><h2 id="h-week">This week</h2></div><div id="home-week">${'<div class="wk-skel"></div>'}</div><div id="home-events"></div></section>
-    <section id="home-community" aria-labelledby="h-clubs"></section>
-    <section class="home-sec" aria-labelledby="h-builders"><div class="land-head"><h2 id="h-builders">Builders to follow</h2><a href="/?people">Find people</a></div><div id="home-builders"></div></section>
-    <section class="home-sec landing-feature" aria-labelledby="h-popular" id="landing-feature"><div class="land-head"><h2 id="h-popular">Popular runs</h2><a href="/?explore">See all</a></div><div id="landing-feature-body">${skeletonCard()}</div><p id="public-run-count" class="public-run-count" role="status"></p></section>
-    <section class="home-join"><h2>Your work belongs here too.</h2><p>Start with a real session. Add your story and a photo, then choose who sees it.</p><a class="act blue" href="/?connect">Make my first run</a><button type="button" class="act primary" data-signin>${signInLabel()} and build your profile</button></section>
-  </div>
-  <div class="launch-more"><a href="https://github.com/Morkeeth/strive">GitHub ↗</a><a href="/methodology">How the numbers are made</a><a href="/?post">Add a run from a file</a><a href="${REAL_RUN}">A real run</a></div>`;
+  return `<div class="home ${ME?'home-member':''}">
+    ${ME?`<section class="home-welcome"><div><h1>From the workbench</h1><p>Real sessions. Work in progress. Something to share.</p></div><a class="act blue home-first-run" href="/?connect">Add a run</a></section>`:`<section class="home-hero"><h1>Strava is for people who ran.<br><i>__BRAND__</i> is for people who didn't.</h1><p class="home-explanation">Real sessions with your coding agent. The work, the photos, the people behind it.</p><a class="act blue home-first-run" href="/?connect">Bring one session</a><span class="home-private">Preview first. Share when you choose.</span></section>`}
+    <div class="home-layout">
+      <section class="home-sec landing-feature" aria-labelledby="h-popular" id="landing-feature"><div class="land-head"><h2 id="h-popular">On the workbench</h2><a href="/?explore">All runs →</a></div><div class="home-sort" role="group" aria-label="Order public cards"><button type="button" data-home-sort="popular" aria-pressed="true">Most XUDOS</button><button type="button" data-home-sort="latest" aria-pressed="false">Latest</button></div><div id="landing-feature-body">${skeletonCard()}</div><p id="public-run-count" class="public-run-count" role="status"></p></section>
+      <aside class="home-around" aria-label="Around STRIVE">
+        <section id="home-community" aria-label="Clubs and events"></section>
+        <section class="home-sec" aria-labelledby="h-builders"><div class="land-head"><h2 id="h-builders">People building</h2><a href="/?people">Find people</a></div><div id="home-builders"></div></section>
+        <section class="home-sec" id="home-week-section" aria-labelledby="h-week"><div class="land-head"><h2 id="h-week">This week</h2></div><div id="home-week"><div class="wk-skel"></div></div></section>
+        <section class="home-join"><h2>Bring your next session.</h2><p>Add the story and a photo. Save privately, then choose who sees it.</p><a class="act blue" href="/?connect">Connect your agent</a></section>
+      </aside>
+    </div>
+  </div><div class="launch-more"><a href="https://github.com/Morkeeth/strive">GitHub ↗</a><a href="/methodology">How the numbers are made</a><a href="/?feedback">Give feedback</a></div>`;
 }
 
 // THE DROP ZONE. One markup, mounted by site/dropin.js, on the landing and on Connect.
@@ -1841,27 +1842,37 @@ async function feedCards(runs,ad,{ownerView=false}={}){
 // A stranger lands on what is going on, then people, then runs. Real rows only (site/home.js).
 async function viewLanding(){
   const app=$('app');
-  frame(railHtml('feed'),null);
+  frame(railHtml('feed'),null,true);
   setPrimarySection('feed');
-  app.innerHTML=feedTabs('following')+landingHTML();
+  app.innerHTML=feedTabs('home')+landingHTML();
   const H=window.GrinderHome, now=Date.now();
   const data=H&&sb?await H.read(sb,now):{runs:null,clubs:null,events:null};
   const put=(id,html)=>{const el=$(id);if(el)el.innerHTML=html};
   // A failed read says it failed; only a read that worked may say there is nothing.
   const failed='<p class="home-none" data-failed>This section could not load. Refresh to try again.</p>';
   put('home-week',data.runs===null&&data.events===null?failed:H.weekHtml(data.runs,data.events,now));
-  put('home-community',H?H.community(data):'');
+  put('home-community',(H?H.community(data):'')+discoverySourcesHtml());
   if(data.runs!==null&&!data.runs.length&&data.events!==null&&!data.events.length)$('home-week-section')?.setAttribute('hidden','');
   const who=data.runs?H.builders(data.runs,6):[];
-  put('home-builders',data.runs===null?failed:who.length?who.map(b=>GrinderFeed.builderRow(b.run)).join(''):'<p class="home-none">No builder has posted a public run in the last 30 days.</p>');
+  put('home-builders',data.runs===null?failed:who.length?who.map(b=>GrinderFeed.builderRow(b.run)).join(''):'<p class="home-none">No public builder to show yet.</p>');
   const body=$('landing-feature-body');
   let runs=data.runs||[], runsFailed=data.runs===null;
   if(!runs.length){const older=await fetchLatestPublicRuns(5);if(older===null)runsFailed=true;else{runs=older;runsFailed=false}}
   if(runs.length){
     noteTraces(runs);
     const ad=await ackData(runs);
-    const top=H?H.popular(runs,ad.counts,5):runs.slice(0,5);
-    if(body) body.innerHTML=await feedCards(top,ad);
+    let renderVersion=0;
+    const show=async order=>{
+      const version=++renderVersion;
+      const top=H?H.popularDays(runs,order==='latest'?{}:ad.counts,5):runs.slice(0,5);
+      document.querySelectorAll('[data-home-sort]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.homeSort===order)));
+      const html=await feedCards(top,ad);
+      if(version!==renderVersion||!body?.isConnected)return;
+      body.innerHTML=html;wireKudos();
+      put('public-run-count',(order==='latest'?'Newest first':'Ordered by XUDOS, then newest')+' · from the latest '+runs.length+' public sessions.');
+    };
+    document.querySelectorAll('[data-home-sort]').forEach(button=>button.onclick=()=>show(button.dataset.homeSort));
+    await show('popular');
   }else if(body){
     body.innerHTML=runsFailed?failed:'<p class="home-none">No public run yet.</p>';
   }
@@ -1870,9 +1881,10 @@ async function viewLanding(){
   const line=$('public-run-count');
   if(!line) return;
   const count=await fetchPublicRunCount();
+  const scope=line.textContent;
   line.textContent=count===0?'No public runs yet. Yours would be the first.'
     :count===1?'1 public run is live.'
-    :Number.isInteger(count)?`${count} public runs are live.`:'';
+    :Number.isInteger(count)?`${count} public runs are live. ${scope}`:scope;
   line.dataset.countState=Number.isInteger(count)?'ready':'unavailable';
 }
 
@@ -2926,8 +2938,7 @@ async function route(){ RUN_VIEW_GENERATION++;window.StriveRunPhotos?.disposeAll
   // Home is the feed (Oscar, 25 Sep 2026 evening). Signed in: the runs of the people you follow,
   // with people to follow and the latest public runs when that is empty. Signed out: the public
   // feed and the ask to sign in and build a profile. Adding a run is /?post.
-  if(ME) mountHomeCommunity();
-  if(ME) return social.following({home:true});
+  // Home starts with real public work; Following remains an explicit personal filter.
   return viewLanding(); }
 
 // Import links can change only the fragment, without a document load. Ordinary

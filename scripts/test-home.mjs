@@ -52,3 +52,16 @@ assert.match(H.weekHtml(null,[],now),/Runs could not load · no events in the ne
  const none=H.community({clubs:[],events:[]});assert.match(none,/No public club yet\./);assert.match(none,/No event in the next 7 days\./);assert.match(none,/href="\/\?crews">Start or join a club/,'with no club the door is still offered');assert.ok(!/member|going/.test(none),'no activity is invented');
  const bad=H.community({clubs:null,events:null});assert.equal((bad.match(/data-failed/g)||[]).length,2,'a failed read says it failed and never says none');}
 console.log('Home checks passed.');
+
+// Select a popular day before choosing its runs: every project remains in the denominator.
+{const rows=[
+ {id:'one',profile_id:'p',visibility:'public',started_at:at(-1),created_at:at(0)},
+ {id:'two',profile_id:'p',visibility:'public',started_at:at(-1),created_at:at(-1)},
+ {id:'other',profile_id:'q',visibility:'public',started_at:at(0),created_at:at(0)},
+ {id:'private',profile_id:'p',visibility:'private',started_at:at(-1),created_at:at(0)}];
+ assert.deepEqual(H.popularDays(rows,{one:10,other:1},1).map(r=>r.id),['one','two']);
+ assert.deepEqual(H.popularDays(rows,{other:12},1).map(r=>r.id),['other']);
+}
+// Home must query beyond a calendar cutoff; earlier real work stays eligible.
+{const calls=[];const chain={select(){return this},eq(){return this},gte(){throw Error('run age cutoff')},order(){return this},limit(n){calls.push(n);return Promise.resolve({data:[]})}};
+ const sb={from:t=>t==='runs'?chain:q({data:[]})};const result=await H.read(sb,now);assert.deepEqual(result.runs,[]);assert.ok(calls.includes(300));}
