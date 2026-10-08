@@ -1807,10 +1807,13 @@ async function feedCards(runs,ad){
   const groups=new Map();
   for(const r of runs){const day=StriveDay.localDay(new Date(r.started_at||r.created_at));const key=r.profile_id+'|'+day;if(!groups.has(key))groups.set(key,{day,runs:[]});groups.get(key).runs.push(r)}
   const cards=[],mounts=[];let i=0;
-  for(const {day,runs:rows} of groups.values()){
+  const timezone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
+  const saved=await Promise.all([...groups.values()].map(async group=>({...group,card:await sb.rpc('read_day_card',{owner_id:group.runs[0].profile_id,card_key:group.day+'_'+group.day,viewer_timezone:timezone})})));
+  for(const {day,runs:rows,card} of saved){
+    if(card.error){cards.push('<article class="card"><p>Card choices could not load. Refresh to try again.</p></article>');continue;}
     const first=rows[0],owner=first.profile_id,model=StriveDay.compute(rows,day,v=>v||''),tokens=new Map();
     for(const g of model.groups)if(g.label)tokens.set(g.label,await StriveDayCard.token(owner,day+'_'+day,g.label));
-    const deck=StriveDayCard.slides(model,tokens,null);if(!deck.slides.length)continue;
+    const deck=StriveDayCard.slides(model,tokens,card.data);if(!deck.slides.length)continue;
     const cardId='feed-day-'+i++,p=first.profiles||{},author=p.display_name||p.name||p.handle||p.github_handle||'Builder';
     cards.push(StriveDayCard.render(deck,{esc,mine:false,author,windowLabel:day,cardId,actions:' ',pageHref:key=>'/?day='+day+'&p='+encodeURIComponent(owner)+'&page='+key}));
     mounts.push(()=>{const card=document.getElementById(cardId);if(!card)return;bindCompactCard(card,deck,ad,{onChange:()=>void StriveRunPhotos.mountVisuals({client:sb,root:card})});void StriveRunPhotos.mountVisuals({client:sb,root:card})});

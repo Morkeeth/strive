@@ -17,7 +17,7 @@
     runs:{label:'Runs'},
     tools:{label:'Tool calls'},
     peak:{label:'Runs at once, peak',whole:true}};
-  const DEFAULTS={whole:['projects','commits','elapsed'],project:['commits','session','runs']};
+  const DEFAULTS={whole:['projects','runs','tools'],project:['runs','tools','commits']};
   // The one main visual of a card page. Data is the measured trace. Photo and Screenshot are a picture the
   // author chose from their own runs; the author says which it is, nothing here guesses it.
   const VISUALS=['data','photo','screenshot'],FOCUS={center:'50% 50%',top:'50% 0%',bottom:'50% 100%',left:'0% 50%',right:'100% 50%'},UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -246,7 +246,7 @@
         <ol class="dc-points">${s.points.map(p=>`<li><a href="${esc(runHref(p.run.id))}"><span class="dc-when">${esc(p.at.toLocaleDateString(undefined,{weekday:'short'}))} ${hm(p.at)} · ${esc(p.name)}</span>${esc(p.text)}</a></li>`).join('')}</ol>
         ${s.total>s.points.length?`<p class="dc-more">The latest ${s.points.length} of ${s.total}.</p>`:''}</section>`;
       const ids=(s.kind==='whole'?c.facts.whole:c.facts.project).filter(id=>s.facts[id]),high=s.kind==='whole'?s.highlights.filter(h=>h.text!==s.result).slice(0,2):[];
-      const visibleIds=compact?[...ids,...['runs','session','tools']].filter((id,i,all)=>all.indexOf(id)===i&&s.facts[id]&&s.facts[id].value!==null&&s.facts[id].value!==undefined).slice(0,2):ids;
+      const visibleIds=compact?[...ids,...['runs','tools','commits']].filter((id,i,all)=>all.indexOf(id)===i&&s.facts[id]&&s.facts[id].value!==null&&s.facts[id].value!==undefined).slice(0,2):ids;
       const next=s.kind==='project'&&typeof s.open?.story_next==='string'?s.open.story_next.trim():'';
       let output=null;try{const u=new URL(s.open?.output_url);if(['http:','https:'].includes(u.protocol)&&!u.username&&!u.password)output=u.href}catch(_){}
 
