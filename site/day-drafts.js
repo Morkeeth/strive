@@ -77,7 +77,7 @@
     const groups=new Map();for(const h of hist){const key=h.row?(h.row.project||'No project named'):'Unreadable rows';const g=groups.get(key)||{name:key,items:[]};g.items.push(h);groups.set(key,g)}
     const gitGroups=[...groups.values()],gitTicked=new Set(gitGroups.filter(g=>g.items.some(h=>h.state==='ready')).map(g=>g.name));
     slot.innerHTML=`<div class="head"><h1>Review ${drafts.length}${day.selection_label?' selected':''} drafts${hist.length?` and ${hist.length} windows of git history`:''}${day.selection_label?'':' for '+esc(day.day)}</h1></div>
-      <p class="hint">Nothing is saved yet. Tick the drafts you want. Each one is saved as <b>Only me</b>; sharing is a separate choice you make later on each run.</p>
+      <p class="hint" id="dd-intro"></p>
       ${lookupFailed?'<p class="hint" role="alert">Could not check which drafts are already saved. Saving is still safe to try: a draft saved before is refused or shown as a second run you can delete.</p>':''}
       <div class="card dd-bar"><label>Project for the ticked drafts<input id="dd-project" maxlength="120" value="${esc(day.project||'')}" placeholder="Leave empty to keep each draft's own project"></label>
         <span class="dd-tools"><button type="button" class="act" id="dd-all">Tick all</button><button type="button" class="act" id="dd-none">Untick all</button></span></div>
@@ -91,6 +91,10 @@
       run.commits==null?'commits unknown':`${run.commits} commits`,((run.capture_metadata&&run.capture_metadata.models)||[]).join(', ')||'model unknown'].join(' · ');
     const exact=d=>{const row=rowFor(d.run,{...deps,profileId:owner,project:project.value});delete row.profile_id;return JSON.stringify(row,null,1)};
     function paint(){
+      const savedCount=[...drafts,...hist].filter(d=>d.state==='saved').length,remaining=[...drafts,...hist].some(d=>d.state==='ready'||d.state==='failed');
+      slot.querySelector('#dd-intro').textContent=savedCount
+        ?`${savedCount} already in My runs. ${remaining?'Tick any remaining drafts you want to save as Only me.':'No drafts left to save.'} Sharing is a separate choice on each run.`
+        :'Tick the drafts you want to save as Only me. Sharing is a separate choice on each run.';
       list.innerHTML=drafts.map(d=>{const can=d.state==='ready'||d.state==='failed',name=label(d.run,project.value,projectLabel)||'No project named';
         return `<div class="dd-row dd-${d.state}" data-i="${d.i}"><label class="dd-pick"><input type="checkbox" ${ticked.has(d.i)&&can?'checked':''} ${can?'':'disabled'} aria-label="Save this draft"></label>
           <div class="dd-body"><b>${esc(name)}</b><span class="dd-facts">${esc(facts(d.run))}</span>
