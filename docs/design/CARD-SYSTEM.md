@@ -24,7 +24,7 @@ Every page of every card has the same parts in the same order.
 |---|---|---|---|
 | 1 | Identity and date | Author name and the day or days. One line. | `StriveDayCard.render` |
 | 2 | Page selector | Only when the card has more than one page. See section 2. | `StriveDayCard.render` |
-| 3 | Headline | A level 2 heading. One short sentence the author wrote. Never invented. A project headline is the first sentence of the result field. | `StriveDayCard.render` |
+| 3 | Headline | A level 2 heading. One short sentence the author wrote. Never invented. A project headline uses the result field, falling back to the public caption the author entered. Private notes and titles are never promoted. | `StriveDayCard.render` |
 | 4 | Main visual | One selected project image, its measured share ring, and up to three project facts together on one compact screen. | `visual()` in `site/day-card.js` |
 | 5 | Measured activity | Selected measured facts visible beside the share ring under the image. A missing value says "not recorded". Unknown is never zero. | `StriveDayCard.render` |
 | 6 | Highlights | At most two short lines, each opens its run. Overview only. | `StriveDayCard.render` |

@@ -41,12 +41,12 @@
   // The slides, in order. Pure: the same model and choices always give the same card.
   function slides(model,tokens,raw){
     const c=clean(raw),tk=g=>tokens.get(g.label)||'';
-    // The headline is only ever a sentence the author wrote in a run's result field. A note, a title or a
-    // project description is never promoted to a result.
+    // Show the author's result, or their public caption when no result was entered.
+    // Private notes, titles and project descriptions are never promoted to an outcome.
     // A highlight is one or two plain sentences. A sentence that carries a commit hash is release
     // bookkeeping: it stays on the run's own page and is left off the card.
     const brief=t=>(String(t).match(/[^.!?]+[.!?]*\s*/g)||[]).filter(x=>!/\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b/.test(x)).join('').trim();
-    const wrote=r=>r&&typeof r.story_result==='string'?r.story_result.trim():'';
+    const wrote=r=>{const result=typeof r?.story_result==='string'?r.story_result.trim():'';return result||(typeof r?.caption==='string'?r.caption.trim():'')};
     let groups=model.groups.filter(g=>g.label&&!c.hidden.includes(tk(g)));
     // Older imports may have no project field. Keep their real sessions visible without
     // inventing a project count. Do not use this path when named projects were hidden.

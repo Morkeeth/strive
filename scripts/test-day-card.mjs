@@ -40,9 +40,9 @@ assert.match(html,/dc-share-one[^]*?<b>17%<\/b> of the run's commits: 2 of 12/,'
 assert.deepEqual(C.reduce({at:4,count:5},{type:'auto'}),{at:0,count:5});assert.deepEqual(C.reduce({at:1,count:5},{type:'auto'}),{at:2,count:5});assert.equal(C.reduce({at:4,count:5},{type:'next'}).at,4,'a press on Next never wraps');
 assert.match(html,/class="dc-auto" data-auto hidden/,'the pause control is in the selector, hidden until the card rotates');
 assert.match(html,/class="dc-area"/);assert.match(html,/class="dc-mark"/);assert.match(html,/captured sessions/);assert.match(html,/commits landed/);
-// a note or a caption is never promoted to the headline
+// A public caption is authored copy; a private note is never promoted.
 const noted=C.slides(D.compute([{...runs[0],story_result:null,caption:'TEST DATA a mission statement',note:'TEST DATA note'}],'2026-10-05',label),new Map([[label(runs[0].project),T('beta')]]),null);
-assert.ok(noted.slides.every(s=>!s.result),'only the result field makes a headline');
+assert.ok(noted.slides.every(s=>s.result==='TEST DATA a mission statement'),'public caption fills an absent result');
 assert.ok(!html.includes('data-visual-photo'),'no picture unless the author chose one');assert.ok(!html.includes('dc-menu')&&!html.includes('setup='),'a reader gets no owner menu and no setup link');
 assert.equal((html.match(/class="dc-slide"/g)||[]).length,3);assert.equal((html.match(/<section class="dc-slide"[^>]* hidden /g)||[]).length,2,'one view is open at a time');
 const reader0=D.compute(runs.filter(r=>r.id==='b1'),'2026-10-05',label),rt0=new Map([['beta',T('beta')]]);
@@ -122,7 +122,7 @@ assert.match(unnamedHtml,/id="day-card"/,'saved sessions without project names s
 assert.equal(unnamedDeck.slides[0].facts.runs.value,2);
 assert.equal(unnamedDeck.slides[0].facts.commits.value,null);
 assert.equal(unnamedDeck.slides[0].facts.projects,undefined,'unknown projects are not an invented project count');
-assert.equal(unnamedDeck.slides[0].result,'','caption does not become a claimed result');
+assert.equal(unnamedDeck.slides[0].result,'Context only','authored public context remains visible without an invented outcome');
 assert.match(unnamedHtml,/2 captured sessions/);
 assert.equal(C.slides(model,tokens,{hidden:[...tokens.values()]}).slides.length,0,'fallback never restores deliberately hidden projects');
 console.log('PASS: card anatomy, navigation, privacy, visual choices, and unnamed saved sessions');
@@ -147,3 +147,12 @@ assert.equal(C.slides(D.compute(picRuns,'2026-10-05',label),tokens,selected).sli
 const m=D.compute(rs,'2026-10-05',label),t=new Map(m.groups.map((g,i)=>[g.label,String(i).padStart(12,'0')])),deck=C.slides(m,t,null);
 assert.equal(deck.summary.pie.unit,'tool calls');assert.equal(deck.summary.pie.total,20);assert.equal(deck.summary.pie.parts.find(p=>p.name==='C').known,false);
 assert.match(C.render(deck,{esc,mine:false}),/60%/);assert.match(C.render(deck,{esc,mine:false}),/no tool-call count recorded/);}
+
+// Public captions authored in the ordinary run editor belong on the compact day/feed card.
+{const captionRun={...runs[0],story_result:null,caption:'TEST DATA authored public caption',note:'PRIVATE NOTE NEVER HEADLINE'};
+ const captionDeck=C.slides(D.compute([captionRun],'2026-10-05',label),tokens,null);
+ assert.equal(captionDeck.slides[0].result,captionRun.caption);
+ assert.ok(C.render(captionDeck,{esc}).includes(captionRun.caption));
+ assert.ok(!C.render(captionDeck,{esc}).includes(captionRun.note));
+ const resultDeck=C.slides(D.compute([{...captionRun,story_result:'TEST DATA explicit result'}],'2026-10-05',label),tokens,null);
+ assert.equal(resultDeck.slides[0].result,'TEST DATA explicit result');}
