@@ -27,6 +27,14 @@ byte boundary; earlier transcript records and earlier repository edits do not be
 checkpoints. For a delegated session, select that exact source only; never combine its parent
 and child as separate captures. The selected repository is author-chosen, not inferred from a tool count.
 
+For meaningful landmarks, get separate explicit consent at start for `--share-commit-subjects`
+and/or `--share-file-names`. Subjects are exact Git descriptions, not proven outcomes; safe
+relative names are a bounded subset of observed changes. For an explicitly approved PUBLIC
+GitHub repo, `--public-repo "Name=https://github.com/OWNER/REPO"` must match the local origin.
+Only unauthenticated exact-commit verification creates a link. An unpushed commit has a hash,
+not an invented destination. Never fetch a private repository, widen sharing consent, retrofit
+old captures, or rename two worktrees of one repository as different projects.
+
 Call `route-checkpoint CAPTURE_ID` after a meaningful edit and again after a commit. It observes
 tracked-file fingerprints and newly reachable Git commits. No background watcher or hook infers
 stops. New tracked files without a previous fingerprint establish a baseline, not an invented edit.
@@ -36,7 +44,7 @@ order is unknown. Do not relabel an observed repository commit as a deployment o
 `route-review CAPTURE_ID` closes the window and freezes the source journal, native metrics,
 Code Route and private review. Its JSON includes the local importable run file and source witness.
 Token totals for this selected window remain unknown; recorded model names are included only
-when present in new source records. No transcript text, file paths or file content is exported.
+when present in new source records. No transcript text, absolute paths or file content is exported.
 Review the actual checkpoints before `save REVIEW --approve REVIEW`; save remains private and
 requires the same explicit request as ordinary captures. Retrying a review never samples later work.
 Use `route-status` to inspect open/closed captures. Never retrofit these new checkpoints onto an

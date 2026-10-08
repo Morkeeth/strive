@@ -41,7 +41,7 @@ _ALLOWED_TOP = frozenset(
     {"v", "projects", "stops", "connectors", "finish", "stats", "harnesses", "unavailable"}
 )
 _ALLOWED_PROJECT = frozenset({"id", "label", "basis"})
-_ALLOWED_STOP = frozenset({"id", "project", "kind", "label", "basis", "evidence"})
+_ALLOWED_STOP = frozenset({"id", "project", "kind", "label", "basis", "evidence", "source"})
 _ALLOWED_CONNECTOR = frozenset({"from", "to", "kind", "label"})
 _ALLOWED_FINISH = frozenset({"stop", "kind", "label"})
 _ALLOWED_STATS = frozenset(
@@ -102,6 +102,63 @@ def _keys(obj: dict, allowed: frozenset, name: str) -> None:
     unknown = set(obj) - allowed
     if unknown:
         _bad(f"Unknown {name} key: {sorted(unknown)[0]}")
+
+
+def _source_text(value: Any, field: str) -> str:
+    text = _reject_text(value, field)
+    if re.search(r'''(?:^|[\s"'])(?:/(?:Users|home|private)/|~[/\\]|[A-Za-z]:[\\/])''', text):
+        _bad(f'{field} must not include home or absolute paths.')
+    if re.search(r'(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN)', text):
+        _bad(f'{field} must not include credential-shaped text.')
+    return text
+
+
+def validate_checkpoint_source(value: Any) -> dict:
+    """Optional consented landmark details; never infer a result from Git descriptions."""
+    if not isinstance(value, dict):
+        _bad('stop.source must be an object.')
+    _keys(value, frozenset({'v', 'consent', 'commits', 'files_changed', 'files'}), 'stop.source')
+    if type(value.get('v')) is not int or value['v'] != 1 or value.get('consent') != 'explicit':
+        _bad('stop.source requires version 1 and explicit consent.')
+    count = _count(value.get('files_changed'), 'stop.source.files_changed')
+    commits = value.get('commits')
+    if not isinstance(commits, list) or len(commits) > 5:
+        _bad('stop.source.commits holds at most 5 commits.')
+    result = {'v': 1, 'consent': 'explicit', 'commits': [], 'files_changed': count}
+    seen = set()
+    for commit in commits:
+        if not isinstance(commit, dict):
+            _bad('each source commit must be an object.')
+        _keys(commit, frozenset({'sha', 'subject', 'url'}), 'source commit')
+        digest = commit.get('sha')
+        if not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{40}', digest) or digest in seen:
+            _bad('source commits require unique lowercase Git SHA1 hashes.')
+        seen.add(digest)
+        item = {'sha': digest}
+        if 'subject' in commit:
+            subject = _source_text(commit['subject'], 'commit.subject')
+            if subject != commit['subject'] or len(subject) > 160 or not re.fullmatch(r'[ -~]+', subject):
+                _bad('commit.subject must be exact printable text of at most 160 characters.')
+            item['subject'] = subject
+        if 'url' in commit:
+            url = _source_text(commit['url'], 'commit.url')
+            match = re.fullmatch(r'https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/commit/([0-9a-f]{40})', url)
+            if not match or match[1] in ('.', '..') or match[2] in ('.', '..') or match[3] != digest:
+                _bad('commit.url must identify that exact commit on public GitHub.')
+            item['url'] = url
+        result['commits'].append(item)
+    if 'files' in value:
+        files = value['files']
+        if not isinstance(files, list) or len(files) > min(20, count):
+            _bad('source.files holds at most 20 names within the observed change count.')
+        result['files'] = []
+        for name in files:
+            original = name
+            name = _source_text(name, 'source.files')
+            if name != original or len(name) > 160 or not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]*(/[A-Za-z0-9_][A-Za-z0-9_.-]*)*', name) or name in result['files']:
+                _bad('source.files requires unique safe repository-relative names.')
+            result['files'].append(name)
+    return result
 
 
 def validate_code_route(value: Any) -> dict:
@@ -193,6 +250,15 @@ def validate_code_route(value: Any) -> dict:
                     _bad("stop.evidence lines are too long.")
                 lines.append(text)
             entry["evidence"] = lines
+        if 'source' in stop:
+            if basis != 'measured':
+                _bad('stop.source requires a measured checkpoint.')
+            entry['source'] = validate_checkpoint_source(stop['source'])
+            commits = entry['source']['commits']
+            if kind == 'edit' and commits:
+                _bad('An edit checkpoint cannot attach commit descriptions.')
+            if kind == 'commit' and not any('Git commit: '+item['sha'] in entry.get('evidence', []) for item in commits):
+                _bad('Source commits must include the exact checkpoint evidence SHA.')
         normalised_stops.append(entry)
 
     connectors = value.get("connectors") or []

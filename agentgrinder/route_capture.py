@@ -140,7 +140,7 @@ def write(folder, state):
     os.replace(name, folder/'journal.json')
 
 
-def _start(root, projects, source, harness, consent=False):
+def _start(root, projects, source, harness, consent=False, share_commit_subjects=False, share_file_names=False, public_repos=()):
     if consent is not True:
         raise ValueError('Starting a route requires --consent for future observations in the selected projects and source.')
     if not 1 <= len(projects) <= 12:
@@ -153,6 +153,11 @@ def _start(root, projects, source, harness, consent=False):
         bound.append({'id': 'p'+str(index+1), 'name': label, 'root': str(path)})
     if len({p['root'] for p in bound}) != len(bound):
         raise ValueError('Select each repository once.')
+    identities = {str((Path(p['root']) / os.fsdecode(git(p['root'], 'rev-parse', '--git-common-dir')).strip()).resolve()) for p in bound}
+    if len(identities) != len(bound):
+        raise ValueError('Select distinct repositories; two worktrees of one repository are not two projects.')
+    from .route_landmarks import permissions
+    landmarks = permissions(bound, share_commit_subjects, share_file_names, public_repos)
     source = anchor(source, harness)
     for old_path in (Path(root)/'routes').glob('*/journal.json'):
         old=json.loads(old_path.read_text())
@@ -161,6 +166,8 @@ def _start(root, projects, source, harness, consent=False):
             raise ValueError('An active capture already covers this source or repository. Checkpoint or review it before starting another.')
     state = {'v': 1, 'consent': {'explicit': True, 'at': now(), 'scope': 'future Git checkpoints and appended native records'},
              'id': str(uuid.uuid4()), 'source': source, 'projects': bound, 'records': [], 'closed': False}
+    if landmarks:
+        state['landmarks'] = landmarks
     for project in bound:
         state['records'].append({'record': len(state['records'])+1, 'project': project['id'], 'kind': 'baseline', 'snapshot': snapshot(project['root'])})
     folder = Path(root)/'routes'/state['id']
@@ -170,14 +177,14 @@ def _start(root, projects, source, harness, consent=False):
 
 
 
-def start(root, projects, source, harness, consent=False):
+def start(root, projects, source, harness, consent=False, share_commit_subjects=False, share_file_names=False, public_repos=()):
     if consent is not True:
         raise ValueError('Starting a route requires --consent for future observations in the selected projects and source.')
     root=Path(root);root.mkdir(mode=0o700,parents=True,exist_ok=True)
     descriptor=os.open(root/'route-start.lock',os.O_CREAT|os.O_RDWR,0o600)
     with os.fdopen(descriptor,'a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
-        return _start(root,projects,source,harness,consent)
+        return _start(root,projects,source,harness,consent,share_commit_subjects,share_file_names,public_repos)
 
 def checkpoint(root, capture):
     with session_file(root, capture) as folder:
@@ -194,8 +201,12 @@ def checkpoint(root, capture):
             if previous['head'] != current['head']:
                 git(project['root'], 'merge-base', '--is-ancestor', previous['head'], current['head'])
                 commits = git(project['root'], 'rev-list', '--reverse', '--topo-order', previous['head']+'..'+current['head']).decode().splitlines()
-            state['records'].append({'record': len(state['records'])+1, 'project': project['id'], 'kind': 'checkpoint',
-                                     'snapshot': current, 'changed': changed, 'scope_added': added_scope, 'commits': commits})
+            record = {'record': len(state['records'])+1, 'project': project['id'], 'kind': 'checkpoint',
+                      'snapshot': current, 'changed': changed, 'scope_added': added_scope, 'commits': commits}
+            if state.get('landmarks') and (changed or commits):
+                from .route_landmarks import collect
+                record['landmark_source'] = collect(project, state['landmarks'], changed, commits)
+            state['records'].append(record)
         if len(state['records']) > 200:
             raise ValueError('The capture has reached 200 observations. Start a new capture.')
         write(folder, state)
@@ -309,6 +320,8 @@ def route_from_journal(state, source_hash):
                                    f"Record: {record['record']}; order: {order}; basis: checkpoint order",
                                    'Observed at: '+record['snapshot']['observed_at'],
                                    'Git commit: '+commits[-1] if commits else f'Content fingerprints changed: {len(changed)} file'+('s' if len(changed)!=1 else '')]})
+        if state.get('landmarks') and record.get('landmark_source'):
+            stops[-1]['source'] = record['landmark_source']
     if not stops:
         raise ValueError('No post-consent content change or new commit was observed. No Code Route was fabricated.')
     if len(stops) > 40:
@@ -391,6 +404,9 @@ def add_parser(sub):
     begin.add_argument('--source', required=True)
     begin.add_argument('--harness', choices=['codex','cursor','claude'], required=True)
     begin.add_argument('--consent', action='store_true')
+    begin.add_argument('--share-commit-subjects', action='store_true')
+    begin.add_argument('--share-file-names', action='store_true')
+    begin.add_argument('--public-repo', action='append', default=[])
     for name in ['checkpoint','review']:
         commands.add_parser(name).add_argument('capture')
     commands.add_parser('status')
@@ -407,6 +423,11 @@ def run_cli(args):
         argv.extend(['--source',args.source,'--harness',args.harness])
         if args.consent:
             argv.append('--consent')
+        for field in ('share_commit_subjects', 'share_file_names'):
+            if getattr(args, field):
+                argv.append('--'+field.replace('_','-'))
+        for mapping in args.public_repo:
+            argv.extend(['--public-repo',mapping])
     elif hasattr(args,'capture'):
         argv.append(args.capture)
     return main(argv)

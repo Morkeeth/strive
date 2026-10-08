@@ -21,7 +21,7 @@ from urllib.parse import urlsplit
 import uuid
 from datetime import datetime
 
-VERSION = '0.3.0'
+VERSION = '0.3.1'
 MAX_SOURCE = 64 * 1024 * 1024
 FIELDS = {'harness', 'capture_metadata', 'project', 'turns_typed', 'duration_s',
           'tool_calls', 'files_touched', 'commits', 'started', 'rhythm', 'ridge',
@@ -357,6 +357,7 @@ def main(argv=None):
     q = sub.add_parser('project'); q.add_argument('name'); q.add_argument('root'); q.add_argument('--hooks',action='store_true')
     q = sub.add_parser('capture'); q.add_argument('--project',required=True); q.add_argument('--harness',choices=['claude','cursor','codex'],required=True); q.add_argument('--source',required=True); q.add_argument('--sitting',type=int,default=-1); q.add_argument('--code-route',help='Explicit consented route capture ID')
     q = sub.add_parser('route-start'); q.add_argument('--project',action='append',required=True); q.add_argument('--harness',choices=['claude','cursor','codex'],required=True); q.add_argument('--source',required=True); q.add_argument('--consent',action='store_true')
+    q.add_argument('--share-commit-subjects',action='store_true'); q.add_argument('--share-file-names',action='store_true'); q.add_argument('--public-repo',action='append',default=[])
     for command in ('route-checkpoint','route-review'): sub.add_parser(command).add_argument('capture')
     sub.add_parser('route-status')
     q = sub.add_parser('sessions'); q.add_argument('--project',required=True)
@@ -379,7 +380,7 @@ def main(argv=None):
                     row=db.execute('select name,root from projects where name=?',(name,)).fetchone()
                     if row is None: raise ValueError('Register each selected project before route-start.')
                     projects.append(dict(row))
-                result=start(root,projects,args.source,args.harness,args.consent)
+                result=start(root,projects,args.source,args.harness,args.consent,args.share_commit_subjects,args.share_file_names,args.public_repo)
             elif args.command=='route-checkpoint':
                 from .route_capture import checkpoint
                 result=checkpoint(root,args.capture)

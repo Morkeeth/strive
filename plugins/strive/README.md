@@ -17,13 +17,13 @@ Build a portable bundle without installing: `python3 scripts/strive-plugin.py bu
 
 From the installed bundle, use `python3 scripts/strive.py --help`. Start with `doctor`, register each named project, choose a source with `sessions --project NAME`, capture selected sittings, then `review` their draft IDs. The review lists exactly which sessions and projects count, shows measured models only, and exposes the exact metrics bytes. The existing STRIVE batch preview lets you select and save cards as Only me.
 
-For a direct private save, configure a Connect token as the environment variable `STRIVE_AGENT_TOKEN`, then use `save REVIEW_ID --approve REVIEW_ID` after review. Approval is bound to immutable payloads. Network errors leave an unknown result; retry uses the same request ID. Existing runs retain and report their stored audience. Tokens, transcripts, filenames and source paths never go in the request. No share command is provided.
+For a direct private save, configure a Connect token as the environment variable `STRIVE_AGENT_TOKEN`, then use `save REVIEW_ID --approve REVIEW_ID` after review. Approval is bound to immutable payloads. Network errors leave an unknown result; retry uses the same request ID. Existing runs retain and report their stored audience. Tokens, transcripts and absolute source paths never go in the request. Repository-relative file names leave the machine only with the separate Code Route opt-in below. No share command is provided.
 
 Completion hooks are inert until a project is registered with `--hooks`. They queue only local references, are bounded to three seconds, and never call the network. Run `collect` to parse queued sessions. Remove opt-in by registering that project again without `--hooks`. Cursor transcripts must be enabled. Child transcripts are excluded to avoid counting a parent and its workers as independent sessions.
 
 ## Record a new Code Route
 
-Version 0.3.0 can record checkpoints for work that starts after your consent. Register the project first, then select its exact native transcript:
+Version 0.3.1 can record checkpoints for work that starts after your consent. Register the project first, then select its exact native transcript:
 
 ```sh
 python3 scripts/strive.py route-start --project "My project" --harness codex --source /path/to/session.jsonl --consent
@@ -32,6 +32,10 @@ python3 scripts/strive.py route-review CAPTURE_ID
 ```
 
 Run a checkpoint after an edit, and another after a commit. Repeat `--project` at the start to select several repositories. The collector measures tracked-file fingerprints and newly reachable Git commits. Its axis is observation order, not guessed action time. A snapshot that sees edits and commits together produces one commit checkpoint. Newly tracked files without a previous fingerprint establish a baseline; they are not counted as earlier edits.
+
+Optional landmarks need separate consent at the start. Add `--share-commit-subjects` to include safe, exact Git subjects, and `--share-file-names` for safe repository-relative changed names (at most 20 per checkpoint). Omitted or sensitive descriptions remain absent; no generated outcome replaces them. The complete observed file count remains separate from the bounded list of names. Each checkpoint supports at most five newly observed commits.
+
+To allow source links for a known public repository, add `--public-repo "My project=https://github.com/OWNER/REPO"`. The URL must match that project's Git origin. On a checkpoint, STRIVE makes unauthenticated requests to GitHub for this explicitly selected repository only; an exact public commit response is required before a link appears. An unpushed commit keeps its local hash without a link. No credential, private remote or transcript is sent. A later review never fetches or enriches old captures. Two worktrees of one repository cannot be presented as different projects.
 
 The native source is anchored at its current byte boundary. Only later records count toward this run. An explicitly selected delegated transcript can be used for this bounded window; do not combine it with its parent. Missing model names and window-scoped token totals remain unknown. No old run is changed.
 
