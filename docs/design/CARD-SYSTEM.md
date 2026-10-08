@@ -258,5 +258,8 @@ recorded work. Exact Git commit subjects lead each project leg, explicitly label
 completion. A supplied public GitHub URL opens that exact full commit SHA. Missing URLs
 are not guessed. Approved repository-relative file names provide change context, with
 an explicit subset count when bounded. No prompts, patch contents or local paths render.
-The feed shows the first three observed project legs and links to all remaining work;
+The feed shows at most two meaningful commit messages in their observed order,
+including within one busy project. Source basis appears once in the section header.
+File lists and generic edit precursors remain in full view, with an explicit link and
+omitted commit/observation counts. Individual source records are preserved.
 full run and share preserve every leg in order, including a later return to a project.
