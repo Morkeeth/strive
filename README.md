@@ -25,7 +25,7 @@ The repository can be ahead of the website or the installed companion. Check the
 
 ### Native Cursor and Claude Code plugins
 
-[Install STRIVE from source](plugins/strive/README.md) to select real sessions across named projects, review the cards together, and save privately. Run `python3 scripts/strive-plugin.py install cursor` or `python3 scripts/strive-plugin.py install claude` from this checkout, restart the client, then invoke `/strive:strive`. These are native plugin packages with optional project-scoped completion hooks; they are not marketplace listings. Capture stays local. Private saving requires your separate review, and sharing stays a deliberate choice in STRIVE.
+[Install STRIVE from source](plugins/strive/README.md) to select real sessions across named projects, review the cards together, and save privately. Run `python3 scripts/strive-plugin.py install cursor` or `python3 scripts/strive-plugin.py install claude` from this checkout, restart the client, then select its STRIVE skill (Claude Code: `/strive:strive`). These are native plugin packages with optional project-scoped completion hooks; they are not marketplace listings. Capture stays local. Private saving requires your separate review, and sharing stays a deliberate choice in STRIVE.
 
 ## Photos, privacy and feedback
 
