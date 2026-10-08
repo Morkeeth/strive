@@ -22,7 +22,7 @@
     const choice=pick?.visual==='data'?pick:pick?.photo?.run===id?pick:legacy;
     const dataOnly=choice?.visual==='data'||(!pick&&clean.photo&&clean.visual==='data');
     const photo=choice?.photo?.run===id&&choice.visual!=='data'?choice.photo:null;
-    const trace=trail(r);
+    const trace=root.StriveCodeRoute?.render(r)||trail(r);
     const kind=photo?choice.visual:'data';
     const visual=dataOnly?'':`<figure class="dc-visual post-visual" data-kind="${esc(kind)}"${dataOnly?'':` data-visual-run="${esc(id)}"${photo?` data-visual-photo="${esc(photo.id)}" data-focus="${esc(choice.focus||'center')}"`:' data-visual-cover'}`}><div class="dc-fallback"${photo?' hidden':''}></div>${dataOnly?'':`<div class="dc-picture"${photo?'':' hidden'}></div>`}</figure>`;
     const audience=owner?({public:'Public',private:'Only me',link:'Followers',close_friends:'Close friends',anonymous:'Only me'}[r.visibility]||'Only me'):r.visibility!=='public'?'Shared with you':'';

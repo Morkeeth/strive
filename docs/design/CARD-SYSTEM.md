@@ -227,3 +227,23 @@ The small activity trail is a plot of recorded bins, not invented geography or s
 Navigation has four whole-item dropdown targets: Feed, My runs, Discover, People. This is one menu on desktop and phone. Only the exact destination has `aria-current="page"`; its parent has `aria-current="location"`. Keyboard, Escape, outside click and browser history remain supported. Add run is the single global posting action. Clubs, Events and external community directories are hidden. The owner's profile clearly distinguishes private-inclusive view from public preview; profile sharing reads public rows only.
 
 Checks: `test-activity-post.mjs`, `test-compact-feed.mjs`, `test-project-account-scope.mjs`, `test-navigation.mjs`, `test-day-card.mjs`, `test-day.mjs`, and `check-nav-geometry.py`. Real anonymous rows, old saved photos, exact comment IDs and desktop/390/320 rendering are checked separately against the read-only preview.
+
+### Consented Code Route checkpoints
+
+New opt-in Git captures use the shared `code-route-view.js` renderer in import preview,
+selected-run posts, full run and public share. The view accepts the v1 route only when
+all stops carry the explicit `git-checkpoints-v1` consent marker, source SHA256,
+strictly increasing source record and checkpoint order, UTC observation time and the
+recorded edit or commit reference. A checkpoint can observe several changes together;
+it does not invent an order between those actions. Only supplied adjacent connectors
+are drawn. Projects form rows, observation order forms the horizontal axis. Neither
+position nor spacing represents geography, elapsed time, causality or completion.
+
+Native source disclosures preserve the exact checkpoint order and source references,
+including on script-free share pages. Project labels remain author-chosen. Old runs
+without these captures retain their activity trail; unmarked legacy v1 routes retain
+their existing view. No old runs are reconstructed or given a new audience.
+
+Check `node scripts/test-code-route-view.mjs`. With an actual local collector export,
+`python3 scripts/check-code-route-view.py <capture.json>` exercises the real importer
+preview and local renderings at 1280, 390 and 320px without saving or publishing.

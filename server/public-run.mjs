@@ -5,6 +5,7 @@ import Feed from '../site/feed-card.js';
 import Evidence from '../site/run-evidence.js';
 import Story from '../site/run-story.js';
 import Context from '../site/run-context.js';
+import Checkpoints from '../site/code-route-view.js';
 const config=runtimeConfig();
 export const origin=config.ORIGIN;
 export const validId=id=>typeof id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -133,6 +134,7 @@ const routeInsight=route=>{
 };
 
 const pageCodeRoute=run=>{
+ if(Checkpoints.claimed(run))return ""; // The shared card contains the same inspected checkpoint view as the app.
  const route=run&&run.code_route;
  if(!route||route.v!==1)return '';
  if(route.unavailable){
@@ -163,7 +165,7 @@ const pageCodeRoute=run=>{
  return `<section class="code-route" aria-label="${esc(aria)}"><h2>Code Route</h2><svg viewBox="0 0 ${width} ${height}" role="img" aria-hidden="true"><path class="code-route-line" pathLength="1" d="${line}" fill="none" stroke="#123cff" stroke-width="2.5"/>${dots}${lanes}</svg><ol class="code-route-projects">${projectList}</ol>${insight?`<p class="code-route-insight">${esc(insight)}</p>`:''}<div class="code-route-stops">${stopList}</div>${harness}</section>`;
 };
 
-export function html(run,opts={}){const title=esc(Feed.titleOf(run)),insight=routeInsight(run&&run.code_route),description=esc(Story.summary(run)||insight||'See the work, its recorded activity and the conversation.'),id=encodeURIComponent(run.id),image=origin+'/api/run?id='+id+'&image=1',url=origin+'/r/'+id;
+export function html(run,opts={}){const title=esc(Feed.titleOf(run)),insight=Checkpoints.claimed(run)?'':routeInsight(run&&run.code_route),description=esc(Story.summary(run)||insight||'See the work, its recorded activity and the conversation.'),id=encodeURIComponent(run.id),image=origin+'/api/run?id='+id+'&image=1',url=origin+'/r/'+id;
  const handle=run.profiles?.handle||run.profiles?.github_handle;
  const profileHref=handle?'/?u='+encodeURIComponent(handle):'';
  // opts.kudos is the count readKudos returned: a number, or null when it could not be read.
@@ -252,11 +254,13 @@ const outputKind=run=>{
  }catch(_){return null}
 };
 const codeRoutePlot=run=>{
- const route=run&&run.code_route;
- if(!route||route.v!==1||route.unavailable||!Array.isArray(route.projects)||!Array.isArray(route.stops)||!route.projects.length||!route.stops.length)return null;
+ const measured=Checkpoints.model(run);
+ if(Checkpoints.claimed(run)&&!measured)return null;
+ const route=measured||run&&run.code_route;
+ if(!route||(!measured&&route.v!==1)||route.unavailable||!Array.isArray(route.projects)||!Array.isArray(route.stops)||!route.projects.length||!route.stops.length)return null;
  const idx=Object.fromEntries(route.projects.map((p,i)=>[p.id,i]));
  const n=Math.max(1,route.projects.length);
- return {projects:route.projects,stops:route.stops,idx,n,finish:route.finish&&route.finish.stop,stats:route.stats||{},label:(route.stats&&route.stats.projects_touched!=null)?`${route.stats.projects_touched} projects touched · Code Route`:'Code Route'};
+ return {measured:!!measured,connectors:route.connectors||[],projects:route.projects,stops:route.stops,idx,n,finish:route.finish&&route.finish.stop,stats:route.stats||{},label:measured?'Code Route · observed checkpoint order':(route.stats&&route.stats.projects_touched!=null)?`${route.stats.projects_touched} projects touched · Code Route`:'Code Route'};
 };
 // THE SHARE IMAGE is the feed card at 1200x630. The numbers come from the same functions the feed
 // and /r/<id> use (Feed.headline, Feed.stats), so the image, the page and the feed cannot print
@@ -299,7 +303,7 @@ export function card(run,opts={}){
   :requested==='result'?'result'
   :availableRoutePlot?'proof_route':availableSeries?'activity_terrain':availableGeo?'change_atlas':'result';
  const routePlot=selected==='proof_route'||(selected==='change_atlas'&&!availableGeo)?availableRoutePlot:null;
- const insight=routePlot?routeInsight(run.code_route):'';
+ const insight=routePlot&&!routePlot.measured?routeInsight(run.code_route):'';
  const plotted=selected==='activity_terrain'?availableSeries:null;
  const lead=null,facts=[];
  const who=Feed.profileOf(run);
@@ -342,8 +346,8 @@ export function card(run,opts={}){
   const at=(stop,i)=>({x:24+i/Math.max(1,routePlot.stops.length-1)*(W-48),y:12+(routePlot.idx[stop.project]||0)*22+11});
   drawing=el('div',{style:{display:'flex',flexDirection:'column',marginTop:14}},
    el('svg',{width:W,height:h,viewBox:`0 0 ${W} ${h}`},
-    el('path',{d:routePlot.stops.map((stop,i)=>{const p=at(stop,i);return `${i?'L':'M'}${p.x} ${p.y}`;}).join(' '),stroke:BLUE,strokeWidth:4,fill:'none'}),
-    ...routePlot.stops.map((stop,i)=>{const p=at(stop,i),finish=routePlot.finish===stop.id;return el('circle',{cx:p.x,cy:p.y,r:finish?8:5,fill:finish?ORANGE:BLUE});})),
+    el('path',{d:routePlot.measured?routePlot.connectors.map(c=>{const ai=routePlot.stops.findIndex(s=>s.id===c.from),bi=routePlot.stops.findIndex(s=>s.id===c.to),a=at(routePlot.stops[ai],ai),b=at(routePlot.stops[bi],bi);return `M${a.x} ${a.y} L${b.x} ${b.y}`;}).join(' '):routePlot.stops.map((stop,i)=>{const p=at(stop,i);return `${i?'L':'M'}${p.x} ${p.y}`;}).join(' '),stroke:BLUE,strokeWidth:4,fill:'none'}),
+    ...routePlot.stops.map((stop,i)=>{const p=at(stop,i),finish=!routePlot.measured&&routePlot.finish===stop.id;if(routePlot.measured&&stop.kind==='commit')return el('path',{d:`M${p.x} ${p.y-7} l7 7 -7 7 -7 -7Z`,fill:BLUE});return el('circle',{cx:p.x,cy:p.y,r:finish?8:5,fill:finish?ORANGE:BLUE});})),
    el('div',{style:{display:'flex',flexWrap:'wrap',fontSize:17,color:INK,marginTop:4}},
     ...routePlot.projects.map((p,i)=>el('div',{style:{display:'flex',marginRight:22}},`${i+1} · ${p.label}`))),
    insight?el('div',{style:{display:'flex',fontSize:18,color:INK,fontWeight:600,marginTop:6,height:26,overflow:'hidden'}},insight):el('div',{style:{display:'flex',fontSize:16,color:SOFT,marginTop:4}},routePlot.label));

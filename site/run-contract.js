@@ -1048,6 +1048,8 @@
       );
     }
     function codeRoute(run) {
+      const measuredView=root.StriveCodeRoute||(typeof require==="function"?require("./code-route-view.js"):null);
+      if(measuredView?.claimed(run))return measuredView.render(run);
       const route = readCodeRoute(run);
       if (!route) return "";
       if (route.unavailable) {
@@ -1066,6 +1068,8 @@
       return compactWorkPath(route, run);
     }
   function codeRouteDetail(run) {
+    const measuredView=root.StriveCodeRoute||(typeof require==="function"?require("./code-route-view.js"):null);
+    if(measuredView?.claimed(run))return "";
     const route = readCodeRoute(run);
     if (!route) return "";
     if (route.unavailable) return harnessHtml(route);
@@ -1099,7 +1103,7 @@
       .join("");
     return `<div class="code-route-stops">${stopList}</div>` + harnessHtml(route);
   }
-  const api = { observedProjection, validate, message, trace, ridge, outcome, coverHtml, eventChip, heroStats, toolCallCount, codeRoute, codeRouteDetail, routeInsight, routeShape, mountRunMaps, sittingsComparable, headlineMetric, rejectPaths, projectLabel, tree };
+  const api = { readCodeRoute, observedProjection, validate, message, trace, ridge, outcome, coverHtml, eventChip, heroStats, toolCallCount, codeRoute, codeRouteDetail, routeInsight, routeShape, mountRunMaps, sittingsComparable, headlineMetric, rejectPaths, projectLabel, tree };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.GrinderContract = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

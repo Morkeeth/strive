@@ -255,6 +255,7 @@
   // One run, one signature visual. Every choice is offered only when its backing fields exist.
   // A stored preference that no longer has evidence falls back to the strongest supported view.
   function proofRoute(r) {
+    if(checkpointView()?.claimed(r))return "";
     const route = r && r.code_route;
     const stops = route && route.v === 1 && !route.unavailable && Array.isArray(route.stops) ? route.stops.filter(Boolean) : [];
     if (stops.length < 2) return "";
@@ -272,6 +273,7 @@
     return n && label ? `<div class="fc-result" aria-label="Result"><b class="num">${n}</b><span>${esc(label)}</span></div>` : "";
   }
   function changeAtlas(r) {
+    if(checkpointView()?.claimed(r))return "";
     const native = routeMap(r);
     if (native) return native;
     const route = r && r.code_route;
@@ -297,7 +299,10 @@
       ["result", resultVisual(r)],
     ].filter((entry) => entry[1]);
   }
+  function checkpointView(){return root.StriveCodeRoute||(typeof require==="function"?require("./code-route-view.js"):null);}
+  function checkpointVisual(r){return checkpointView()?.render(r)||"";}
   function heroVisual(r) {
+    const checkpoints=checkpointVisual(r);if(checkpoints)return checkpoints;
     if(historical?.historical(r))return historical.facts(r);
     const choices = heroChoices(r);
     const chosen = choices.find(([key]) => key === r.hero_visual) || choices[0];
@@ -413,6 +418,7 @@
   function card(r, opts) {
     opts = opts || {};
     const preview = !!opts.preview;
+    const checkpoints=checkpointVisual(r);
     const page = !!opts.page;
     const p = profileOf(r);
     const anon = r.visibility === "anonymous";
@@ -442,17 +448,18 @@
     const body = `
     <${tag} class="fc-title">${esc(titleOf(r))}</${tag}>
     ${story?.summary(r) ? `<p class="fc-cap">${esc(story.summary(r))}</p>` : ""}
-    ${page?`<dl class="fc-activity-stats" aria-label="Recorded facts">${(contract()?.heroStats(r)||[]).map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>`:''}
+    ${page||checkpoints?`<dl class="fc-activity-stats" aria-label="Recorded facts">${(contract()?.heroStats(r)||[]).map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>`:''}
     ${story?story.visual(r):''}
     ${r.feedback_question?`<p class="fc-question"><span>Feedback welcome</span>${esc(r.feedback_question)}</p>`:''}
     ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Typed by the author. No capture.</p>' : ''}${evidence?evidence.summary(r):''}
     ${page&&context?context.context(r):''}
-    <div class="fc-route-secondary">${heroVisual(r)}</div>
-    <p class="fc-open">${preview?'Preview your story':'Open the story →'}</p>
+    <div class="fc-route-secondary">${checkpoints?"":heroVisual(r)}</div>
+    ${checkpoints?'':`<p class="fc-open">${preview?'Preview your story':'Open the story →'}</p>`}
   `;
     return `<article class="card fc"${preview ? "" : ` id="card-${id}" data-run-id="${id}" data-photo-layout="${esc(r.photo_layout||'cover')}"`}>
   <header class="fc-top">${faceHtml}<div class="fc-who">${who}<small>${meta}</small></div>${shipped}</header>
   ${preview ? `<div class="fc-body">${body}</div>` : `<a class="fc-body" href="/?run=${id}">${body}</a>`}
+  ${checkpoints}
   ${!preview&&typeof r.output_url==='string'&&/^https:\/\/[^\s<>"'\\]+$/i.test(r.output_url)?`<p class="fc-output-link"><a href="${esc(r.output_url)}" target="_blank" rel="noopener noreferrer">Open the work ↗</a></p>`:''}
   ${opts.foot === false ? "" : `<footer class="fc-foot">${actions({ id: r.id, to: r.profile_id, count: preview || (opts.count === null && page) ? null : opts.count, acked: opts.acked, mode: preview ? "preview" : page ? "page" : mine ? "mine" : "" })}</footer>`}
 </article>`;
