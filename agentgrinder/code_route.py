@@ -106,7 +106,7 @@ def _keys(obj: dict, allowed: frozenset, name: str) -> None:
 
 def _source_text(value: Any, field: str) -> str:
     text = _reject_text(value, field)
-    if re.search(r'''(?:^|[\s"'])(?:/(?:Users|home|private)/|~[/\\]|[A-Za-z]:[\\/])''', text):
+    if re.search(r'''(?:^|[\s"'])(?:/|~[/\\]|[A-Za-z]:[\\/])''', text):
         _bad(f'{field} must not include home or absolute paths.')
     if re.search(r'(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN)', text):
         _bad(f'{field} must not include credential-shaped text.')

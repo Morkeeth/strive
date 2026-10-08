@@ -23,6 +23,7 @@ def source(**changes):
     source(commits=[{'sha':'a'*40, 'subject':' padded '}]),
     source(commits=[{'sha':'a'*40, 'subject':'Fix /Users/person/work'}]),
     source(commits=[{'sha':'a'*40, 'subject':'Read /home/person/work'}]),
+    source(commits=[{'sha':'a'*40, 'subject':'Fix /etc/config'}]),
     source(commits=[{'sha':'a'*40, 'subject':'Rotate ghp_'+'a'*36}]),
     source(commits=[{'sha':'a'*40, 'url':'https://github.com/a/b/commit/'+'b'*40}]),
     source(commits=[{'sha':'a'*40, 'url':'https://github.com/../b/commit/'+'a'*40}]),
