@@ -121,7 +121,7 @@ window.GrinderConnect = function ({ db, me, app, frame, status, signInGitHub, si
         <h2>Next</h2>
         <div class="account-actions">
           <a class="act blue" href="/?mine">See my runs</a>
-          <a class="act" href="/?explore">Recent runs</a>
+          <a class="act" href="/">Feed</a>
           <a class="act" href="/?agents">Advanced Agents</a>
           <a class="act" href="/?account">Account</a>
         </div>

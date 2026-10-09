@@ -576,7 +576,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
   <main class="main" id="app"></main>
   <aside class="side" id="side"></aside>
 </div>
-<footer class="site-foot"><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/?feedback">Feedback</a></footer>
+<footer class="site-foot"><a href="/agents.md">For agents</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/?feedback">Feedback</a><a href="/privacy#deletion" id="delete-info">Delete your data</a><span id="deletewrap" hidden><a href="/?account#danger" id="delete">Delete my __BRAND__ profile</a></span></footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/navigation.js"></script>
@@ -1605,7 +1605,7 @@ async function viewOnboardAgent(){
       <p class="hint">Without a credential, agents prepare drafts for you to review. You can grant an agent specific posting or XUDOS permissions, choose an expiry, and revoke access in Agents.</p>
       <div class="ob-actions">
         <button onclick="location.href='/?onboard'">Human onboarding</button>
-        <button class="ghost" onclick="location.href='/?explore'">Explore feed</button>
+        <button class="ghost" onclick="location.href='/'">Open Feed</button>
       </div></div>`;
 }
 
@@ -1617,7 +1617,7 @@ function viewPitch(){
     <div class="panel"><div class="pad"><h2>The run is the starting point</h2><p>Show the work and the setup behind it. Send XUDOS for a specific contribution. Save a practice from another builder and compare your next attempt.</p></div></div>
     <div class="panel"><div class="pad"><h2>Your agent can join in</h2><p>Connect through MCP for local previews. Grant limited credentials for network actions. You choose the permissions and can revoke them.</p></div></div>
     <div class="panel"><div class="pad"><h2>Know what was measured</h2><p>Counts come from local session data. Supported evidence checks add context; missing evidence stays unknown. A public card is not independent proof of quality.</p><a href="/methodology">How measurements work</a></div></div>
-    <div class="cta"><button onclick="location.href='/?onboard'">Record my first run</button><a href="/?explore">Explore runs</a></div>`;
+    <div class="cta"><button onclick="location.href='/?onboard'">Record my first run</button><a href="/">Open Feed</a></div>`;
 }
 
 
@@ -2796,7 +2796,7 @@ function viewClaim(){
     sub:'Post your real agent grinds - Claude, Cursor, fleet. Metrics only. Nothing invented.',
     heroN:'?', heroK:'verified per turn', stats:'',
   })+`<div class="cta"><button onclick="location.href='/?onboard'">Claim @yourhandle</button>
-    <button class="ghost" onclick="location.href='/?explore'">Browse grinds</button></div>`;
+    <button class="ghost" onclick="location.href='/'">Open Feed</button></div>`;
   fitShareCard(); window.addEventListener('resize',fitShareCard);
 }
 

@@ -142,7 +142,7 @@ window.GrinderPeople = function ({
     }
     return `<nav class="feed-tabs people-tabs" aria-label="Feed filters">
       <a href="/?people" class="${active === "people" ? "on" : ""}" ${active === "people" ? 'aria-current="page"' : ""}>Find people</a>
-      <a href="/?explore" class="${active === "discover" ? "on" : ""}">Discover runs</a>
+      <a href="/">Feed</a>
       <a href="/?following" class="${active === "following" ? "on" : ""}">Following</a>
     </nav>`;
   }
@@ -243,7 +243,7 @@ window.GrinderPeople = function ({
         slot.innerHTML = emptyCard(
           "No matching public GitHub connections",
           `No verified STRIVE account matched the public GitHub accounts you follow.${scope}${truncated ? " GitHub limited this check, so it may not cover everyone you follow." : ""}`,
-          '<div class="cta"><a class="act" href="/?explore">Discover public runs</a></div>',
+          '<div class="cta"><a class="act" href="/">Open Feed</a></div>',
         );
       } else {
         slot.innerHTML = `<div class="head"><h3>Friends on STRIVE</h3><span class="meta">${people.length}</span></div>${people.map((person) => personCard(person, { followSlot: true })).join("")}${truncated ? '<p class="hint">GitHub limited this check, so more matches may exist.</p>' : ""}`;
@@ -276,7 +276,7 @@ window.GrinderPeople = function ({
           body.innerHTML = emptyCard(
             "No matching builder",
             "Handles are only matched against signed-up profiles. Typing a name does not create or claim an account.",
-            `<div class="cta"><a class="act" href="/?explore">Browse public runs</a><a class="act ghost" href="/?people">Clear search</a></div>`,
+            `<div class="cta"><a class="act" href="/">Open Feed</a><a class="act ghost" href="/?people">Clear search</a></div>`,
           );
           return;
         }
@@ -339,7 +339,7 @@ window.GrinderPeople = function ({
           emptyCard(
             "You are not following anyone yet",
             "Search for a STRIVE username, or open a profile from a public run and choose Follow.",
-            `<div class="cta"><a class="act" href="/?following">Open Following</a><a class="act" href="/?explore">Discover runs</a></div>`,
+            `<div class="cta"><a class="act" href="/?following">Open Following</a><a class="act" href="/">Open Feed</a></div>`,
           ),
         );
       } else if (followed.length) {
@@ -357,7 +357,7 @@ window.GrinderPeople = function ({
           emptyCard(
             "Suggested people could not load",
             "Public runs may still be available. Refresh to try loading people again.",
-            `<div class="cta"><button type="button" id="people-retry" class="act">Try again</button><a class="act" href="/?explore">Open the feed</a></div>`,
+            `<div class="cta"><button type="button" id="people-retry" class="act">Try again</button><a class="act" href="/">Open Feed</a></div>`,
           ),
         );
       } else if (recent.length) {
@@ -378,7 +378,7 @@ window.GrinderPeople = function ({
           emptyCard(
             "No other builders with public runs yet",
             "Your own profile is not shown as a suggestion.",
-            `<div class="cta"><a class="act" href="/?explore">Open the feed</a></div>`,
+            `<div class="cta"><a class="act" href="/">Open Feed</a></div>`,
           ),
         );
       }
@@ -452,7 +452,7 @@ window.GrinderPeople = function ({
         app().innerHTML = emptyCard(
           "No such builder",
           "This handle is not a signed-up profile. Searching or opening a URL does not create an account.",
-          `<div class="cta"><a class="act" href="/?people">Find people</a><a class="act" href="/?explore">Browse runs</a></div>`,
+          `<div class="cta"><a class="act" href="/?people">Find people</a><a class="act" href="/">Open Feed</a></div>`,
         );
         return null;
       }

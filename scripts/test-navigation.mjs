@@ -12,6 +12,9 @@ assert.equal(document.querySelectorAll('nav[aria-label="Primary"]').length,1);
 assert.deepEqual([...nav.querySelectorAll('[data-nav-page]')].map(a=>a.dataset.navPage),['feed','post']);
 assert.equal(nav.querySelectorAll('details').length,0);
 assert.equal(document.querySelectorAll('.site-foot a[href="/?feedback"]').length,1);
+assert.equal(document.querySelectorAll('.site-foot a[href="/privacy#deletion"]').length,1);
+assert.equal(document.querySelectorAll('.site-foot a[href="/?account#danger"]').length,1);
+assert.equal(document.querySelectorAll('a[href="/?explore"]').length,0);
 for(const [path,page] of [
  ['/', 'feed'],['/?mine',null],['/?explore','feed'],['/?post','post'],
  ['/?following','feed'],['/?people',null],['/?boards',null],
