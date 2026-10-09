@@ -196,7 +196,7 @@ assert.equal(GrinderAuth.normalizeAvatarUrl('http://x.test/a.png'), null);
 assert.equal(GrinderAuth.normalizeAvatarUrl('https://x.test/a.png'), 'https://x.test/a.png');
 assert.equal(GrinderAuth.validateHandle('Bad Handle').code, 'handle_format');
 // Presentation contract with legacy fallback.
-assert.deepEqual(GrinderAuth.present({ id: 'p1', github_handle: 'Legacy', name: 'Old Name' }), { id: 'p1', handle: 'Legacy', display_name: 'Old Name', avatar_url: 'https://github.com/Legacy.png?size=160', legacy: true, url: '/?u=Legacy' });
+assert.deepEqual(GrinderAuth.present({ id: 'p1', github_handle: 'Legacy', name: 'Old Name' }), { id: 'p1', handle: 'Legacy', display_name: 'Old Name', avatar_url: null, legacy: true, url: '/?u=Legacy' });
 assert.deepEqual(GrinderAuth.present({ id: 'p2', handle: 'new', display_name: null, name: null, github_handle: null, avatar_url: 'https://x.test/p.png' }), { id: 'p2', handle: 'new', display_name: '@new', avatar_url: 'https://x.test/p.png', legacy: false, url: '/?u=new' });
 assert.equal(GrinderAuth.present({ id: 'p3' }).display_name, 'A builder');
 // Suggestion from identities: X handle candidate keys are read, github_handle only from GitHub.
