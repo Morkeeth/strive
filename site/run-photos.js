@@ -50,6 +50,16 @@
     const shown=photos.filter(p=>p.role!=='personal'||p.is_cover),cover=photos.find(p=>p.is_cover),result=photos.find(p=>p.role==='result');
     return (mode==='result'?result||cover:cover)||(shown.length===1?shown[0]:null);
   }
+  // A feed card can show the selected cover and the work beside it. Keep at most one
+  // personal picture, and never turn the other personal uploads into a public gallery.
+  function cardPhotos(photos,mode){
+    const before=photos.find(p=>p.role==='before'),after=photos.find(p=>p.role==='after');
+    const pair=mode==='before_after'&&before&&after?[before,after]:[];
+    const first=pair.length?null:lead(photos,mode);
+    const chosen=[...pair,...(first?[first]:[])];
+    const work=photos.filter(p=>p.role!=='personal'&&!chosen.some(item=>item.id===p.id));
+    return [...chosen,...work].slice(0,6);
+  }
   function photoPath(photo){
     if(typeof photo?.url!=="string")return null;
     try{
@@ -139,12 +149,11 @@
         const list=await get(`/api/run-photos?run_id=${encodeURIComponent(runId)}`,{headers:listHeaders,signal:controller.signal});
         if(!current()||!list.ok)return;
         const payload=await list.json(), photos=payload?.photos||[];
-        const before=photos.find(p=>p.role==='before'),after=photos.find(p=>p.role==='after');
         const mode=card.dataset.photoLayout||'cover';
-        const selected=mode==='before_after'&&before&&after?[before,after]:[lead(photos,mode)].filter(Boolean);
+        const selected=cardPhotos(photos,mode);
         if(!selected.length)return;
         // Build a detached group. Attach only while the same view is active, after all reads.
-        const group=document.createElement('div');group.className='run-media'+(selected.length===2?' run-before-after':'');
+        const group=document.createElement('div');group.className='run-media run-media-gallery';group.setAttribute('aria-label','Images from this run');group.tabIndex=0;
         for(const photo of selected){
           const path=photoPath(photo);if(!path)continue;
           const imageHeaders=await headers(client);if(!current())return;
@@ -155,12 +164,15 @@
           const figure=document.createElement('figure'),image=document.createElement('img');
           image.className='run-photo-cover';if(photo.width&&photo.height){image.width=photo.width;image.height=photo.height}image.decoding='async';image.src=url;image.alt=roles[photo.role]||'Run photo';image.loading='lazy';images.add(image);
           image.onload=image.onerror=()=>{URL.revokeObjectURL(url);urls.delete(url);pendingUrls.delete(url)};
-          figure.append(image);if(photo.role&&photo.role!=='photo'){const caption=document.createElement('figcaption');caption.textContent=roles[photo.role]||'Photo';figure.append(caption)}group.append(figure);
+          const link=document.createElement('a');link.href='/?run='+encodeURIComponent(runId)+'#run-photos';link.setAttribute('aria-label','Open '+(roles[photo.role]||'run image')+' at full size');link.append(image);figure.append(link);
+          const caption=document.createElement('figcaption');caption.textContent=roles[photo.role]||'Photo';figure.append(caption);group.append(figure);
         }
         if(!current())return;
         card.querySelectorAll('.run-media').forEach(el=>el.remove());
+        const route=card.querySelector(':scope > .checkpoint-route');
         const body=card.querySelector('.history-visual')||card.querySelector('.fc-body');
-        if(body){const lead=body.querySelector('.fc-activity-stats')||body.querySelector('.fc-cap')||body.querySelector('.fc-title');if(lead)lead.after(group);else body.prepend(group)}
+        if(route)route.after(group);
+        else if(body)body.after(group);
         else{const title=card.querySelector('.run-metrics')||card.querySelector('.note')||card.querySelector('.run-title-row');if(title)title.after(group);else card.prepend(group)}
         images.add(group);
       }catch(_){}
@@ -277,5 +289,5 @@
     })();
     return next=>{chosen=next||null;paint()};
   }
-  root.StriveRunPhotos={mount,mountCovers,mountPair,mountThumbs,mountVisuals,mountChooser,disposeAll,forget,lead};
+  root.StriveRunPhotos={mount,mountCovers,mountPair,mountThumbs,mountVisuals,mountChooser,disposeAll,forget,lead,cardPhotos};
 })(typeof window!=="undefined"?window:globalThis);
