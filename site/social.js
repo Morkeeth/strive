@@ -228,6 +228,8 @@ window.GrinderSocial = function ({
       ...document.querySelectorAll(".mobile-inbox-badge"),
     ].filter(Boolean);
     if (!me()) {
+      const navBell = byId("notifications-toggle");
+      if (navBell) navBell.hidden = true;
       for (const badge of badges) {
         badge.hidden = true;
         badge.setAttribute("aria-hidden", "true");
@@ -245,6 +247,8 @@ window.GrinderSocial = function ({
           .limit(50),
       );
       const count = rows.length;
+      const navBell = byId("notifications-toggle");
+      if (navBell) navBell.hidden = count === 0;
       for (const badge of badges) {
         if (count > 0) {
           badge.hidden = false;
@@ -402,7 +406,7 @@ window.GrinderSocial = function ({
           .limit(20),
       );
       return runs.length
-        ? `<section class="home-latest" aria-label="${esc(heading)}"><div class="land-head"><h2>${esc(heading)}</h2><a href="/?explore">See all</a></div>${await renderRuns(runs)}</section>`
+        ? `<section class="home-latest" aria-label="${esc(heading)}"><div class="land-head"><h2>${esc(heading)}</h2><a href="/">Open Feed</a></div>${await renderRuns(runs)}</section>`
         : "";
     };
     try {
@@ -467,7 +471,7 @@ window.GrinderSocial = function ({
     } catch (e) {
       byId("social-body").innerHTML = empty(
         "The following feed could not load. Your follows have not changed.",
-        `<div class="cta"><a class="act" href="/?people">Find people</a><a class="act" href="/?explore">Discover runs</a></div>`,
+        `<div class="cta"><a class="act" href="/?people">Find people</a><a class="act" href="/">Open Feed</a></div>`,
       );
       fail(e);
     }

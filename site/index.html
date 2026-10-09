@@ -553,14 +553,12 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
   <a class="mark" href="/">__BRAND__</a>
   <span class="alpha-label">Alpha</span>
   <nav id="product-nav" class="product-nav" aria-label="Primary">
-    <details class="product-nav-group product-nav-more" data-nav-group="feed"><summary aria-label="Feed menu"><span class="product-nav-label">Feed<small data-nav-context hidden></small></span><span class="nav-chevron" aria-hidden="true">⌄</span></summary><div class="product-nav-panel"><a href="/" data-nav-page="feed">Feed</a><a href="/?following" data-nav-page="following">Following</a></div></details>
-    <details class="product-nav-group product-nav-more" data-nav-group="mine"><summary aria-label="My runs menu"><span class="product-nav-label">My runs<small data-nav-context hidden></small></span><span class="nav-chevron" aria-hidden="true">⌄</span></summary><div class="product-nav-panel"><a href="/?mine" data-nav-page="mine">All my runs</a><a href="/?day" data-nav-page="day">Today</a><a href="/?projects" data-nav-page="projects">My projects</a><a href="/?history-import" data-nav-page="history-import">Recover an older run</a><a href="/?connect" data-nav-page="connect">Connect an agent</a><a href="/?account" data-nav-page="profile">My profile</a></div></details>
-    <details class="product-nav-group product-nav-more" data-nav-group="discover"><summary aria-label="Discover menu"><span class="product-nav-label">Discover<small data-nav-context hidden></small></span><span class="nav-chevron" aria-hidden="true">⌄</span></summary><div class="product-nav-panel"><a href="/?explore" data-nav-page="discover">Discover runs</a><a href="/?projects&scope=public" data-nav-page="public-projects">Public projects</a><a href="/?boards" data-nav-page="boards">Activity</a></div></details>
-    <details class="product-nav-group product-nav-more" data-nav-group="people"><summary aria-label="People menu"><span class="product-nav-label">People<small data-nav-context hidden></small></span><span class="nav-chevron" aria-hidden="true">⌄</span></summary><div class="product-nav-panel"><a href="/?people" data-nav-page="people">Find people</a><a href="/?friends" data-nav-page="friends">Close friends</a></div></details>
+    <a class="product-nav-link" href="/" data-nav-page="feed">Feed</a>
+    <a class="product-nav-link product-nav-add" href="/?post" data-nav-page="post">Add run</a>
   </nav>
   <div class="right">
     <a class="global-add" href="/?post"><span aria-hidden="true">+</span> Add run</a>
-    <button id="notifications-toggle" class="icon-button" type="button" aria-label="Notifications" aria-expanded="false" aria-controls="notifications-drawer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 16.5h11l-1.2-1.8V10a4.3 4.3 0 0 0-8.6 0v4.7l-1.2 1.8Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 19h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span id="nav-inbox-badge" class="nav-badge" hidden aria-hidden="true"></span></button>
+    <button id="notifications-toggle" class="icon-button" type="button" aria-label="Notifications" aria-expanded="false" aria-controls="notifications-drawer" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 16.5h11l-1.2-1.8V10a4.3 4.3 0 0 0-8.6 0v4.7l-1.2 1.8Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 19h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span id="nav-inbox-badge" class="nav-badge" hidden aria-hidden="true"></span></button>
     <details id="account-menu" class="account-menu" hidden>
       <summary class="profile-trigger" aria-label="Profile and settings" aria-haspopup="menu"><span id="nav-avatar" class="profile-fallback">ME</span></summary>
       <div class="account-panel" role="menu" data-you-links></div>
@@ -578,7 +576,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
   <main class="main" id="app"></main>
   <aside class="side" id="side"></aside>
 </div>
-<footer class="site-foot"><a href="/agents.md">For agents</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/?feedback">Send feedback</a><a href="/privacy#deletion" id="delete-info">Delete your data</a><span id="deletewrap" hidden><a href="/?account#danger" id="delete">Delete my __BRAND__ profile</a></span></footer>
+<footer class="site-foot"><a href="/agents.md">For agents</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/?feedback">Feedback</a><a href="/privacy#deletion" id="delete-info">Delete your data</a><span id="deletewrap" hidden><a href="/?account#danger" id="delete">Delete my __BRAND__ profile</a></span></footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/navigation.js"></script>
@@ -667,9 +665,9 @@ const REAL_RUN='/r/3afa89e7-aff5-488d-bec3-da36196b8c5e';
 const RETIRED=['crews','crew','join','event','community','forum','challenges','challenge','practices','practice','experiments','experiment','rigs','rigversion','progress','comparison','pitch','claim'];
 function menuLinks(kind){
   if(!ME) return AUTH_USER
-    ? `<a href="/?connect" role="menuitem">Connect your agent</a><a href="/?feedback" role="menuitem">Send feedback</a><button type="button" data-signout role="menuitem">Sign out</button>`
-    : `<a href="/?connect" role="menuitem">Connect your agent</a><a href="/?feedback" role="menuitem">Send feedback</a><div class="menu-sep"></div><button type="button" class="menu-signin" data-signin role="menuitem">${signInLabel()}</button>`;
-  return `<a href="/?u=${encodeURIComponent(profileHandle(ME))}" role="menuitem">Profile</a><a href="/?account" role="menuitem">Settings</a><a href="/?connect" role="menuitem">Connect your agent</a><a href="/?feedback" role="menuitem">Send feedback</a><button type="button" data-signout role="menuitem">Sign out</button>`;
+    ? `<a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" data-signout role="menuitem">Sign out</button>`
+    : `<a href="/?connect" role="menuitem">Connect your agent</a><div class="menu-sep"></div><button type="button" class="menu-signin" data-signin role="menuitem">${signInLabel()}</button>`;
+  return `<a href="/?u=${encodeURIComponent(profileHandle(ME))}" role="menuitem">Profile</a><a href="/?account" role="menuitem">Settings</a><a href="/?inbox" role="menuitem">Responses</a><a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" data-signout role="menuitem">Sign out</button>`;
 }
 function syncAuthNav(){
   document.querySelectorAll('[data-auth="1"]').forEach(el=>{el.hidden=!ME});
@@ -677,7 +675,10 @@ function syncAuthNav(){
 }
 function feedTabs(){ return ''; }
 function discoverySourcesHtml(){ return ''; }
-function myRunsTabs(){ return ''; }
+function myRunsTabs(active='runs'){
+  const chosen=active==='day'?'day':active==='projects'?'projects':active==='profile'?'profile':'runs';
+  return `<nav class="my-runs-tabs" aria-label="My runs views"><a href="/?day=${StriveDay.localDay(new Date())}" ${chosen==='day'?'aria-current="page"':''}>Today</a><a href="/?mine" ${chosen==='runs'?'aria-current="page"':''}>My runs</a><a href="/?projects" ${chosen==='projects'?'aria-current="page"':''}>Projects</a></nav>`;
+}
 function communityTabs(){ return ''; }
 async function viewCommunity(){
   setPrimarySection('community');
@@ -1604,7 +1605,7 @@ async function viewOnboardAgent(){
       <p class="hint">Without a credential, agents prepare drafts for you to review. You can grant an agent specific posting or XUDOS permissions, choose an expiry, and revoke access in Agents.</p>
       <div class="ob-actions">
         <button onclick="location.href='/?onboard'">Human onboarding</button>
-        <button class="ghost" onclick="location.href='/?explore'">Explore feed</button>
+        <button class="ghost" onclick="location.href='/'">Open Feed</button>
       </div></div>`;
 }
 
@@ -1616,7 +1617,7 @@ function viewPitch(){
     <div class="panel"><div class="pad"><h2>The run is the starting point</h2><p>Show the work and the setup behind it. Send XUDOS for a specific contribution. Save a practice from another builder and compare your next attempt.</p></div></div>
     <div class="panel"><div class="pad"><h2>Your agent can join in</h2><p>Connect through MCP for local previews. Grant limited credentials for network actions. You choose the permissions and can revoke them.</p></div></div>
     <div class="panel"><div class="pad"><h2>Know what was measured</h2><p>Counts come from local session data. Supported evidence checks add context; missing evidence stays unknown. A public card is not independent proof of quality.</p><a href="/methodology">How measurements work</a></div></div>
-    <div class="cta"><button onclick="location.href='/?onboard'">Record my first run</button><a href="/?explore">Explore runs</a></div>`;
+    <div class="cta"><button onclick="location.href='/?onboard'">Record my first run</button><a href="/">Open Feed</a></div>`;
 }
 
 
@@ -1717,7 +1718,7 @@ function landingHTML(){
 
       </aside>
     </div>
-  </div><div class="launch-more"><a href="https://github.com/Morkeeth/strive">GitHub ↗</a><a href="/methodology">How the numbers are made</a><a href="/?feedback">Give feedback</a></div>`;
+  </div>`;
 }
 
 // THE DROP ZONE. One markup, mounted by site/dropin.js, on the landing and on Connect.
@@ -2351,7 +2352,7 @@ async function viewProjects(){
   const ad=await ackData(runs||[]);
   const sections=await feedCards(list.map(p=>p.runs[0]).filter(Boolean),ad,{ownerView:mine,decorate:(html,run)=>{const project=list.find(p=>p.name===run.project),n=project.runs.length;return `<section class="project-overview"><div class="head"><h2><a href="/?project=${encodeURIComponent(project.name)}&scope=${mine?'mine':'public'}">${esc(StriveActivity.project(project.name))}</a></h2><span class="meta">${n} saved run${n===1?'':'s'}</span></div>${html}</section>`;}});
   if((mine||following)&&ME?.id!==profileId)return viewProjects();
-  app.innerHTML=`<div class="head"><h1>${following?'Following projects':mine?'My projects':'Public projects'}</h1><span class="meta">${list.length} projects</span></div><p class="page-intro">${mine?'Where you left each project. Your private work stays here.':'The latest public work in each project.'}</p>${list.some(p=>p.runs.length)?sections:'<div class="empty-state"><h2>No projects yet</h2><p>When you save a run with a project name, its latest work appears here.</p></div>'}`;
+  app.innerHTML=`${mine?myRunsTabs('projects'):""}<div class="head"><h1>${following?'Following projects':mine?'My projects':'Public projects'}</h1><span class="meta">${list.length} projects</span></div><p class="page-intro">${mine?'Where you left each project. Your private work stays here.':'The latest public work in each project.'}</p>${list.some(p=>p.runs.length)?sections:'<div class="empty-state"><h2>No projects yet</h2><p>When you save a run with a project name, its latest work appears here.</p></div>'}`;
   wireKudos();
 
 }
@@ -2401,7 +2402,7 @@ async function viewProfile(handle){
   const profileHtml=`${isOwner?`<div class="profile-view-mode"><span>${preview?'Public profile preview':'Your profile · includes private work'}</span><a href="/?u=${encodeURIComponent(handle)}${preview?'':'&preview=public'}">${preview?'Back to your profile':'Preview public profile'}</a></div>`:''}<div class="phero">${!isAgentProfile(prof)&&window.GrinderFeed?.face?GrinderFeed.face({profiles:prof},56):avatar(handle,{size:36,agent:isAgentProfile(prof)})}
       <div><h1>${esc(prof.display_name||prof.name||handle)}</h1><div class="h">@${esc(handle)}</div>${profileLinksHtml(prof,mine)}</div>${mine?'<div class="profile-actions"><button id="edit-profile-open" class="ghost">Edit profile</button></div>':''}</div>
     <div id="social-follow" class="social-follow"></div>
-    <section class="profile-activity-stats" aria-label="Activity in the loaded runs"><div><span>Runs</span><strong>${R.length}</strong></div><div><span>Projects</span><strong>${new Set(R.map(r=>GrinderContract.projectLabel(r.project)).filter(Boolean)).size}</strong></div><div><span>XUDOS received</span><strong>${acksR===null?'Unavailable':acksR}</strong></div></section><p class="profile-stats-scope">${mine?'Your latest':'Latest visible'} ${R.length} runs · ${mine?'Includes private work':'Only runs you can open'}</p>
+    ${mine?myRunsTabs('profile'):""}<section class="profile-activity-stats" aria-label="Activity in the loaded runs"><div><span>Runs</span><strong>${R.length}</strong></div><div><span>Projects</span><strong>${new Set(R.map(r=>GrinderContract.projectLabel(r.project)).filter(Boolean)).size}</strong></div><div><span>XUDOS received</span><strong>${acksR===null?'Unavailable':acksR}</strong></div></section><p class="profile-stats-scope">${mine?'Your latest':'Latest visible'} ${R.length} runs · ${mine?'Includes private work':'Only runs you can open'}</p>
     <details class="profile-project-list"><summary>Projects & tools</summary>${profileProjectsHtml(R,mine)}
     ${setup?`<div class="head"><h2>Tools</h2></div><div class="profile-tools">${setup}</div>`:''}
     </details>${heatmapSvg(R)}
@@ -2476,7 +2477,7 @@ async function refreshAuth(){
         ? `<span id="nav-avatar">${GrinderFeed.face({profiles:{...ME,avatar_url:shown?.avatar_url}},30)}</span>`
         : `<span id="nav-avatar" class="profile-fallback">${esc((shown?.display_name||shown?.handle||'ME').slice(0,2).toUpperCase())}</span>`;
     }
-    $('account-menu').hidden=!current.user;$('auth').hidden=!!current.user;$('auth').textContent='Sign in';$('deletewrap').hidden=!ME;if($('delete-info'))$('delete-info').hidden=!!ME;
+    $('account-menu').hidden=!current.user;$('auth').hidden=!!current.user;$('auth').textContent='Sign in';if($('deletewrap'))$('deletewrap').hidden=!ME;if($('delete-info'))$('delete-info').hidden=!!ME;
     syncAuthNav();status('');
     if(social.refreshUnread) social.refreshUnread();
   }catch(e){if(generation!==AUTH_GENERATION)return;AUTH_USER=null;ME=null;IDENTITY_SETUP=null;status(e.detail?.message||'Sign-in could not be restored. Try again.',true);}
@@ -2795,7 +2796,7 @@ function viewClaim(){
     sub:'Post your real agent grinds - Claude, Cursor, fleet. Metrics only. Nothing invented.',
     heroN:'?', heroK:'verified per turn', stats:'',
   })+`<div class="cta"><button onclick="location.href='/?onboard'">Claim @yourhandle</button>
-    <button class="ghost" onclick="location.href='/?explore'">Browse grinds</button></div>`;
+    <button class="ghost" onclick="location.href='/'">Open Feed</button></div>`;
   fitShareCard(); window.addEventListener('resize',fitShareCard);
 }
 
@@ -2839,14 +2840,14 @@ const PAGE_TITLES=[['example','Example'],['boards','Activity'],['projects','Proj
 function pageTitle(q){
   const t=x=>x+' · __BRAND__';
   // Retired sections and legacy ?event= links are sent to Discover.
-  if(RETIRED.some(k=>q.has(k))) return t('Discover');
+  if(RETIRED.some(k=>q.has(k))) return t('Feed');
   const hit=PAGE_TITLES.find(([k])=>q.has(k));
   if(hit) return t(hit[1]);
   if(q.get('event')) return t('Event');
   if(q.get('share')!==null&&(q.get('rig')||q.get('u')||q.get('run'))) return t('Share');
   if(q.get('run')) return t('Run');
   if(q.get('u')) return t('@'+q.get('u'));
-  if(q.get('explore')!==null) return t('Discover');
+  if(q.get('explore')!==null) return t('Feed');
   if(q.has('onboard')) return t('Connect your agent');
   return '__BRAND__ · __TAGLINE__';
 }
@@ -2872,7 +2873,7 @@ async function route(){ setPrimarySection(); RUN_VIEW_GENERATION++;window.Strive
     if(q.get('example')==='tree') return GrinderExample.viewTree();
     return GrinderExample.view();
   }
-  if(RETIRED.some(k=>q.has(k))){history.replaceState(null,'','/?explore');status('That section is gone. What is left: runs, people and cheers.');return viewExplore();}
+  if(RETIRED.some(k=>q.has(k))){history.replaceState(null,'','/');return viewLanding();}
   if(q.has('boards'))return viewBoards();
   if(q.has('projects'))return viewProjects();
   if(q.has('day'))return viewDay(q.get('day'));
@@ -2901,7 +2902,8 @@ async function route(){ setPrimarySection(); RUN_VIEW_GENERATION++;window.Strive
     const rn=q.get('run'); if(rn) return viewShareRun(rn);
   }
   const u=q.get('u'); const rn=q.get('run');
-  if(rn) return viewRun(rn); if(u) return viewProfile(u); if(q.get('explore')!==null) return viewExplore();
+  if(rn) return viewRun(rn); if(u) return viewProfile(u);
+  if(q.get('explore')!==null){history.replaceState(null,'','/');return viewLanding();}
   // The /l/ ask ("Drop yours") lands on the drop zone, signed in or not.
   if(location.hash==='#drop-zone') return viewPost();
   if(await shouldOnboard()) return viewOnboard();

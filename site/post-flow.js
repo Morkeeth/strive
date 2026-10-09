@@ -10,7 +10,7 @@
     return `<section class="post-start" aria-labelledby="post-start-title"><h2 id="post-start-title">Start with a session</h2>
       <p class="post-start-intro">Bring in the work, add your story, then choose who sees it.</p>${steps()}
       <div class="post-file-entry">${dropHtml}</div>
-      <div class="post-agent-entry"><span>Working with your agent?</span><button class="act" type="button" data-copy="${esc(agentPrompt)}">Copy a preview request</button></div>
+      <div class="post-agent-entry"><div><strong>Working with your agent?</strong><span>Ask it to collect a private preview.</span></div><button class="act" type="button" data-copy="${esc(agentPrompt)}">Copy request</button></div>
       <p class="hint">You can preview without signing in. Nothing is saved until you choose to save it.</p>
     </section>
     <details class="post-setup" id="post-setup"><summary><span>Import setup</span><span class="post-setup-summary">Editor plugins, terminal and other sources</span></summary>

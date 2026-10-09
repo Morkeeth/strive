@@ -1,30 +1,25 @@
-/* One whole-item target per destination group, shared by desktop and phone. */
-.bar .product-nav{display:flex;align-self:stretch;align-items:stretch;flex-wrap:nowrap;gap:4px;margin-left:4px;color:var(--ink);font-size:13px}
-.product-nav-group{position:relative;min-width:86px;border:0;padding:0}
-.product-nav-more>summary{display:flex;align-items:center;justify-content:center;gap:9px;min-height:64px;padding:0 14px;cursor:pointer;list-style:none;border:0;border-bottom:3px solid transparent;color:var(--soft);border-radius:0}
-.product-nav-more>summary::-webkit-details-marker{display:none}
-.product-nav-label{display:flex;flex-direction:column;gap:2px;align-items:center;white-space:nowrap}
-.product-nav-label small{font-size:10px;font-weight:400;max-width:100px;overflow:hidden;text-overflow:ellipsis}
-.product-nav-label small[hidden]{display:none}
-.product-nav-group.on>summary{border-color:var(--blue);color:var(--blue);font-weight:600}
-.nav-chevron{font-size:15px;line-height:1;transition:transform .15s}.product-nav-more[open]>summary .nav-chevron{transform:rotate(180deg)}
-.product-nav-more[open]>summary{background:var(--blue-wash);color:var(--blue)}
-.product-nav-panel{position:absolute;z-index:110;top:100%;left:0;min-width:218px;padding:7px;background:#fff;border:1px solid var(--rule);border-radius:12px;box-shadow:0 10px 28px #18213c16;max-height:calc(100dvh - 100px);overflow-y:auto}
-.product-nav-more:not([open]) .product-nav-panel{display:none}
-.product-nav-panel a{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:10px 12px;gap:16px;border-radius:7px;color:var(--ink)}
-.product-nav-panel a[aria-current=page]{color:var(--blue);background:var(--blue-wash);font-weight:600}
-.product-nav-panel a[aria-current=page]::after{content:'✓';font-size:13px}
-.product-nav a:focus-visible,.product-nav summary:focus-visible{outline:2px solid var(--blue);outline-offset:-3px}
-.global-add{display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;min-height:40px;padding:0 15px;border-radius:22px;background:var(--blue);color:#fff!important;font-size:13px;font-weight:500}.global-add span{font-size:20px;line-height:1}
-@media(hover:hover){.product-nav-more>summary:hover,.product-nav-panel a:hover{background:var(--blue-wash);color:var(--blue)}.global-add:hover{background:#0035ca}}
-@media(min-width:801px) and (max-width:1080px){.bar .alpha-label{display:none}.bar-in{gap:12px}.product-nav-more>summary{padding:0 10px}.bar .product-nav{margin-left:0}}
+/* One primary destination per target, on desktop and phone. */
+.bar .product-nav{display:flex;align-self:stretch;align-items:stretch;gap:4px;margin-left:10px;font-size:14px}
+.product-nav-link{display:flex;align-items:center;justify-content:center;min-height:64px;padding:0 16px;border-bottom:3px solid transparent;color:var(--soft);white-space:nowrap;text-decoration:none}
+.product-nav-link[aria-current=page]{border-color:var(--blue);color:var(--blue);font-weight:650}
+.product-nav-link:focus-visible,.global-add:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.product-nav-add{display:none}
+.global-add{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:0 16px;border-radius:22px;background:var(--blue);color:#fff!important;font-size:13px;font-weight:600;white-space:nowrap}
+.global-add span{font-size:20px;line-height:1}
+.feedback-launch{display:none!important}
+@media(hover:hover){.product-nav-link:hover{color:var(--blue);background:var(--blue-wash)}.global-add:hover{background:#0035ca}}
+@media(min-width:801px) and (max-width:1080px){.bar .alpha-label{display:none}.bar-in{gap:10px}.product-nav-link{padding:0 10px}.bar .product-nav{margin-left:0}}
 @media(max-width:800px){
- .bar .product-nav{position:fixed;z-index:100;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin:0;padding:0 4px env(safe-area-inset-bottom);background:#fff;border-top:1px solid var(--rule);box-shadow:0 -2px 12px #24242805;font-size:12px}
- .product-nav-group{min-width:0}.product-nav-more>summary{padding:5px 2px 7px;min-height:58px;border-bottom:0;border-top:3px solid transparent;gap:4px}.product-nav-group.on>summary{border-top-color:var(--blue)}
- .product-nav-label small{font-size:9px;max-width:60px}.nav-chevron{font-size:12px}
- .product-nav-panel{position:fixed;top:auto;bottom:calc(64px + env(safe-area-inset-bottom));left:8px;right:8px;min-width:0;max-height:calc(100dvh - 140px);border-radius:12px;box-shadow:0 -6px 24px #24242816}
- .product-nav-panel a{min-height:46px;font-size:14px}.bar-in{height:56px;gap:8px}.bar .alpha-label{display:none}.bar .right{gap:2px}.global-add{min-height:38px;padding:0 12px;font-size:12px}.global-add span{font-size:18px}
+ .bar .product-nav{position:fixed;z-index:100;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;margin:0;padding:0 4px env(safe-area-inset-bottom);background:#fff;border-top:1px solid var(--rule);box-shadow:0 -2px 12px #24242805;font-size:12px}
+ .product-nav-link{min-height:60px;padding:6px 2px;border-bottom:0;border-top:3px solid transparent}
+ .product-nav-link[aria-current=page]{border-top-color:var(--blue)}
+ .product-nav-add{display:flex}.global-add{display:none!important}
+ .bar-in{height:56px;gap:8px}.bar .alpha-label{display:none}.bar .right{gap:2px}
  body{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
 }
-body:has(.product-nav-more[open]) .feedback-launch{visibility:hidden}
-@media(prefers-reduced-motion:reduce){.nav-chevron{transition:none}}
+
+.my-runs-tabs{display:flex;align-items:center;gap:6px;margin:4px 0 24px;padding:4px;width:max-content;max-width:100%;border:1px solid var(--rule);border-radius:24px;background:#fff}
+.my-runs-tabs a{display:flex;align-items:center;justify-content:center;min-height:38px;padding:0 16px;border-radius:20px;color:var(--soft);font-size:13px;white-space:nowrap}
+.my-runs-tabs a[aria-current=page]{color:#fff;background:var(--blue);font-weight:600}
+@media(max-width:500px){.my-runs-tabs{width:100%;gap:0}.my-runs-tabs a{flex:1;padding:0 8px;font-size:12px}}
+#notifications-toggle[hidden]{display:none!important}

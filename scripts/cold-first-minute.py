@@ -69,34 +69,34 @@ window.addEventListener('load',()=>{
   setTimeout(()=>{
     if(window.__coldSignin) showSignIn();
     setTimeout(()=>{
-      // 25 Sep 23:1x (Oscar): what is going on first, then people, then runs, then sign in.
-      // So the pitch and the week lead, and the sign-in ask closes the page.
+      // The public feed starts with the real run, followed by people and the week.
       const intro=document.querySelector('.home-hero');
-      const cta=document.querySelector('.home-join .primary');
-      const featureSection=document.querySelector('#home-week');
-      const feature=document.querySelector('#home-week .wk');
+      const featureSection=document.querySelector('#landing-feature');
+      const feature=document.querySelector('#landing-feature-body .card');
       const sample=document.querySelector('[data-home-sample]');
       const count=document.getElementById('public-run-count');
       const explanation=document.getElementById('signin-explanation');
       const rect=feature&&feature.getBoundingClientRect();
       const visible=rect?Math.max(0,Math.min(rect.bottom,innerHeight)-Math.max(rect.top,0)):0;
       const introBox=intro&&intro.getBoundingClientRect();
-      const ctaBox=cta&&cta.getBoundingClientRect();
       const featureBox=featureSection&&featureSection.getBoundingClientRect();
-      const pitchFirst=Boolean(
-        introBox&&featureBox&&ctaBox&&
-        /Sign in with GitHub/i.test(cta.textContent||'')&&
+      const feedFirst=Boolean(
+        introBox&&featureBox&&
         introBox.top>=0&&introBox.bottom<=innerHeight&&
         featureBox.top<innerHeight&&
         introBox.bottom<=featureBox.top+1&&
-        // Sign in closes the page: after the week, clubs, builders and popular runs.
-        ['#home-week','#home-clubs','#home-builders','#landing-feature'].every(sel=>{
+        ['#home-builders','#home-week-section'].every(sel=>{
           const box=document.querySelector(sel)?.getBoundingClientRect();
-          return Boolean(box&&ctaBox.top>=box.bottom);
+          return Boolean(box&&featureBox.top<=box.top);
         })
       );
-      document.documentElement.dataset.coldPitchFirst=String(pitchFirst);
-      document.documentElement.dataset.coldFeatureVisible=String(Boolean(rect&&visible>=rect.height-1));
+      const visibleAdd=[...document.querySelectorAll('.global-add,.product-nav-add')].filter(el=>{
+        const style=getComputedStyle(el),box=el.getBoundingClientRect();
+        return style.display!=='none'&&box.width>0&&box.height>0;
+      });
+      document.documentElement.dataset.coldFeedFirst=String(feedFirst);
+      document.documentElement.dataset.coldFeatureVisible=String(Boolean(rect&&visible>0));
+      document.documentElement.dataset.coldSingleAdd=String(visibleAdd.length===1);
       document.documentElement.dataset.coldSampleAbsent=String(!sample);
       document.documentElement.dataset.coldDropAbsent=String(!document.getElementById('drop-zone'));
       document.documentElement.dataset.coldCountRendered=String(
@@ -159,6 +159,7 @@ def prepare_site(folder: Path) -> None:
     shutil.copytree(ROOT / "site", target)
     index = target / "index.html"
     html = index.read_text()
+    html = html.replace("__BRAND__", "STRIVE").replace("__TAGLINE__", "Post your strides")
     html = html.replace(
         '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
         '<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">',
@@ -246,7 +247,9 @@ def main() -> None:
         finally:
             server.shutdown()
 
-    assert 'data-cold-pitch-first="true"' in phone
+    assert 'data-cold-feed-first="true"' in phone
+    assert 'data-cold-feature-visible="true"' in phone
+    assert 'data-cold-single-add="true"' in phone
     assert 'data-cold-sample-absent="true"' in phone
     assert 'data-cold-count-rendered="true"' in phone
     assert "WHAT A RUN LOOKS LIKE" not in phone
@@ -254,17 +257,18 @@ def main() -> None:
     assert "Cold public run" in phone
     assert "A measured outcome from a real public post." in phone
     assert "1 public run is live." in phone
-    # 25 Sep 2026 evening: the home is the feed. The drop zone lives on Add a run (/?post).
-    assert "and build your profile" in phone and "Add a run" in phone
+    # The drop zone lives on Add run (/?post), with one visible entry per width.
+    assert "Follow what people are building." in phone and "Add run" in phone
     assert 'data-cold-drop-absent="true"' in phone
-    # 25 Sep 2026: the landing links a real public run, never the bundled example.
-    assert 'href="/r/3afa89e7-aff5-488d-bec3-da36196b8c5e"' in phone
+    # The fixture run is linked from the rendered feed, never the bundled example.
+    assert 'href="/?run=cold-public-1">Cold public run</a>' in phone
     assert 'href="/?example"' not in phone
     assert 'data-cold-signin-rendered="true"' in modal
     assert EXPLANATION in modal
     assert "Continue with X" not in modal
-    assert 'data-cold-pitch-first="true"' in desktop
+    assert 'data-cold-feed-first="true"' in desktop
     assert 'data-cold-feature-visible="true"' in desktop
+    assert 'data-cold-single-add="true"' in desktop
     assert 'data-cold-sample-absent="true"' in desktop
     print(f"Cold first minute passed. Screenshots: {args.screenshots}")
 
