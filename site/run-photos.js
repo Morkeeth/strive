@@ -2,6 +2,15 @@
   "use strict";
   const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const roles={photo:'Photo',result:'Result',before:'Before',after:'After',personal:'Personal photo'};
+  // Local editorial preview for one already-public run. These are public project images,
+  // captured 10 Oct 2026 from https://world-relay.vercel.app/ and its /og-image.png.
+  // They are context for the project, not evidence that the recorded session made them.
+  const showcase={
+    '599095f1-3b49-4c0e-b50c-13afd4ae369e':[
+      {src:'/media/favour-share-20261010.webp',label:'Project share image',url:'https://world-relay.vercel.app/og-image.png'},
+      {src:'/media/favour-public-page-20261010.webp',label:'Public FAVOUR page · 10 Oct',url:'https://world-relay.vercel.app/'}
+    ]
+  };
   const disposers=new Set(),coverGeneration=new WeakMap();
   function disposeAll(){for(const dispose of [...disposers])dispose();}
   async function token(client){
@@ -145,6 +154,23 @@
       const current=()=>{if(active&&card.isConnected!==false&&coverGeneration.get(card)===generation)return true;for(const url of pendingUrls){URL.revokeObjectURL(url);urls.delete(url)}pendingUrls.clear();return false;};
       try{
         const runId=card.dataset.runId;
+        if(card.dataset.runVisibility==='public'&&showcase[runId]){
+          const group=document.createElement('div');group.className='run-media run-media-gallery run-project-gallery';
+          group.setAttribute('aria-label','Public project images related to this run');group.tabIndex=0;
+          for(const visual of showcase[runId]){
+            const figure=document.createElement('figure'),link=document.createElement('a'),image=document.createElement('img'),caption=document.createElement('figcaption');
+            link.href=visual.url;link.target='_blank';link.rel='noopener noreferrer';
+            link.setAttribute('aria-label','Open source of '+visual.label);
+            image.className='run-photo-cover';image.src=visual.src;image.alt=visual.label+' for FAVOUR';image.loading='lazy';
+            caption.textContent=visual.label;link.append(image);figure.append(link,caption);group.append(figure);
+          }
+          const route=card.querySelector(':scope > .checkpoint-route');
+          const body=card.querySelector('.history-visual')||card.querySelector('.fc-body');
+          if(route)route.after(group);else if(body)body.after(group);else card.append(group);
+          const open=card.querySelector('.fc-open');if(open)open.style.display='none';
+          const story=document.createElement('a');story.className='run-gallery-story-link';story.href='/?run='+encodeURIComponent(runId);story.textContent='View full run →';group.after(story);
+          images.add(group);images.add(story);return;
+        }
         const listHeaders=await headers(client);if(!current())return;
         const list=await get(`/api/run-photos?run_id=${encodeURIComponent(runId)}`,{headers:listHeaders,signal:controller.signal});
         if(!current()||!list.ok)return;

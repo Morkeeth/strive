@@ -6,3 +6,16 @@ const ctx={document:dom.window.document,location:dom.window.location,AbortContro
  if(path.includes('id=1&')){entered();await waiting;}return {ok:true,blob:async()=>({})};
 }};vm.createContext(ctx);vm.runInContext(fs.readFileSync('site/run-photos.js','utf8'),ctx);
 const card=ctx.document.querySelector('.fc');const old=ctx.StriveRunPhotos.mountCovers({client:null,root:ctx.document});await started;delete card.dataset.photoChecked;await ctx.StriveRunPhotos.mountCovers({client:null,root:ctx.document});const current=card.querySelector('img').src;release();await old;assert.equal(card.querySelector('img').src,current);assert.equal(card.querySelectorAll('.run-media').length,1);assert.equal(card.querySelector('.checkpoint-route').nextElementSibling.className,'run-media run-media-gallery','recorded work leads the image gallery');ctx.StriveRunPhotos.disposeAll();assert.equal(card.querySelectorAll('.run-media').length,0);console.log('PASS delayed previous photo request cannot replace current selection; recorded work leads gallery; group disposal clears images');
+const favour='599095f1-3b49-4c0e-b50c-13afd4ae369e';
+const reviewDom=new JSDOM(`<article class="fc" data-run-id="${favour}" data-run-visibility="public"><a class="fc-body"><p class="fc-open">Open</p></a></article><article class="fc" data-run-id="${favour}" data-run-visibility="private"><a class="fc-body"></a></article>`,{url:'https://striverun.app'});
+let reviewReads=0;const review={document:reviewDom.window.document,location:reviewDom.window.location,AbortController,URL,fetch:async()=>{reviewReads++;return {ok:false,status:404}}};
+vm.createContext(review);vm.runInContext(fs.readFileSync('site/run-photos.js','utf8'),review);
+await review.StriveRunPhotos.mountCovers({client:null,root:review.document});
+const [publicCard,privateCard]=review.document.querySelectorAll('.fc');
+assert.deepEqual([...publicCard.querySelectorAll('.run-project-gallery img')].map(img=>img.getAttribute('src')),['/media/favour-share-20261010.webp','/media/favour-public-page-20261010.webp']);
+assert.equal(privateCard.querySelector('.run-project-gallery'),null,'private run cannot inherit public project imagery');
+assert.equal(reviewReads,1,'only private card asks photo access');
+assert.equal(publicCard.querySelector('.run-gallery-story-link').getAttribute('href'),'/?run='+favour);
+review.StriveRunPhotos.disposeAll();
+assert.equal(publicCard.querySelector('.run-project-gallery'),null);
+console.log('PASS public FAVOUR context stays on one public run; private record is not decorated');

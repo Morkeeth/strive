@@ -8,4 +8,7 @@
 .run-media-gallery figcaption{padding:8px 11px;color:var(--soft);font-size:12px}
 .run-media-gallery figure a:focus-visible{outline:3px solid var(--blue);outline-offset:-3px}
 .run-media-gallery:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.run-gallery-story-link{display:inline-flex;align-items:center;justify-content:center;min-height:40px;margin:0 20px 20px;padding:0 16px;border:1px solid var(--rule);border-radius:999px;background:#fff;color:var(--blue);font-size:13px;font-weight:600;text-decoration:none}
+.run-gallery-story-link:hover{border-color:var(--blue);background:var(--blue-wash)}
 @media(max-width:520px){.run-media-gallery{gap:8px;margin:0 14px 16px}.run-media-gallery figure a{min-height:120px}}
+@media(max-width:600px){.card.fc .run-project-gallery{display:grid;grid-auto-flow:row;grid-auto-columns:auto;grid-template-columns:minmax(0,1fr);overflow:visible}.card.fc .run-project-gallery figure a{min-height:0}}
