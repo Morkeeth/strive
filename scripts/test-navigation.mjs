@@ -3,30 +3,28 @@ import {readFileSync} from 'node:fs';
 import {JSDOM} from 'jsdom';
 const source=readFileSync(new URL('../site/index.html',import.meta.url),'utf8');
 const navigation=readFileSync(new URL('../site/navigation.js',import.meta.url),'utf8');
+const css=readFileSync(new URL('../site/navigation.css',import.meta.url),'utf8');
 const dom=new JSDOM(source,{url:'https://strive.test/',runScripts:'outside-only'});
 const {window}=dom,{document}=window;
 window.eval(navigation);
 const nav=document.getElementById('product-nav');
 assert.equal(document.querySelectorAll('nav[aria-label="Primary"]').length,1);
-assert.equal(document.querySelectorAll('.desktop-nav,.tabbar').length,0);
-for(const [path,page,parent,label] of [
- ['/', 'feed'],['/?mine','mine'],['/?explore','discover'],
- ['/?following','following','feed','Following'],['/?people','people'],
- ['/?boards','boards','discover','Activity'],['/?day=2026-10-01','day','mine','Today'],
- ['/?friends','friends','people','Close friends'],['/?projects&scope=public','public-projects','discover','Public projects'],['/?projects','projects','mine','My projects'],['/?feedday=2026-10-08&feedpage=alpha','feed'],
- ['/?day=2026-10-01&p=someone',null],['/?run=abc',null],['/?account',null],['/?post',null],['/#import=abc',null]
+assert.deepEqual([...nav.querySelectorAll('[data-nav-page]')].map(a=>a.dataset.navPage),['feed','post']);
+assert.equal(nav.querySelectorAll('details').length,0);
+assert.equal(document.querySelectorAll('.site-foot a[href="/?feedback"]').length,1);
+for(const [path,page] of [
+ ['/', 'feed'],['/?mine',null],['/?explore','feed'],['/?post','post'],
+ ['/?following','feed'],['/?people',null],['/?boards',null],
+ ['/?day=2026-10-01',null],['/?friends',null],
+ ['/?projects&scope=public',null],['/?projects',null],
+ ['/?feedday=2026-10-08&feedpage=alpha','feed'],
+ ['/?run=abc',null],['/?account',null],['/#import=abc','feed']
 ]) {
  window.history.replaceState(null,'',path);
  window.StriveNavigation.sync();
- const exact=[...nav.querySelectorAll('[aria-current="page"]')];
- assert.deepEqual(exact.map(e=>e.dataset.navPage),page?[page]:[],path);
- const contextual=[...nav.querySelectorAll('[aria-current="location"]')];
- assert.deepEqual(contextual.map(e=>e.closest('[data-nav-group]').dataset.navGroup),page?[parent||page]:[],path);
- if(parent){const context=nav.querySelector(`[data-nav-group="${parent}"] [data-nav-context]`);assert.equal(context.hidden,false);assert.equal(context.textContent,label);}
- assert.equal(nav.querySelectorAll('.product-nav-group.on').length,page?1:0,path);
+ assert.deepEqual([...nav.querySelectorAll('[aria-current="page"]')].map(e=>e.dataset.navPage),page?[page]:[],path);
 }
-// All primary destinations are real anchors, without a separate desktop or phone copy.
-assert.deepEqual([...nav.querySelectorAll('[data-nav-group]')].map(a=>a.dataset.navGroup),['feed','mine','discover','people']);
-assert.equal(nav.querySelectorAll('.product-nav-link').length,0,'whole group summary owns the one generous target');
-assert.match(nav.querySelector('[data-nav-page="day"]').getAttribute('href'),/^\/\?day=\d{4}-\d{2}-\d{2}$/);
-console.log('PASS: one menu; exact page versus parent selection; current subview label; unselected unrelated routes; day link and feed card query state.');
+assert.match(css,/\.product-nav-add\{display:none\}/);
+assert.match(css,/@media\(max-width:800px\)[\s\S]*\.product-nav-add\{display:flex\}/);
+assert.match(css,/@media\(max-width:800px\)[\s\S]*\.global-add\{display:none!important\}/);
+console.log('PASS: direct primary routes, one Feed, one visible Add run per screen size, one feedback path.');

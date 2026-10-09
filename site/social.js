@@ -228,6 +228,8 @@ window.GrinderSocial = function ({
       ...document.querySelectorAll(".mobile-inbox-badge"),
     ].filter(Boolean);
     if (!me()) {
+      const navBell = byId("notifications-toggle");
+      if (navBell) navBell.hidden = true;
       for (const badge of badges) {
         badge.hidden = true;
         badge.setAttribute("aria-hidden", "true");
@@ -245,6 +247,8 @@ window.GrinderSocial = function ({
           .limit(50),
       );
       const count = rows.length;
+      const navBell = byId("notifications-toggle");
+      if (navBell) navBell.hidden = count === 0;
       for (const badge of badges) {
         if (count > 0) {
           badge.hidden = false;
