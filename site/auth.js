@@ -126,7 +126,6 @@
       handle,
       display_name,
       avatar_url: normalizeAvatarUrl(p.avatar_url)
-        || (/^[A-Za-z0-9-]{1,39}$/.test(str(p.github_handle)) ? "https://github.com/" + p.github_handle + ".png?size=160" : null)
         || (p.auth_uid && p.auth_uid === user?.id ? suggest(user).avatar_url : null),
       legacy: !str(p.handle),
       url: handle ? "/?u=" + encodeURIComponent(handle) : "/",

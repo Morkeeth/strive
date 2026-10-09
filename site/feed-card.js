@@ -161,7 +161,7 @@
         ? `https://github.com/${p.github}.png?size=${s * 2}`
         : null;
     if (!src) return `<span class="fc-face fc-mono" style="--s:${s}px" aria-hidden="true">${initial}</span>`;
-    return `<span class="fc-face" style="--s:${s}px" data-initial="${initial}" aria-hidden="true"><img src="${esc(src)}" alt="" width="${s}" height="${s}" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('fc-mono');this.parentNode.textContent=this.parentNode.dataset.initial"></span>`;
+    return `<span class="fc-face fc-mono" style="--s:${s}px" aria-hidden="true"><span class="fc-face-initial">${initial}</span><img src="${esc(src)}" alt="" width="${s}" height="${s}" loading="eager" referrerpolicy="no-referrer" onload="this.previousElementSibling.remove()" onerror="this.remove()"></span>`;
   }
 
   // A short sitting spread over 50 bins is a comb of ones and zeros, and a comb is not a shape
