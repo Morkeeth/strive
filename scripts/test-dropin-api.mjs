@@ -65,7 +65,8 @@ try {
   const { card } = await import('../server/public-run.mjs');
   const tree = JSON.stringify(card(L.linkRow({ ...stored })));
   assert.ok(tree.includes('Anonymous builder') && tree.includes('My title'));
-  if (a) assert.ok(tree.includes(a.label), 'the share image carries the same badge');
+  // Share images no longer award achievement badges (card() sets badge to null).
+  if (a) assert.ok(!tree.includes(a.label), 'the share image does not award a badge');
 
   // 3. RATE LIMIT through HTTP: 10 per network per hour. One made above; refusals do not count.
   for (let i = 0; i < 9; i++) assert.equal((await post(payload)).status, 200, `create ${i + 2}`);
