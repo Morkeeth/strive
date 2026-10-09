@@ -146,22 +146,17 @@
     return { handle, name, github: p.github_handle || null, avatar: p.avatar_url || (shown && shown.avatar_url) || null };
   }
 
-  // A face. The profile's own avatar, else the public avatar of the GitHub account the profile
-  // signed in with, else an initial. The GitHub fallback is the person's real picture, not a stock
-  // one; if it fails to load the initial takes its place.
+  // A face. A GitHub handle on an older profile is not proof that the account owns it.
+  // Use the saved photo only; an initial remains visible while it loads or if it fails.
   function face(r, size) {
     const s = size || 40;
     if (r.visibility === "anonymous")
       return `<span class="fc-face fc-mono" style="--s:${s}px" aria-hidden="true">?</span>`;
     const p = profileOf(r);
     const initial = esc((p.name || "?").trim().charAt(0).toUpperCase() || "?");
-    const src = /^https:\/\//i.test(p.avatar || "")
-      ? p.avatar
-      : p.github && /^[A-Za-z0-9-]{1,39}$/.test(p.github)
-        ? `https://github.com/${p.github}.png?size=${s * 2}`
-        : null;
+    const src = /^https:\/\//i.test(p.avatar || "") ? p.avatar : null;
     if (!src) return `<span class="fc-face fc-mono" style="--s:${s}px" aria-hidden="true">${initial}</span>`;
-    return `<span class="fc-face fc-mono" style="--s:${s}px" aria-hidden="true"><span class="fc-face-initial">${initial}</span><img src="${esc(src)}" alt="" width="${s}" height="${s}" loading="eager" referrerpolicy="no-referrer" onload="this.previousElementSibling.remove()" onerror="this.remove()"></span>`;
+    return `<span class="fc-face fc-mono" style="--s:${s}px" aria-hidden="true"><span class="fc-face-initial">${initial}</span><img src="${esc(src)}" alt="" width="${s}" height="${s}" loading="eager" referrerpolicy="no-referrer" onload="if(this.previousElementSibling?.classList.contains('fc-face-initial'))this.previousElementSibling.remove()" onerror="this.remove()"></span>`;
   }
 
   // A short sitting spread over 50 bins is a comb of ones and zeros, and a comb is not a shape

@@ -266,32 +266,6 @@ const codeRoutePlot=run=>{
 // and /r/<id> use (Feed.headline, Feed.stats), so the image, the page and the feed cannot print
 // different figures for one run. No remote image is fetched: the face is the builder's initial.
 const INK='#0a0a0a',SOFT='#6f6f6b',BLUE='#0047ff',WASH='#f2f5ff',BLUE_SOFT='#c4d2ff',RULE='#e3e3df',PAPER='#f7f7f5',ORANGE='#fc4c02';
-// The builder's face for the share image: their GitHub picture, fetched here on the server (a
-// fixed host, never a URL from the row), so the image shows the same face as the page. Any
-// failure returns null and the image draws the initial.
-// Redirects are followed by hand, and every hop must stay on GitHub's own avatar hosts over
-// https: a redirect to any other host (an internal address included) ends the lookup.
-const AVATAR_HOSTS=new Set(['github.com','avatars.githubusercontent.com']);
-const avatarHop=url=>{try{const u=new URL(url);return u.protocol==='https:'&&AVATAR_HOSTS.has(u.hostname)&&!u.username&&!u.password&&(u.port===''||u.port==='443')?u.href:null}catch(_){return null}};
-export async function readAvatar(run,fetcher=fetch){
- const gh=run&&run.visibility==='public'&&run.profiles?.github_handle;
- if(typeof gh!=='string'||!/^[A-Za-z0-9-]{1,39}$/.test(gh))return null;
- try{
-  let url=`https://github.com/${gh}.png?size=128`,response=null;
-  for(let hop=0;hop<4;hop++){
-   response=await fetcher(url,{redirect:'manual',signal:AbortSignal.timeout(3000)});
-   if(response.status<300||response.status>=400)break;
-   const next=avatarHop(new URL(response.headers.get('location')||'',url).href);
-   if(!next||hop===3)return null;
-   url=next;
-  }
-  const type=response.headers.get('content-type')||'';
-  if(!response.ok||!/^image\/(png|jpeg)$/.test(type.split(';')[0]))return null;
-  const bytes=Buffer.from(await response.arrayBuffer());
-  if(!bytes.length||bytes.length>400000)return null;
-  return `data:${type.split(';')[0]};base64,${bytes.toString('base64')}`;
- }catch(_){return null}
-}
 export function card(run,opts={}){
  const availableRoutePlot=codeRoutePlot(run);
  const availableSeries=series(run);
