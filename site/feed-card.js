@@ -104,12 +104,26 @@
     const metadata=r?.capture_metadata||{};
     const input=whole(metadata.input_tokens),output=whole(metadata.output_tokens);
     const cells=[];
-    if(input!==null&&output!==null){const total=input+output;cells.push(['Recorded tokens · client-reported',total>=1000000?(total/1000000).toFixed(2)+'M':thousands(total),thousands(total)+' recorded tokens']);}
+    if(input!==null&&output!==null){
+      const total=input+output,cached=whole(metadata.cached_input_tokens);
+      cells.push(['Recorded tokens',total>=1000000?(total/1000000).toFixed(2)+'M':thousands(total),thousands(total)+' tokens from imported usage',cached?`${cached>=1000000?(cached/1000000).toFixed(2)+'M':thousands(cached)} cached input included`:'Client-reported usage']);
+    }
     const typed=whole(r?.prompts??r?.turns_typed);
     if(typed!==null)cells.push(['You typed',thousands(typed)]);
     const elapsed=durationLabel(r?.wall_time_s??r?.duration_s);
-    if(elapsed)cells.push(['Elapsed · includes idle',elapsed]);
+    if(elapsed)cells.push([r?.wall_time_s!=null?'Elapsed time':'Recorded time',elapsed,r?.wall_time_s!=null?'Wall-clock span from capture':'Duration from capture; source method may cap idle gaps']);
     return cells.length?cells.slice(0,3):(contract()?.heroStats(r)||[]);
+  }
+
+  function modelName(id){return id==='claude-opus-5-5'?'Claude Opus 5.5':id;}
+
+  function cardSummary(r){
+    const summary=story?.summary(r)||'';
+    // This older public caption still mentions a personal picture. Oscar's current
+    // showcase direction is project screenshots; keep the saved caption untouched.
+    return r?.id==='599095f1-3b49-4c0e-b50c-13afd4ae369e'
+      ?summary.replace(/\s*Personal photo from 4 October\.\s*/,' ').trim()
+      :summary;
   }
 
   // THE BADGE. One small achievement per run, computed from the run's own numbers and nothing
@@ -458,9 +472,9 @@
     const strideHtml = opts.stride === false || !(preview || page || opts.url) ? "" : stride(r, { url: opts.url, copy: !!opts.copy });
     const body = `
     <${tag} class="fc-title">${esc(titleOf(r))}</${tag}>
-    ${story?.summary(r) ? `<p class="fc-cap">${esc(story.summary(r))}</p>` : ""}
-    ${page||checkpoints||r.capture_metadata?`<dl class="fc-activity-stats" aria-label="Recorded facts">${recordedFacts(r).map(([label,value,detail])=>`<div><dt>${esc(label)}</dt><dd${detail?` title="${esc(detail)}"`:''}>${esc(value)}</dd></div>`).join('')}</dl>`:''}
-    ${Array.isArray(r?.capture_metadata?.models)&&r.capture_metadata.models.length===1?`<p class="fc-model-tag">Model · ${esc(r.capture_metadata.models[0])}</p>`:''}
+    ${cardSummary(r) ? `<p class="fc-cap">${esc(cardSummary(r))}</p>` : ""}
+    ${page||checkpoints||r.capture_metadata?`<dl class="fc-activity-stats" aria-label="Recorded facts">${recordedFacts(r).map(([label,value,detail,note])=>`<div><dt>${esc(label)}</dt><dd${detail?` title="${esc(detail)}"`:''}>${esc(value)}</dd>${note?`<small class="fc-fact-note">${esc(note)}</small>`:''}</div>`).join('')}</dl>`:''}
+    ${Array.isArray(r?.capture_metadata?.models)&&r.capture_metadata.models.length===1?`<p class="fc-model-tag">Model · ${esc(modelName(r.capture_metadata.models[0]))}</p>`:''}
     ${story?story.visual(r):''}
     ${r.feedback_question?`<p class="fc-question"><span>Feedback welcome</span>${esc(r.feedback_question)}</p>`:''}
     ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Typed by the author. No capture.</p>' : ''}${evidence?evidence.summary(r):''}

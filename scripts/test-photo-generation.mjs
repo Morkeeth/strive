@@ -12,7 +12,7 @@ let reviewReads=0;const review={document:reviewDom.window.document,location:revi
 vm.createContext(review);vm.runInContext(fs.readFileSync('site/run-photos.js','utf8'),review);
 await review.StriveRunPhotos.mountCovers({client:null,root:review.document});
 const [publicCard,privateCard]=review.document.querySelectorAll('.fc');
-assert.deepEqual([...publicCard.querySelectorAll('.run-project-gallery img')].map(img=>img.getAttribute('src')),['/media/favour-share-20261010.webp','/media/favour-public-page-20261010.webp']);
+assert.deepEqual([...publicCard.querySelectorAll('.run-project-gallery img')].map(img=>img.getAttribute('src')),['/media/favour-public-page-20261010.webp','/media/favour-campaign-builder-20261010.webp']);
 assert.equal(privateCard.querySelector('.run-project-gallery'),null,'private run cannot inherit public project imagery');
 assert.equal(reviewReads,1,'only private card asks photo access');
 assert.equal(publicCard.querySelector('.run-gallery-story-link').getAttribute('href'),'/?run='+favour);

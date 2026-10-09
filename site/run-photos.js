@@ -3,12 +3,12 @@
   const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const roles={photo:'Photo',result:'Result',before:'Before',after:'After',personal:'Personal photo'};
   // Local editorial preview for one already-public run. These are public project images,
-  // captured 10 Oct 2026 from https://world-relay.vercel.app/ and its /og-image.png.
+  // captured 10 Oct 2026 from https://world-relay.vercel.app/.
   // They are context for the project, not evidence that the recorded session made them.
   const showcase={
     '599095f1-3b49-4c0e-b50c-13afd4ae369e':[
-      {src:'/media/favour-share-20261010.webp',label:'Project share image',url:'https://world-relay.vercel.app/og-image.png'},
-      {src:'/media/favour-public-page-20261010.webp',label:'Public FAVOUR page · 10 Oct',url:'https://world-relay.vercel.app/'}
+      {src:'/media/favour-public-page-20261010.webp',label:'Public FAVOUR page · 10 Oct',url:'https://world-relay.vercel.app/',alt:'Public FAVOUR campaign page'},
+      {src:'/media/favour-campaign-builder-20261010.webp',label:'FAVOUR campaign builder · 10 Oct',url:'https://world-relay.vercel.app/',alt:'Public FAVOUR campaign builder section'}
     ]
   };
   const disposers=new Set(),coverGeneration=new WeakMap();
@@ -155,13 +155,14 @@
       try{
         const runId=card.dataset.runId;
         if(card.dataset.runVisibility==='public'&&showcase[runId]){
+          const visuals=showcase[runId];
           const group=document.createElement('div');group.className='run-media run-media-gallery run-project-gallery';
-          group.setAttribute('aria-label','Public project images related to this run');group.tabIndex=0;
-          for(const visual of showcase[runId]){
+          group.setAttribute('aria-label','Public FAVOUR project screenshots');group.tabIndex=0;
+          for(const visual of visuals){
             const figure=document.createElement('figure'),link=document.createElement('a'),image=document.createElement('img'),caption=document.createElement('figcaption');
             link.href=visual.url;link.target='_blank';link.rel='noopener noreferrer';
             link.setAttribute('aria-label','Open source of '+visual.label);
-            image.className='run-photo-cover';image.src=visual.src;image.alt=visual.label+' for FAVOUR';image.loading='lazy';
+            image.className='run-photo-cover';image.src=visual.src;image.alt=visual.alt;image.loading='lazy';
             caption.textContent=visual.label;link.append(image);figure.append(link,caption);group.append(figure);
           }
           const route=card.querySelector(':scope > .checkpoint-route');
