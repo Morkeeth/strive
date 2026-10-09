@@ -22,7 +22,7 @@ export async function sanitizePhoto(base64) {
   throw new Error('Choose a still JPEG, PNG or WebP photo.');
  // rotate applies EXIF orientation before discarding all metadata; never call withMetadata.
  const {data,info}=await decoder.rotate().resize({width:2048,height:2048,fit:'inside',withoutEnlargement:true})
-  .flatten({background:'#fff'}).jpeg({quality:85}).toBuffer({resolveWithObject:true});
+  .flatten({background:'#fff'}).jpeg({quality:82,mozjpeg:true}).toBuffer({resolveWithObject:true});
  if(data.length>MAX_PHOTO_BYTES) throw new Error('Resize this photo to under 3 MB first.');
  return {data,width:info.width,height:info.height};
 }
