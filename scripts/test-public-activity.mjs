@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {html,readPublicPhotos} from '../server/public-run.mjs';
+import {html,card,readPublicPhotos} from '../server/public-run.mjs';
 const id='11111111-1111-4111-8111-111111111111',first='22222222-2222-4222-8222-222222222222',cover='33333333-3333-4333-8333-333333333333';
 const run={id,visibility:'public',title:'TEST DATA work',caption:'TEST DATA caption',tool_calls:121,prompts:0,duration_s:600,profiles:{handle:'test-author',display_name:'TEST DATA'},rhythm:[1,2,1]};
 const photos=await readPublicPhotos(run,async()=>new Response(JSON.stringify([{id:first,run_id:id,is_cover:false,width:400,height:300},{id:cover,run_id:id,is_cover:true,width:400,height:300}])));
@@ -8,7 +8,7 @@ const page=html(run,{photos,kudos:0});
 assert.ok(page.indexOf('Open in STRIVE')<page.indexOf('class="card fc"'),'full app entry precedes the card and evidence');
 assert.ok(page.includes('href="/?run='+id+'">Open in STRIVE'),'entry opens this exact run');
 assert.ok(page.indexOf('aria-label="Recorded facts"')<page.indexOf('fc-route-secondary'),'measured stats precede the trace');
-assert.ok(page.includes('<dt>Elapsed</dt><dd>10m</dd>'));
+assert.ok(page.includes('<dt>Recorded time</dt><dd title="Duration from capture; source method may cap idle gaps">10m</dd>'));
 assert.ok(!page.includes('<dt>Tool calls</dt>'),'technical counters stay out of headline facts');
 assert.ok(page.indexOf('/api/run-photos?id='+cover)<page.indexOf('/api/run-photos?id='+first),'selected cover leads the public gallery even when metadata is unordered');
 assert.ok(!page.includes('<script'),'shared public page stays script-free');
@@ -20,4 +20,12 @@ assert.ok(!candidPage.includes('/api/run-photos?id='+first),'a second candid is 
 assert.ok(candidPage.includes('/api/run-photos?id='+extra),'supporting result remains visible');
 assert.ok(!html(run,{photos:[candid[0]]}).includes('/api/run-photos?id='+first),'a personal cover is never guessed');
 assert.deepEqual(candid.map(p=>p.is_cover),[false,true,false],'rendering leaves saved choices untouched');
+const favour='599095f1-3b49-4c0e-b50c-13afd4ae369e';
+const favourPage=html({...run,id:favour,caption:'Reviewing FAVOUR. Personal photo from 4 October.',profiles:{handle:'morkeeth',display_name:'Oscar Morkeeth'}},{photos:[{id:cover,run_id:favour,role:'personal',is_cover:true}]});
+assert.ok(favourPage.includes('Oscar Morkeeth'));
+assert.ok(favourPage.includes('/media/favour-public-page-20261010.webp'));
+assert.ok(favourPage.includes('/media/favour-campaign-builder-20261010.webp'));
+assert.ok(!favourPage.includes('/api/run-photos?id='+cover),'older personal photo is kept off the public showcase page');
+assert.ok(!favourPage.includes('Personal photo from 4 October.'));
+assert.ok(!JSON.stringify(card({...run,id:favour,caption:'Reviewing FAVOUR. Personal photo from 4 October.'})).includes('Personal photo from 4 October.'),'share image leaves out the stale photo sentence');
 console.log('PASS: public share opens the same run, leads with recorded stats, and preserves selected cover');

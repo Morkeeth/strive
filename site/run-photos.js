@@ -125,7 +125,10 @@
       const body=await res.json();if(!current())return;const photos=Array.isArray(body)?body:(body.photos||[]);
       const selectedPersonal=photos.find(p=>p.role==='personal'&&p.is_cover);
       // Readers see the chosen candid photo only. Owners retain every saved image for reselection.
-      const displayed=owner?photos:photos.filter(p=>p.role!=='personal'||p.id===selectedPersonal?.id);
+      const displayed=owner?photos:photos.filter(p=>p.role!=='personal'||(run.id!=='599095f1-3b49-4c0e-b50c-13afd4ae369e'&&p.id===selectedPersonal?.id));
+      // This run's older personal photo stays available to its owner for management.
+      // Its public showcase uses project screenshots; future result images can still appear here.
+      if(!owner&&!displayed.length){slot.innerHTML='';return;}
       const canAdd=owner&&photos.length<6;
       slot.innerHTML=`<section class="run-photos" aria-labelledby="run-photos-title"><div class="head"><h2 id="run-photos-title">Images from this run</h2><span class="meta">${owner?photos.length+' of 6':displayed.length+' image'+(displayed.length===1?'':'s')}</span></div><div class="run-photo-grid"></div>${canAdd?'<label class="photo-add">Add an image<input data-photo-file type="file" accept="image/jpeg,image/png,image/webp"></label><p class="hint">Choose a JPEG, PNG or WebP. Preview the crop, then choose Result, Before, After or Personal photo. Images share this run’s audience. Your working-product link stays separate.</p><div data-photo-editor></div>':owner?'<p class="hint">Six photos added. Remove one before adding another.</p>':''}</section>`;
       const grid=slot.querySelector('.run-photo-grid');
