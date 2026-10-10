@@ -1,5 +1,7 @@
 /* Optional, versioned estimates from stored inputs. Never a provider bill or human active time. */
 (function(root){
+ // Enable at build time only after the production estimate validator is installed.
+ const ESTIMATE_UPLOADS_READY=false;
  const count=n=>Number.isSafeInteger(n)&&n>=0;
  const object=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>keys.includes(k));
  const required=(v,keys)=>keys.every(k=>Object.hasOwn(v,k));
@@ -39,7 +41,7 @@
   const text=JSON.stringify(m,(_,value)=>typeof value==='number'?expand(value):value,2);return new TextEncoder().encode(text).length;
  }
  function prepare(m){
-  if(m?.estimates!==undefined&&encodedBytes(m)>=7500){const {estimates,...base}=m;return base;}
+  if(m?.estimates!==undefined&&(!ESTIMATE_UPLOADS_READY||encodedBytes(m)>=7500)){const {estimates,...base}=m;return base;}
   return m;
  }
  function facts(m){
