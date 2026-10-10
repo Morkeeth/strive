@@ -22,7 +22,8 @@
     if(!object(p,['table_url','table_version','checked_on','currency','service_tier','context_tier','rates_per_million'])||!required(p,['table_url','table_version','checked_on','currency','service_tier','context_tier','rates_per_million'])||p.currency!=='USD'||!['standard','fast','batch','standard-assumed'].includes(p.service_tier)||!/^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,119}$/.test(p.table_version)||!/^[A-Za-z0-9][A-Za-z0-9 ._:/+<>=-]{0,119}$/.test(p.context_tier)||!/^\d{4}-\d{2}-\d{2}$/.test(p.checked_on)||!Number.isFinite(Date.parse(p.checked_on)))fail();
     let u;try{u=new URL(p.table_url)}catch{fail()}
     if(u.protocol!=='https:'||u.username||u.password||p.table_url.length>500)fail();
-    if(!object(p.rates_per_million,rateKeys)||!required(p.rates_per_million,rateKeys)||!rateKeys.every(k=>Number.isFinite(p.rates_per_million[k])&&p.rates_per_million[k]>=0&&p.rates_per_million[k]<=1e6))fail();
+    const billed={input:c.input_tokens-c.cache_read_tokens-c.cache_write_5m_tokens-c.cache_write_1h_tokens,output:c.output_tokens,cache_read:c.cache_read_tokens,cache_write_5m:c.cache_write_5m_tokens,cache_write_1h:c.cache_write_1h_tokens};
+    if(!object(p.rates_per_million,rateKeys)||!required(p.rates_per_million,rateKeys)||!rateKeys.every(k=>p.rates_per_million[k]===null?billed[k]===0:Number.isFinite(p.rates_per_million[k])&&p.rates_per_million[k]>=0&&p.rates_per_million[k]<=1e6))fail();
    }
    if(!count(input)||!count(output)||input!==m.input_tokens||output!==m.output_tokens||(m.cached_input_tokens!=null&&cache!==m.cached_input_tokens))fail();
   }
@@ -51,7 +52,7 @@
    let dollars=0;
    for(const c of e.cost.components){const r=c.price.rates_per_million;dollars+=((c.input_tokens-c.cache_read_tokens-c.cache_write_5m_tokens-c.cache_write_1h_tokens)*r.input+c.cache_read_tokens*r.cache_read+c.cache_write_5m_tokens*r.cache_write_5m+c.cache_write_1h_tokens*r.cache_write_1h+c.output_tokens*r.output)/1e6;}
    const provenance=e.cost.components.map(c=>`${c.model} (${c.role}): ${c.input_tokens} input including ${c.cache_read_tokens} cache reads, ${c.cache_write_5m_tokens} 5-minute writes and ${c.cache_write_1h_tokens} 1-hour writes; ${c.output_tokens} output. Rates USD per million ${JSON.stringify(c.price.rates_per_million)}. ${c.price.table_url}, ${c.price.table_version}, checked ${c.price.checked_on}; service tier ${c.price.service_tier}; context tier ${c.price.context_tier}.`).join(' ');
-   rows.push(['Est. dollars','$'+dollars.toFixed(2),`Model-price comparison from stored capture inputs, not a bill. Excludes subscription terms, tool fees and taxes; standard-assumed means processing speed was not recorded. ${source} ${provenance} Method model-price-v1. Captures and price inputs are uploader-supplied, not independently verified by STRIVE.`]);
+   rows.push(['Est. dollars','$'+dollars.toFixed(2),`Model-price comparison from stored capture inputs, not a bill. Excludes subscription terms, tool fees and taxes; standard-assumed means processing speed was not recorded. ${source} ${provenance} Null rates apply only to token categories with zero usage. Method model-price-v1. Captures and price inputs are uploader-supplied, not independently verified by STRIVE.`]);
   }
   if(e.tool_activity){const a=e.tool_activity;rows.push(['Tool-active time · proxy',a.occupied_bins.length+' min',`${a.occupied_bins.length} unique 60-second clock bins contain at least one recorded tool call. This counts occupied bins, including partial boundary minutes; it is not continuous tool runtime or measured human active time. Origin ${a.origin_utc}; method ${a.method}. ${source}`]);}
   else missing.push(['Tool-active time · proxy','No stored tool-call bin provenance. No active-time proxy is shown.']);

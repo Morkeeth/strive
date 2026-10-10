@@ -12,6 +12,8 @@ const render=m=>html({id:'11111111-1111-4111-a111-111111111111',title:'TEST DATA
 assert.match(render(full),/<dt>Est. dollars<\/dt>/);assert.match(render(full),/<dt>Tool-active time · proxy<\/dt>/);assert.match(render(full),/About these measurements/);assert.match(render(full),/not continuous tool runtime or measured human active time/);
 assert.doesNotMatch(render(base),/<dt>(?:Est. dollars|Tool-active time · proxy)<\/dt>/);assert.match(render(base),/No stored per-model usage/);
 const unknown=structuredClone(full);unknown.estimates.cost.components[0].price=null;Context.validate(unknown);assert.doesNotMatch(render(unknown),/<dt>Est. dollars<\/dt>/);assert.match(render(unknown),/No recorded price for model-test/);
+const unused=structuredClone(full);unused.estimates.cost.components[0].cache_write_1h_tokens=0;unused.estimates.cost.components[0].price.rates_per_million.cache_write_1h=null;Context.validate(unused);
+const missingUsedRate=structuredClone(full);missingUsedRate.estimates.cost.components[0].price.rates_per_million.output=null;assert.throws(()=>Context.validate(missingUsedRate));
 const bad=structuredClone(full);bad.estimates.cost.components[0].input_tokens++;assert.throws(()=>Context.validate(bad));
 const urlAttack=structuredClone(full);urlAttack.estimates.cost.components[0].price.table_url='javascript:alert(1)';assert.throws(()=>Context.validate(urlAttack));
 const large=structuredClone(full);large.estimates.source.ended_at='2026-10-12T10:00:00Z';large.estimates.tool_activity.occupied_bins=Array.from({length:2048},(_,i)=>i);large.estimates.cost.components=Array.from({length:64},()=>structuredClone(component));large.input_tokens*=64;large.output_tokens*=64;large.cached_input_tokens*=64;
@@ -22,7 +24,8 @@ const {db,as}=await bootDisposable();await seedJourneyActors(db);await db.exec(a
 const tiny=structuredClone(full);tiny.estimates.cost.components[0].price.rates_per_million.input=1e-300;const pgBytes=(await db.query('select octet_length($1::jsonb::text) bytes',[tiny])).rows[0].bytes;assert.ok(Estimates.encodedBytes(tiny)>=pgBytes,'scientific notation expansion must fit the PostgreSQL byte budget');
 let sequence=0;
 const insert=meta=>db.query("insert into strava.runs(profile_id,title,visibility,harness,schema_version,measurement_revision,trace_basis,rhythm,capture_metadata) values($1,'TEST DATA estimate','private','Codex',1,$2,'elapsed','[1,2,1]',$3) returning capture_metadata",[CASEY,(++sequence).toString(16).padStart(64,'0'),meta]);
-for(const m of [full,base,unknown,imported.capture_metadata])assert.deepEqual((await insert(m)).rows[0].capture_metadata,m);
+for(const m of [full,base,unknown,unused,imported.capture_metadata])assert.deepEqual((await insert(m)).rows[0].capture_metadata,m);
+await assert.rejects(insert(missingUsedRate),/Invalid model rate/);
 await assert.rejects(insert(bad),/does not reconcile/);await assert.rejects(insert(urlAttack),/Invalid price provenance/);
 const dup=structuredClone(full);dup.estimates.tool_activity.occupied_bins=[0,0];await assert.rejects(insert(dup),/Duplicate tool bins/);
 await assert.rejects(insert(large),/Invalid capture metadata/);

@@ -5,7 +5,7 @@ create or replace function strava.check_capture_estimates(e jsonb,m jsonb) retur
 language plpgsql set search_path=strava,pg_temp as $$
 declare s jsonb; a jsonb; c jsonb; p jsonb; k text; x jsonb;
  start_at timestamptz; end_at timestamptz; origin_at timestamptz;
- total_input numeric:=0; total_output numeric:=0; total_cache numeric:=0;
+ total_input numeric:=0; total_output numeric:=0; total_cache numeric:=0; billed numeric;
 begin
  if e is null then return; end if;
  if jsonb_typeof(e) is distinct from 'object' or e->>'v' is distinct from '1'
@@ -51,6 +51,9 @@ begin
     or not(p->'rates_per_million' ?& array['input','output','cache_read','cache_write_5m','cache_write_1h'])
     or exists(select 1 from jsonb_object_keys(p->'rates_per_million') as keys(key_name) where key_name not in ('input','output','cache_read','cache_write_5m','cache_write_1h')) then raise exception 'Invalid rate table'; end if;
     for k,x in select * from jsonb_each(p->'rates_per_million') loop
+     billed=case k when 'input' then (c->>'input_tokens')::numeric-(c->>'cache_read_tokens')::numeric-(c->>'cache_write_5m_tokens')::numeric-(c->>'cache_write_1h_tokens')::numeric when 'output' then (c->>'output_tokens')::numeric when 'cache_read' then (c->>'cache_read_tokens')::numeric when 'cache_write_5m' then (c->>'cache_write_5m_tokens')::numeric when 'cache_write_1h' then (c->>'cache_write_1h_tokens')::numeric end;
+     -- An unused token category needs no invented provider price.
+     if x='null'::jsonb and billed=0 then continue; end if;
      if jsonb_typeof(x)<>'number' then raise exception 'Invalid model rate'; end if;
      if (x::text)::numeric<0 or (x::text)::numeric>1000000 then raise exception 'Invalid model rate'; end if;
     end loop;
