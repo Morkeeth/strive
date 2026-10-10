@@ -37,3 +37,7 @@ for(const capture_metadata of [full,null]){
  const repeated=await render({...story,caption:story.story_result});assert.equal(repeated.textContent.split(story.story_result).length-1,1);
 }
 console.log('PASS public and app detail: one copy of description, unique provenance retained, no empty author-words line, with and without estimates.');
+
+const pricedNoTime=structuredClone(base);delete pricedNoTime.capture_metadata.estimates.tool_activity;const partial=await render(pricedNoTime);assert.deepEqual([...partial.querySelectorAll('.run-metrics dt')].map(e=>e.textContent),['Recorded tokens','Est. dollars*','Tool-active time · proxy']);assert.equal(partial.querySelector('.post-fact-placeholder dd').textContent,'Not captured');assert.equal(partial.querySelectorAll('.run-metrics dd')[1].textContent,'$1.89');const sharedPartial=new JSDOM(publicHtml(pricedNoTime));assert.match(sharedPartial.window.document.body.textContent,/Not captured/);assert.match(sharedPartial.window.document.body.textContent,/\$1.89/);
+
+const cursorDetail=await render({...base,harness:"cursor",turns_typed:3,tool_calls:15,files_touched:2,capture_metadata:{basis:"cursor-model-info",models:["auto"]}});assert.deepEqual([...cursorDetail.querySelectorAll(".run-metrics dd")].map(e=>e.textContent),["3","15","2"]);assert.match(cursorDetail.textContent,/Cursor does not record tokens/);

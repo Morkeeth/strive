@@ -47,8 +47,13 @@ function cardFacts(r){
 function headlineFacts(r){
  const facts=cardFacts(r),known=label=>facts.find(row=>row[0]===label&&row[1]!=='Not recorded');
  const tokens=known('Recorded tokens'),cost=known('Est. dollars'),active=known('Tool-active time · proxy');
- if(tokens&&cost&&active)return [tokens,cost,active];
+ if(tokens&&cost)return [tokens,cost,active||['Tool-active time · proxy','Not captured','No stored tool-call bin provenance. This is missing data, not zero activity.','missing']];
+ if(!tokens&&r.capture_metadata?.basis==='cursor-model-info'){
+  const typed=r.prompts??r.turns_typed,tools=r.tool_calls??r.ridge_tool_calls;
+  return [['Typed turns',typed,'Recorded human messages, not words or keystrokes.'],['Tool calls',tools,'Captured tool requests; a request does not prove a successful action.'],count(r.files_touched)?['Files touched',r.files_touched,'Files touched in this capture.']:['Commits',r.commits,'Commits recorded in this capture.']].map(([label,value,why])=>count(value)?[label,value.toLocaleString('en-US'),why]:[label,'Not captured',why+' No count was captured.','missing']);
+ }
  const rows=tokens?[tokens]:[];
+ if(!tokens){const typed=r.prompts??r.turns_typed,tools=r.tool_calls??r.ridge_tool_calls;const fallback=[['Typed turns',typed,'Recorded human messages.'],['Tool calls',tools,'Captured tool requests.'],count(r.files_touched)?['Files touched',r.files_touched,'Files touched in this capture.']:['Commits',r.commits,'Commits recorded in this capture.']];if(fallback.every(row=>count(row[1])))return fallback.map(([label,value,why])=>[label,value.toLocaleString('en-US'),why]);}
  const seconds=[r.ridge_basis==='wall-time'?r.ridge_wall_seconds:null,r.wall_time_s,r.duration_s].find(v=>Number.isFinite(v)&&v>0);
  if(seconds!==undefined){const minutes=Math.round(seconds/60);rows.push(['Elapsed',seconds<60?Math.round(seconds)+'s':minutes<60?minutes+' min':Math.floor(minutes/60)+'h '+minutes%60+'m','Recorded session span; includes idle time and is not human active time.']);}
  if(count(r.commits))rows.push(['Commits',String(r.commits),'Commits recorded in this capture; not a claim of deployment.']);
@@ -58,7 +63,8 @@ function headlineFacts(r){
 }
 function headlineHtml(r,className='post-facts'){
  const rows=headlineFacts(r);
- if(rows.length===3)return `<dl class="${esc(className)}" aria-label="Recorded activity">${rows.map(([label,value,detail])=>`<div><dt>${factLabel(label)}</dt><dd title="${esc(detail)}">${esc(value)}</dd></div>`).join('')}</dl>`;
+ const tokenNote=rows[0]?.[0]==='Typed turns'?`<p class="post-token-note">${r.capture_metadata?.basis==='cursor-model-info'?'Cursor does not record tokens':'This capture does not include tokens'}</p>`:'';
+ if(rows.length===3)return `<dl class="${esc(className)}" aria-label="Recorded activity">${rows.map(([label,value,detail,state])=>`<div${state==='missing'?' class="post-fact-placeholder"':''}><dt>${factLabel(label)}</dt><dd title="${esc(detail)}">${esc(value)}</dd></div>`).join('')}</dl>${tokenNote}`;
  let inconsistent=false;try{validate(r.capture_metadata)}catch{inconsistent=true}
  const placeholders=root.StrivePlaceholders||(typeof require==='function'?require('./run-placeholders.js'):null);
  return placeholders?.render('numbers',{compact:true,inconsistent,facts:rows,story:r.caption||r.title})||'';

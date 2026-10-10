@@ -24,7 +24,6 @@
     const choice=pick?.visual==='data'?pick:pick?.photo?.run===id?pick:legacy;
     const dataOnly=choice?.visual==='data'||(!pick&&clean.photo&&clean.visual==='data');
     const photo=choice?.photo?.run===id&&choice.visual!=='data'?choice.photo:null;
-    const trace=root.StriveCodeRoute?.render(r,{compact:true})||trail(r);
     const gallery=!dataOnly;
     const kind=photo?choice.visual:'data';
     const projectFirst=r.photo_layout==='result'&&r.capture_metadata?.estimates?.v===1;
@@ -32,14 +31,13 @@
     const audience=owner?({public:'Public',private:'Only me',link:'Followers',close_friends:'Close friends',anonymous:'Only me'}[r.visibility]||'Only me'):r.visibility!=='public'?'Shared with you':'';
     const day=root.StriveActivity.time(r)!==null?root.StriveDay.localDay(new Date(r.started_at)):null;
     return `<article class="card dc dc-compact activity-post" id="${esc(cardId)}" data-run-id="${esc(id)}" data-run-visibility="${esc(r.visibility||'')}" data-media-story="${esc(r.caption||title)}" data-photo-layout="${esc(r.photo_layout||'cover')}"${r.photo_layout==='result'&&r.capture_metadata?.estimates?.v===1?' data-project-gallery':''}${gallery?' data-photo-gallery':''}${photo&&!projectFirst?' data-gallery-supporting':''} data-at="0" data-count="1">
-      <header class="dc-head">${F.face(r,36)}<div class="dc-identity">${handle?`<a class="dc-author" href="/?u=${encodeURIComponent(handle)}">${esc(name)}</a>`:`<strong class="dc-author">${esc(name)}</strong>`}<p class="meta">${esc(dateLabel)}${r.harness?' · '+esc(F.harnessName(r)):''}</p></div><details class="post-options"><summary aria-label="Run options">•••</summary><div><a href="${href}">Open run</a>${owner?`<a href="${href}#run-edit">Edit this run</a>`:''}${day?`<a href="/?day=${day}${owner?'':'&p='+encodeURIComponent(r.profile_id)}">Day summary</a>`:''}</div></details></header>
+      <header class="dc-head">${F.face(r,36)}<div class="dc-identity">${handle?`<a class="dc-author" href="/?u=${encodeURIComponent(handle)}">${esc(name)}</a>`:`<strong class="dc-author">${esc(name)}</strong>`}<p class="meta">${esc(dateLabel)}${r.harness?' · '+esc(F.harnessName(r)):''}</p></div><details class="post-options"><summary aria-label="Run options">•••</summary><div><a href="${href}">Open run</a>${owner?`<a href="${href}#run-edit">Edit this run</a>`:''}${day?`<a href="/?day=${day}${owner?'':'&p='+encodeURIComponent(r.profile_id)}">Day summary</a>`:''}${root.StriveContext?.measurementDetails?.(r)||''}</div></details></header>
       ${audience?`<p class="dc-audience">${esc(audience)}</p>`:''}
       <div class="post-story">${project?`<a class="post-project" href="/?project=${encodeURIComponent(r.project)}&scope=${owner?'mine':'public'}">${esc(project)}</a>`:''}<h2><a href="${href}">${esc(title)}</a></h2>${caption&&caption!==title?`<p class="post-caption">${esc(caption)}</p>`:!caption?(root.StrivePlaceholders?.render('description',{compact:true})||''):''}</div>
       ${root.StriveContext?.headlineHtml?.(r)||''}
-      ${root.StriveContext?.cardSecondary?.(r)||''}
-      ${work.length?`<p class="post-work">Recorded work · ${work.map(([label,value])=>esc(value)+' '+esc(value==='1'?({'Commits':'commit','Files touched':'file touched','Files changed':'file changed','Projects':'project'}[label]||label.toLowerCase()):label.toLowerCase())).join(' · ')}</p>`:''}
-      ${root.StriveContext?.measurementDetails?.(r)||''}
-      ${trace}${visual}${gallery?`<div class="run-media-slot"><div class="post-media-empty" data-photo-placeholder>${root.StrivePlaceholders?.render('screenshot',{story:r.caption||title,pending:true})||''}</div></div>`:''}${r.feedback_question?`<p class="post-question">${esc(r.feedback_question)}</p>`:''}
+      <div class="post-workline">${root.StriveContext?.cardSecondary?.(r)||''}
+      ${work.length?`<p class="post-work">Recorded work · ${work.map(([label,value])=>esc(value)+' '+esc(value==='1'?({'Commits':'commit','Files touched':'file touched','Files changed':'file changed','Projects':'project'}[label]||label.toLowerCase()):label.toLowerCase())).join(' · ')}</p>`:''}</div>
+      ${visual}${gallery?`<div class="run-media-slot"><div class="post-media-empty" data-photo-placeholder>${root.StrivePlaceholders?.render('screenshot',{story:r.caption||title,pending:true})||''}</div></div>`:''}${r.feedback_question?`<p class="post-question">${esc(r.feedback_question)}</p>`:''}
       <p class="post-open"><a href="${href}">View full run <span aria-hidden="true">→</span></a></p><footer class="fc-foot">${actions}</footer><section class="dc-comments" hidden aria-label="Comments on this run"></section>
     </article>`;
   }

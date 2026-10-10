@@ -23,13 +23,13 @@ console.log('PASS Sunday card: no double-counted cache, recorded zero retained, 
 const missing=P.render({...run,duration_s:null,commits:null,files_touched:null,capture_metadata:null,caption:'',story_result:''});assert.match(missing,/Only recorded measurements are shown/);assert.doesNotMatch(missing,/<dl class="post-facts"[^>]*><\/dl>/);console.log('PASS missing usage gets an honest card state without an empty facts row.');
 
 const inconsistent=P.render({...run,duration_s:null,commits:null,files_touched:null,capture_metadata:{...run.capture_metadata,cached_input_tokens:1001}});assert.match(inconsistent,/Usage needs review/);assert.doesNotMatch(inconsistent,/Usage not captured/);
-const cursor=P.render({...run,duration_s:null,commits:null,files_touched:null,capture_metadata:{basis:'cursor-model-info',models:[]}});assert.match(cursor,/Only recorded measurements are shown/);assert.doesNotMatch(cursor,/Usage needs review/);
+const cursor=P.render({...run,duration_s:null,commits:null,files_touched:null,capture_metadata:{basis:'cursor-model-info',models:[]}});assert.match(cursor,/Cursor does not record tokens/);assert.doesNotMatch(cursor,/Usage needs review/);
 const zero=P.render({...run,capture_metadata:{basis:'codex-records',models:[],input_tokens:0,output_tokens:0}});assert.doesNotMatch(zero,/Usage needs review|Usage not captured/);assert.match(zero,/<dd[^>]*>0<\/dd>/);
 console.log('PASS captured inconsistent usage differs from missing usage; real zero remains a count.');
 
 const missingPreview=w.GrinderFeed.card({...run,duration_s:null,commits:null,files_touched:null,capture_metadata:{basis:'cursor-model-info',models:[]}},{preview:true});
-assert.doesNotMatch(missingPreview,/<dl class="fc-activity-stats"/,'an import without usage must omit the empty face metric');
-assert.match(missingPreview,/You typed 0/,'known human-message zero remains visible');
+assert.match(missingPreview,/<dl class="fc-activity-stats"/,'Cursor keeps a three-position count row');
+assert.match(missingPreview,/<dd[^>]*>0<\/dd>/,'known human-message zero remains visible');
 assert.match(w.GrinderFeed.card({...run,capture_metadata:{basis:'codex-records',models:[],input_tokens:0,output_tokens:0}},{preview:true}),/<dd[^>]*>0<\/dd>/);
 console.log('PASS import preview omits missing usage without hiding recorded zero.');
 
@@ -42,3 +42,9 @@ assert.equal(C.headlineFacts({...run,commits:0})[2][1],'0');
 console.log('PASS three-stat fallback order, labelled elapsed, zero commits and partial-data template.');
 
 assert.deepEqual(JSON.parse(JSON.stringify(C.headlineFacts({...run,capture_metadata:estimateCapture}))).map(r=>r[0]),['Recorded tokens','Est. dollars','Tool-active time · proxy']);
+
+const feedDom=new JSDOM(P.render({...run,rhythm:[1,2,1]}));assert.equal(feedDom.window.document.querySelectorAll('.post-trail').length,0,'feed removes trail; detail owns it');assert.ok(feedDom.window.document.querySelector('.post-options .post-measurement-note'),'measurements stay available inside the options menu');assert.match(P.trail({...run,rhythm:[1,2,1]}),/post-trail/,'detail trail renderer remains available');
+
+const costOnly=structuredClone(estimateCapture);delete costOnly.estimates.tool_activity;const costFacts=C.headlineFacts({...run,capture_metadata:costOnly});assert.equal(costFacts[1][0],'Est. dollars');assert.equal(costFacts[1][1],'$1.89');assert.equal(costFacts[2][0],'Tool-active time · proxy');assert.equal(costFacts[2][1],'Not captured');assert.equal(costFacts[2][3],'missing');const costCard=new JSDOM(P.render({...run,capture_metadata:costOnly}));assert.equal(costCard.window.document.querySelectorAll('.post-fact-placeholder').length,1);assert.ok(!costCard.window.document.querySelector('.post-facts').textContent.includes('Elapsed'));
+
+const nativeCursor={...run,harness:"cursor",turns_typed:3,prompts:null,tool_calls:15,files_touched:2,capture_metadata:{basis:"cursor-model-info",models:["auto"]}};const cursorCard=new JSDOM(P.render(nativeCursor));assert.deepEqual([...cursorCard.window.document.querySelectorAll(".post-facts dt")].map(e=>e.textContent),["Typed turns","Tool calls","Files touched"]);assert.deepEqual([...cursorCard.window.document.querySelectorAll(".post-facts dd")].map(e=>e.textContent),["3","15","2"]);assert.equal(cursorCard.window.document.querySelector(".post-token-note").textContent,"Cursor does not record tokens");assert.deepEqual(JSON.parse(JSON.stringify(C.headlineFacts({...nativeCursor,capture_metadata:null,harness:"future"}))).map(x=>x[1]),["3","15","2"]);

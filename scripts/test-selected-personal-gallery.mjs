@@ -36,3 +36,16 @@ assert.match(oldPost,/data-visual-photo/);assert.doesNotMatch(oldPost,/data-proj
 const coverPost=w.StrivePost.render({...current,photo_layout:'cover'},{choices:selected});
 assert.match(coverPost,/data-visual-photo/);assert.doesNotMatch(coverPost,/data-project-gallery/,'estimates alone never opt into project-first rendering');
 console.log('PASS actual activity post with saved personal visual: explicit Result plus estimates opts in; old and cover choices preserved.');
+
+// More than three authorized images remain in the full viewer; only three fill the card.
+{
+ const photos=[personal,hidden,result,support,photo(5,'before'),photo(6,'after')];
+ const d=new JSDOM(`<article class="activity-post" data-photo-gallery data-project-gallery data-run-id="${runId}" data-run-visibility="public" data-photo-layout="result"><div class="run-media-slot"></div></article>`,{url:'https://striverun.app'});
+ d.window.HTMLDialogElement.prototype.showModal=function(){this.open=true};d.window.HTMLDialogElement.prototype.close=function(){this.dispatchEvent(new d.window.Event('close'))};
+ const reads=[];const scope={document:d.window.document,location:d.window.location,AbortController,URL:Object.assign(class extends URL{},{createObjectURL:()=> 'blob:test',revokeObjectURL(){}}),fetch:async path=>{reads.push(path);return path.includes('?run_id=')&&!path.includes('&id=')?{ok:true,json:async()=>({photos})}:{ok:true,blob:async()=>({})}}};vm.createContext(scope);vm.runInContext(fs.readFileSync('site/run-photos.js','utf8'),scope);
+ await scope.StriveRunPhotos.mountCovers({client:null,root:scope.document});
+ const group=d.window.document.querySelector('.run-media-gallery'),figures=[...group.children];assert.equal(figures.length,3);assert.equal(group.dataset.totalMedia,'5');assert.deepEqual(figures.map(f=>f.dataset.photoRole),['result','photo','personal']);assert.equal(figures[2].querySelector('.media-more-count').textContent,'+2');assert.ok(!d.window.document.body.innerHTML.includes(hidden.id));
+ figures[2].querySelector('a').click();await new Promise(r=>setTimeout(r,0));assert.equal(d.window.document.querySelector('[data-image-count]').textContent,'5 / 5');d.window.document.querySelector('[data-image-prev]').click();await new Promise(r=>setTimeout(r,0));assert.equal(d.window.document.querySelector('[data-image-count]').textContent,'4 / 5');assert.ok(reads.some(p=>p.includes(photo(6,'after').id)),'hidden-by-mosaic authorized image is still available');assert.ok(!reads.some(p=>p.includes(hidden.id)),'unchosen personal is never requested');scope.StriveRunPhotos.disposeAll();
+ const page=new JSDOM(html({...current,capture_metadata:full},{photos}));assert.equal(page.window.document.querySelectorAll('.public-run-photo-grid>figure').length,3);assert.equal(page.window.document.querySelectorAll('.public-image-lightbox').length,5);assert.equal(page.window.document.querySelector('.media-more-count').textContent,'+2');assert.ok(!page.window.document.body.innerHTML.includes(hidden.id));
+}
+console.log('PASS five authorized images become three visible project-first tiles, selected personal last, +2; full viewer retains five and never reads unchosen personal.');

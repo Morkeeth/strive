@@ -1250,7 +1250,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
   };
   const metricStrip=()=>{
     // The signed-out detail must show the same estimate-backed headline and basis as Feed/share.
-    if(opts.detail&&r.capture_metadata?.estimates?.v===1)
+    if(opts.detail&&(r.capture_metadata?.estimates?.v===1||r.capture_metadata?.basis==='cursor-model-info'))
       return StriveContext.headlineHtml(r,'run-metrics post-facts')+StriveContext.measurementDetails(r);
     const cells=typeof GrinderContract==='object'&&GrinderContract.heroStats?GrinderContract.heroStats(r):[];
     if(!cells.length) return '';

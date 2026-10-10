@@ -213,7 +213,9 @@
           empty.innerHTML=root.StrivePlaceholders?.render('screenshot',{story:card.dataset.mediaStory||card.querySelector('.title,h2')?.textContent||''})||'<section class="strive-empty"><h3>No project screenshot added</h3><p>The personal photo is separate from the project result.</p></section>';
           group.append(empty);
         }
-        for(const photo of selected){
+        const personal=selected.find(p=>p.role==='personal');
+        const visible=selected.length>3?(personal?[...selected.filter(p=>p!==personal).slice(0,2),personal]:selected.slice(0,3)):selected;
+        for(const photo of visible){
           const path=photoPath(photo);if(!path)continue;
           const imageHeaders=await headers(client);if(!current())return;
           let url=publicImage(path,card,imageHeaders,true),objectUrl=false;
@@ -224,7 +226,7 @@
             url=URL.createObjectURL(blob);objectUrl=true;urls.add(url);pendingUrls.add(url);
           }
           const figure=document.createElement('figure'),image=document.createElement('img');let lowPreview=null;
-          image.className='run-photo-cover';if(photo.width&&photo.height){image.width=photo.width;image.height=photo.height}image.decoding='async';image.alt=roles[photo.role]||'Run photo';image.loading=cardIndex===0?'eager':'lazy';image.fetchPriority=cardIndex===0?'high':'low';image.classList.add('image-reveal');image.src=url;images.add(image);if(cardIndex===0&&!objectUrl){const preload=document.createElement('link');preload.rel='preload';preload.as='image';preload.href=url;document.head.append(preload);}
+          figure.dataset.photoRole=photo.role||'photo';image.className='run-photo-cover';if(photo.width&&photo.height){image.width=photo.width;image.height=photo.height}image.decoding='async';image.alt=roles[photo.role]||'Run photo';image.loading=cardIndex===0?'eager':'lazy';image.fetchPriority=cardIndex===0?'high':'low';image.classList.add('image-reveal');image.src=url;images.add(image);if(cardIndex===0&&!objectUrl){const preload=document.createElement('link');preload.rel='preload';preload.as='image';preload.href=url;document.head.append(preload);}
           const release=()=>{if(objectUrl){URL.revokeObjectURL(url);urls.delete(url);pendingUrls.delete(url)}};
           image.onload=()=>{image.classList.add('is-loaded');lowPreview?.remove();release()};image.onerror=()=>{release();figure.replaceChildren();figure.innerHTML=root.StrivePlaceholders?.render('screenshot',{story:card.dataset.mediaStory||''})||''};
           const link=document.createElement('a');link.href='/?run='+encodeURIComponent(runId)+'#run-photos';link.setAttribute('aria-label','Open '+(roles[photo.role]||'run image')+' at full size');link.append(image);if(!objectUrl){const tiny=new URL(url,location.origin);tiny.searchParams.set('w','64');lowPreview=document.createElement('img');lowPreview.className='run-photo-preview';lowPreview.alt='';lowPreview.setAttribute('aria-hidden','true');lowPreview.loading=image.loading;lowPreview.src=tiny.pathname+tiny.search;link.append(lowPreview);}
@@ -237,7 +239,7 @@
           image.className='run-photo-cover';image.width=visual.width;image.height=visual.height;image.loading='lazy';image.decoding='async';image.src=visual.src;image.alt=visual.alt;
           caption.textContent=visual.label+' · project context';link.append(image);figure.append(link,caption);group.append(figure);
         }
-        group.dataset.mediaCount=String(group.children.length);if(group.children.length>4){const more=document.createElement('span');more.className='media-more-count';more.textContent='+'+(group.children.length-3);group.children[3].querySelector('a')?.append(more);}group.style.setProperty('--media-count',Math.min(4,group.children.length));
+        const total=selected.length+visuals.length+(projectFirst&&!selected.some(p=>p.role!=='personal')?1:0);group.dataset.mediaCount=String(Math.min(3,group.children.length));group.dataset.totalMedia=String(total);if(total>3){const more=document.createElement('span');more.className='media-more-count';more.textContent='+'+(total-3);more.setAttribute('aria-label',(total-3)+' more images');group.children[2].querySelector('a')?.append(more);}group.style.setProperty('--media-count',Math.min(3,group.children.length));if(card.querySelector('.run-media-slot'))card.querySelector('.run-media-slot').dataset.mediaCount=group.dataset.mediaCount;
         if(visuals.length)group.classList.add('run-project-gallery');
         if(!current())return;
         card.querySelectorAll('.run-media').forEach(el=>el.remove());
