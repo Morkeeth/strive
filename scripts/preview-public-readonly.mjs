@@ -8,6 +8,14 @@ const url=live.match(/const SB_URL="([^"]+)"/)[1],key=live.match(/const SB_KEY="
 const root=resolve('dist'),port=Number(process.env.PORT)||8128;
 const server=createServer(async(req,res)=>{try{
  const u=new URL(req.url,'http://127.0.0.1:'+port);
+ if(u.pathname==='/sunday-review.html'||u.pathname.startsWith('/review-assets/')){
+  if(req.method!=='GET'||!process.env.STRIVE_PRIVATE_REVIEW_DIR){res.writeHead(404);return res.end('Private review unavailable');}
+  const privateRoot=resolve(process.env.STRIVE_PRIVATE_REVIEW_DIR),file=resolve(privateRoot,'.'+u.pathname);
+  if(!file.startsWith(privateRoot+'/')){res.writeHead(404);return res.end();}
+  res.setHeader('Cache-Control','no-store');res.setHeader('X-Robots-Tag','noindex, nofollow');
+  res.setHeader('Content-Type',({'.html':'text/html','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp'})[extname(file)]||'application/octet-stream');
+  return res.end(await readFile(file));
+ }
  if(u.pathname.startsWith('/r/')&&req.method==='GET'){
   const id=u.pathname.slice(3);if(!validId(id)){res.writeHead(404);return res.end('No run');}
   const publicFetch=(request,options={})=>{const parsed=new URL(request);return fetch(url+parsed.pathname+parsed.search,{...options,method:'GET',headers:{...options.headers,apikey:key,authorization:'Bearer '+key}})};
