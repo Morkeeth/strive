@@ -289,3 +289,5 @@ an earlier session produced the current website. Existing Data and photo choices
 ### Five selected runs · 10 October
 
 Oscar chose mixed project and personal galleries. The five source-backed review cards are private local data outside deployment output; their personal-photo pairings are proposals, with original provenance. On existing saved runs, the author’s selected personal photo and caption remain authoritative, including FAVOUR. Project-context screenshots can sit beside them; no record or audience is rewritten.
+
+The private five-run review leads with one full-width hero and a swipe gallery with dots. Its face shows exactly three large facts: compact recorded tokens, estimated dollars, and active-time proxy (marked with an asterisk). Model and commits share one small line. Dates, source scope, photo provenance, cache and price assumptions, typing attribution and quote candidates remain in the one-tap “About these measurements” disclosure. The STRIVE gallery window leads the selection.
