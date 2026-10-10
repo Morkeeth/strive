@@ -28,7 +28,7 @@ const favourPage=html({...run,id:favour,caption:'Reviewing FAVOUR. Personal phot
 assert.ok(favourPage.includes('Oscar Morkeeth'));
 assert.ok(favourPage.includes('/media/favour-public-page-20261010.webp'));
 assert.ok(favourPage.includes('/media/favour-campaign-builder-20261010.webp'));
-assert.ok(!favourPage.includes('/api/run-photos?id='+cover),'older personal photo is kept off the public showcase page');
-assert.ok(!favourPage.includes('Personal photo from 4 October.'));
-assert.ok(!JSON.stringify(card({...run,id:favour,caption:'Reviewing FAVOUR. Personal photo from 4 October.'})).includes('Personal photo from 4 October.'),'share image leaves out the stale photo sentence');
+assert.ok(favourPage.includes('/api/run-photos?id='+cover),'saved personal cover remains beside project screenshots');
+assert.ok(favourPage.includes('Personal photo from 4 October.'),'saved caption remains intact');
+assert.ok(JSON.stringify(card({...run,id:favour,caption:'Reviewing FAVOUR. Personal photo from 4 October.'})).includes('Personal photo from 4 October.'),'share image preserves the saved caption');
 console.log('PASS: public share opens the same run, leads with recorded stats, and preserves selected cover');

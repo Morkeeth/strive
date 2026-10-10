@@ -285,3 +285,7 @@ an earlier session produced the current website. Existing Data and photo choices
 - Candidate tool activity is the count of one-minute clock bins containing a captured tool call. The face labels this as `Active (tool) time · proxy`; source details state that it is neither human active time nor continuous tool runtime.
 - A saved run with a successful empty photo read gets a quiet `No screenshot added` frame. Failed/denied reads do not assert absence. An explicit Data choice and a saved personal-photo choice retain their behavior.
 - Find people can roll among real public builders returned by the current read. It hides that action when only one builder is available; it never invents a second profile or follower ranking.
+
+### Five selected runs · 10 October
+
+Oscar chose mixed project and personal galleries. The five source-backed review cards are private local data outside deployment output; their personal-photo pairings are proposals, with original provenance. On existing saved runs, the author’s selected personal photo and caption remain authoritative, including FAVOUR. Project-context screenshots can sit beside them; no record or audience is rewritten.

@@ -106,14 +106,7 @@
 
   function modelName(id){return id==='claude-opus-5-5'?'Claude Opus 5.5':id;}
 
-  function cardSummary(r){
-    const summary=story?.summary(r)||'';
-    // This older public caption still mentions a personal picture. Oscar's current
-    // showcase direction is project screenshots; keep the saved caption untouched.
-    return r?.id==='599095f1-3b49-4c0e-b50c-13afd4ae369e'
-      ?summary.replace(/\s*Personal photo from 4 October\.\s*/,' ').trim()
-      :summary;
-  }
+  function cardSummary(r){return story?.summary(r)||'';}
 
   // THE BADGE. One small achievement per run, computed from the run's own numbers and nothing
   // else: no history, no other runs, no guess. The first rule that holds wins, and its detail line

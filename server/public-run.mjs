@@ -92,15 +92,12 @@ const pageOutcome=run=>{
 };
 
 const pagePhotos=(run,photos)=>{
- if(run?.visibility==='public'&&run.id===FAVOUR_SHOWCASE){
-  const shots=[
-   ['/media/favour-public-page-20261010.webp','Public FAVOUR page · 10 Oct'],
-   ['/media/favour-campaign-builder-20261010.webp','FAVOUR campaign builder · 10 Oct']
-  ];
-  return `<section class="public-run-photos public-project-shots" aria-labelledby="public-run-photos-title"><h2 id="public-run-photos-title">FAVOUR project screenshots</h2><div class="public-run-photo-grid">${shots.map(([src,label])=>`<figure><a href="https://world-relay.vercel.app/" rel="noopener noreferrer"><img src="${src}" alt="${esc(label)}" loading="lazy"></a><figcaption>${esc(label)} · project context, not proof of this session</figcaption></figure>`).join('')}</div></section>`;
- }
- if(run?.visibility!=='public'||!Array.isArray(photos)||!photos.length)return '';
- const all=photos.filter(photo=>validId(photo?.id)&&photo?.run_id===run.id).slice(0,6);
+ if(run?.visibility!=='public')return '';
+ const projectFigures=run.id===FAVOUR_SHOWCASE?[
+  ['/media/favour-public-page-20261010.webp','Public FAVOUR page · 10 Oct'],
+  ['/media/favour-campaign-builder-20261010.webp','FAVOUR campaign builder · 10 Oct']
+ ].map(([src,label])=>`<figure><a href="https://world-relay.vercel.app/" rel="noopener noreferrer"><img src="${src}" alt="${esc(label)}" loading="lazy"></a><figcaption>${esc(label)} · project context, not proof of this session</figcaption></figure>`).join(''):'';
+ const all=(Array.isArray(photos)?photos:[]).filter(photo=>validId(photo?.id)&&photo?.run_id===run.id).slice(0,6);
  const before=all.find(p=>p.role==='before'),after=all.find(p=>p.role==='after');
  const cover=all.find(p=>p.is_cover)||(all.length===1?all[0]:null);
  const chosen=run.photo_layout==='before_after'&&before&&after?[before,after]:[run.photo_layout==='result'?(all.find(p=>p.role==='result')||cover):cover].filter(Boolean);
@@ -108,8 +105,8 @@ const pagePhotos=(run,photos)=>{
  // but do not turn older multi-photo uploads into a gallery of personal photos.
  const personal=all.find(p=>p.role==='personal'&&p.is_cover);
  const safe=[...chosen,...all.filter(p=>!chosen.includes(p))].filter(p=>p.role!=='personal'||p===personal);
- if(!safe.length)return '';
- return `<section class="public-run-photos" aria-labelledby="public-run-photos-title"><h2 id="public-run-photos-title">Images from this run</h2><div class="public-run-photo-grid">${safe.map((photo,index)=>{const src=`/api/run-photos?id=${encodeURIComponent(photo.id)}&run_id=${encodeURIComponent(run.id)}&w=960`;const size=Number.isInteger(photo.width)&&photo.width>0&&Number.isInteger(photo.height)&&photo.height>0?` width="${photo.width}" height="${photo.height}"`:'';return `<figure><img src="${esc(src)}" alt="${esc(({result:'Result',before:'Before',after:'After',personal:'Personal photo'})[photo.role]||'Run photo')}"${size} loading="lazy"><figcaption>${esc(({result:'Result',before:'Before',after:'After',personal:'Personal photo'})[photo.role]||'Photo')}</figcaption></figure>`;}).join('')}</div></section>`;
+ if(!safe.length&&!projectFigures)return '';
+ return `<section class="public-run-photos" aria-labelledby="public-run-photos-title"><h2 id="public-run-photos-title">Images from this run</h2><div class="public-run-photo-grid">${safe.map((photo,index)=>{const src=`/api/run-photos?id=${encodeURIComponent(photo.id)}&run_id=${encodeURIComponent(run.id)}&w=960`;const size=Number.isInteger(photo.width)&&photo.width>0&&Number.isInteger(photo.height)&&photo.height>0?` width="${photo.width}" height="${photo.height}"`:'';return `<figure><img src="${esc(src)}" alt="${esc(({result:'Result',before:'Before',after:'After',personal:'Personal photo'})[photo.role]||'Run photo')}"${size} loading="lazy"><figcaption>${esc(({result:'Result',before:'Before',after:'After',personal:'Personal photo'})[photo.role]||'Photo')}</figcaption></figure>`;}).join('')}${projectFigures}</div></section>`;
 };
 
 const routeInsight=route=>{
