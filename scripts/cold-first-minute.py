@@ -78,13 +78,11 @@ window.addEventListener('load',()=>{
       const explanation=document.getElementById('signin-explanation');
       const rect=feature&&feature.getBoundingClientRect();
       const visible=rect?Math.max(0,Math.min(rect.bottom,innerHeight)-Math.max(rect.top,0)):0;
-      const introBox=intro&&intro.getBoundingClientRect();
       const featureBox=featureSection&&featureSection.getBoundingClientRect();
       const feedFirst=Boolean(
-        introBox&&featureBox&&
-        introBox.top>=0&&introBox.bottom<=innerHeight&&
-        featureBox.top<innerHeight&&
-        introBox.bottom<=featureBox.top+1&&
+        !intro&&featureBox&&
+        featureSection===document.querySelector('.home-layout')?.firstElementChild&&
+        featureBox.top>=0&&featureBox.top<innerHeight&&
         ['#home-builders','#home-week-section'].every(sel=>{
           const box=document.querySelector(sel)?.getBoundingClientRect();
           return Boolean(box&&featureBox.top<=box.top);
@@ -258,7 +256,8 @@ def main() -> None:
     assert "A measured outcome from a real public post." in phone
     assert "1 public run is live." in phone
     # The drop zone lives on Add run (/?post), with one visible entry per width.
-    assert "Follow what people are building." in phone and "Add run" in phone
+    assert "Follow what people are building." not in phone
+    assert "Public runs" in phone and "Add run" in phone
     assert 'data-cold-drop-absent="true"' in phone
     # The fixture run is linked from the rendered feed, never the bundled example.
     assert 'href="/?run=cold-public-1">Cold public run</a>' in phone
