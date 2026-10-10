@@ -109,10 +109,12 @@
     const ids = identitiesOf(user);
     const meta = user?.user_metadata || {};
     const first = ids.find((i) => i.handle) || ids.find((i) => i.name) || ids[0] || {};
+    const photo = ids.find((i) => i.provider === "github" && i.avatar_url)
+      || ids.find((i) => (i.provider === "x" || i.provider === "twitter") && i.avatar_url);
     const seed = user?.id || "";
     const handle = normalizeHandle(first.handle || pick(meta, HANDLE_KEYS) || pick(meta, NAME_KEYS), seed);
     const display_name = normalizeDisplayName(first.name || pick(meta, NAME_KEYS), handle);
-    const avatar_url = first.avatar_url || normalizeAvatarUrl(pick(meta, AVATAR_KEYS));
+    const avatar_url = photo?.avatar_url || null;
     return { handle, display_name, avatar_url, providers: ids.map((i) => i.provider), github_handle: githubHandleOf(user) };
   }
 
@@ -125,8 +127,8 @@
       id: p.id,
       handle,
       display_name,
-      avatar_url: normalizeAvatarUrl(p.avatar_url)
-        || (p.auth_uid && p.auth_uid === user?.id ? suggest(user).avatar_url : null),
+      avatar_url: (p.auth_uid && p.auth_uid === user?.id ? suggest(user).avatar_url : null)
+        || normalizeAvatarUrl(p.avatar_url),
       legacy: !str(p.handle),
       url: handle ? "/?u=" + encodeURIComponent(handle) : "/",
     };
