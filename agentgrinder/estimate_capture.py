@@ -24,6 +24,24 @@ PRICES = {
                               'cache_write_5m': 5, 'cache_write_1h': 8},
         'context_tier': 'standard global', 'service_tier': 'standard',
     },
+    'claude-fable-5-1': {
+        'table_url': 'https://platform.claude.com/docs/en/models/fable-5-1/overview',
+        'rates_per_million': {'input': 10, 'output': 50, 'cache_read': .25,
+                              'cache_write_5m': 12.5, 'cache_write_1h': 20},
+        'context_tier': 'standard global', 'service_tier': 'standard',
+    },
+    'claude-sonnet-5-5': {
+        'table_url': 'https://platform.claude.com/docs/en/models/sonnet-5-5/overview',
+        'rates_per_million': {'input': 2, 'output': 10, 'cache_read': .1,
+                              'cache_write_5m': 2.5, 'cache_write_1h': 4},
+        'context_tier': 'standard global', 'service_tier': 'standard',
+    },
+    'claude-haiku-5-5': {
+        'table_url': 'https://platform.claude.com/docs/en/models/haiku-5-5/overview',
+        'rates_per_million': {'input': .1, 'output': .5, 'cache_read': .01,
+                              'cache_write_5m': .125, 'cache_write_1h': .2},
+        'context_tier': 'input <=100K', 'service_tier': 'standard',
+    },
 }
 
 
@@ -46,9 +64,14 @@ def _count(value):
     return type(value) is int and 0 <= value <= 9007199254740991
 
 
-def _price(model):
+def _price(model, input_tokens=None):
     record = PRICES.get(model)
     if not record: return None
+    if model == 'claude-haiku-5-5' and input_tokens is not None and input_tokens > 100000:
+        record = {**record,
+                  'context_tier': 'input >100K',
+                  'rates_per_million': {'input': .5, 'output': 2.5, 'cache_read': .05,
+                                        'cache_write_5m': .625, 'cache_write_1h': 1}}
     return {**record, 'table_version': 'provider-model-page-2026-10-11',
             'checked_on': '2026-10-11', 'currency': 'USD'}
 
@@ -105,7 +128,7 @@ def _claude_usage(rows):
         # Repeated streaming rows for one message ID are cumulative. Keep the
         # largest complete sample, as capture_metadata.recorded does.
         previous = calls.get(key)
-        price = _price(model) if total <= 200000 and usage.get('service_tier') in (None, 'standard') else None
+        price = _price(model, total) if total <= 1000000 and usage.get('service_tier') in (None, 'standard') else None
         if price and usage.get('service_tier') is None:
             price = {**price, 'service_tier': 'standard-assumed'}
         current = (model, total, usage['output_tokens'], read, w5, w1, price)
@@ -152,7 +175,9 @@ def estimate_inputs(rows, harness, source_bytes, metadata, started=None, ended=N
     if calls and all(_count(metadata.get(k)) for k in ('input_tokens', 'output_tokens')):
         grouped = {}
         for model, input_tokens, output_tokens, read, w5, w1, price in calls:
-            part = grouped.setdefault((model, price is not None), [model, 0, 0, 0, 0, 0, price])
+            tier = (price or {}).get('context_tier')
+            part = grouped.setdefault((model, tier, (price or {}).get('service_tier')),
+                                      [model, 0, 0, 0, 0, 0, price])
             for index, value in enumerate((input_tokens, output_tokens, read, w5, w1), start=1):
                 part[index] += value
         components = []
