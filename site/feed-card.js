@@ -451,7 +451,7 @@
     const body = `
     <${tag} class="fc-title">${esc(titleOf(r))}</${tag}>
     ${cardSummary(r) ? `<p class="fc-cap">${esc(cardSummary(r))}</p>` : ""}
-    ${page||checkpoints||r.capture_metadata?`<dl class="fc-activity-stats" aria-label="Recorded facts">${recordedFacts(r).filter(([label])=>!['Model','You typed'].includes(label)).map(([label,value,detail,note])=>`<div><dt>${context?.factLabel?.(label)||esc(label)}</dt><dd${detail?` title="${esc(detail)}"`:''}>${esc(value)}</dd>${note?`<small class="fc-fact-note">${esc(note)}</small>`:''}</div>`).join('')}</dl>${context?.cardSecondary?.(r,{commits:true})||''}`:''}
+    ${page||checkpoints||r.capture_metadata?`${context?.headlineHtml?.(r,'fc-activity-stats')||''}${context?.cardSecondary?.(r,{commits:true})||''}`:''}
     ${story?story.visual(r):''}
     ${r.feedback_question?`<p class="fc-question"><span>Feedback welcome</span>${esc(r.feedback_question)}</p>`:''}
     ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Typed by the author. No capture.</p>' : ''}${evidence?evidence.summary(r):''}

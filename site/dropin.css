@@ -193,3 +193,18 @@
 
 .post-quick-start{margin-top:18px;padding:20px;border:1px solid #0047ff;background:#f8faff}.post-quick-start[hidden]{display:none}.post-source-grid button[aria-pressed="true"]{border-color:#0047ff;background:#f2f6ff}.post-file-entry h2{font-size:22px}.post-source-folders dd .ghost{padding:4px 8px;margin-left:8px;font-size:11px}.post-file-entry kbd{border:1px solid #ddd;border-radius:3px;padding:2px 5px;font:inherit;font-size:12px}.post-sample{margin:22px 0}.post-sample a{color:#0047ff;font-weight:600}.post-quick-start .cmd{min-width:0}.post-quick-start .cmd .c{overflow-wrap:anywhere;white-space:normal}
 .post-source-folders .post-folder-selected{border-left:3px solid #0047ff;padding-left:10px;background:#f8faff}
+
+/* A hidden overflow axis creates a scroll container and defeats sticky controls.
+   Clip only the import surface without changing the feed or profile scroll behavior. */
+html:has(.post-composer),body:has(.post-composer){overflow-x:clip}
+/* Keep the next action and real step buttons within reach on long import forms. */
+.post-composer{scroll-margin-top:76px}
+.post-flow-nav{position:sticky;top:64px;z-index:12;background:var(--paper);padding:8px 0;gap:8px}
+.post-flow-nav button{padding:8px;border:1px solid var(--rule);border-radius:8px;background:var(--box);min-height:44px;flex:1;justify-content:center}
+.post-flow-nav button:hover,.post-flow-nav button:focus-visible{border-color:var(--blue);color:var(--blue)}
+.post-flow-nav button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.post-flow-nav button[aria-current=step]{border-color:var(--blue);background:var(--blue-wash)}
+.post-flow-actions{position:sticky;bottom:12px;z-index:11;padding:12px;background:var(--box);border:1px solid var(--rule);border-radius:12px;box-shadow:0 -4px 14px #24242808}
+.post-flow-pane{padding-bottom:12px}
+.post-composer input,.post-composer textarea,.post-composer select{scroll-margin:140px 0}
+@media(max-width:700px){.post-composer{scroll-margin-top:66px}.post-flow-nav{top:56px;gap:6px}.post-flow-nav button{padding:7px 4px;gap:5px;font-size:12px}.post-flow-actions{bottom:calc(66px + env(safe-area-inset-bottom));padding:10px}.post-flow-actions .act{padding:10px 8px}}

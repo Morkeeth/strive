@@ -291,3 +291,18 @@ an earlier session produced the current website. Existing Data and photo choices
 Oscar chose mixed project and personal galleries. The five source-backed review cards are private local data outside deployment output; their personal-photo pairings are proposals, with original provenance. On existing saved runs, the author’s selected personal photo and caption remain authoritative, including FAVOUR. Project-context screenshots can sit beside them; no record or audience is rewritten.
 
 The private five-run review leads with one full-width hero and a swipe gallery with dots. Its face shows exactly three large facts: compact recorded tokens, estimated dollars, and active-time proxy (marked with an asterisk). Model and commits share one small line. Dates, source scope, photo provenance, cache and price assumptions, typing attribution and quote candidates remain in the one-tap “About these measurements” disclosure. The STRIVE gallery window leads the selection.
+
+### Sunday follow-up · 10 October, 18:07
+
+Oscar's latest direction restores three honest headline stats. Valid stored estimates
+select recorded tokens, Est. dollars and Tool-active time · proxy. Otherwise use known
+recorded tokens, labelled elapsed span and commits, then files touched and human messages
+in that order. Recorded zero stays zero. With fewer than three known facts, show the
+missing-data panel with the known values instead of inventing a third metric.
+All feed media, including the saved personal cover, sits in a bordered frame on quiet
+ground; cover choice, crop focus and audience are unchanged. Cards can count up and draw
+the captured trail once, lift gently on hover, and pop after confirmed XUDOS. Reduced
+motion disables these effects; none loops or changes the recorded values.
+Import step buttons and next actions stay in view, including expanded forms. The import
+surface clips horizontal overflow without making a new scroll container around sticky
+controls. No visibility or estimate-upload setting is changed by this presentation pass.

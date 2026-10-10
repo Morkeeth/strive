@@ -582,6 +582,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/navigation.js"></script>
 <script src="/activity-order.js"></script>
 <script src="/activity-post.js"></script>
+<script src="/card-motion.js"></script>
 <script src="/run-contract.js"></script>
 <script src="/code-route-view.js"></script>
 <script src="/historical-import.js"></script>
@@ -1328,6 +1329,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
 
 
 function wireKudos(){
+  window.StriveCardMotion?.mount(document);
   if(typeof GrinderContract==='object'&&GrinderContract.mountRunMaps) GrinderContract.mountRunMaps(document);
   if(typeof GrinderFeed==='object'&&GrinderFeed.wireStride) GrinderFeed.wireStride(document);
   if(window.StriveRunPhotos?.mountVisuals) StriveRunPhotos.mountVisuals({client:sb,root:document});
@@ -2615,6 +2617,7 @@ async function importRun(){
       visibility:'private',started_at:run.started||null,created_at:run.started||new Date().toISOString()};
     // The same card the feed draws (site/feed-card.js), in its unsaved form, above the form.
     $('import-card-preview').innerHTML=GrinderFeed.card(preview,{preview:true});
+    window.StriveCardMotion?.mount($('import-card-preview'));
   }
   editFields.forEach(key=>$(key).addEventListener('input',()=>{saveImportEdits();paintImportPreview()}));
   $('i_share_rig').addEventListener('change',saveImportEdits);
