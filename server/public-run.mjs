@@ -308,7 +308,7 @@ export function card(run,opts={}){
  const lead=null,facts=[];
  const who=Feed.profileOf(run);
  const name=run.visibility==='public'?who.name:run.visibility==='anonymous'?'Anonymous builder':'Builder';
- const badge=null;
+ const badge=Feed.achievement(run);
  const initial=run.visibility==='anonymous'?'?':(String(name||'?').trim().charAt(0)||'?').toUpperCase();
  const avatar=run.visibility==='public'&&typeof opts.avatar==='string'&&opts.avatar.startsWith('data:image/')?opts.avatar:null;
  // The same line the page's card prints under the name: the agent and when.
