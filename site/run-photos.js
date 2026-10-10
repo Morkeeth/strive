@@ -61,7 +61,13 @@
   }
   // A feed card can show the selected cover and the work beside it. Keep at most one
   // personal picture, and never turn the other personal uploads into a public gallery.
-  function cardPhotos(photos,mode){
+  function cardPhotos(photos,mode,projectFirst=false){
+    if(projectFirst){
+      const work=photos.filter(p=>p.role!=='personal');
+      const result=work.find(p=>p.role==='result');
+      const personal=photos.find(p=>p.role==='personal'&&p.is_cover);
+      return [...(result?[result]:[]),...work.filter(p=>p!==result),...(personal?[personal]:[])].slice(0,6);
+    }
     const before=photos.find(p=>p.role==='before'),after=photos.find(p=>p.role==='after');
     const pair=mode==='before_after'&&before&&after?[before,after]:[];
     const first=pair.length?null:lead(photos,mode);
@@ -136,7 +142,8 @@
       const body=await res.json();if(!current())return;const photos=Array.isArray(body)?body:(body.photos||[]);
       const selectedPersonal=photos.find(p=>p.role==='personal'&&p.is_cover);
       // Readers see the chosen candid photo only. Owners retain every saved image for reselection.
-      const displayed=owner?photos:photos.filter(p=>p.role!=='personal'||p.id===selectedPersonal?.id);
+      const projectFirst=run.photo_layout==='result'&&run.capture_metadata?.estimates?.v===1;
+      const displayed=owner?photos:projectFirst?cardPhotos(photos,'result',true):photos.filter(p=>p.role!=='personal'||p.id===selectedPersonal?.id);
       if(!owner&&!displayed.length){slot.innerHTML='';return;}
       const canAdd=owner&&photos.length<6;
       slot.innerHTML=`<section class="run-photos" aria-labelledby="run-photos-title"><div class="head"><h2 id="run-photos-title">Images from this run</h2><span class="meta">${owner?photos.length+' of 6':displayed.length+' image'+(displayed.length===1?'':'s')}</span></div><div class="run-photo-grid"></div>${canAdd?'<label class="photo-add">Add an image<input data-photo-file type="file" accept="image/jpeg,image/png,image/webp"></label><p class="hint">Choose a JPEG, PNG or WebP. Preview the crop, then choose Result, Before, After or Personal photo. Images share this run’s audience. Your working-product link stays separate.</p><div data-photo-editor></div>':owner?'<p class="hint">Six photos added. Remove one before adding another.</p>':''}</section>`;
@@ -173,10 +180,16 @@
         if(!current()||!list.ok)return;
         const payload=await list.json(), photos=payload?.photos||[];
         const mode=card.dataset.photoLayout||'cover';
-        const selected=cardPhotos(card.dataset.gallerySupporting!==undefined?photos.filter(p=>p.role!=='personal'):photos,mode);
+        const projectFirst=card.dataset.projectGallery!==undefined;
+        const selected=cardPhotos(!projectFirst&&card.dataset.gallerySupporting!==undefined?photos.filter(p=>p.role!=='personal'):photos,mode,projectFirst);
         if(!selected.length&&!visuals.length){const empty=card.querySelector('[data-photo-placeholder]');if(empty)empty.hidden=false;return;}
         // Build a detached group. Attach only while the same view is active, after all reads.
         const group=document.createElement('div');group.className='run-media run-media-gallery';group.setAttribute('aria-label','Images from this run');group.tabIndex=0;
+        if(projectFirst&&!selected.some(p=>p.role!=='personal')){
+          const empty=document.createElement('figure');empty.className='run-project-missing';
+          empty.innerHTML=root.StrivePlaceholders?.render('screenshot')||'<section class="strive-empty"><h3>No project screenshot added</h3><p>The personal photo is separate from the project result.</p></section>';
+          group.append(empty);
+        }
         for(const photo of selected){
           const path=photoPath(photo);if(!path)continue;
           const imageHeaders=await headers(client);if(!current())return;

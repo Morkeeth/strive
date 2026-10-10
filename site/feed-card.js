@@ -459,7 +459,7 @@
     <div class="fc-route-secondary">${checkpoints?"":heroVisual(r)}</div>
     ${checkpoints?'':`<p class="fc-open">${preview?'Preview your story':'Open the story →'}</p>`}
   `;
-    return `<article class="card fc"${preview ? "" : ` id="card-${id}" data-run-id="${id}" data-run-visibility="${esc(r.visibility||'')}" data-photo-layout="${esc(r.photo_layout||'cover')}"`}>
+    return `<article class="card fc"${preview ? "" : ` id="card-${id}" data-run-id="${id}" data-run-visibility="${esc(r.visibility||'')}" data-photo-layout="${esc(r.photo_layout||'cover')}"${r.photo_layout==='result'&&r.capture_metadata?.estimates?.v===1?' data-project-gallery':''}`}>
   <header class="fc-top">${faceHtml}<div class="fc-who">${who}<small>${meta}</small></div>${shipped}</header>
   ${preview ? `<div class="fc-body">${body}</div>` : `<a class="fc-body" href="/?run=${id}">${body}</a>`}
   ${page||checkpoints||r.capture_metadata?context?.measurementDetails?.(r)||'':''}
