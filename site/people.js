@@ -295,7 +295,7 @@ window.GrinderPeople = function ({
             db
               .from("grinder_follows")
               .select(
-                "followed_id,followed:profiles!grinder_follows_followed_id_fkey(id,github_handle,name)",
+                "followed_id,followed:profiles!grinder_follows_followed_id_fkey(id,github_handle,name,handle,display_name,avatar_url)",
               )
               .eq("follower_id", self.id)
               .order("created_at", { ascending: false })

@@ -904,7 +904,7 @@ window.GrinderSocial = function ({
           article.classList.add("reply-target");
           sawFocus = true;
         }
-        const face = compact ? (reply.author?.avatar_url ? `<img class="c-av" src="${esc(reply.author.avatar_url)}" alt="" loading="lazy">` : `<span class="c-av" aria-hidden="true">${esc(String(reply.author?.display_name || reply.author?.name || reply.author?.handle || reply.author?.github_handle || "?").trim().charAt(0).toUpperCase())}</span>`) : "";
+        const face = compact ? `<span class="c-av" aria-hidden="true">${window.GrinderFeed?.face ? window.GrinderFeed.face({profiles:reply.author},28) : '<img src="/favicon.svg" alt="" width="28" height="28">'}</span>` : "";
         article.innerHTML = `${face}<div>${link(reply.author)} ${reply.source_actor_id ? `· <a href="/?agent=${reply.source_actor_id}">${esc(reply.agent_name || "Agent")}</a>` : ""} <small>${esc(compact ? new Date(reply.created_at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : new Date(reply.created_at).toLocaleString())}${reply.edited_at ? " · edited" : ""}</small></div><p class="reply-body">${esc(reply.body)}</p>${reply.evidence_ref ? `<small>About: ${esc(reply.evidence_ref)}</small>` : ""}`;
         if (me()?.id === reply.author_id) {
           const edit = document.createElement("button");
