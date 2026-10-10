@@ -115,6 +115,7 @@
         const metrics={schema_version:1,measurement_revision,harness:run.harness,
           turns_typed:run.turns_typed,tool_calls:run.tool_calls,files_touched:run.files_touched,
           started:typeof run.started==='string'?run.started:null,
+          capture_metadata:run.capture_metadata,
           rhythm:run.line||run.rhythm,trace_basis:'position'};
         // The browser parser counts command mentions as commits and compresses idle gaps.
         // Neither proves successful commits or elapsed duration. Keep those fields unknown.

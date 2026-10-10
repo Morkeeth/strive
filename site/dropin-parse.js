@@ -294,9 +294,52 @@
     return null;
   }
 
+  // Same bounded usage rules as agentgrinder/capture_metadata.py. Keep counters and
+  // deduplication IDs only; no prompt, command, path or message body leaves this reader.
+  function usageReader() {
+    const models=new Set(),usages=new Map(),keys=['input_tokens','output_tokens','cached_input_tokens','reasoning_tokens'];
+    let epoch=0,priorTotal=null;
+    const count=v=>Number.isSafeInteger(v)&&v>=0;
+    const model=v=>{if(typeof v==='string'&&/^[a-zA-Z0-9][a-zA-Z0-9 ._:/+\-]{0,119}$/.test(v))models.add(v)};
+    const valid=u=>count(u.input_tokens)&&count(u.output_tokens)&&count(u.input_tokens+u.output_tokens)&&keys.every(k=>u[k]==null||count(u[k]))&&(u.cached_input_tokens==null||u.cached_input_tokens<=u.input_tokens)&&(u.reasoning_tokens==null||u.reasoning_tokens<=u.output_tokens);
+    return {
+      add(row,harness){
+        const p=isObj(row.payload)?row.payload:{},msg=isObj(row.message)?row.message:{};
+        if(harness==='Codex'){
+          if(row.type==='turn_context')model(p.model);
+          if(row.type!=='event_msg'||p.type!=='token_count')return;
+          const info=isObj(p.info)?p.info:{},u=isObj(info.last_token_usage)?info.last_token_usage:{},t=isObj(info.total_token_usage)?info.total_token_usage:{};
+          if(!count(t.input_tokens)||!count(t.output_tokens))return;
+          const current=[t.input_tokens,t.output_tokens];
+          if(priorTotal&&current.some((v,i)=>v<priorTotal[i]))epoch++;
+          priorTotal=current;
+          if(valid(u))usages.set([epoch,...current].join(':'),Object.fromEntries(keys.filter(k=>u[k]!=null).map(k=>[k,u[k]])));
+        }else if(harness==='Claude Code'){
+          if(row.type!=='assistant'||row.isSidechain)return;
+          model(msg.model);const u=msg.usage,id=msg.id;
+          if(!isObj(u)||typeof id!=='string'||!id.trim()||!count(u.input_tokens)||!count(u.output_tokens))return;
+          const cache=u.cache_read_input_tokens===undefined?0:u.cache_read_input_tokens,creation=u.cache_creation_input_tokens===undefined?0:u.cache_creation_input_tokens;
+          if(!count(cache)||!count(creation))return;
+          const current={input_tokens:u.input_tokens+cache+creation,output_tokens:u.output_tokens,cached_input_tokens:cache};
+          if(!valid(current))return;
+          const prior=usages.get(id)||{},merged=Object.fromEntries(Object.entries(current).map(([k,v])=>[k,Math.max(v,prior[k]||0)]));
+          if(valid(merged))usages.set(id,merged);
+        }else{
+          const info=msg.modelInfo||row.modelInfo||{};if(isObj(info))model(info.modelName);
+        }
+      },
+      done(harness){
+        const out={models:[...models].sort().slice(0,32),basis:({'Codex':'codex-records','Claude Code':'claude-message-usage'})[harness]||'cursor-model-info'};
+        if(usages.size){const values=[...usages.values()],sum={};for(const k of keys)if(values.every(u=>Object.hasOwn(u,k)))sum[k]=values.reduce((n,u)=>n+u[k],0);if(valid(sum))Object.assign(out,sum)}
+        return out;
+      }
+    };
+  }
+
   // One reader over a sequence of lines. It holds no line after it has counted it.
   function createReader() {
     let reader = null, lines = 0, records = 0, bad = 0;
+    const usage=usageReader();
     return {
       line(raw) {
         lines += 1;
@@ -311,14 +354,14 @@
           if (!make) return;
           reader = make();
         }
-        reader.add(o);
+        usage.add(o,reader.harness);reader.add(o);
       },
       finish() {
         if (!lines) throw readError("empty");
         // Text that is not JSON lines (a README, a CSV) is the wrong file, not a broken one.
         if (!reader) throw readError(records || bad ? "unknown" : "empty");
         const out = reader.done();
-        return { harness: reader.harness, ...out, started: out.started == null ? null : new Date(out.started * 1000).toISOString() };
+        return { harness: reader.harness, ...out, capture_metadata:usage.done(reader.harness), started: out.started == null ? null : new Date(out.started * 1000).toISOString() };
       },
     };
   }

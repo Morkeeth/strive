@@ -132,7 +132,9 @@ export async function runPhotos({method,headers={},query={},body},config,fetchIm
    const accessible=await rows('runs?select=id&id=eq.'+runId);
    if(!accessible.length) return result(404,{error:'Run not found.'});
    const photos=await rows('run_photos?select='+fields+'&run_id=eq.'+runId+'&order=is_cover.desc,created_at.asc,id.asc');
-   return result(200,{photos:photos.map(present)});
+   // A public run may have one chosen candid. Other personal photos remain the owner's.
+   const owner=bearer&&photos.some(p=>p.role==='personal'&&!p.is_cover)?await ownsRun(runId):false;
+   return result(200,{photos:photos.filter(p=>owner||p.role!=='personal'||p.is_cover).map(present)});
   }
   const found=await rows('run_photos?select='+fields+'&id=eq.'+query.id+(runId?'&run_id=eq.'+runId:''));
   if(!found.length) return result(404,{error:'Photo not found.'});
@@ -145,6 +147,8 @@ export async function runPhotos({method,headers={},query={},body},config,fetchIm
    await rows('run_photos?id=eq.'+p.id,{method:'DELETE'});
    return result(200,{removed:true});
   }
+  if(p.role==='personal'&&!p.is_cover&&(!bearer||!await ownsRun(p.run_id)))
+   return result(404,{error:'Photo not found.'});
   // Metadata RLS was checked above, under the caller's own sign-in, and is checked on every request.
   // No signed URL survives a revoke or delete. A photo's bytes never change under its id, so a browser
   // may keep its own copy, but only if it asks again each time (no-cache): a reader who lost access

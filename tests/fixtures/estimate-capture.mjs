@@ -1,0 +1,4 @@
+// TEST DATA only: deliberately known arithmetic, never a real run.
+export const base={basis:'codex-records',models:['model-test'],input_tokens:1000000,output_tokens:100000,cached_input_tokens:700000};
+const component={model:'model-test',role:'primary',input_tokens:1000000,output_tokens:100000,cache_read_tokens:700000,cache_write_5m_tokens:100000,cache_write_1h_tokens:50000,price:{table_url:'https://example.com/pricing',table_version:'TEST-DATA-1',checked_on:'2026-10-10',currency:'USD',service_tier:'standard-assumed',context_tier:'TEST-DATA',rates_per_million:{input:2,output:10,cache_read:.2,cache_write_5m:2.5,cache_write_1h:4}}};
+export const full={...base,estimates:{v:1,source:{sha256:'a'.repeat(64),started_at:'2026-10-10T10:00:15Z',ended_at:'2026-10-10T10:10:59Z'},cost:{method:'model-price-v1',components:[component]},tool_activity:{method:'occupied-tool-minutes-v1',bin_seconds:60,origin_utc:'2026-10-10T10:00:00Z',occupied_bins:[0,2,10]}}};

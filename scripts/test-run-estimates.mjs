@@ -1,0 +1,63 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import vm from 'node:vm';
+import Context from '../site/run-context.js';
+import Estimates from '../site/run-estimates.js';
+import Contract from '../site/run-contract.js';
+import {html} from '../server/public-run.mjs';
+import {bootDisposable,seedJourneyActors,CASEY} from './disposable-supabase.mjs';
+import {base,full} from '../tests/fixtures/estimate-capture.mjs';
+const component=full.estimates.cost.components[0];
+// Exercise the real import contract before its metadata becomes the upload payload.
+const gated=Contract.validate({title:'TEST DATA small upload',schema_version:1,capture_metadata:structuredClone(full)});
+const payload=JSON.parse(JSON.stringify({title:gated.title,capture_metadata:gated.capture_metadata}));
+assert.equal(Object.hasOwn(payload.capture_metadata,'estimates'),false,'default-off uploads must contain NO estimates key');
+assert.deepEqual(payload.capture_metadata,base,'gate preserves recorded capture metadata');
+// The enabled build still retains valid small inputs and trims oversized inputs.
+const enabled=vm.createContext({URL,TextEncoder});
+for(const name of ['run-estimates.js','run-context.js','run-contract.js']){
+ let source=await readFile(new URL('../site/'+name,import.meta.url),'utf8');
+ if(name==='run-estimates.js')source=source.replace('const ESTIMATE_UPLOADS_READY=false;','const ESTIMATE_UPLOADS_READY=true;');
+ vm.runInContext(source,enabled);
+}
+const readyUpload=enabled.GrinderContract.validate({schema_version:1,capture_metadata:structuredClone(full)});
+assert.deepEqual(readyUpload.capture_metadata,full,'explicitly enabled build retains valid estimate inputs');
+
+Context.validate(full);assert.equal(Estimates.facts(full).rows[0][1],'$1.89');assert.equal(Estimates.facts(full).rows[1][1],'3 min');
+const render=m=>html({id:'11111111-1111-4111-a111-111111111111',title:'TEST DATA estimate',visibility:'public',capture_metadata:m});
+assert.match(render(full),/<dt>Est. dollars<sup[^>]*>\*<\/sup><\/dt>/);assert.match(render(full),/<dt>Tool-active time · proxy<\/dt>/);assert.match(render(full),/About these measurements/);assert.match(render(full),/not continuous tool runtime or measured human active time/);
+assert.doesNotMatch(render(base),/<dt>(?:Est. dollars|Tool-active time · proxy)<\/dt>/);assert.match(render(base),/No stored per-model usage/);
+const unknown=structuredClone(full);unknown.estimates.cost.components[0].price=null;Context.validate(unknown);assert.doesNotMatch(render(unknown),/<dt>Est. dollars<sup[^>]*>\*<\/sup><\/dt>/);assert.match(render(unknown),/No recorded price for model-test/);
+const unused=structuredClone(full);unused.estimates.cost.components[0].cache_write_1h_tokens=0;unused.estimates.cost.components[0].price.rates_per_million.cache_write_1h=null;Context.validate(unused);
+const missingUsedRate=structuredClone(full);missingUsedRate.estimates.cost.components[0].price.rates_per_million.output=null;assert.throws(()=>Context.validate(missingUsedRate));
+const bad=structuredClone(full);bad.estimates.cost.components[0].input_tokens++;assert.throws(()=>Context.validate(bad));
+const urlAttack=structuredClone(full);urlAttack.estimates.cost.components[0].price.table_url='javascript:alert(1)';assert.throws(()=>Context.validate(urlAttack));
+const rejected=[];
+for(const url of ['https://example.com/prices\n','https://example.com:443/prices','https://éxample.com/prices','https://example.com/"quote',"https://example.com/'quote"]){
+ const m=structuredClone(full);m.estimates.cost.components[0].price.table_url=url;rejected.push([m,/Invalid price provenance/]);
+}
+for(const field of ['started_at','ended_at']){const m=structuredClone(full);m.estimates.source[field]='2026-02-30T10:00:00Z';rejected.push([m,/Invalid estimate source window/]);}
+for(const date of ['2026-02-30','0000-01-01']){const m=structuredClone(full);m.estimates.cost.components[0].price.checked_on=date;rejected.push([m,/Invalid price provenance/]);}
+const badOrigin=structuredClone(full);badOrigin.estimates.tool_activity.origin_utc='2026-02-30T10:00:00Z';rejected.push([badOrigin,/Invalid tool activity inputs/]);
+const badHour=structuredClone(full);badHour.estimates.source.started_at='2026-10-10T24:00:00Z';rejected.push([badHour,/Invalid estimate source window/]);
+const reversedMicro=structuredClone(full);reversedMicro.estimates.source.started_at='2026-10-10T10:00:00.000002Z';reversedMicro.estimates.source.ended_at='2026-10-10T10:00:00.000001Z';rejected.push([reversedMicro,/Estimate window is reversed/]);
+const excessive=structuredClone(full);excessive.estimates.cost.components[0].price.rates_per_million.input=1000.01;rejected.push([excessive,/Invalid model rate/]);
+for(const [m] of rejected)assert.throws(()=>Context.validate(m),'client must reject before upload');
+const cap=structuredClone(full);cap.estimates.cost.components[0].price.rates_per_million.input=1000;Context.validate(cap);
+const leap=structuredClone(full);leap.estimates.cost.components[0].price.checked_on='2024-02-29';Context.validate(leap);
+assert.equal(Context.cardFacts({capture_metadata:{...base,input_tokens:18200000,output_tokens:51073}})[0][1],'18.3M');
+const large=structuredClone(full);large.estimates.source.ended_at='2026-10-12T10:00:00Z';large.estimates.tool_activity.occupied_bins=Array.from({length:2048},(_,i)=>i);large.estimates.cost.components=Array.from({length:64},()=>structuredClone(component));large.input_tokens*=64;large.output_tokens*=64;large.cached_input_tokens*=64;
+Context.validate(large);assert.ok(Estimates.encodedBytes(large)>7500);
+const imported=enabled.GrinderContract.validate({title:'TEST DATA large import survives',schema_version:1,capture_metadata:large});assert.equal(imported.title,'TEST DATA large import survives');assert.equal(imported.capture_metadata.estimates,undefined);assert.equal(imported.capture_metadata.input_tokens,64000000);
+// Only this isolated WASM PostgreSQL receives the proposed SQL. Production migrations stay unchanged.
+const {db,as}=await bootDisposable();await seedJourneyActors(db);await db.query("select strava.check_capture_metadata($1,'elapsed')",[payload.capture_metadata]);await db.exec(await readFile(new URL('../tests/fixtures/proposals/capture-estimates.sql',import.meta.url),'utf8'));await as(CASEY);
+const tiny=structuredClone(full);tiny.estimates.cost.components[0].price.rates_per_million.input=1e-300;const pgBytes=(await db.query('select octet_length($1::jsonb::text) bytes',[tiny])).rows[0].bytes;assert.ok(Estimates.encodedBytes(tiny)>=pgBytes,'scientific notation expansion must fit the PostgreSQL byte budget');
+let sequence=0;
+const insert=meta=>db.query("insert into strava.runs(profile_id,title,visibility,harness,schema_version,measurement_revision,trace_basis,rhythm,capture_metadata) values($1,'TEST DATA estimate','private','Codex',1,$2,'elapsed','[1,2,1]',$3) returning capture_metadata",[CASEY,(++sequence).toString(16).padStart(64,'0'),meta]);
+for(const m of [full,base,unknown,unused,cap,leap,imported.capture_metadata])assert.deepEqual((await insert(m)).rows[0].capture_metadata,JSON.parse(JSON.stringify(m)));
+for(const [m,error] of rejected)await assert.rejects(insert(m),error);
+await assert.rejects(insert(missingUsedRate),/Invalid model rate/);
+await assert.rejects(insert(bad),/does not reconcile/);await assert.rejects(insert(urlAttack),/Invalid price provenance/);
+const dup=structuredClone(full);dup.estimates.tool_activity.occupied_bins=[0,0];await assert.rejects(insert(dup),/Duplicate tool bins/);
+await assert.rejects(insert(large),/Invalid capture metadata/);
+await db.close();console.log('PASS default-off upload strips estimates key; enabled upload retains small inputs. PASS estimates: full / absent / unknown price; cache-aware $1.89; labels and basis; SQL valid accepted and nonreconciling rejected; 2048 bins + 64 components drop estimates, preserve and store run. Local PGlite only.');

@@ -7,6 +7,14 @@ import {execFileSync} from 'node:child_process';
 const config=runtimeConfig();
 await mkdir('dist',{recursive:true});
 await cp('site','dist',{recursive:true});
+// Default off: old production validators reject the estimates key.
+// Turn on only after the approved SQL validator has been applied and verified.
+if(process.env.STRIVE_ESTIMATE_UPLOADS_READY==='1') {
+ const path='dist/run-estimates.js',source=await readFile(path,'utf8');
+ const marker='const ESTIMATE_UPLOADS_READY=false;';
+ if(!source.includes(marker))throw new Error('Missing estimate upload readiness marker');
+ await writeFile(path,source.replace(marker,'const ESTIMATE_UPLOADS_READY=true;'));
+}
 let html=await readFile('dist/index.html','utf8');
 for(const name of ['SB_URL','SB_KEY']) {
  const pattern=new RegExp(`const ${name}="[^"]*";`);
