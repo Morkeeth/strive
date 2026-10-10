@@ -263,3 +263,15 @@ including within one busy project. Source basis appears once in the section head
 File lists and generic edit precursors remain in full view, with omitted commit/observation counts
 and the card's single View full run action. Individual source records are preserved.
 full run and share preserve every leg in order, including a later return to a project.
+
+
+## Sunday preview · 10 October
+
+The Sunday review request supersedes the older three-fact limit for selected-run posts.
+The card shows recorded tokens, dollars, active time, recorded models and “You typed”.
+“You typed” counts recorded human messages. Unsupported dollars and active time say
+“Not recorded”; a captured duration stays labelled elapsed in its trail. Token usage
+includes cached input and covers only recorded calls. A model label typed by an author
+never becomes a recorded model. Author captions remain exact authored text, not an
+invented quotation. Project screenshots retain their source/date and do not prove that
+an earlier session produced the current website. Existing Data and photo choices win.

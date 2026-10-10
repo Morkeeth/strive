@@ -26,5 +26,37 @@ function metrics(r){const rows=[['Human messages',r.prompts??r.turns_typed,'Mess
  if(count(r.claims_verified)&&count(r.claims))rows.push(['Claims with matching evidence',`${r.claims_verified} of ${r.claims}`,'An automatic rule found evidence in the same turn as a claim. It does not establish successful work or independently verify the claim.']);
  return rows.length?`<section class="run-measurements"><h3>Recorded activity</h3>${rows.map(([label,value,why])=>`<details><summary>${esc(label)}: <strong>${esc(value)}</strong></summary><p>${esc(why)}</p></details>`).join('')}</section>`:'';
 }
-const api={context,setup,metrics,validate};root.StriveContext=api;if(typeof module!=='undefined')module.exports=api;
+// Sunday card facts use only the bounded capture. Billing and active time have no
+// supported source field yet; an elapsed span cannot stand in for either one.
+function cardFacts(r){
+ let m=null;try{m=validate(r.capture_metadata)}catch{}
+ const total=m&&count(m.input_tokens)&&count(m.output_tokens)?m.input_tokens+m.output_tokens:null;
+ const number=v=>v.toLocaleString('en-US');
+ const typed=r.prompts??r.turns_typed;
+ const models=m?.models?.length?[...new Set(m.models)].map(v=>v==='claude-opus-5-5'?'Claude Opus 5.5':v).join(', '):null;
+ return [
+  ['Recorded tokens',total===null?'Not recorded':total>=1000000?(total/1000000).toFixed(2)+'M':number(total),total===null?'Complete input and output counts are absent.':number(m.input_tokens)+' input + '+number(m.output_tokens)+' output. Cached input is included; only calls with recorded usage are counted.'],
+  ['Dollars','Not recorded','This capture has no recorded bill. Token totals do not establish what you paid.'],
+  ['Active time','Not recorded','The capture does not measure active work separately from waiting.'],
+  ['Model',models||'Not recorded',models?'Model names from the capture.':r.model?'Author’s model label: '+r.model:'No recorded model names.'],
+  ['You typed',count(typed)?number(typed):'Not recorded','Recorded human messages, not words or keystrokes.']
+ ];
+}
+function profileFacts(runs){
+ const rows=[...new Map((runs||[]).map((r,i)=>[r.id||'row-'+i,r])).values()];
+ let tokens=0,usageRuns=0,typed=0,typedRuns=0;const models=new Set();
+ for(const r of rows){let m=null;try{m=validate(r.capture_metadata)}catch{}
+  if(m&&count(m.input_tokens)&&count(m.output_tokens)&&count(tokens+m.input_tokens+m.output_tokens)){tokens+=m.input_tokens+m.output_tokens;usageRuns++}
+  for(const model of m?.models||[])models.add(model);
+  const n=r.prompts??r.turns_typed;if(count(n)&&count(typed+n)){typed+=n;typedRuns++}
+ }
+ const scope=n=>n+' of '+rows.length+' loaded runs';
+ return `<section class="profile-capture-stats" aria-label="Recorded capture measurements"><h2>Recorded activity</h2><dl>
+ <div><dt>Recorded tokens</dt><dd>${usageRuns?tokens.toLocaleString('en-US'):'Not recorded'}</dd><small>${scope(usageRuns)} have usage</small></div>
+ <div><dt>You typed</dt><dd>${typedRuns?typed.toLocaleString('en-US'):'Not recorded'}</dd><small>${scope(typedRuns)} have human message counts</small></div>
+ <div><dt>Dollars</dt><dd>Not recorded</dd><small>No bill in these captures</small></div>
+ <div><dt>Active time</dt><dd>Not recorded</dd><small>Elapsed spans include waiting</small></div>
+ </dl><p class="profile-models">Recorded models: ${models.size?[...models].map(esc).join(', '):'Not recorded'}</p><p class="profile-stats-scope">Recorded usage only; missing captures are not counted as zero. Cached input is already included.</p></section>`;
+}
+const api={context,setup,metrics,validate,cardFacts,profileFacts};root.StriveContext=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

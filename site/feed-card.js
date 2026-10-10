@@ -101,18 +101,7 @@
   }
 
   function recordedFacts(r) {
-    const metadata=r?.capture_metadata||{};
-    const input=whole(metadata.input_tokens),output=whole(metadata.output_tokens);
-    const cells=[];
-    if(input!==null&&output!==null){
-      const total=input+output,cached=whole(metadata.cached_input_tokens);
-      cells.push(['Recorded tokens',total>=1000000?(total/1000000).toFixed(2)+'M':thousands(total),thousands(total)+' tokens from imported usage',cached?`${cached>=1000000?(cached/1000000).toFixed(2)+'M':thousands(cached)} cached input included`:'Client-reported usage']);
-    }
-    const typed=whole(r?.prompts??r?.turns_typed);
-    if(typed!==null)cells.push(['You typed',thousands(typed)]);
-    const elapsed=durationLabel(r?.wall_time_s??r?.duration_s);
-    if(elapsed)cells.push([r?.wall_time_s!=null?'Elapsed time':'Recorded time',elapsed,r?.wall_time_s!=null?'Wall-clock span from capture':'Duration from capture; source method may cap idle gaps']);
-    return cells.length?cells.slice(0,3):(contract()?.heroStats(r)||[]);
+    return context?.cardFacts?context.cardFacts(r):(contract()?.heroStats(r)||[]);
   }
 
   function modelName(id){return id==='claude-opus-5-5'?'Claude Opus 5.5':id;}

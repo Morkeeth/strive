@@ -150,7 +150,7 @@
     let active=true;const controller=new AbortController(),urls=new Set(),images=new Set();
     const dispose=()=>{active=false;controller.abort();for(const url of urls)URL.revokeObjectURL(url);urls.clear();for(const image of images)image.remove();disposers.delete(dispose)};
     disposers.add(dispose);
-    const cards=[...host.querySelectorAll('.fc[data-run-id]:not([data-photo-checked]), .card[data-run-id]:not(.dc):not([data-photo-checked]), .history-run[data-run-id]:not([data-photo-checked])')];
+    const cards=[...host.querySelectorAll('.activity-post[data-photo-gallery]:not([data-photo-checked]), .fc[data-run-id]:not([data-photo-checked]), .card[data-run-id]:not(.dc):not([data-photo-checked]), .history-run[data-run-id]:not([data-photo-checked])')];
     await Promise.all(cards.map(async card=>{
       card.dataset.photoChecked='true';
       const generation=Symbol(),pendingUrls=new Set();coverGeneration.set(card,generation);
@@ -166,13 +166,14 @@
             link.href=visual.url;link.target='_blank';link.rel='noopener noreferrer';
             link.setAttribute('aria-label','Open source of '+visual.label);
             image.className='run-photo-cover';image.src=visual.src;image.alt=visual.alt;image.loading='lazy';
-            caption.textContent=visual.label;link.append(image);figure.append(link,caption);group.append(figure);
+            caption.textContent=visual.label+' · project context';link.append(image);figure.append(link,caption);group.append(figure);
           }
           const route=card.querySelector(':scope > .checkpoint-route');
           const body=card.querySelector('.history-visual')||card.querySelector('.fc-body');
-          if(route)route.after(group);else if(body)body.after(group);else card.append(group);
+          if(route)route.after(group);else if(body)body.after(group);else if(card.querySelector('.post-open'))card.querySelector('.post-open').before(group);else card.append(group);
           const open=card.querySelector('.fc-open');if(open)open.style.display='none';
           const story=document.createElement('a');story.className='run-gallery-story-link';story.href='/?run='+encodeURIComponent(runId);story.textContent='View full run →';group.after(story);
+          if(card.classList.contains('activity-post'))story.remove();
           images.add(group);images.add(story);return;
         }
         const listHeaders=await headers(client);if(!current())return;
@@ -180,7 +181,7 @@
         if(!current()||!list.ok)return;
         const payload=await list.json(), photos=payload?.photos||[];
         const mode=card.dataset.photoLayout||'cover';
-        const selected=cardPhotos(photos,mode);
+        const selected=cardPhotos(card.dataset.gallerySupporting!==undefined?photos.filter(p=>p.role!=='personal'):photos,mode);
         if(!selected.length)return;
         // Build a detached group. Attach only while the same view is active, after all reads.
         const group=document.createElement('div');group.className='run-media run-media-gallery';group.setAttribute('aria-label','Images from this run');group.tabIndex=0;
@@ -203,6 +204,7 @@
         const body=card.querySelector('.history-visual')||card.querySelector('.fc-body');
         if(route)route.after(group);
         else if(body)body.after(group);
+        else if(card.querySelector('.post-open'))card.querySelector('.post-open').before(group);
         else{const title=card.querySelector('.run-metrics')||card.querySelector('.note')||card.querySelector('.run-title-row');if(title)title.after(group);else card.prepend(group)}
         images.add(group);
       }catch(_){}
