@@ -114,7 +114,9 @@ window.GrinderPeople = function ({
       );
     }
     if (opts?.following) meta.push("Following");
-    const tile = draw && p.handle
+    const tile = typeof window.GrinderFeed?.face === "function"
+      ? window.GrinderFeed.face({ profiles: row }, 36)
+      : draw && p.handle
       ? draw(p.handle, { size: 36 })
       : p.avatar_url
         ? `<img class="people-avatar" src="${esc(p.avatar_url)}" alt="" width="36" height="36">`
@@ -478,6 +480,7 @@ window.GrinderPeople = function ({
       if (error) throw error;
       const R = runs || [];
       const avatarHtml = (() => {
+        if (typeof window.GrinderFeed?.face === "function") return window.GrinderFeed.face({ profiles: person }, 40);
         if (draw && p.handle) return draw(p.handle, { size: 40 });
         if (p.avatar_url)
           return `<img class="people-avatar" src="${esc(p.avatar_url)}" alt="" width="40" height="40">`;
