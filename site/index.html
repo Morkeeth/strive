@@ -560,7 +560,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
     <a class="global-add" href="/?post"><span aria-hidden="true">+</span> Add run</a>
     <button id="notifications-toggle" class="icon-button" type="button" aria-label="Notifications" aria-expanded="false" aria-controls="notifications-drawer" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 16.5h11l-1.2-1.8V10a4.3 4.3 0 0 0-8.6 0v4.7l-1.2 1.8Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 19h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span id="nav-inbox-badge" class="nav-badge" hidden aria-hidden="true"></span></button>
     <details id="account-menu" class="account-menu" hidden>
-      <summary class="profile-trigger" aria-label="Profile and settings" aria-haspopup="menu"><span id="nav-avatar" class="profile-fallback">ME</span></summary>
+      <summary class="profile-trigger" aria-label="Profile and settings" aria-haspopup="menu"><span id="nav-avatar" class="profile-fallback"><img src="/favicon.svg" alt="" width="30" height="30"></span></summary>
       <div class="account-panel" role="menu" data-you-links></div>
     </details>
     <span id="me" class="you" hidden></span>
@@ -791,7 +791,7 @@ function invalidatePrivateView(){
   if($('notifications-body'))$('notifications-body').innerHTML='';
   if($('me'))$('me').innerHTML='';
   if($('account-menu'))$('account-menu').hidden=true;
-  if($('nav-avatar'))$('nav-avatar').outerHTML='<span id="nav-avatar" class="profile-fallback">ME</span>';
+  if($('nav-avatar'))$('nav-avatar').outerHTML='<span id="nav-avatar" class="profile-fallback"><img src="/favicon.svg" alt="" width="30" height="30"></span>';
 }
 function handleAuthStateChange(event,session,refreshAndRoute){
   if(event==='SIGNED_OUT'||event==='USER_UPDATED'||(event==='SIGNED_IN'&&session?.user?.id!==AUTH_USER?.id)){
@@ -2399,7 +2399,8 @@ async function viewProfile(handle){
   const setup=harnesses.map(toolLogoHtml).join('');
   frame(railHtml(mine?'profile':null,R), null); if(mine)setPrimarySection('profile');
   // A person's profile shows their face: their photo link, else their GitHub picture. An agent keeps its trace tile.
-  const profileHtml=`${isOwner?`<div class="profile-view-mode"><span>${preview?'Public profile preview':'Your profile · includes private work'}</span><a href="/?u=${encodeURIComponent(handle)}${preview?'':'&preview=public'}">${preview?'Back to your profile':'Preview public profile'}</a></div>`:''}<div class="phero">${!isAgentProfile(prof)&&window.GrinderFeed?.face?GrinderFeed.face({profiles:prof},56):avatar(handle,{size:36,agent:isAgentProfile(prof)})}
+  const profileFace=isOwner&&AUTH_USER?{...prof,avatar_url:GrinderAuth.present(prof,AUTH_USER)?.avatar_url||prof.avatar_url}:prof;
+  const profileHtml=`${isOwner?`<div class="profile-view-mode"><span>${preview?'Public profile preview':'Your profile · includes private work'}</span><a href="/?u=${encodeURIComponent(handle)}${preview?'':'&preview=public'}">${preview?'Back to your profile':'Preview public profile'}</a></div>`:''}<div class="phero">${!isAgentProfile(prof)&&window.GrinderFeed?.face?GrinderFeed.face({profiles:profileFace},56):avatar(handle,{size:36,agent:isAgentProfile(prof)})}
       <div><h1>${esc(prof.display_name||prof.name||handle)}</h1><div class="h">@${esc(handle)}</div>${profileLinksHtml(prof,mine)}</div>${mine?'<div class="profile-actions"><button id="edit-profile-open" class="ghost">Edit profile</button></div>':''}</div>
     <div id="social-follow" class="social-follow"></div>
     ${mine?myRunsTabs('profile'):""}<section class="profile-activity-stats" aria-label="Activity in the loaded runs"><div><span>Runs</span><strong>${R.length}</strong></div><div><span>Projects</span><strong>${new Set(R.map(r=>GrinderContract.projectLabel(r.project)).filter(Boolean)).size}</strong></div><div><span>XUDOS received</span><strong>${acksR===null?'Unavailable':acksR}</strong></div></section><p class="profile-stats-scope">${mine?'Your latest':'Latest visible'} ${R.length} runs · ${mine?'Includes private work':'Only runs you can open'}</p>
@@ -2458,11 +2459,11 @@ function showSignIn(opts={}){
 function viewIdentitySetup(){
   frame(railHtml('profile'),null);
   const suggestion=IDENTITY_SETUP?.suggestion||{};
-  $('app').innerHTML='<section class="card identity-welcome"><div class="identity-intro"><p class="identity-kicker">Early alpha · You’re in</p><h1>Claim your corner of __BRAND__.</h1><p>Set your name, grab your @, then go see what people are building.</p></div><div class="identity-preview" aria-label="Your profile preview"><div class="identity-preview-avatar" id="identity-preview-avatar">'+esc((suggestion.display_name||suggestion.handle||'YO').slice(0,2).toUpperCase())+'</div><div class="identity-preview-copy"><strong id="identity-preview-name">'+esc(suggestion.display_name||'Your name')+'</strong><span id="identity-preview-handle">@'+esc(suggestion.handle||'your-handle')+'</span></div><span class="identity-preview-private">Private by default</span></div><form id="identity-form" class="reply-form identity-form"><label>Your name<input name="display_name" autocomplete="nickname" maxlength="60" required value="'+esc(suggestion.display_name||'')+'"><span class="hint">What people see beside your runs. Change it any time.</span></label><label>Your __BRAND__ @<input name="handle" autocomplete="username" maxlength="40" required value="'+esc(suggestion.handle||'')+'"><span class="hint">Unique on __BRAND__. Letters, numbers, - or _.</span></label><p id="identity-state" role="status"></p><button id="identity-submit">Claim @'+esc(suggestion.handle||'your-handle')+'</button><p class="identity-foot">Nothing is posted. Your first run starts private.</p></form></section>';
+  $('app').innerHTML='<section class="card identity-welcome"><div class="identity-intro"><p class="identity-kicker">Early alpha · You’re in</p><h1>Claim your corner of __BRAND__.</h1><p>Set your name, grab your @, then go see what people are building.</p></div><div class="identity-preview" aria-label="Your profile preview"><div class="identity-preview-avatar" id="identity-preview-avatar">'+GrinderFeed.face({profiles:{avatar_url:suggestion.avatar_url}},44)+'</div><div class="identity-preview-copy"><strong id="identity-preview-name">'+esc(suggestion.display_name||'Your name')+'</strong><span id="identity-preview-handle">@'+esc(suggestion.handle||'your-handle')+'</span></div><span class="identity-preview-private">Private by default</span></div><form id="identity-form" class="reply-form identity-form"><label>Your name<input name="display_name" autocomplete="nickname" maxlength="60" required value="'+esc(suggestion.display_name||'')+'"><span class="hint">What people see beside your runs. Change it any time.</span></label><label>Your __BRAND__ @<input name="handle" autocomplete="username" maxlength="40" required value="'+esc(suggestion.handle||'')+'"><span class="hint">Unique on __BRAND__. Letters, numbers, - or _.</span></label><p id="identity-state" role="status"></p><button id="identity-submit">Claim @'+esc(suggestion.handle||'your-handle')+'</button><p class="identity-foot">Nothing is posted. Your first run starts private.</p></form></section>';
   const form=$('identity-form'),nameInput=form.elements.display_name,handleInput=form.elements.handle,submit=$('identity-submit');
-  const previewIdentity=()=>{const name=nameInput.value.trim()||'Your name';const handle=handleInput.value.trim().replace(/^@+/, '').toLowerCase()||'your-handle';$('identity-preview-name').textContent=name;$('identity-preview-handle').textContent='@'+handle;$('identity-preview-avatar').textContent=(name||handle).slice(0,2).toUpperCase();submit.textContent='Claim @'+handle;};
+  const previewIdentity=()=>{const name=nameInput.value.trim()||'Your name';const handle=handleInput.value.trim().replace(/^@+/, '').toLowerCase()||'your-handle';$('identity-preview-name').textContent=name;$('identity-preview-handle').textContent='@'+handle;submit.textContent='Claim @'+handle;};
   nameInput.addEventListener('input',previewIdentity);handleInput.addEventListener('input',previewIdentity);previewIdentity();
-  form.onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,button=f.querySelector('button');button.disabled=true;try{const result=await auth.onboard({handle:f.elements.handle.value,display_name:f.elements.display_name.value,avatar_url:null});ME=result.profile;IDENTITY_SETUP=null;await refreshAuth();await route();}catch(error){$('identity-state').textContent=error.detail?.message||'Your profile could not be saved. Try again.';button.disabled=false;}};
+  form.onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,button=f.querySelector('button');button.disabled=true;try{const result=await auth.onboard({handle:f.elements.handle.value,display_name:f.elements.display_name.value});ME=result.profile;IDENTITY_SETUP=null;await refreshAuth();await route();}catch(error){$('identity-state').textContent=error.detail?.message||'Your profile could not be saved. Try again.';button.disabled=false;}};
 }
 
 async function refreshAuth(){
@@ -2475,7 +2476,7 @@ async function refreshAuth(){
     if(navAvatar){
       navAvatar.outerHTML=ME&&window.GrinderFeed?.face
         ? `<span id="nav-avatar">${GrinderFeed.face({profiles:{...ME,avatar_url:shown?.avatar_url}},30)}</span>`
-        : `<span id="nav-avatar" class="profile-fallback">${esc((shown?.display_name||shown?.handle||'ME').slice(0,2).toUpperCase())}</span>`;
+        : `<span id="nav-avatar" class="profile-fallback"><img src="/favicon.svg" alt="" width="30" height="30"></span>`;
     }
     $('account-menu').hidden=!current.user;$('auth').hidden=!!current.user;$('auth').textContent='Sign in';if($('deletewrap'))$('deletewrap').hidden=!ME;if($('delete-info'))$('delete-info').hidden=!!ME;
     syncAuthNav();status('');

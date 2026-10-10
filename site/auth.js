@@ -86,7 +86,7 @@
   function githubHandleOf(user) {
     const gh = identitiesOf(user).find((i) => i.provider === "github");
     const h = gh ? gh.handle : "";
-    return /^[a-z0-9_-]{1,60}$/i.test(h) ? h : null;
+    return /^[a-z0-9-]{1,39}$/i.test(h) ? h : null;
   }
   // The x_handle column is written only from an X identity (Supabase provider "x"; "twitter" is
   // the legacy OAuth 1.0a provider). X handles are 1 to 15 characters: letters, digits, underscore.
@@ -109,10 +109,12 @@
     const ids = identitiesOf(user);
     const meta = user?.user_metadata || {};
     const first = ids.find((i) => i.handle) || ids.find((i) => i.name) || ids[0] || {};
+    const photo = ids.find((i) => i.provider === "github" && i.avatar_url)
+      || ids.find((i) => (i.provider === "x" || i.provider === "twitter") && i.avatar_url);
     const seed = user?.id || "";
     const handle = normalizeHandle(first.handle || pick(meta, HANDLE_KEYS) || pick(meta, NAME_KEYS), seed);
     const display_name = normalizeDisplayName(first.name || pick(meta, NAME_KEYS), handle);
-    const avatar_url = first.avatar_url || normalizeAvatarUrl(pick(meta, AVATAR_KEYS));
+    const avatar_url = photo?.avatar_url || null;
     return { handle, display_name, avatar_url, providers: ids.map((i) => i.provider), github_handle: githubHandleOf(user) };
   }
 
@@ -126,7 +128,6 @@
       handle,
       display_name,
       avatar_url: normalizeAvatarUrl(p.avatar_url)
-        || (/^[A-Za-z0-9-]{1,39}$/.test(str(p.github_handle)) ? "https://github.com/" + p.github_handle + ".png?size=160" : null)
         || (p.auth_uid && p.auth_uid === user?.id ? suggest(user).avatar_url : null),
       legacy: !str(p.handle),
       url: handle ? "/?u=" + encodeURIComponent(handle) : "/",

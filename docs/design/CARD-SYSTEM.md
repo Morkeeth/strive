@@ -8,6 +8,8 @@ The rules live in three places that must agree:
 - `site/design.css`: the tokens and the COMPONENT RULES block.
 - `site/day-card.js`, `site/feed-card.js`, `site/run-photos.js`: the one function that draws each part.
 
+An author's face uses their verified GitHub account photo first, then a photo from a connected X identity when available. If no account photo loads, show the STRIVE route mark from `site/favicon.svg`. A chosen STRIVE handle or an old unverified X label never supplies a provider photo. The same rule applies to the feed, profile header and public run card.
+
 `scripts/test-card-system.mjs` fails if a token or class named here is missing from the styles. `scripts/test-day-card.mjs` checks the rules themselves. Run both after any change:
 
 ```sh

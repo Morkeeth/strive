@@ -1,11 +1,17 @@
 import assert from 'node:assert/strict';import {createRequire} from 'node:module';import fs from 'node:fs';import vm from 'node:vm';
 const require=createRequire(import.meta.url),Auth=require('../site/auth.js'),Feed=require('../site/feed-card.js'),Origin=require('../site/origin.js');
 const profile={id:'p-a',auth_uid:'u-a',handle:'my-strive-name',display_name:'Current owner',github_handle:'real-github',avatar_url:null};
-assert.match(Auth.present(profile).avatar_url,/github.com\/real-github.png/,'header must use same GitHub identity as profile photo');
-assert.match(Feed.face({profiles:profile}),/github.com\/real-github.png/);
+assert.equal(Auth.present(profile).avatar_url,null,'an owner-free profile has no saved avatar URL');
+assert.match(Feed.face({profiles:profile}),/github\.com\/real-github\.png/,'verified GitHub alias supplies public photo');
 assert.equal(Auth.present({...profile,avatar_url:'https://images.test/chosen.jpg'}).avatar_url,'https://images.test/chosen.jpg');
 const provider={id:'u-a',identities:[{provider:'x',identity_data:{avatar_url:'https://images.test/provider.jpg'}}]};
 assert.equal(Auth.present({...profile,github_handle:null},provider).avatar_url,'https://images.test/provider.jpg');
+assert.equal(Auth.suggest({id:'u-a',user_metadata:{avatar_url:'https://images.test/unverified.jpg'},identities:[
+  {provider:'twitter',identity_data:{avatar_url:'https://images.test/x.jpg'}},
+  {provider:'github',identity_data:{user_name:'real-github',avatar_url:'https://images.test/github.jpg'}}
+]}).avatar_url,'https://images.test/github.jpg','verified GitHub photo wins over X and unverified metadata');
+assert.equal(Auth.suggest({id:'u-a',identities:provider.identities}).avatar_url,'https://images.test/provider.jpg','connected X is the second source');
+assert.equal(Auth.suggest({id:'u-a',user_metadata:{avatar_url:'https://images.test/unverified.jpg'},identities:[]}).avatar_url,null,'email metadata cannot impersonate a provider photo');
 assert.equal(Auth.present({...profile,github_handle:null},{...provider,id:'u-b'}).avatar_url,null,'never borrow another account provider photo');
 assert.equal(Auth.present({...profile,github_handle:null,avatar_url:'javascript:bad'}).avatar_url,null);
 const context={window:{GrinderAuth:Auth},URLSearchParams,location:{search:'?account'},sessionStorage:{getItem:()=>null},document:{getElementById:()=>null}};
@@ -33,7 +39,7 @@ let resolve;const nodes={};const ctx={AUTH_GENERATION:0,AUTH_USER:null,ME:null,I
  GrinderAuth:Auth,GrinderFeed:Feed,window:{GrinderFeed:Feed},profileHandle:p=>p.handle,esc:s=>s,syncAuthNav(){},status(){},social:{}};
 vm.createContext(ctx);vm.runInContext(refreshSource,ctx);
 let job=ctx.refreshAuth();resolve({user:{id:'u-a'},profile});await job;
-assert.match(nodes['nav-avatar'].outerHTML,/github.com\/real-github.png/,'actual header shares profile avatar rendering');
+assert.match(nodes['nav-avatar'].outerHTML,/github\.com\/real-github\.png/,'actual header uses verified GitHub photo');
 job=ctx.refreshAuth();ctx.AUTH_GENERATION++;ctx.ME={id:'p-b'};nodes['nav-avatar'].outerHTML='CURRENT B';resolve({user:{id:'u-a'},profile});await job;
 assert.equal(nodes['nav-avatar'].outerHTML,'CURRENT B');assert.equal(ctx.ME.id,'p-b');
 for(const m of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))if(m[1].trim())new vm.Script(m[1]);

@@ -10,7 +10,7 @@ const config=runtimeConfig();
 export const origin=config.ORIGIN;
 export const validId=id=>typeof id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const PUBLIC_RUN_FIELDS='id,created_at,title,caption,photo_layout,story_result,story_next,feedback_question,output_url,repo_url,receipts,shipped,artifact_url,image_url,hero_visual,project,harness,model,capture_metadata,started_at,duration_s,wall_time_s,prompts,tool_calls,shell_calls,files_touched,artifacts_produced,commits,rhythm,route,trace_basis,measurement_revision,history_evidence,ridge,worker_bins,commit_bins,ridge_basis,ridge_wall_seconds,ridge_tool_calls,code_route,visibility,profiles!runs_profile_id_fkey(github_handle,handle,display_name)';
+const PUBLIC_RUN_FIELDS='id,created_at,title,caption,photo_layout,story_result,story_next,feedback_question,output_url,repo_url,receipts,shipped,artifact_url,image_url,hero_visual,project,harness,model,capture_metadata,started_at,duration_s,wall_time_s,prompts,tool_calls,shell_calls,files_touched,artifacts_produced,commits,rhythm,route,trace_basis,measurement_revision,history_evidence,ridge,worker_bins,commit_bins,ridge_basis,ridge_wall_seconds,ridge_tool_calls,code_route,visibility,profiles!runs_profile_id_fkey(github_handle,handle,display_name,avatar_url)';
 export async function readPublic(id,fetcher=fetch){
  if(!validId(id))return null;
  const request=select=>{const query=new URLSearchParams({id:'eq.'+id,visibility:'eq.public',select,limit:'1'});return fetcher(config.SB_URL+'/rest/v1/runs?'+query,{headers:{apikey:config.SB_KEY,"Accept-Profile":config.SB_SCHEMA},cache:'no-store',signal:AbortSignal.timeout(8000)})};
@@ -264,32 +264,33 @@ const codeRoutePlot=run=>{
 };
 // THE SHARE IMAGE is the feed card at 1200x630. The numbers come from the same functions the feed
 // and /r/<id> use (Feed.headline, Feed.stats), so the image, the page and the feed cannot print
-// different figures for one run. No remote image is fetched: the face is the builder's initial.
+// different figures for one run. The image route may pass a bounded provider photo; otherwise
+// the STRIVE route mark is drawn directly, with no guessed face.
 const INK='#0a0a0a',SOFT='#6f6f6b',BLUE='#0047ff',WASH='#f2f5ff',BLUE_SOFT='#c4d2ff',RULE='#e3e3df',PAPER='#f7f7f5',ORANGE='#fc4c02';
-// The builder's face for the share image: their GitHub picture, fetched here on the server (a
-// fixed host, never a URL from the row), so the image shows the same face as the page. Any
-// failure returns null and the image draws the initial.
-// Redirects are followed by hand, and every hop must stay on GitHub's own avatar hosts over
-// https: a redirect to any other host (an internal address included) ends the lookup.
-const AVATAR_HOSTS=new Set(['github.com','avatars.githubusercontent.com']);
-const avatarHop=url=>{try{const u=new URL(url);return u.protocol==='https:'&&AVATAR_HOSTS.has(u.hostname)&&!u.username&&!u.password&&(u.port===''||u.port==='443')?u.href:null}catch(_){return null}};
 export async function readAvatar(run,fetcher=fetch){
- const gh=run&&run.visibility==='public'&&run.profiles?.github_handle;
- if(typeof gh!=='string'||!/^[A-Za-z0-9-]{1,39}$/.test(gh))return null;
+ if(run?.visibility!=='public')return null;
+ const source=Feed.profileOf(run).avatar;
+ const hosts=new Set(['github.com','avatars.githubusercontent.com','pbs.twimg.com']);
+ const allowed=url=>{try{const u=new URL(url);return u.protocol==='https:'&&hosts.has(u.hostname)&&!u.username&&!u.password&&(u.port===''||u.port==='443')?u.href:null}catch(_){return null}};
+ let url=allowed(source);
+ if(!url)return null;
  try{
-  let url=`https://github.com/${gh}.png?size=128`,response=null;
+  let response;
   for(let hop=0;hop<4;hop++){
-   response=await fetcher(url,{redirect:'manual',signal:AbortSignal.timeout(3000)});
+   response=await fetcher(url,{signal:AbortSignal.timeout(4000),redirect:'manual',headers:{Accept:'image/png,image/jpeg,image/webp'}});
    if(response.status<300||response.status>=400)break;
-   const next=avatarHop(new URL(response.headers.get('location')||'',url).href);
-   if(!next||hop===3)return null;
-   url=next;
+   const location=response.headers.get('location');
+   if(!location||hop===3)return null;
+   url=allowed(new URL(location,url).href);
+   if(!url)return null;
   }
-  const type=response.headers.get('content-type')||'';
-  if(!response.ok||!/^image\/(png|jpeg)$/.test(type.split(';')[0]))return null;
+  if(!response.ok)return null;
+  if(response.url&&!allowed(response.url))return null;
+  const type=(response.headers.get('content-type')||'').split(';')[0].trim().toLowerCase();
+  if(!['image/png','image/jpeg','image/webp'].includes(type))return null;
+  if(Number(response.headers.get('content-length')||0)>1_000_000)return null;
   const bytes=Buffer.from(await response.arrayBuffer());
-  if(!bytes.length||bytes.length>400000)return null;
-  return `data:${type.split(';')[0]};base64,${bytes.toString('base64')}`;
+  return bytes.length&&bytes.length<=1_000_000?`data:${type};base64,${bytes.toString('base64')}`:null;
  }catch(_){return null}
 }
 export function card(run,opts={}){
@@ -308,8 +309,7 @@ export function card(run,opts={}){
  const lead=null,facts=[];
  const who=Feed.profileOf(run);
  const name=run.visibility==='public'?who.name:run.visibility==='anonymous'?'Anonymous builder':'Builder';
- const badge=null;
- const initial=run.visibility==='anonymous'?'?':(String(name||'?').trim().charAt(0)||'?').toUpperCase();
+ const badge=Feed.achievement(run);
  const avatar=run.visibility==='public'&&typeof opts.avatar==='string'&&opts.avatar.startsWith('data:image/')?opts.avatar:null;
  // The same line the page's card prints under the name: the agent and when.
  const meta=[run.harness,Feed.when(run.created_at||run.started_at)].filter(Boolean).join(' · ');
@@ -356,7 +356,8 @@ export function card(run,opts={}){
   el('div',{style:{width:'100%',height:'100%',background:'#fff',border:`1px solid ${RULE}`,display:'flex',flexDirection:'column',padding:'32px 48px 28px'}},
    el('div',{style:{display:'flex',alignItems:'center'}},
     avatar?el('img',{src:avatar,width:64,height:64,style:{width:64,height:64,borderRadius:32,border:`2px solid ${BLUE_SOFT}`}}):
-    el('div',{style:{display:'flex',width:64,height:64,borderRadius:32,background:WASH,border:`2px solid ${BLUE_SOFT}`,color:BLUE,fontSize:28,fontWeight:600,alignItems:'center',justifyContent:'center'}},initial),
+    el('div',{style:{display:'flex',width:64,height:64,borderRadius:32,background:BLUE,border:`2px solid ${BLUE}`,alignItems:'center',justifyContent:'center'}},
+     el('svg',{width:44,height:44,viewBox:'0 0 64 64'},el('polyline',{points:'10,44 20,36 28,40 36,20 44,30 54,16',fill:'none',stroke:'#fff',strokeWidth:6,strokeLinecap:'round',strokeLinejoin:'round'}),el('circle',{cx:36,cy:20,r:5,fill:ORANGE,stroke:'#fff',strokeWidth:2}))),
     el('div',{style:{display:'flex',flexDirection:'column',marginLeft:18,flexGrow:1,minWidth:0}},
      el('div',{style:{display:'flex',fontSize:26,fontWeight:700}},String(name).slice(0,60)),
      meta?el('div',{style:{display:'flex',fontSize:19,color:SOFT,marginTop:2,height:26,overflow:'hidden'}},meta):null),

@@ -143,25 +143,23 @@
     const shown = A && A.present ? A.present(p) : null;
     const handle = (shown && shown.handle) || p.handle || p.github_handle || "";
     const name = p.display_name || p.name || handle || "Builder";
-    return { handle, name, github: p.github_handle || null, avatar: p.avatar_url || (shown && shown.avatar_url) || null };
+    // github_handle is guarded against the linked Auth identity by the database. A chosen
+    // STRIVE handle and a legacy X label never establish ownership of those accounts.
+    const github = /^[a-z0-9-]{1,39}$/i.test(p.github_handle || "") ? p.github_handle : null;
+    const saved = /^https:\/\//i.test(p.avatar_url || "") ? p.avatar_url : null;
+    return { handle, name, github, avatar: saved || (github ? `https://github.com/${encodeURIComponent(github)}.png?size=160` : (shown && shown.avatar_url) || null) };
   }
 
-  // A face. The profile's own avatar, else the public avatar of the GitHub account the profile
-  // signed in with, else an initial. The GitHub fallback is the person's real picture, not a stock
-  // one; if it fails to load the initial takes its place.
+  const BRAND_FACE = '<svg viewBox="0 0 64 64" aria-hidden="true"><polyline points="10,44 20,36 28,40 36,20 44,30 54,16" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="36" cy="20" r="5" fill="#fc4c02" stroke="white" stroke-width="2"/></svg>';
+  // The same STRIVE mark is visible during loading and on an image error.
   function face(r, size) {
     const s = size || 40;
     if (r.visibility === "anonymous")
-      return `<span class="fc-face fc-mono" style="--s:${s}px" aria-hidden="true">?</span>`;
+      return `<span class="fc-face fc-brand" style="--s:${s}px" aria-hidden="true">${BRAND_FACE}</span>`;
     const p = profileOf(r);
-    const initial = esc((p.name || "?").trim().charAt(0).toUpperCase() || "?");
-    const src = /^https:\/\//i.test(p.avatar || "")
-      ? p.avatar
-      : p.github && /^[A-Za-z0-9-]{1,39}$/.test(p.github)
-        ? `https://github.com/${p.github}.png?size=${s * 2}`
-        : null;
-    if (!src) return `<span class="fc-face fc-mono" style="--s:${s}px" aria-hidden="true">${initial}</span>`;
-    return `<span class="fc-face" style="--s:${s}px" data-initial="${initial}" aria-hidden="true"><img src="${esc(src)}" alt="" width="${s}" height="${s}" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('fc-mono');this.parentNode.textContent=this.parentNode.dataset.initial"></span>`;
+    const src = /^https:\/\//i.test(p.avatar || "") ? p.avatar : null;
+    if (!src) return `<span class="fc-face fc-brand" style="--s:${s}px" aria-hidden="true">${BRAND_FACE}</span>`;
+    return `<span class="fc-face fc-brand" style="--s:${s}px" aria-hidden="true">${BRAND_FACE}<img src="${esc(src)}" alt="" width="${s}" height="${s}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"></span>`;
   }
 
   // A short sitting spread over 50 bins is a comb of ones and zeros, and a comb is not a shape
