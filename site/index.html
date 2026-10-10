@@ -1582,6 +1582,7 @@ async function viewConnect(){
   frame(railHtml('post'),null);
   app.innerHTML=`<div class="head"><h1>Connect your agent</h1><span class="meta">Start with one run</span></div>${connectBodyHtml()}`;
   if(window.GrinderDropinUI) GrinderDropinUI.mount({privateFirst:true,post:token=>{history.pushState(null,'','/#import='+token);route();}});
+  $('select-export')?.addEventListener('click',event=>{event.preventDefault();$('drop-file')?.click()});
   wireConnectCopies(app); wireAutoSync(app);
   await loadLatestCardPreview();
 }
@@ -1711,7 +1712,7 @@ function landingHTML(){
   return `<div class="home ${ME?'home-member':''}">
     ${ME?'':`<section class="home-hero"><h1>Follow what people are building.</h1></section>`}
     <div class="home-layout">
-      <section class="home-sec landing-feature" aria-labelledby="h-popular" id="landing-feature"><div class="land-head"><h2 id="h-popular">${ME?'Your feed':'Public runs'}</h2></div><div id="landing-feature-body">${skeletonCard()}</div><p id="public-run-count" class="public-run-count" role="status"></p></section>
+      <section class="home-sec landing-feature" aria-labelledby="h-popular" id="landing-feature"><div class="land-head"><h2 id="h-popular">${ME?'Your feed':'Public runs'}</h2>${ME?'':'<a href="/?people">Find people</a>'}</div><div id="landing-feature-body">${skeletonCard()}</div><p id="public-run-count" class="public-run-count" role="status"></p></section>
       <aside class="home-around" id="home-people-clubs" aria-label="Around STRIVE" tabindex="-1">
         <section class="home-sec" aria-labelledby="h-builders"><div class="land-head"><h2 id="h-builders">People building</h2><a href="/?people">Find people</a></div><div id="home-builders"></div></section>
         <section class="home-sec" id="home-week-section" aria-labelledby="h-week"><div class="land-head"><h2 id="h-week">This week</h2></div><div id="home-week"><div class="wk-skel"></div></div></section>
@@ -1727,7 +1728,7 @@ function dropZoneHtml(){
       <input type="file" id="drop-file" class="visually-hidden" accept=".jsonl,.json,.txt,application/x-ndjson,application/jsonl,text/plain">
       <svg class="drop-ghost" viewBox="0 0 300 56" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,50 30,44 60,46 90,30 120,36 150,14 180,28 210,22 240,38 270,34 300,40"/></svg>
       <strong>Import a session export</strong>
-      <span class="cta"><span class="act primary">Select export</span></span>
+      <span class="cta"><button class="act primary" type="button" id="select-export">Select export</button></span>
       <span class="drop-local" id="drop-progress">Read on this device. Nothing is saved until you choose to save it.</span>
     </label><p class="drop-error" id="drop-error" role="alert" hidden></p></div>`;
 }
@@ -1784,7 +1785,8 @@ async function feedCards(runs,ad,{ownerView=false,decorate=html=>html}={}){
     cards.push(decorate(StrivePost.render(run,{choices:saved?.data,token,owner:own,cardId,actions:' ',dateLabel:StriveActivity.label(run)}),run));
     mounts.push(()=>{const card=document.getElementById(cardId);if(!card)return;
       bindCompactCard(card,{slides:[{key:run.id,name:project||GrinderFeed.titleOf(run),open:run}]},ad);
-      void StriveRunPhotos.mountVisuals({client:sb,root:card});});
+      void StriveRunPhotos.mountVisuals({client:sb,root:card});
+      void StriveRunPhotos.mountCovers({client:sb,root:card.parentElement});});
   }
   setTimeout(()=>mounts.forEach(mount=>mount()),0);
   return '<div class="strive-overview">'+cards.join('')+'</div>';
@@ -2017,6 +2019,7 @@ async function viewPost(){
     ${connectBodyHtml()}
     ${ME?'':'<div class="panel pad auth-empty"><h3>Sign in to save</h3><p>Sign in to save the run and choose who can read it.</p><button id="post-signin" class="act blue">'+signInLabel()+'</button></div>'}`;
   if(window.GrinderDropinUI) GrinderDropinUI.mount({privateFirst:true,post:token=>{history.pushState(null,'','/#import='+token);route();}});
+  $('select-export')?.addEventListener('click',event=>{event.preventDefault();$('drop-file')?.click()});
   wireConnectCopies($('app')); wireAutoSync($('app'));
   await loadLatestCardPreview();
   // A /l/ page's ask links to /#drop-zone. The page is drawn by script after load, so the
@@ -2404,6 +2407,7 @@ async function viewProfile(handle){
       <div><h1>${esc(prof.display_name||prof.name||handle)}</h1><div class="h">@${esc(handle)}</div>${profileLinksHtml(prof,mine)}</div>${mine?'<div class="profile-actions"><button id="edit-profile-open" class="ghost">Edit profile</button></div>':''}</div>
     <div id="social-follow" class="social-follow"></div>
     ${mine?myRunsTabs('profile'):""}<section class="profile-activity-stats" aria-label="Activity in the loaded runs"><div><span>Runs</span><strong>${R.length}</strong></div><div><span>Projects</span><strong>${new Set(R.map(r=>GrinderContract.projectLabel(r.project)).filter(Boolean)).size}</strong></div><div><span>XUDOS received</span><strong>${acksR===null?'Unavailable':acksR}</strong></div></section><p class="profile-stats-scope">${mine?'Your latest':'Latest visible'} ${R.length} runs · ${mine?'Includes private work':'Only runs you can open'}</p>
+    ${StriveContext.profileFacts(R)}
     <details class="profile-project-list"><summary>Projects & tools</summary>${profileProjectsHtml(R,mine)}
     ${setup?`<div class="head"><h2>Tools</h2></div><div class="profile-tools">${setup}</div>`:''}
     </details>${heatmapSvg(R)}

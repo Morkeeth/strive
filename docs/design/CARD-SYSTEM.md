@@ -265,3 +265,23 @@ including within one busy project. Source basis appears once in the section head
 File lists and generic edit precursors remain in full view, with omitted commit/observation counts
 and the card's single View full run action. Individual source records are preserved.
 full run and share preserve every leg in order, including a later return to a project.
+
+
+## Sunday preview · 10 October
+
+The Sunday review request supersedes the older three-fact limit for selected-run posts.
+The card shows recorded tokens, dollars, active time, recorded models and “You typed”.
+“You typed” counts recorded human messages. Unsupported dollars and active time say
+“Not recorded”; a captured duration stays labelled elapsed in its trail. Token usage
+includes cached input and covers only recorded calls. A model label typed by an author
+never becomes a recorded model. Author captions remain exact authored text, not an
+invented quotation. Project screenshots retain their source/date and do not prove that
+an earlier session produced the current website. Existing Data and photo choices win.
+
+### Local review and missing images
+
+- Candidate review files, source windows and screenshots remain outside the repository and `dist`. The local server exposes the explicit private review folder on loopback only. No review pick changes a run or audience.
+- A candidate may show an API-equivalent model-price estimate only with a named price source, per-type token counts and exact model IDs. The estimate is labeled on the face of the card. It is not a subscription bill. Advisor iterations are counted separately when their source records establish that they are excluded from the primary counters.
+- Candidate tool activity is the count of one-minute clock bins containing a captured tool call. The face labels this as `Active (tool) time · proxy`; source details state that it is neither human active time nor continuous tool runtime.
+- A saved run with a successful empty photo read gets a quiet `No screenshot added` frame. Failed/denied reads do not assert absence. An explicit Data choice and a saved personal-photo choice retain their behavior.
+- Find people can roll among real public builders returned by the current read. It hides that action when only one builder is available; it never invents a second profile or follower ranking.

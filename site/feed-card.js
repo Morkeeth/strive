@@ -100,6 +100,21 @@
     return out;
   }
 
+  function recordedFacts(r) {
+    return context?.cardFacts?context.cardFacts(r):(contract()?.heroStats(r)||[]);
+  }
+
+  function modelName(id){return id==='claude-opus-5-5'?'Claude Opus 5.5':id;}
+
+  function cardSummary(r){
+    const summary=story?.summary(r)||'';
+    // This older public caption still mentions a personal picture. Oscar's current
+    // showcase direction is project screenshots; keep the saved caption untouched.
+    return r?.id==='599095f1-3b49-4c0e-b50c-13afd4ae369e'
+      ?summary.replace(/\s*Personal photo from 4 October\.\s*/,' ').trim()
+      :summary;
+  }
+
   // THE BADGE. One small achievement per run, computed from the run's own numbers and nothing
   // else: no history, no other runs, no guess. The first rule that holds wins, and its detail line
   // prints the number that earned it, so a reader can check the badge against the card. A run that
@@ -266,8 +281,8 @@
   }
   function resultVisual(r) {
     const shipped = Array.isArray(r.shipped) ? r.shipped.filter(Boolean) : [];
-    const n = shipped.length || (whole(r.commits) > 0 ? whole(r.commits) : 0);
-    const label = shipped[0] || (n ? `${n} commit${n === 1 ? "" : "s"} recorded` : "");
+    const n = shipped.length;
+    const label = shipped[0] || "";
     return n && label ? `<div class="fc-result" aria-label="Result"><b class="num">${n}</b><span>${esc(label)}</span></div>` : "";
   }
   function changeAtlas(r) {
@@ -292,7 +307,6 @@
     if (r && r.trace_basis === "typed-by-author") return [];
     return [
       ["proof_route", proofRoute(r)],
-      ["activity_terrain", spark(r)],
       ["change_atlas", changeAtlas(r)],
       ["result", resultVisual(r)],
     ].filter((entry) => entry[1]);
@@ -445,8 +459,9 @@
     const strideHtml = opts.stride === false || !(preview || page || opts.url) ? "" : stride(r, { url: opts.url, copy: !!opts.copy });
     const body = `
     <${tag} class="fc-title">${esc(titleOf(r))}</${tag}>
-    ${story?.summary(r) ? `<p class="fc-cap">${esc(story.summary(r))}</p>` : ""}
-    ${page||checkpoints?`<dl class="fc-activity-stats" aria-label="Recorded facts">${(contract()?.heroStats(r)||[]).map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>`:''}
+    ${cardSummary(r) ? `<p class="fc-cap">${esc(cardSummary(r))}</p>` : ""}
+    ${page||checkpoints||r.capture_metadata?`<dl class="fc-activity-stats" aria-label="Recorded facts">${recordedFacts(r).map(([label,value,detail,note])=>`<div><dt>${esc(label)}</dt><dd${detail?` title="${esc(detail)}"`:''}>${esc(value)}</dd>${note?`<small class="fc-fact-note">${esc(note)}</small>`:''}</div>`).join('')}</dl>`:''}
+    ${Array.isArray(r?.capture_metadata?.models)&&r.capture_metadata.models.length===1?`<p class="fc-model-tag">Model · ${esc(modelName(r.capture_metadata.models[0]))}</p>`:''}
     ${story?story.visual(r):''}
     ${r.feedback_question?`<p class="fc-question"><span>Feedback welcome</span>${esc(r.feedback_question)}</p>`:''}
     ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Typed by the author. No capture.</p>' : ''}${evidence?evidence.summary(r):''}
@@ -454,7 +469,7 @@
     <div class="fc-route-secondary">${checkpoints?"":heroVisual(r)}</div>
     ${checkpoints?'':`<p class="fc-open">${preview?'Preview your story':'Open the story →'}</p>`}
   `;
-    return `<article class="card fc"${preview ? "" : ` id="card-${id}" data-run-id="${id}" data-photo-layout="${esc(r.photo_layout||'cover')}"`}>
+    return `<article class="card fc"${preview ? "" : ` id="card-${id}" data-run-id="${id}" data-run-visibility="${esc(r.visibility||'')}" data-photo-layout="${esc(r.photo_layout||'cover')}"`}>
   <header class="fc-top">${faceHtml}<div class="fc-who">${who}<small>${meta}</small></div>${shipped}</header>
   ${preview ? `<div class="fc-body">${body}</div>` : `<a class="fc-body" href="/?run=${id}">${body}</a>`}
   ${checkpoints}
@@ -476,7 +491,7 @@
     return `<div class="fc-builder">${face(r, 44)}<div class="fc-who"><a class="fc-name" href="/?u=${encodeURIComponent(p.handle)}">${esc(p.name)}</a><small>Recent: <a href="/?run=${esc(r.id)}">${esc(titleOf(r))}</a></small></div><span class="card-follow" data-profile="${esc(r.profile_id)}" data-handle="${esc(p.handle)}" data-label="Follow"></span></div>`;
   }
 
-  const api = { card, actions, face, headline, stats, achievement, harnessName, badge, spark, settle, routeGeometry, routeMap, proofRoute, changeAtlas, resultVisual, photoVisual, heroChoices, heroVisual, strideBars, strideText, strideHtml, stride, wireStride, nextSlot, builderRow, profileOf, durationLabel, when, titleOf };
+  const api = { card, cardSummary, actions, face, headline, stats, achievement, harnessName, badge, spark, settle, routeGeometry, routeMap, proofRoute, changeAtlas, resultVisual, photoVisual, heroChoices, heroVisual, strideBars, strideText, strideHtml, stride, wireStride, nextSlot, builderRow, profileOf, durationLabel, when, titleOf };
   root.GrinderFeed = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

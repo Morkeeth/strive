@@ -2,6 +2,15 @@
   "use strict";
   const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const roles={photo:'Photo',result:'Result',before:'Before',after:'After',personal:'Personal photo'};
+  // Local editorial preview for one already-public run. These are public project images,
+  // captured 10 Oct 2026 from https://world-relay.vercel.app/.
+  // They are context for the project, not evidence that the recorded session made them.
+  const showcase={
+    '599095f1-3b49-4c0e-b50c-13afd4ae369e':[
+      {src:'/media/favour-public-page-20261010.webp',label:'Public FAVOUR page · 10 Oct',url:'https://world-relay.vercel.app/',alt:'Public FAVOUR campaign page'},
+      {src:'/media/favour-campaign-builder-20261010.webp',label:'FAVOUR campaign builder · 10 Oct',url:'https://world-relay.vercel.app/',alt:'Public FAVOUR campaign builder section'}
+    ]
+  };
   const disposers=new Set(),coverGeneration=new WeakMap();
   function disposeAll(){for(const dispose of [...disposers])dispose();}
   async function token(client){
@@ -49,6 +58,16 @@
   function lead(photos,mode){
     const shown=photos.filter(p=>p.role!=='personal'||p.is_cover),cover=photos.find(p=>p.is_cover),result=photos.find(p=>p.role==='result');
     return (mode==='result'?result||cover:cover)||(shown.length===1?shown[0]:null);
+  }
+  // A feed card can show the selected cover and the work beside it. Keep at most one
+  // personal picture, and never turn the other personal uploads into a public gallery.
+  function cardPhotos(photos,mode){
+    const before=photos.find(p=>p.role==='before'),after=photos.find(p=>p.role==='after');
+    const pair=mode==='before_after'&&before&&after?[before,after]:[];
+    const first=pair.length?null:lead(photos,mode);
+    const chosen=[...pair,...(first?[first]:[])];
+    const work=photos.filter(p=>p.role!=='personal'&&!chosen.some(item=>item.id===p.id));
+    return [...chosen,...work].slice(0,6);
   }
   function photoPath(photo){
     if(typeof photo?.url!=="string")return null;
@@ -106,7 +125,10 @@
       const body=await res.json();if(!current())return;const photos=Array.isArray(body)?body:(body.photos||[]);
       const selectedPersonal=photos.find(p=>p.role==='personal'&&p.is_cover);
       // Readers see the chosen candid photo only. Owners retain every saved image for reselection.
-      const displayed=owner?photos:photos.filter(p=>p.role!=='personal'||p.id===selectedPersonal?.id);
+      const displayed=owner?photos:photos.filter(p=>p.role!=='personal'||(run.id!=='599095f1-3b49-4c0e-b50c-13afd4ae369e'&&p.id===selectedPersonal?.id));
+      // This run's older personal photo stays available to its owner for management.
+      // Its public showcase uses project screenshots; future result images can still appear here.
+      if(!owner&&!displayed.length){slot.innerHTML='';return;}
       const canAdd=owner&&photos.length<6;
       slot.innerHTML=`<section class="run-photos" aria-labelledby="run-photos-title"><div class="head"><h2 id="run-photos-title">Images from this run</h2><span class="meta">${owner?photos.length+' of 6':displayed.length+' image'+(displayed.length===1?'':'s')}</span></div><div class="run-photo-grid"></div>${canAdd?'<label class="photo-add">Add an image<input data-photo-file type="file" accept="image/jpeg,image/png,image/webp"></label><p class="hint">Choose a JPEG, PNG or WebP. Preview the crop, then choose Result, Before, After or Personal photo. Images share this run’s audience. Your working-product link stays separate.</p><div data-photo-editor></div>':owner?'<p class="hint">Six photos added. Remove one before adding another.</p>':''}</section>`;
       const grid=slot.querySelector('.run-photo-grid');
@@ -128,23 +150,42 @@
     let active=true;const controller=new AbortController(),urls=new Set(),images=new Set();
     const dispose=()=>{active=false;controller.abort();for(const url of urls)URL.revokeObjectURL(url);urls.clear();for(const image of images)image.remove();disposers.delete(dispose)};
     disposers.add(dispose);
-    const cards=[...host.querySelectorAll('.fc[data-run-id]:not([data-photo-checked]), .card[data-run-id]:not(.dc):not([data-photo-checked]), .history-run[data-run-id]:not([data-photo-checked])')];
+    const cards=[...host.querySelectorAll('.activity-post[data-photo-gallery]:not([data-photo-checked]), .fc[data-run-id]:not([data-photo-checked]), .card[data-run-id]:not(.dc):not([data-photo-checked]), .history-run[data-run-id]:not([data-photo-checked])')];
     await Promise.all(cards.map(async card=>{
       card.dataset.photoChecked='true';
+      const placeholder=card.querySelector('[data-photo-placeholder]');if(placeholder)placeholder.hidden=true;
       const generation=Symbol(),pendingUrls=new Set();coverGeneration.set(card,generation);
       const current=()=>{if(active&&card.isConnected!==false&&coverGeneration.get(card)===generation)return true;for(const url of pendingUrls){URL.revokeObjectURL(url);urls.delete(url)}pendingUrls.clear();return false;};
       try{
         const runId=card.dataset.runId;
+        if(card.dataset.runVisibility==='public'&&showcase[runId]){
+          const visuals=showcase[runId];
+          const group=document.createElement('div');group.className='run-media run-media-gallery run-project-gallery';
+          group.setAttribute('aria-label','Public FAVOUR project screenshots');group.tabIndex=0;
+          for(const visual of visuals){
+            const figure=document.createElement('figure'),link=document.createElement('a'),image=document.createElement('img'),caption=document.createElement('figcaption');
+            link.href=visual.url;link.target='_blank';link.rel='noopener noreferrer';
+            link.setAttribute('aria-label','Open source of '+visual.label);
+            image.className='run-photo-cover';image.src=visual.src;image.alt=visual.alt;image.loading='lazy';
+            caption.textContent=visual.label+' · project context';link.append(image);figure.append(link,caption);group.append(figure);
+          }
+          const route=card.querySelector(':scope > .checkpoint-route');
+          const body=card.querySelector('.history-visual')||card.querySelector('.fc-body');
+          if(route)route.after(group);else if(body)body.after(group);else if(card.querySelector('.post-open'))card.querySelector('.post-open').before(group);else card.append(group);
+          const open=card.querySelector('.fc-open');if(open)open.style.display='none';
+          const story=document.createElement('a');story.className='run-gallery-story-link';story.href='/?run='+encodeURIComponent(runId);story.textContent='View full run →';group.after(story);
+          if(card.classList.contains('activity-post'))story.remove();
+          images.add(group);images.add(story);return;
+        }
         const listHeaders=await headers(client);if(!current())return;
         const list=await get(`/api/run-photos?run_id=${encodeURIComponent(runId)}`,{headers:listHeaders,signal:controller.signal});
         if(!current()||!list.ok)return;
         const payload=await list.json(), photos=payload?.photos||[];
-        const before=photos.find(p=>p.role==='before'),after=photos.find(p=>p.role==='after');
         const mode=card.dataset.photoLayout||'cover';
-        const selected=mode==='before_after'&&before&&after?[before,after]:[lead(photos,mode)].filter(Boolean);
-        if(!selected.length)return;
+        const selected=cardPhotos(card.dataset.gallerySupporting!==undefined?photos.filter(p=>p.role!=='personal'):photos,mode);
+        if(!selected.length){const empty=card.querySelector('[data-photo-placeholder]');if(empty)empty.hidden=false;return;}
         // Build a detached group. Attach only while the same view is active, after all reads.
-        const group=document.createElement('div');group.className='run-media'+(selected.length===2?' run-before-after':'');
+        const group=document.createElement('div');group.className='run-media run-media-gallery';group.setAttribute('aria-label','Images from this run');group.tabIndex=0;
         for(const photo of selected){
           const path=photoPath(photo);if(!path)continue;
           const imageHeaders=await headers(client);if(!current())return;
@@ -155,12 +196,16 @@
           const figure=document.createElement('figure'),image=document.createElement('img');
           image.className='run-photo-cover';if(photo.width&&photo.height){image.width=photo.width;image.height=photo.height}image.decoding='async';image.src=url;image.alt=roles[photo.role]||'Run photo';image.loading='lazy';images.add(image);
           image.onload=image.onerror=()=>{URL.revokeObjectURL(url);urls.delete(url);pendingUrls.delete(url)};
-          figure.append(image);if(photo.role&&photo.role!=='photo'){const caption=document.createElement('figcaption');caption.textContent=roles[photo.role]||'Photo';figure.append(caption)}group.append(figure);
+          const link=document.createElement('a');link.href='/?run='+encodeURIComponent(runId)+'#run-photos';link.setAttribute('aria-label','Open '+(roles[photo.role]||'run image')+' at full size');link.append(image);figure.append(link);
+          const caption=document.createElement('figcaption');caption.textContent=roles[photo.role]||'Photo';figure.append(caption);group.append(figure);
         }
         if(!current())return;
         card.querySelectorAll('.run-media').forEach(el=>el.remove());
+        const route=card.querySelector(':scope > .checkpoint-route');
         const body=card.querySelector('.history-visual')||card.querySelector('.fc-body');
-        if(body){const lead=body.querySelector('.fc-activity-stats')||body.querySelector('.fc-cap')||body.querySelector('.fc-title');if(lead)lead.after(group);else body.prepend(group)}
+        if(route)route.after(group);
+        else if(body)body.after(group);
+        else if(card.querySelector('.post-open'))card.querySelector('.post-open').before(group);
         else{const title=card.querySelector('.run-metrics')||card.querySelector('.note')||card.querySelector('.run-title-row');if(title)title.after(group);else card.prepend(group)}
         images.add(group);
       }catch(_){}
@@ -277,5 +322,5 @@
     })();
     return next=>{chosen=next||null;paint()};
   }
-  root.StriveRunPhotos={mount,mountCovers,mountPair,mountThumbs,mountVisuals,mountChooser,disposeAll,forget,lead};
+  root.StriveRunPhotos={mount,mountCovers,mountPair,mountThumbs,mountVisuals,mountChooser,disposeAll,forget,lead,cardPhotos};
 })(typeof window!=="undefined"?window:globalThis);

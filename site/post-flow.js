@@ -8,11 +8,17 @@
   function setupHtml({agentPrompt,capture,syncHtml,dropHtml,agentFiles=[]}){
     const tabs=[['editor','Editor plugin'],['terminal','Terminal'],['automatic','Automatic imports'],['files','Find a session']];
     return `<section class="post-start" aria-labelledby="post-start-title"><h2 id="post-start-title">Start with a session</h2>
-      <p class="post-start-intro">Bring in the work, add your story, then choose who sees it.</p>${steps()}
-      <div class="post-file-entry">${dropHtml}</div>
+      <p class="post-start-intro">Choose where you worked. STRIVE opens a private preview before you save a run.</p>${steps()}
+      <div class="post-source-grid" aria-label="Choose your agent">
+        <button class="ghost" type="button" data-post-source="cursor"><img src="/media/cursor-mark.svg" alt=""><strong>Cursor</strong><span>Set up the editor plugin</span></button>
+        <button class="ghost" type="button" data-post-source="claude"><img src="/media/claude-mark.svg" alt=""><strong>Claude Code</strong><span>Set up the editor plugin</span></button>
+        <button class="ghost" type="button" data-post-source="codex"><img src="/media/openai-mark.svg" alt=""><strong>Codex</strong><span>Preview from a terminal</span></button>
+        <button class="ghost" type="button" data-post-source="grok"><span class="post-grok-mark" aria-hidden="true">𝕏</span><strong>Grok Bot</strong><span>Import a file</span></button>
+      </div>
       <div class="post-agent-entry"><div><strong>Working with your agent?</strong><span>Ask it to collect a private preview.</span></div><button class="act" type="button" data-copy="${esc(agentPrompt)}">Copy request</button></div>
       <p class="hint">You can preview without signing in. Nothing is saved until you choose to save it.</p>
     </section>
+    <section class="post-file-entry" aria-label="Import an existing export">${dropHtml}<p class="hint">JSON or JSONL from Cursor, Claude Code or Codex. For Grok, use an export your companion can actually read.</p></section>
     <details class="post-setup" id="post-setup"><summary><span>Import setup</span><span class="post-setup-summary">Editor plugins, terminal and other sources</span></summary>
       <div class="post-setup-body"><div class="post-setup-tabs" role="tablist" aria-label="Import method">${tabs.map(([id,title],i)=>`<button type="button" role="tab" id="setup-tab-${id}" data-setup-tab="${id}" aria-controls="setup-${id}" aria-selected="${i===0}" tabindex="${i===0?'0':'-1'}">${title}</button>`).join('')}</div>
       <section id="setup-editor" role="tabpanel" aria-labelledby="setup-tab-editor"><h3>Keep STRIVE in your editor</h3><p>Install once, then ask for a private preview across the projects you choose.</p>
@@ -56,6 +62,19 @@
       setup.querySelector('#post-plugin-copy').dataset.copy=command;
       setup.querySelector('#post-plugin-next').textContent=editor==='claude'?'Restart Claude Code and use /strive:strive.':'Restart Cursor. Open STRIVE in the plugin list and select its strive skill.';
     });
+    scope.querySelectorAll('[data-post-source]').forEach(button=>button.addEventListener('click',()=>{
+      const source=button.dataset.postSource;
+      if(source==='grok'){
+        const other=scope.querySelector('.post-other-ways');if(other)other.open=true;
+        scope.querySelector('#drop-file')?.click();return;
+      }
+      setup.open=true;
+      select(setup.querySelector(source==='codex'?'[data-setup-tab="terminal"]':'[data-setup-tab="editor"]'));
+      if(source!=='codex'){
+        const editor=setup.querySelector('#post-editor');editor.value=source==='claude'?'claude':'cursor';editor.dispatchEvent(new Event('change'));
+      }
+      setup.scrollIntoView({block:'start',behavior:'smooth'});
+    }));
   }
 
   function mountImport(scope,photoOptions={}){
