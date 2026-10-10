@@ -15,9 +15,12 @@ begin
  if jsonb_typeof(s) is distinct from 'object' or not(s ?& array['sha256','started_at','ended_at'])
  or exists(select 1 from jsonb_object_keys(s) as keys(key_name) where key_name not in ('sha256','started_at','ended_at'))
  or coalesce(s->>'sha256','') !~ '^[a-f0-9]{64}$'
- or coalesce(s->>'started_at','') !~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$'
- or coalesce(s->>'ended_at','') !~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$' then raise exception 'Invalid estimate source window'; end if;
- start_at=(s->>'started_at')::timestamptz;end_at=(s->>'ended_at')::timestamptz;
+ or coalesce(s->>'started_at','') !~ '^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d:[0-5]\d(\.\d{1,6})?Z$'
+ or coalesce(s->>'ended_at','') !~ '^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d:[0-5]\d(\.\d{1,6})?Z$' then raise exception 'Invalid estimate source window'; end if;
+ begin
+  start_at=(s->>'started_at')::timestamptz;end_at=(s->>'ended_at')::timestamptz;
+ exception when invalid_datetime_format or datetime_field_overflow then raise exception 'Invalid estimate source window';
+ end;
  if end_at<start_at then raise exception 'Estimate window is reversed'; end if;
  if e ? 'cost' then
   a=e->'cost';
@@ -46,7 +49,10 @@ begin
     or coalesce(p->>'table_version','') !~ '^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,119}$'
     or coalesce(p->>'context_tier','') !~ '^[A-Za-z0-9][A-Za-z0-9 ._:/+<>=-]{0,119}$'
     or coalesce(p->>'checked_on','') !~ '^\d{4}-\d{2}-\d{2}$' then raise exception 'Invalid price provenance'; end if;
-    perform (p->>'checked_on')::date;
+    begin
+     perform (p->>'checked_on')::date;
+    exception when invalid_datetime_format or datetime_field_overflow then raise exception 'Invalid price provenance';
+    end;
     if jsonb_typeof(p->'rates_per_million') is distinct from 'object'
     or not(p->'rates_per_million' ?& array['input','output','cache_read','cache_write_5m','cache_write_1h'])
     or exists(select 1 from jsonb_object_keys(p->'rates_per_million') as keys(key_name) where key_name not in ('input','output','cache_read','cache_write_5m','cache_write_1h')) then raise exception 'Invalid rate table'; end if;
@@ -55,7 +61,7 @@ begin
      -- An unused token category needs no invented provider price.
      if x='null'::jsonb and billed=0 then continue; end if;
      if jsonb_typeof(x)<>'number' then raise exception 'Invalid model rate'; end if;
-     if (x::text)::numeric<0 or (x::text)::numeric>1000000 then raise exception 'Invalid model rate'; end if;
+     if (x::text)::numeric<0 or (x::text)::numeric>1000 then raise exception 'Invalid model rate'; end if;
     end loop;
    end if;
   end loop;
@@ -68,9 +74,12 @@ begin
   if jsonb_typeof(a) is distinct from 'object' or a->>'method' is distinct from 'occupied-tool-minutes-v1'
   or a->'bin_seconds' is distinct from '60'::jsonb
   or exists(select 1 from jsonb_object_keys(a) as keys(key_name) where key_name not in ('method','bin_seconds','origin_utc','occupied_bins'))
-  or coalesce(a->>'origin_utc','') !~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00Z$'
+  or coalesce(a->>'origin_utc','') !~ '^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d:00Z$'
   or jsonb_typeof(a->'occupied_bins') is distinct from 'array' then raise exception 'Invalid tool activity inputs'; end if;
-  origin_at=(a->>'origin_utc')::timestamptz;
+  begin
+   origin_at=(a->>'origin_utc')::timestamptz;
+  exception when invalid_datetime_format or datetime_field_overflow then raise exception 'Invalid tool activity inputs';
+  end;
   if origin_at<>date_trunc('minute',start_at) then raise exception 'Tool activity origin differs from capture window'; end if;
   if jsonb_array_length(a->'occupied_bins')>2048 then raise exception 'Tool activity inputs too large'; end if;
   for x in select value from jsonb_array_elements(a->'occupied_bins') loop

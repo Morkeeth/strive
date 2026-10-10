@@ -36,12 +36,13 @@ function cardFacts(r){
  const typed=r.prompts??r.turns_typed;
  const models=m?.models?.length?[...new Set(m.models)].map(v=>v==='claude-opus-5-5'?'Claude Opus 5.5':v).join(', '):null;
  return [
-  ['Recorded tokens',total===null?'Not recorded':total>=1000000?(total/1000000).toFixed(2)+'M':number(total),total===null?'Complete input and output counts are absent.':number(m.input_tokens)+' input + '+number(m.output_tokens)+' output. Cached input is included; only calls with recorded usage are counted.'],
+  ['Recorded tokens',total===null?'Not recorded':total>=1000?new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:1}).format(total):number(total),total===null?'Complete input and output counts are absent.':number(m.input_tokens)+' input + '+number(m.output_tokens)+' output. Cached input is included; only calls with recorded usage are counted.'],
   ...(estimates()?.facts(m).rows||[]),
   ['Model',models||'Not recorded',models?'Model names from the capture.':r.model?'Author’s model label: '+r.model:'No recorded model names.'],
   ['You typed',count(typed)?number(typed):'Not recorded','Recorded human messages, not words or keystrokes.']
  ];
 }
+function factLabel(label){return esc(label)+(label==='Est. dollars'?'<sup aria-label="See measurement basis">*</sup>':'');}
 function cardSecondary(r,{commits=false}={}){
  const facts=cardFacts(r),model=facts.find(row=>row[0]==='Model'),typed=facts.find(row=>row[0]==='You typed');
  const bits=[];if(model&&model[1]!=='Not recorded')bits.push(model[1]);if(commits&&count(r.commits))bits.push(r.commits+' '+(r.commits===1?'commit':'commits'));if(typed&&typed[1]!=='Not recorded')bits.push('You typed '+typed[1]);
@@ -70,5 +71,5 @@ function profileFacts(runs){
  <div><dt>Active time</dt><dd>Not recorded</dd><small>Elapsed spans include waiting</small></div>
  </dl><p class="profile-models">Recorded models: ${models.size?[...models].map(esc).join(', '):'Not recorded'}</p><p class="profile-stats-scope">Recorded usage only; missing captures are not counted as zero. Cached input is already included.</p></section>`;
 }
-const api={context,setup,metrics,validate,cardFacts,profileFacts,cardSecondary,measurementNotes,measurementDetails,prepareForStorage};root.StriveContext=api;if(typeof module!=='undefined')module.exports=api;
+const api={context,setup,metrics,validate,cardFacts,profileFacts,cardSecondary,factLabel,measurementNotes,measurementDetails,prepareForStorage};root.StriveContext=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

@@ -7,13 +7,16 @@
  const required=(v,keys)=>keys.every(k=>Object.hasOwn(v,k));
  const tokenKeys=['input_tokens','output_tokens','cache_read_tokens','cache_write_5m_tokens','cache_write_1h_tokens'];
  const rateKeys=['input','output','cache_read','cache_write_5m','cache_write_1h'];
- const stamp=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$/.test(v)&&Number.isFinite(Date.parse(v));
+ const calendar=v=>typeof v==='string'&&v.length===10&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&v.slice(0,4)!=='0000'&&Number.isFinite(Date.parse(v+'T00:00:00Z'))&&new Date(v+'T00:00:00Z').toISOString().slice(0,10)===v;
+ const stamp=v=>typeof v==='string'&&v.endsWith('Z')&&/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(\.\d{1,6})?Z$/.test(v)&&calendar(v.slice(0,10));
+ const micros=v=>BigInt(Date.parse(v.slice(0,19)+'Z'))*1000n+BigInt((v.split('.')[1]?.slice(0,-1)||'').padEnd(6,'0'));
+ const priceUrl=v=>typeof v==='string'&&v===v.trim()&&v.length<=500&&/^https:\/\/[A-Za-z0-9.-]+(\/[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%+-]*)?$/.test(v);
  const fail=()=>{throw Error('Invalid stored estimate inputs')};
  function validate(e,m){
   if(e===undefined)return;
   if(!object(e,['v','source','cost','tool_activity'])||e.v!==1)fail();
   const s=e.source;
-  if(!object(s,['sha256','started_at','ended_at'])||!/^[a-f0-9]{64}$/.test(s.sha256)||!stamp(s.started_at)||!stamp(s.ended_at)||Date.parse(s.ended_at)<Date.parse(s.started_at))fail();
+  if(!object(s,['sha256','started_at','ended_at'])||!/^[a-f0-9]{64}$/.test(s.sha256)||!stamp(s.started_at)||!stamp(s.ended_at)||micros(s.ended_at)<micros(s.started_at))fail();
   if(e.cost!==undefined){
    if(!object(e.cost,['method','components'])||e.cost.method!=='model-price-v1'||!Array.isArray(e.cost.components)||e.cost.components.length<1||e.cost.components.length>64)fail();
    let input=0,output=0,cache=0;
@@ -21,17 +24,16 @@
     if(!object(c,['model','role',...tokenKeys,'price'])||!required(c,['model','role',...tokenKeys,'price'])||!m.models.includes(c.model)||!['primary','advisor'].includes(c.role)||!tokenKeys.every(k=>count(c[k]))||c.cache_read_tokens+c.cache_write_5m_tokens+c.cache_write_1h_tokens>c.input_tokens)fail();
     input+=c.input_tokens;output+=c.output_tokens;cache+=c.cache_read_tokens;
     const p=c.price;if(p===null)continue;
-    if(!object(p,['table_url','table_version','checked_on','currency','service_tier','context_tier','rates_per_million'])||!required(p,['table_url','table_version','checked_on','currency','service_tier','context_tier','rates_per_million'])||p.currency!=='USD'||!['standard','fast','batch','standard-assumed'].includes(p.service_tier)||!/^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,119}$/.test(p.table_version)||!/^[A-Za-z0-9][A-Za-z0-9 ._:/+<>=-]{0,119}$/.test(p.context_tier)||!/^\d{4}-\d{2}-\d{2}$/.test(p.checked_on)||!Number.isFinite(Date.parse(p.checked_on)))fail();
-    let u;try{u=new URL(p.table_url)}catch{fail()}
-    if(u.protocol!=='https:'||u.username||u.password||p.table_url.length>500)fail();
+    if(!object(p,['table_url','table_version','checked_on','currency','service_tier','context_tier','rates_per_million'])||!required(p,['table_url','table_version','checked_on','currency','service_tier','context_tier','rates_per_million'])||p.currency!=='USD'||!['standard','fast','batch','standard-assumed'].includes(p.service_tier)||!/^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,119}$/.test(p.table_version)||!/^[A-Za-z0-9][A-Za-z0-9 ._:/+<>=-]{0,119}$/.test(p.context_tier)||!calendar(p.checked_on))fail();
+    if(!priceUrl(p.table_url))fail();
     const billed={input:c.input_tokens-c.cache_read_tokens-c.cache_write_5m_tokens-c.cache_write_1h_tokens,output:c.output_tokens,cache_read:c.cache_read_tokens,cache_write_5m:c.cache_write_5m_tokens,cache_write_1h:c.cache_write_1h_tokens};
-    if(!object(p.rates_per_million,rateKeys)||!required(p.rates_per_million,rateKeys)||!rateKeys.every(k=>p.rates_per_million[k]===null?billed[k]===0:Number.isFinite(p.rates_per_million[k])&&p.rates_per_million[k]>=0&&p.rates_per_million[k]<=1e6))fail();
+    if(!object(p.rates_per_million,rateKeys)||!required(p.rates_per_million,rateKeys)||!rateKeys.every(k=>p.rates_per_million[k]===null?billed[k]===0:Number.isFinite(p.rates_per_million[k])&&p.rates_per_million[k]>=0&&p.rates_per_million[k]<=1000))fail();
    }
    if(!count(input)||!count(output)||input!==m.input_tokens||output!==m.output_tokens||(m.cached_input_tokens!=null&&cache!==m.cached_input_tokens))fail();
   }
   if(e.tool_activity!==undefined){
    const a=e.tool_activity;
-   if(!object(a,['method','bin_seconds','origin_utc','occupied_bins'])||a.method!=='occupied-tool-minutes-v1'||a.bin_seconds!==60||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00Z$/.test(a.origin_utc)||Date.parse(a.origin_utc)!==Math.floor(Date.parse(s.started_at)/60000)*60000||!Array.isArray(a.occupied_bins)||a.occupied_bins.length>2048||new Set(a.occupied_bins).size!==a.occupied_bins.length||!a.occupied_bins.every(n=>count(n)&&n<=Math.floor((Date.parse(s.ended_at)-Date.parse(a.origin_utc))/60000)))fail();
+   if(!object(a,['method','bin_seconds','origin_utc','occupied_bins'])||a.method!=='occupied-tool-minutes-v1'||a.bin_seconds!==60||!stamp(a.origin_utc)||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00Z$/.test(a.origin_utc)||Date.parse(a.origin_utc)!==Math.floor(Date.parse(s.started_at)/60000)*60000||!Array.isArray(a.occupied_bins)||a.occupied_bins.length>2048||new Set(a.occupied_bins).size!==a.occupied_bins.length||!a.occupied_bins.every(n=>count(n)&&n<=Math.floor((Date.parse(s.ended_at)-Date.parse(a.origin_utc))/60000)))fail();
   }
  }
  function encodedBytes(m){

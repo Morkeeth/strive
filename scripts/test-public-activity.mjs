@@ -26,6 +26,7 @@ assert.deepEqual(candid.map(p=>p.is_cover),[false,true,false],'rendering leaves 
 const favour='599095f1-3b49-4c0e-b50c-13afd4ae369e';
 const favourPage=html({...run,id:favour,caption:'Reviewing FAVOUR. Personal photo from 4 October.',profiles:{handle:'morkeeth',display_name:'Oscar Morkeeth'}},{photos:[{id:cover,run_id:favour,role:'personal',is_cover:true}]});
 assert.ok(favourPage.includes('Oscar Morkeeth'));
+assert.match(favourPage,/<section class="public-run-photos public-project-shots"/,'showcase markup activates its mobile gallery rule');
 assert.ok(favourPage.includes('/media/favour-public-page-20261010.webp'));
 assert.ok(favourPage.includes('/media/favour-campaign-builder-20261010.webp'));
 assert.ok(favourPage.includes('/api/run-photos?id='+cover),'saved personal cover remains beside project screenshots');
