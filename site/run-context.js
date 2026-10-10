@@ -61,7 +61,7 @@ function headlineHtml(r,className='post-facts'){
  if(rows.length===3)return `<dl class="${esc(className)}" aria-label="Recorded activity">${rows.map(([label,value,detail])=>`<div><dt>${factLabel(label)}</dt><dd title="${esc(detail)}">${esc(value)}</dd></div>`).join('')}</dl>`;
  let inconsistent=false;try{validate(r.capture_metadata)}catch{inconsistent=true}
  const placeholders=root.StrivePlaceholders||(typeof require==='function'?require('./run-placeholders.js'):null);
- return placeholders?.render('numbers',{compact:true,inconsistent,facts:rows})||'';
+ return placeholders?.render('numbers',{compact:true,inconsistent,facts:rows,story:r.caption||r.title})||'';
 }
 function factLabel(label){return esc(label)+(label==='Est. dollars'?'<sup aria-label="See measurement basis">*</sup>':'');}
 function cardSecondary(r,{commits=false}={}){

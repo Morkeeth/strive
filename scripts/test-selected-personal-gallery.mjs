@@ -5,18 +5,18 @@ const photo=(n,role,is_cover=false)=>({id:`22222222-2222-4222-a222-${String(n).p
 const personal=photo(1,'personal',true),hidden=photo(2,'personal'),result=photo(3,'result'),support=photo(4,'photo');
 for(const hasProject of [true,false]){
  const photos=hasProject?[personal,hidden,result,support]:[personal,hidden];
- const dom=new JSDOM(`<article class="fc" data-run-id="${runId}" data-run-visibility="public" data-photo-layout="result" data-project-gallery data-gallery-supporting><a class="fc-body"></a></article>`,{url:'https://striverun.app'});
+ const dom=new JSDOM(`<article class="fc" data-run-id="${runId}" data-run-visibility="public" data-photo-layout="result" data-project-gallery data-gallery-supporting data-media-story="TEST DATA authored project description"><a class="fc-body"></a></article>`,{url:'https://striverun.app'});
  const scope={document:dom.window.document,location:dom.window.location,URL,AbortController,fetch:async()=>({ok:true,json:async()=>({photos})})};vm.createContext(scope);
  for(const name of ['run-placeholders.js','run-photos.js'])vm.runInContext(fs.readFileSync('site/'+name,'utf8'),scope);
  await scope.StriveRunPhotos.mountCovers({client:null,root:scope.document});
  const figures=[...dom.window.document.querySelectorAll('.run-media-gallery > figure')];
  assert.equal(figures.length,hasProject?3:2);assert.equal(figures.at(-1).querySelector('img').alt,'Personal photo');
- if(hasProject)assert.equal(figures[0].querySelector('img').alt,'Result');else assert.match(figures[0].textContent,/No project screenshot/);
+ if(hasProject)assert.equal(figures[0].querySelector('img').alt,'Result');else assert.match(figures[0].textContent,/TEST DATA authored project description/);
  assert.ok(!dom.window.document.body.innerHTML.includes(hidden.id));
  const page=new JSDOM(html({id:runId,title:'TEST DATA gallery',visibility:'public',photo_layout:'result',capture_metadata:full},{photos}));
  const publicFigures=[...page.window.document.querySelectorAll('.public-run-photo-grid>figure')];
  assert.equal(publicFigures.length,hasProject?3:2);assert.equal(publicFigures.at(-1).querySelector('img').alt,'Personal photo');
- if(hasProject)assert.equal(publicFigures[0].querySelector('img').alt,'Result');else assert.match(publicFigures[0].textContent,/No project screenshot added/);
+ if(hasProject)assert.equal(publicFigures[0].querySelector('img').alt,'Result');else assert.match(publicFigures[0].textContent,/TEST DATA\s*gallery/);
  assert.ok(!page.window.document.body.innerHTML.includes(hidden.id));
  // Existing saved cover/result behavior remains unchanged unless explicitly opting in with estimates.
  assert.equal(scope.StriveRunPhotos.cardPhotos(photos,'cover')[0].id,personal.id);

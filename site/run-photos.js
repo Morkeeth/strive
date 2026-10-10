@@ -118,12 +118,22 @@
     };
     return dispose;
   }
-  async function mount({client,run,slot,owner,status,isCurrent=()=>true,onChanged=()=>{}}){
+  async function openImage({path,client,label='Run image',gallery=[]}){
+    const dialog=document.createElement('dialog');dialog.className='run-image-lightbox';
+    dialog.innerHTML='<header><button type="button" data-image-prev aria-label="Previous image">←</button><span data-image-count></span><button type="button" data-image-next aria-label="Next image">→</button><button type="button" data-image-close aria-label="Close image">Close ×</button></header><div data-image-body><p>Loading image…</p></div>';document.body.append(dialog);dialog.showModal();
+    let url=null,closed=false,generation=0,index=Math.max(0,gallery.findIndex(p=>photoPath(p)===path));
+    const close=()=>{closed=true;generation++;if(url)URL.revokeObjectURL(url);dialog.remove();disposers.delete(close)};disposers.add(close);dialog.addEventListener('close',close,{once:true});dialog.querySelector('[data-image-close]').onclick=()=>dialog.close();dialog.onclick=e=>{if(e.target===dialog)dialog.close()};
+    const show=async()=>{const turn=++generation;if(url){URL.revokeObjectURL(url);url=null}const item=gallery[index],target=item?photoPath(item):path,body=dialog.querySelector('[data-image-body]');body.innerHTML='<p>Loading image…</p>';dialog.querySelector('[data-image-count]').textContent=gallery.length>1?(index+1)+' / '+gallery.length:'';dialog.querySelector('[data-image-prev]').hidden=gallery.length<2;dialog.querySelector('[data-image-next]').hidden=gallery.length<2;
+      try{const res=await get(target,{headers:await headers(client)});if(closed||turn!==generation)return;if(!res.ok)throw Error('unavailable');const blob=await res.blob();if(closed||turn!==generation)return;url=URL.createObjectURL(blob);const image=document.createElement('img');image.src=url;image.alt=item?(roles[item.role]||'Run image'):label;body.replaceChildren(image);}catch(_){if(!closed&&turn===generation)body.textContent='This image is no longer available to this reader.';}
+    };
+    const move=step=>{index=(index+step+gallery.length)%gallery.length;void show()};dialog.querySelector('[data-image-prev]').onclick=()=>move(-1);dialog.querySelector('[data-image-next]').onclick=()=>move(1);dialog.onkeydown=e=>{if(gallery.length>1&&['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();move(e.key==='ArrowLeft'?-1:1)}};await show();
+  }
+  async function mount({client,run,slot,owner,status,isCurrent=()=>true,onChanged=()=>{},staged=false}){
     if(!slot||!run?.id)return;
-    let active=true,cropDispose=null;
-    const controller=new AbortController(),objectUrls=[];
+    let active=true,cropDispose=null,draftPhotos=null,originalPhotos=[];
+    const controller=new AbortController(),objectUrls=[],imageBlobs=new Map();
     const current=()=>active&&isCurrent()&&slot.isConnected!==false;
-    const dispose=()=>{active=false;controller.abort();cropDispose?.();clearUrls();slot.innerHTML='';disposers.delete(dispose)};
+    const dispose=()=>{active=false;controller.abort();cropDispose?.();clearUrls();imageBlobs.clear();slot.innerHTML='';disposers.delete(dispose)};
     disposers.add(dispose);
     const request=async(path,json=false,options={})=>{
       const h=await headers(client,json);
@@ -136,29 +146,42 @@
       if(!current())return;
       cropDispose?.();cropDispose=null;clearUrls();slot.innerHTML='<p class="hint">Loading photos…</p>';
       let res;
-      try{res=await request(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`);}catch(_){if(current())slot.innerHTML='<p class="hint">Photos could not load.</p>';return;}
+      if(staged&&draftPhotos)res={ok:true,json:async()=>({photos:draftPhotos})};
+      else try{res=await request(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`);}catch(_){if(current())slot.innerHTML='<p class="hint">Photos could not load.</p>';return;}
       if(!current()||!res)return;
       if(!res.ok){const message=await responseMessage(res);if(current())slot.innerHTML=`<p class="hint">${esc(message)}</p>`;return;}
-      const body=await res.json();if(!current())return;const photos=Array.isArray(body)?body:(body.photos||[]);
+      const body=await res.json();if(!current())return;const photos=Array.isArray(body)?body:(body.photos||[]);if(staged&&!draftPhotos){originalPhotos=photos.map(p=>({...p}));draftPhotos=photos.map(p=>({...p}));}
       const selectedPersonal=photos.find(p=>p.role==='personal'&&p.is_cover);
       // Readers see the chosen candid photo only. Owners retain every saved image for reselection.
       const projectFirst=run.photo_layout==='result'&&run.capture_metadata?.estimates?.v===1;
       const displayed=owner?photos:projectFirst?cardPhotos(photos,'result',true):photos.filter(p=>p.role!=='personal'||p.id===selectedPersonal?.id);
       if(!owner&&!displayed.length){slot.innerHTML='';return;}
       const canAdd=owner&&photos.length<6;
-      slot.innerHTML=`<section class="run-photos" aria-labelledby="run-photos-title"><div class="head"><h2 id="run-photos-title">Images from this run</h2><span class="meta">${owner?photos.length+' of 6':displayed.length+' image'+(displayed.length===1?'':'s')}</span></div><div class="run-photo-grid"></div>${canAdd?'<label class="photo-add">Add an image<input data-photo-file type="file" accept="image/jpeg,image/png,image/webp"></label><p class="hint">Choose a JPEG, PNG or WebP. Preview the crop, then choose Result, Before, After or Personal photo. Images share this run’s audience. Your working-product link stays separate.</p><div data-photo-editor></div>':owner?'<p class="hint">Six photos added. Remove one before adding another.</p>':''}</section>`;
+      slot.innerHTML=`<section class="run-photos" aria-labelledby="run-photos-title"><div class="head"><h2 id="run-photos-title">Images from this run</h2><span class="meta">${owner?photos.length+' of 6':displayed.length+' image'+(displayed.length===1?'':'s')}</span></div><div class="run-photo-grid"></div>${canAdd?'<label class="photo-add">Add an image<input data-photo-file type="file" accept="image/jpeg,image/png,image/webp"></label><p class="hint">Add JPG, PNG or WebP. Crop, then choose its role. Only your selected personal photo can appear on public cards.</p><div data-photo-editor></div>':owner?'<p class="hint">Six photos added. Remove one before adding another.</p>':''}</section>`;
       const grid=slot.querySelector('.run-photo-grid');
       for(const photo of displayed){
-        try{const path=photoPath(photo);if(!path)continue;const imageRes=await get(path,{headers:await headers(client),signal:controller.signal},480);if(!current())return;if(!imageRes?.ok)continue;const blob=await imageRes.blob();if(!current())return;const url=URL.createObjectURL(blob);objectUrls.push(url);const item=document.createElement('figure');item.innerHTML=`<img src="${url}" alt="${esc(roles[photo.role]||'Photo')}" loading="lazy"><figcaption>${esc(roles[photo.role]||'Photo')}</figcaption>${owner?`<label>Show as<select data-photo-role="${esc(photo.id)}">${Object.entries(roles).map(([key,label])=>`<option value="${key}" ${key===(photo.role||'photo')?'selected':''}>${label}</option>`).join('')}</select></label>`:''}${owner?`<figcaption>${photo.is_cover?'<strong>Current cover</strong>':'Gallery photo'}</figcaption><button type="button" class="ghost" data-photo-cover="${esc(photo.id)}" ${photo.is_cover?'disabled':''}>${photo.is_cover?'Cover selected':'Use as cover'}</button>`:''}${owner?`<button type="button" class="ghost" data-photo-delete="${esc(path)}">Remove</button>`:''}`;grid.append(item);}catch(_){}
+        try{const path=photoPath(photo);if(!path&&!photo.draftBlob)continue;const cached=photo.draftBlob||imageBlobs.get(path);const imageRes=cached?{ok:true,blob:async()=>cached}:await get(path,{headers:await headers(client),signal:controller.signal},480);if(!current())return;if(!imageRes?.ok)continue;const blob=await imageRes.blob();if(!current())return;if(path)imageBlobs.set(path,blob);const url=URL.createObjectURL(blob);objectUrls.push(url);const item=document.createElement('figure');item.innerHTML=`<img src="${url}" alt="${esc(roles[photo.role]||'Photo')}" loading="lazy"><figcaption>${esc(roles[photo.role]||'Photo')}</figcaption>${owner?`<div class="photo-role-controls" role="group" aria-label="Image role">${Object.entries(roles).map(([key,label])=>`<button type="button" class="ghost" data-photo-role="${esc(photo.id)}" data-role="${key}" aria-pressed="${key===(photo.role||'photo')}">${label}</button>`).join('')}</div>`:''}${owner?`<figcaption>${photo.is_cover?'<strong>Current cover</strong>':'Gallery photo'}</figcaption><button type="button" class="ghost" data-photo-cover="${esc(photo.id)}" ${photo.is_cover?'disabled':''}>${photo.is_cover?'Cover selected':'Use as cover'}</button>`:''}${owner?`<button type="button" class="ghost" data-photo-delete="${esc(path||photo.id)}">Remove</button>`:''}`;grid.append(item);}catch(_){}
       }
       if(!current())return;
       if(canAdd){
-        slot.querySelector('[data-photo-file]').onchange=e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>12*1024*1024){status('Choose an image smaller than 12 MB.',true);return;}cropDispose=cropper(file,slot.querySelector('[data-photo-editor]'),async blob=>{try{if(!current())return;if(blob.size>3*1024*1024){status('The cropped image is still larger than 3 MB.',true);return;}const base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob)});const upload=await request('/api/run-photos',true,{method:'POST',body:JSON.stringify({run_id:run.id,image_base64:base64})});if(!current()||!upload)return;if(!upload.ok){const message=await responseMessage(upload);if(current())status(message,true);return;}const saved=await upload.json();if(!current())return;status(saved.duplicate?'This photo is already on this run. Choose Use as cover if you want it first.':'Photo added.');await load();await onChanged();}catch(_){if(current())status('Photo upload could not reach STRIVE. Try again.',true);}});};
+        slot.querySelector('[data-photo-file]').onchange=e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>12*1024*1024){status('Choose an image smaller than 12 MB.',true);return;}cropDispose=cropper(file,slot.querySelector('[data-photo-editor]'),async blob=>{try{if(!current())return;if(blob.size>3*1024*1024){status('The cropped image is still larger than 3 MB.',true);return;}if(staged){draftPhotos.push({id:'draft-'+Date.now(),role:'photo',is_cover:false,draftBlob:blob});status('Image added to your edit. Save changes to keep it.');await load();return;}const base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob)});const upload=await request('/api/run-photos',true,{method:'POST',body:JSON.stringify({run_id:run.id,image_base64:base64})});if(!current()||!upload)return;if(!upload.ok){const message=await responseMessage(upload);if(current())status(message,true);return;}const saved=await upload.json();if(!current())return;status(saved.duplicate?'This photo is already on this run. Choose Use as cover if you want it first.':'Photo added.');await load();await onChanged();}catch(_){if(current())status('Photo upload could not reach STRIVE. Try again.',true);}});};
       }
-      if(owner)slot.querySelectorAll('[data-photo-role]').forEach(select=>select.onchange=async()=>{select.disabled=true;try{const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:select.dataset.photoRole,role:select.value})});if(!current()||!res)return;if(!res.ok){status(await responseMessage(res),true);await load();return;}status('Image role saved.');await load();await onChanged();}catch(_){if(current())status('Image role could not be saved. Reload and try again.',true);}finally{if(select.isConnected)select.disabled=false;}});
-      if(owner)slot.querySelectorAll('[data-photo-cover]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:button.dataset.photoCover})});if(!current()||!res)return;if(!res.ok){status(await responseMessage(res),true);return;}status('Cover selected. Your other photos stay in the gallery.');await load();await onChanged();}catch(_){if(current())status('Cover could not be saved. Try again.',true);}finally{if(button.isConnected)button.disabled=false;}});
-      if(owner)slot.querySelectorAll('[data-photo-delete]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{const res=await request(button.dataset.photoDelete,false,{method:'DELETE'});if(!current()||!res)return;if(!res.ok){const message=await responseMessage(res);if(current())status(message,true);return;}status('Photo removed.');await load();await onChanged();}catch(_){if(current())status('Photo removal could not reach STRIVE. Try again.',true);}finally{if(button.isConnected)button.disabled=false;}});
+      if(owner)slot.querySelectorAll('[data-photo-role]').forEach(select=>select.onclick=async()=>{if(select.getAttribute('aria-pressed')==='true')return;select.disabled=true;try{if(staged){draftPhotos.find(p=>p.id===select.dataset.photoRole).role=select.dataset.role;await load();return;}const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:select.dataset.photoRole,role:select.dataset.role})});if(!current()||!res)return;if(!res.ok){status(await responseMessage(res),true);await load();return;}status('Image role saved.');await load();await onChanged();}catch(_){if(current())status('Image role could not be saved. Reload and try again.',true);}finally{if(select.isConnected)select.disabled=false;}});
+      if(owner)slot.querySelectorAll('[data-photo-cover]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{if(staged){draftPhotos.forEach(p=>p.is_cover=p.id===button.dataset.photoCover);await load();return;}const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:button.dataset.photoCover})});if(!current()||!res)return;if(!res.ok){status(await responseMessage(res),true);return;}status('Cover selected. Your other photos stay in the gallery.');await load();await onChanged();}catch(_){if(current())status('Cover could not be saved. Try again.',true);}finally{if(button.isConnected)button.disabled=false;}});
+      if(owner)slot.querySelectorAll('[data-photo-delete]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{if(staged){draftPhotos=draftPhotos.filter(p=>(photoPath(p)||p.id)!==button.dataset.photoDelete);await load();return;}const res=await request(button.dataset.photoDelete,false,{method:'DELETE'});if(!current()||!res)return;if(!res.ok){const message=await responseMessage(res);if(current())status(message,true);return;}status('Photo removed.');await load();await onChanged();}catch(_){if(current())status('Photo removal could not reach STRIVE. Try again.',true);}finally{if(button.isConnected)button.disabled=false;}});
     }
+    dispose.save=async()=>{
+      if(!staged||!current()||!draftPhotos)return;
+      let saved=0;const send=async(path,options)=>{const response=await request(path,options.method!=='DELETE',options);if(!response?.ok)throw Error(saved?'Some image changes were saved. '+await responseMessage(response):await responseMessage(response));saved++;if(!current())throw Error('The edit is no longer active. Reopen the run to check saved changes.');return response.json()};
+      // Resolve edits through the existing owner-only API; audience is saved separately afterwards.
+      for(const old of [...originalPhotos])if(!draftPhotos.some(p=>p.id===old.id)){await send(photoPath(old),{method:'DELETE'});originalPhotos=originalPhotos.filter(p=>p.id!==old.id);}
+      for(const photo of draftPhotos){
+        if(photo.draftBlob){const image_base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(photo.draftBlob)});const uploaded=await send('/api/run-photos',{method:'POST',body:JSON.stringify({run_id:run.id,image_base64})});photo.id=uploaded.photo.id;photo.url=uploaded.photo.url;delete photo.draftBlob;}
+        const old=originalPhotos.find(p=>p.id===photo.id);if(!old||old.role!==photo.role)await send('/api/run-photos',{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:photo.id,role:photo.role})});
+      }
+      const cover=draftPhotos.find(p=>p.is_cover);if(cover&&!originalPhotos.some(p=>p.id===cover.id&&p.is_cover))await send('/api/run-photos',{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:cover.id})});
+      originalPhotos=draftPhotos.map(p=>({...p}));await onChanged();
+    };
     await load();
     return dispose;
   }
@@ -167,9 +190,9 @@
     const dispose=()=>{active=false;controller.abort();for(const url of urls)URL.revokeObjectURL(url);urls.clear();for(const image of images)image.remove();disposers.delete(dispose)};
     disposers.add(dispose);
     const cards=[...host.querySelectorAll('.activity-post[data-photo-gallery]:not([data-photo-checked]), .fc[data-run-id]:not([data-photo-checked]), .card[data-run-id]:not(.dc):not([data-photo-checked]), .history-run[data-run-id]:not([data-photo-checked])')];
-    await Promise.all(cards.map(async card=>{
+    await Promise.all(cards.map(async (card,cardIndex)=>{
       card.dataset.photoChecked='true';
-      const placeholder=card.querySelector('[data-photo-placeholder]');if(placeholder)placeholder.hidden=true;
+      const placeholder=card.querySelector('[data-photo-placeholder]');
       const generation=Symbol(),pendingUrls=new Set();coverGeneration.set(card,generation);
       const current=()=>{if(active&&card.isConnected!==false&&coverGeneration.get(card)===generation)return true;for(const url of pendingUrls){URL.revokeObjectURL(url);urls.delete(url)}pendingUrls.clear();return false;};
       try{
@@ -177,17 +200,17 @@
         const visuals=card.dataset.runVisibility==='public'?showcase[runId]||[]:[];
         const listHeaders=await headers(client);if(!current())return;
         const list=await get(`/api/run-photos?run_id=${encodeURIComponent(runId)}`,{headers:listHeaders,signal:controller.signal});
-        if(!current()||!list.ok)return;
+        if(!current())return;if(!list.ok){if(placeholder)placeholder.innerHTML='<p class="media-read-error">Images unavailable. Open the run to try again.</p>';return;}
         const payload=await list.json(), photos=payload?.photos||[];
         const mode=card.dataset.photoLayout||'cover';
         const projectFirst=card.dataset.projectGallery!==undefined;
         const selected=cardPhotos(!projectFirst&&card.dataset.gallerySupporting!==undefined?photos.filter(p=>p.role!=='personal'):photos,mode,projectFirst);
-        if(!selected.length&&!visuals.length){const empty=card.querySelector('[data-photo-placeholder]');if(empty)empty.hidden=false;return;}
+        if(!selected.length&&!visuals.length){const empty=card.querySelector('[data-photo-placeholder]');if(empty){empty.hidden=false;if(root.StrivePlaceholders)empty.innerHTML=root.StrivePlaceholders.render('screenshot',{story:card.dataset.mediaStory||''});}return;}
         // Build a detached group. Attach only while the same view is active, after all reads.
         const group=document.createElement('div');group.className='run-media run-media-gallery';group.setAttribute('aria-label','Images from this run');group.tabIndex=0;
         if(projectFirst&&!selected.some(p=>p.role!=='personal')){
           const empty=document.createElement('figure');empty.className='run-project-missing';
-          empty.innerHTML=root.StrivePlaceholders?.render('screenshot')||'<section class="strive-empty"><h3>No project screenshot added</h3><p>The personal photo is separate from the project result.</p></section>';
+          empty.innerHTML=root.StrivePlaceholders?.render('screenshot',{story:card.dataset.mediaStory||card.querySelector('.title,h2')?.textContent||''})||'<section class="strive-empty"><h3>No project screenshot added</h3><p>The personal photo is separate from the project result.</p></section>';
           group.append(empty);
         }
         for(const photo of selected){
@@ -200,11 +223,12 @@
             const blob=await imageRes.blob();if(!current())return;
             url=URL.createObjectURL(blob);objectUrl=true;urls.add(url);pendingUrls.add(url);
           }
-          const figure=document.createElement('figure'),image=document.createElement('img');
-          image.className='run-photo-cover';if(photo.width&&photo.height){image.width=photo.width;image.height=photo.height}image.decoding='async';image.alt=roles[photo.role]||'Run photo';image.loading='lazy';image.src=url;images.add(image);
+          const figure=document.createElement('figure'),image=document.createElement('img');let lowPreview=null;
+          image.className='run-photo-cover';if(photo.width&&photo.height){image.width=photo.width;image.height=photo.height}image.decoding='async';image.alt=roles[photo.role]||'Run photo';image.loading=cardIndex===0?'eager':'lazy';image.fetchPriority=cardIndex===0?'high':'low';image.classList.add('image-reveal');image.src=url;images.add(image);if(cardIndex===0&&!objectUrl){const preload=document.createElement('link');preload.rel='preload';preload.as='image';preload.href=url;document.head.append(preload);}
           const release=()=>{if(objectUrl){URL.revokeObjectURL(url);urls.delete(url);pendingUrls.delete(url)}};
-          image.onload=release;image.onerror=()=>{release();figure.remove()};
-          const link=document.createElement('a');link.href='/?run='+encodeURIComponent(runId)+'#run-photos';link.setAttribute('aria-label','Open '+(roles[photo.role]||'run image')+' at full size');link.append(image);figure.append(link);
+          image.onload=()=>{image.classList.add('is-loaded');lowPreview?.remove();release()};image.onerror=()=>{release();figure.replaceChildren();figure.innerHTML=root.StrivePlaceholders?.render('screenshot',{story:card.dataset.mediaStory||''})||''};
+          const link=document.createElement('a');link.href='/?run='+encodeURIComponent(runId)+'#run-photos';link.setAttribute('aria-label','Open '+(roles[photo.role]||'run image')+' at full size');link.append(image);if(!objectUrl){const tiny=new URL(url,location.origin);tiny.searchParams.set('w','64');lowPreview=document.createElement('img');lowPreview.className='run-photo-preview';lowPreview.alt='';lowPreview.setAttribute('aria-hidden','true');lowPreview.loading=image.loading;lowPreview.src=tiny.pathname+tiny.search;link.append(lowPreview);}
+          link.onclick=event=>{event.preventDefault();void openImage({path,client,label:roles[photo.role]||'Run image',gallery:selected})};figure.append(link);
           const caption=document.createElement('figcaption');caption.textContent=roles[photo.role]||'Photo';figure.append(caption);group.append(figure);
         }
         for(const visual of visuals){
@@ -213,12 +237,15 @@
           image.className='run-photo-cover';image.width=visual.width;image.height=visual.height;image.loading='lazy';image.decoding='async';image.src=visual.src;image.alt=visual.alt;
           caption.textContent=visual.label+' · project context';link.append(image);figure.append(link,caption);group.append(figure);
         }
+        group.dataset.mediaCount=String(group.children.length);if(group.children.length>4){const more=document.createElement('span');more.className='media-more-count';more.textContent='+'+(group.children.length-3);group.children[3].querySelector('a')?.append(more);}group.style.setProperty('--media-count',Math.min(4,group.children.length));
         if(visuals.length)group.classList.add('run-project-gallery');
         if(!current())return;
         card.querySelectorAll('.run-media').forEach(el=>el.remove());
         const route=card.querySelector(':scope > .checkpoint-route');
         const body=card.querySelector('.history-visual')||card.querySelector('.fc-body');
-        if(route)route.after(group);
+        const slot=card.querySelector('.run-media-slot');
+        if(slot){slot.replaceChildren(group);}
+        else if(route)route.after(group);
         else if(body)body.after(group);
         else if(card.querySelector('.post-open'))card.querySelector('.post-open').before(group);
         else{const title=card.querySelector('.run-metrics')||card.querySelector('.note')||card.querySelector('.run-title-row');if(title)title.after(group);else card.prepend(group)}

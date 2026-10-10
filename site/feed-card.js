@@ -104,7 +104,7 @@
     return context?.cardFacts?context.cardFacts(r):(contract()?.heroStats(r)||[]);
   }
 
-  function cardSummary(r){return String(r?.story_result||r?.caption||story?.summary(r)||'').trim();}
+  function cardSummary(r){return String(r?.caption||r?.story_result||story?.summary(r)||'').trim();}
 
   // THE BADGE. One small achievement per run, computed from the run's own numbers and nothing
   // else: no history, no other runs, no guess. The first rule that holds wins, and its detail line
@@ -455,7 +455,7 @@
     ${story?story.visual(r):''}
     ${r.feedback_question?`<p class="fc-question"><span>Feedback welcome</span>${esc(r.feedback_question)}</p>`:''}
     ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Typed by the author. No capture.</p>' : ''}${evidence?evidence.summary(r):''}
-    ${page&&context?context.context(r,{shownText:cardSummary(r)}):''}
+    ${page&&context?`<details class="public-receipts"><summary>Receipts and scope</summary>${context.context(r,{shownText:cardSummary(r)})}</details>`:''}
     <div class="fc-route-secondary">${checkpoints?"":heroVisual(r)}</div>
     ${checkpoints?'':`<p class="fc-open">${preview?'Preview your story':'Open the story →'}</p>`}
   `;
