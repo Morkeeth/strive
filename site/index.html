@@ -1248,6 +1248,9 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     return facts;
   };
   const metricStrip=()=>{
+    // The signed-out detail must show the same estimate-backed headline and basis as Feed/share.
+    if(opts.detail&&r.capture_metadata?.estimates?.v===1)
+      return StriveContext.headlineHtml(r,'run-metrics post-facts')+StriveContext.measurementDetails(r);
     const cells=typeof GrinderContract==='object'&&GrinderContract.heroStats?GrinderContract.heroStats(r):[];
     if(!cells.length) return '';
     const html=cells.map(([label,value])=>`<div class="run-metric"><dt>${esc(label)}</dt><dd class="num">${esc(value)}</dd></div>`).join('');
@@ -1315,7 +1318,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     ${agentChip}
     ${r.segment_id?`<div class="sub"><a href="/?segment=${encodeURIComponent(r.segment_id)}">Open segment leaderboard</a></div>`:''}
     ${metricStrip()}
-    ${opts.detail?StriveContext.context(r):''}
+    ${opts.detail?StriveContext.context(r,{shownText:r.caption||r.note||''}):''}
     ${StriveStory.visual(r)}
     ${visual}
     ${output?`<p class="run-output"><a href="${esc(output)}" target="_blank" rel="noopener noreferrer">See the work ↗</a></p>`:''}
