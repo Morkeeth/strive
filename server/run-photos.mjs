@@ -4,7 +4,7 @@ import { randomUUID, createHash } from 'node:crypto';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const MAX_PHOTO_BYTES=3*1024*1024;
 const BUCKET='strive-run-photos';
-export const WIDTHS=[320,480,960];
+export const WIDTHS=[64,320,480,960];
 const fields='id,run_id,width,height,byte_size,created_at,is_cover,role';
 export const PHOTO_HEADERS={'Cache-Control':'private, no-store, max-age=0',Vary:'Authorization','X-Content-Type-Options':'nosniff'};
 function result(status,body,headers={}) {return {status,body,headers:{...PHOTO_HEADERS,...headers}};}

@@ -1,0 +1,19 @@
+// Fable shared placeholder kit, 11 Oct 2026. Quote renderer only; source SHA256 3d467b160ca5ef9a6126e4d0e79a83068bab385f1f167cbcdb84bb550e289af9.
+// Input must be author-approved public text. No transcript discovery, generated measurements or traces.
+(function(root){
+const THEMES={
+strive:{ground:'#ffffff',paper:'#f7f7f5',ink:'#0a0a0a',soft:'#6f6f6b',rule:'#e3e3df',rule2:'#efefec',accent:'#0047ff',accentSoft:'#c4d2ff',wash:'#f2f5ff',font:"'IBM Plex Sans',system-ui,sans-serif",cw:.56},
+favour:{ground:'#ffffff',paper:'#FAFAFA',ink:'#191C20',soft:'#6B7280',rule:'#E5E7EB',rule2:'#F3F4F6',accent:'#111827',accentSoft:'#D1D5DB',wash:'#F3F4F6',font:"'TWK Lausanne',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",cw:.55}};
+const esc=s=>String(s??'').replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
+function rng(seed){let h=1779033703^String(seed).length;for(const c of String(seed)){h=Math.imul(h^c.charCodeAt(0),3432918353);h=h<<13|h>>>19}return()=>{h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);return((h^=h>>>16)>>>0)/4294967296}}
+const R=n=>Math.round(n*10)/10;
+function frame(W,H){const u=Math.min(W,H);const pad=R(u*.09);return{W,H,u,pad,iw:W-2*pad,ih:H-2*pad,tall:H>W*1.05,wide:W>H*1.45}}
+function fit(text,boxW,boxH,fsMax,fsMin,cw,lh=1.12){text=String(text??'').replace(/\s+/g,' ').trim();for(let fs=fsMax;fs>=fsMin;fs-=Math.max(1,R((fsMax-fsMin)/8))){const r=wrap(text,boxW,boxH,fs,cw,lh);if(!r.cut||fs<=fsMin)return r}return wrap(text,boxW,boxH,fsMin,cw,lh)}
+function wrap(text,boxW,boxH,fs,cw,lh){const max=Math.max(1,Math.floor(boxH/(fs*lh)));const cap=Math.max(1,Math.floor(boxW/(fs*cw)));const lines=[];let line='';let cut=false;for(const w of text.split(' ')){const t=line?line+' '+w:w;if(t.length<=cap)line=t;else{if(line)lines.push(line);if(w.length>cap){cut=true;line=w.slice(0,cap)}else line=w;if(lines.length>=max){cut=true;break}}}if(!cut&&line)lines.push(line);if(cut){let last=lines[lines.length-1]||'';lines[lines.length-1]=last.slice(0,Math.max(1,cap-1)).replace(/[\s,.;:]+$/,'')+'…'}return{lines:lines.slice(0,max),fs,lh:fs*lh,cut,cw}}
+function textBlock(x,y,r,fill,weight,font,anchor='start'){return`<text x="${R(x)}" y="${R(y+r.fs*.88)}" font-family="${font}" font-size="${r.fs}" font-weight="${weight}" fill="${fill}" text-anchor="${anchor}">${r.lines.map((l,i)=>`<tspan x="${R(x)}" dy="${i?R(r.lh):0}">${esc(l)}</tspan>`).join('')}</text>`}
+function svgOpen(W,H,bg,font){return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="100%" height="100%" role="img" font-family="${font}"><rect width="${W}" height="${H}" fill="${bg}"/>`}
+function tiny(f,t,text,x,y,anchor='start',fill=t.soft,frac=1){const fs=Math.max(9,R(f.u/26));const cap=Math.floor(f.iw*frac/(fs*t.cw));text=String(text??'');if(text.length>cap)text=text.slice(0,Math.max(1,cap-1))+'…';return`<text x="${R(x)}" y="${R(y)}" font-size="${fs}" font-weight="500" fill="${fill}" text-anchor="${anchor}">${esc(text)}</text>`}
+function opts(o){const t=THEMES[o.theme]||THEMES.strive;return{t,W:o.width||640,H:o.height||360}}
+function quoteCard(seed,d={},o={}){const{t,W,H}=opts(o);const f=frame(W,H);const rw=R(f.u/60*(1+rng(seed)()*2));const q=R(f.u/3.2);const ql=`<text x="${f.pad-q*.04}" y="${R(f.pad+q*.82)}" font-size="${q}" font-weight="400" fill="${t.accentSoft}">“</text>`;const top=f.pad+q*.55;const r=fit(d.quote||d.description||'',f.iw,f.ih-q*.55-f.u/12,R(f.u/9),R(f.u/16),t.cw,1.18);return svgOpen(W,H,t.ground,t.font)+`<rect x="0" y="0" width="${rw}" height="${H}" fill="${t.accent}"/>`+ql+textBlock(f.pad,top,r,t.ink,500,t.font)+tiny(f,t,d.project||d.source||'',f.pad,H-f.pad)+`</svg>`}
+const api={quoteCard};root.StriveStoryTile=api;if(typeof module!=='undefined')module.exports=api;
+})(typeof window!=='undefined'?window:globalThis);

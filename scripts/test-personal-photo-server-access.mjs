@@ -42,3 +42,8 @@ assert.equal((await call({run_id:run,id:unchosen},'owner')).status,200,'owner ca
 assert.equal((await call({run_id:run,id:resultPhoto})).status,200,'result image remains public');
 
 console.log('PASS: only chosen personal cover is public; unchosen personal photos remain owner-only without changing saved records');
+const {default:sharp}=await import('sharp');const jpeg=await sharp({create:{width:800,height:400,channels:3,background:'#0047ff'}}).jpeg().toBuffer();
+const tiny=await runPhotos({method:'GET',headers:{},query:{run_id:run,id:resultPhoto,w:'64'}},config,async(url,opts)=>url.includes('/storage/v1/object/')?new Response(jpeg):fetcher(url,opts));
+assert.equal(tiny.status,200);assert.equal((await sharp(tiny.body).metadata()).width,64);assert.match(tiny.headers['Cache-Control'],/private/);
+assert.equal((await call({run_id:run,id:unchosen,w:'64'})).status,404,'tiny preview cannot expose unchosen personal photos');
+console.log('PASS 64px blur-up variant is truly sized and retains the same personal-photo authorization.');
