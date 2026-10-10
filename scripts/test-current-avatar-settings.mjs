@@ -6,6 +6,12 @@ assert.match(Feed.face({profiles:profile}),/github\.com\/real-github\.png/,'veri
 assert.equal(Auth.present({...profile,avatar_url:'https://images.test/chosen.jpg'}).avatar_url,'https://images.test/chosen.jpg');
 const provider={id:'u-a',identities:[{provider:'x',identity_data:{avatar_url:'https://images.test/provider.jpg'}}]};
 assert.equal(Auth.present({...profile,github_handle:null},provider).avatar_url,'https://images.test/provider.jpg');
+assert.equal(Auth.suggest({id:'u-a',user_metadata:{avatar_url:'https://images.test/unverified.jpg'},identities:[
+  {provider:'twitter',identity_data:{avatar_url:'https://images.test/x.jpg'}},
+  {provider:'github',identity_data:{user_name:'real-github',avatar_url:'https://images.test/github.jpg'}}
+]}).avatar_url,'https://images.test/github.jpg','verified GitHub photo wins over X and unverified metadata');
+assert.equal(Auth.suggest({id:'u-a',identities:provider.identities}).avatar_url,'https://images.test/provider.jpg','connected X is the second source');
+assert.equal(Auth.suggest({id:'u-a',user_metadata:{avatar_url:'https://images.test/unverified.jpg'},identities:[]}).avatar_url,null,'email metadata cannot impersonate a provider photo');
 assert.equal(Auth.present({...profile,github_handle:null},{...provider,id:'u-b'}).avatar_url,null,'never borrow another account provider photo');
 assert.equal(Auth.present({...profile,github_handle:null,avatar_url:'javascript:bad'}).avatar_url,null);
 const context={window:{GrinderAuth:Auth},URLSearchParams,location:{search:'?account'},sessionStorage:{getItem:()=>null},document:{getElementById:()=>null}};
