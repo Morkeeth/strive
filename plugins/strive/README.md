@@ -2,6 +2,14 @@
 
 Capture selected real coding sessions from named projects, see the cards together, and save them privately. Sharing stays a separate choice in STRIVE. Python 3.9+ is the only runtime requirement; capture needs no model API key.
 
+## Your first private run
+
+1. Install the plugin for your editor below and restart it.
+2. In Claude Code, run `/strive:strive` and name the project and session you want. In Cursor, invoke the STRIVE skill and give it the same request. The skill checks the local source, captures the selected sitting and opens the card for your review.
+3. Add your own result and project screenshot, then choose **Save run** with **Only me** in STRIVE. Saving needs a signed-in account. A Connect token is optional for a separately approved direct agent save; the token is never part of this first-run path.
+
+The card preview is local until you save it. Check the selected source and measurements before the final step.
+
 From the repository checkout or the extracted portable bundle:
 
 ```sh

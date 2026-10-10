@@ -140,11 +140,15 @@ def capture(db, root, name, harness, source, sitting=-1, code_route=None):
     from .engine.series import record_and_attach
     from .push import export_run
     # All measurements come from one frozen read; temporary raw bytes are private and removed.
+    selected_for_estimate = None
     with tempfile.TemporaryDirectory(prefix='strive-', dir=root) as folder:
         frozen = Path(folder)/path.name
         frozen.write_bytes(raw)
         os.chmod(frozen, 0o600)
         run = read_sitting(str(frozen), harness, pick=sitting)
+        if harness == 'codex':
+            from .native_sittings import choose, sittings
+            selected_for_estimate = choose(sittings(str(frozen), harness), sitting)
     run.pop('code_route', None) # legacy count summaries are not new consented checkpoints
     run['project'] = name
     run['project_proven'] = True  # explicitly declared, never inferred from a folder name
@@ -152,6 +156,26 @@ def capture(db, root, name, harness, source, sitting=-1, code_route=None):
     record_and_attach(run, path=str(root/'series.db'), command='strive selected capture')
     os.chmod(root/'series.db', 0o600)
     payload = {k:v for k,v in export_run(run).items() if k in FIELDS}
+    if harness in ('claude', 'codex'):
+        from .estimate_capture import estimate_inputs
+        if harness == 'codex':
+            estimate = estimate_inputs(selected_for_estimate, harness, raw, payload.get('capture_metadata') or {})
+        else:
+            from datetime import timezone
+            lo = datetime.fromisoformat(run['started']).astimezone(timezone.utc)
+            hi = datetime.fromisoformat(run['ended']).astimezone(timezone.utc)
+            def inside(row):
+                value = row.get('timestamp')
+                if not isinstance(value, str): return False
+                try:
+                    at = datetime.fromisoformat(value.replace('Z', '+00:00')).astimezone(timezone.utc)
+                    return lo <= at <= hi
+                except ValueError: return False
+            selected = [row for row in rows if inside(row)]
+            estimate = estimate_inputs(selected, harness, raw, payload.get('capture_metadata') or {},
+                                       started=run['started'], ended=run['ended'])
+        if estimate:
+            payload['capture_metadata']['estimates'] = estimate
     payload.update(title=name + ' run', visibility='private')
     key = digest([harness, session, run['started']])
     prior = db.execute('select payload,project from drafts where id=?', (key,)).fetchone()
