@@ -38,6 +38,7 @@
     if(run.capture_metadata!=null) {
       const ctx=typeof StriveContext!=="undefined"?StriveContext:typeof require==="function"?require("./run-context.js"):null;
       if(!ctx) throw Error("Capture metadata validator unavailable");
+      run.capture_metadata=ctx.prepareForStorage(run.capture_metadata);
       ctx.validate(run.capture_metadata);
     }
     const version = run.schema_version ?? 0;
