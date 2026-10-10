@@ -30,17 +30,37 @@ function metrics(r){const rows=[['Human messages',r.prompts??r.turns_typed,'Mess
 }
 // Only stored, validated inputs can supply optional estimate metrics.
 function cardFacts(r){
- let m=null;try{m=validate(r.capture_metadata)}catch{}
+ let m=null,inconsistent=false;try{m=validate(r.capture_metadata)}catch{inconsistent=true}
  const total=m&&count(m.input_tokens)&&count(m.output_tokens)?m.input_tokens+m.output_tokens:null;
  const number=v=>v.toLocaleString('en-US');
  const typed=r.prompts??r.turns_typed;
  const models=m?.models?.length?[...new Set(m.models)].map(v=>v==='claude-opus-5-5'?'Claude Opus 5.5':v).join(', '):null;
  return [
-  ['Recorded tokens',total===null?'Not recorded':total>=1000?new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:1}).format(total):number(total),total===null?'Complete input and output counts are absent.':number(m.input_tokens)+' input + '+number(m.output_tokens)+' output. Cached input is included; only calls with recorded usage are counted.'],
+  ['Recorded tokens',total===null?'Not recorded':total>=1000?new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:1}).format(total):number(total),total===null?(inconsistent?'Captured usage could not be interpreted consistently; no reliable token total is shown.':'Complete input and output counts are absent.'):number(m.input_tokens)+' input + '+number(m.output_tokens)+' output. Cached input is included; only calls with recorded usage are counted.'],
   ...(estimates()?.facts(m).rows||[]),
   ['Model',models||'Not recorded',models?'Model names from the capture.':r.model?'Author’s model label: '+r.model:'No recorded model names.'],
   ['You typed',count(typed)?number(typed):'Not recorded','Recorded human messages, not words or keystrokes.']
  ];
+}
+// Three headline facts from the same run; elapsed span is never active time.
+function headlineFacts(r){
+ const facts=cardFacts(r),known=label=>facts.find(row=>row[0]===label&&row[1]!=='Not recorded');
+ const tokens=known('Recorded tokens'),cost=known('Est. dollars'),active=known('Tool-active time · proxy');
+ if(tokens&&cost&&active)return [tokens,cost,active];
+ const rows=tokens?[tokens]:[];
+ const seconds=[r.ridge_basis==='wall-time'?r.ridge_wall_seconds:null,r.wall_time_s,r.duration_s].find(v=>Number.isFinite(v)&&v>0);
+ if(seconds!==undefined){const minutes=Math.round(seconds/60);rows.push(['Elapsed',seconds<60?Math.round(seconds)+'s':minutes<60?minutes+' min':Math.floor(minutes/60)+'h '+minutes%60+'m','Recorded session span; includes idle time and is not human active time.']);}
+ if(count(r.commits))rows.push(['Commits',String(r.commits),'Commits recorded in this capture; not a claim of deployment.']);
+ if(count(r.files_touched))rows.push(['Files touched',String(r.files_touched),'Files touched in this capture.']);
+ const typed=known('You typed');if(typed)rows.push(typed);
+ return rows.slice(0,3);
+}
+function headlineHtml(r,className='post-facts'){
+ const rows=headlineFacts(r);
+ if(rows.length===3)return `<dl class="${esc(className)}" aria-label="Recorded activity">${rows.map(([label,value,detail])=>`<div><dt>${factLabel(label)}</dt><dd title="${esc(detail)}">${esc(value)}</dd></div>`).join('')}</dl>`;
+ let inconsistent=false;try{validate(r.capture_metadata)}catch{inconsistent=true}
+ const placeholders=root.StrivePlaceholders||(typeof require==='function'?require('./run-placeholders.js'):null);
+ return placeholders?.render('numbers',{compact:true,inconsistent,facts:rows})||'';
 }
 function factLabel(label){return esc(label)+(label==='Est. dollars'?'<sup aria-label="See measurement basis">*</sup>':'');}
 function cardSecondary(r,{commits=false}={}){
@@ -51,7 +71,8 @@ function cardSecondary(r,{commits=false}={}){
 function measurementNotes(r){
  let m=null;try{m=validate(r.capture_metadata)}catch{}
  const missing=estimates()?.facts(m).missing||[['Est. dollars','No stored estimate inputs.'],['Tool-active time · proxy','No stored tool-call bin provenance.']];
- return [...cardFacts(r).filter(row=>row[2]).map(([label,,detail])=>[label,detail]),...missing];
+ const facts=[...new Map([...cardFacts(r),...headlineFacts(r)].map(row=>[row[0],row])).values()];
+ return [...facts.filter(row=>row[2]).map(([label,,detail])=>[label,detail]),...missing];
 }
 function measurementDetails(r){return `<details class="post-measurement-note"><summary>About these measurements</summary>${measurementNotes(r).map(([label,detail])=>`<p><strong>${esc(label)}.</strong> ${esc(detail)}</p>`).join('')}</details>`;}
 function prepareForStorage(m){return estimates()?.prepare(m)||m;}
@@ -71,5 +92,5 @@ function profileFacts(runs){
  <div><dt>Active time</dt><dd>Not recorded</dd><small>Elapsed spans include waiting</small></div>
  </dl><p class="profile-models">Recorded models: ${models.size?[...models].map(esc).join(', '):'Not recorded'}</p><p class="profile-stats-scope">Recorded usage only; missing captures are not counted as zero. Cached input is already included.</p></section>`;
 }
-const api={context,setup,metrics,validate,cardFacts,profileFacts,cardSecondary,factLabel,measurementNotes,measurementDetails,prepareForStorage};root.StriveContext=api;if(typeof module!=='undefined')module.exports=api;
+const api={context,setup,metrics,validate,cardFacts,headlineFacts,headlineHtml,profileFacts,cardSecondary,factLabel,measurementNotes,measurementDetails,prepareForStorage};root.StriveContext=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

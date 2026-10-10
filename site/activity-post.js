@@ -17,8 +17,6 @@
     const C=root.GrinderContract,F=root.GrinderFeed,clean=root.StriveDayCard.clean(choices),id=String(r.id),href='/?run='+encodeURIComponent(id),p=r.profiles||{},handle=p.handle||p.github_handle,name=p.display_name||p.name||handle||'Builder';
     const project=root.StriveActivity.project(r.project),title=F.titleOf({...r,created_at:null});
     const caption=String(r.story_result||F.cardSummary(r)||r.caption||'').trim();
-    const measured=root.StriveContext?.cardFacts?.(r)||C.heroStats(r);
-    const faceFacts=measured.filter(([label,value])=>!['Model','You typed'].includes(label)&&value!=='Not recorded');
     const work=C.heroStats(r).filter(([label])=>label!=='Elapsed');
     const files=r.files_touched??(r.code_route?.v===1&&!r.code_route.unavailable?r.code_route.stats?.files_changed:null);
     if(Number.isSafeInteger(files)&&files>0&&!work.some(([label])=>/^Files /.test(label)))work.push([r.files_touched!=null?'Files touched':'Files changed',String(files)]);
@@ -36,8 +34,7 @@
       <header class="dc-head">${F.face(r,36)}<div class="dc-identity">${handle?`<a class="dc-author" href="/?u=${encodeURIComponent(handle)}">${esc(name)}</a>`:`<strong class="dc-author">${esc(name)}</strong>`}<p class="meta">${esc(dateLabel)}${r.harness?' · '+esc(F.harnessName(r)):''}</p></div><details class="post-options"><summary aria-label="Run options">•••</summary><div><a href="${href}">Open run</a>${owner?`<a href="${href}#run-edit">Edit this run</a>`:''}${day?`<a href="/?day=${day}${owner?'':'&p='+encodeURIComponent(r.profile_id)}">Day summary</a>`:''}</div></details></header>
       ${audience?`<p class="dc-audience">${esc(audience)}</p>`:''}
       <div class="post-story">${project?`<a class="post-project" href="/?project=${encodeURIComponent(r.project)}&scope=${owner?'mine':'public'}">${esc(project)}</a>`:''}<h2><a href="${href}">${esc(title)}</a></h2>${caption&&caption!==title?`<p class="post-caption">${esc(caption)}</p>`:!caption?(root.StrivePlaceholders?.render('description',{compact:true})||''):''}</div>
-      ${measured.find(([label])=>label==='Recorded tokens')?.[1]==='Not recorded'?(root.StrivePlaceholders?.render('numbers',{compact:true})||''):''}
-      ${faceFacts.length?`<dl class="post-facts" aria-label="Recorded activity">${faceFacts.map(([label,value,detail])=>`<div><dt>${root.StriveContext?.factLabel?.(label)||esc(label)}</dt><dd${detail?` title="${esc(detail)}"`:''}>${esc(value)}</dd></div>`).join('')}</dl>`:''}
+      ${root.StriveContext?.headlineHtml?.(r)||''}
       ${root.StriveContext?.cardSecondary?.(r)||''}
       ${work.length?`<p class="post-work">Recorded work · ${work.map(([label,value])=>esc(value)+' '+esc(value==='1'?({'Commits':'commit','Files touched':'file touched','Files changed':'file changed','Projects':'project'}[label]||label.toLowerCase()):label.toLowerCase())).join(' · ')}</p>`:''}
       ${root.StriveContext?.measurementDetails?.(r)||''}
