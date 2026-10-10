@@ -1287,6 +1287,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     :'';
   const exploreInner=[
     opts.detail?StriveContext.context(r,{shownText:r.caption||r.note||''}):'',
+    opts.detail?'<section id="run-journey"></section>':'',
     story,
     runUploadIdentity(r),
     StriveContext.setup(r),
@@ -1718,7 +1719,6 @@ function playStrip(){
 }
 function landingHTML(){
   return `<div class="home ${ME?'home-member':''}">
-    ${ME?'':`<section class="home-hero"><h1>Follow what people are building.</h1></section>`}
     <div class="home-layout">
       <section class="home-sec landing-feature" aria-labelledby="h-popular" id="landing-feature"><div class="land-head"><h2 id="h-popular">${ME?'Your feed':'Public runs'}</h2>${ME?'':'<a href="/?people">Find people</a>'}</div><div id="landing-feature-body">${skeletonCard()}</div><p id="public-run-count" class="public-run-count" role="status"></p></section>
       <aside class="home-around" id="home-people-clubs" aria-label="Around STRIVE" tabindex="-1">
@@ -1934,7 +1934,6 @@ async function viewRun(id){
     +runCard(r,ad.mine.has(r.id),ad.countsKnown===false?null:ad.counts[r.id]||0,{picker:openAck,suggested,selected:preselect,ownerActions:owner,detail:true})
     +nextAction
     +`<section id="run-photos"></section>`
-    +`<section id="run-journey"></section>`
     +`<section id="grind-thread"></section><div class="head"><h2>XUDOS</h2><span class="meta">${acks===null?'Unavailable':acks.length}</span></div><div class="panel">`+ackListHtml(acks)+`</div>`
 ;
   const copyLink=$('run-copy-link');if(copyLink)copyLink.onclick=async()=>{try{const sharePath=r.visibility==='public'?'/r/'+r.id:'/?run='+r.id;await navigator.clipboard.writeText(location.origin+sharePath);copyLink.textContent='Link copied'}catch(_){status('Copy this page address to share your run.')}};

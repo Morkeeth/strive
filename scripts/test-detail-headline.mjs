@@ -18,6 +18,8 @@ async function render(r){row=r;await assert.rejects(ctx.viewRun(r.id),/STOP_AFTE
 let actual=await render(base);const expected=JSON.parse(JSON.stringify(ctx.StriveContext.headlineFacts(base)));
 assert.deepEqual([...actual.querySelectorAll('.run-metrics dt')].map(e=>e.textContent),['Recorded tokens','Est. dollars*','Tool-active time · proxy']);
 assert.deepEqual([...actual.querySelectorAll('.run-metrics dd')].map(e=>e.textContent),expected.map(x=>x[1]));
+assert.ok(actual.querySelector('.run-explore #run-journey'),'project bookkeeping stays inside the receipts disclosure');
+assert.equal(dom.window.document.querySelectorAll('#run-journey').length,1);
 assert.ok(actual.querySelector('.post-measurement-note'));assert.match(actual.querySelector('.post-measurement-note').textContent,/not continuous tool runtime or measured human active time/);
 const absent=structuredClone(base);delete absent.capture_metadata.estimates;actual=await render(absent);
 assert.deepEqual([...actual.querySelectorAll('.run-metrics dt')].map(e=>e.textContent),JSON.parse(JSON.stringify(ctx.GrinderContract.heroStats(absent))).map(x=>x[0]),'existing non-estimate detail facts remain unchanged');
