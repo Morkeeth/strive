@@ -543,7 +543,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 @media(prefers-reduced-motion:no-preference){.capture-welcome{animation:welcome-in .32s ease both}@keyframes welcome-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.fade{opacity:1}.capture-actions .act:hover{transform:none}}
 
-</style><link rel="stylesheet" href="/social.css"><link rel="stylesheet" href="/people.css"><link rel="stylesheet" href="/account.css"><link rel="stylesheet" href="/feed.css"><link rel="stylesheet" href="/dropin.css"><link rel="stylesheet" href="/home.css"><link rel="stylesheet" href="/run-photos.css"><link rel="stylesheet" href="/activity.css">
+</style><link rel="stylesheet" href="/social.css"><link rel="stylesheet" href="/people.css"><link rel="stylesheet" href="/account.css"><link rel="stylesheet" href="/feed.css"><link rel="stylesheet" href="/dropin.css"><link rel="stylesheet" href="/home.css"><link rel="stylesheet" href="/run-photos.css"><link rel="stylesheet" href="/run-media-frame.css"><link rel="stylesheet" href="/activity.css">
 <link rel="stylesheet" href="/navigation.css">
 <script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};</script>
 <script defer src="/_vercel/insights/script.js"></script>
@@ -619,6 +619,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/progress.js"></script>
 <script src="/sharing.js"></script>
 <script src="/moments.js"></script>
+<script src="/run-placeholders.js"></script>
 <script src="/run-photos.js"></script>
 <script src="/example.js"></script>
 <script src="/forum.js"></script>
@@ -1532,7 +1533,7 @@ async function shouldOnboard(){
 // commands: /?post (git clone ... grind --harness auto), /?onboard (the same inside a four-step
 // wizard) and, once signed in, a uvx line. Now: one page, fastest path first, one command per
 // agent, and the same drop zone as the landing. /?onboard and /?connect both land here.
-const ONE_LINE=h=>`uvx --from __CAPTURE_PACKAGE__ agentgrinder grind${h?' --harness '+h:''} --push --push-url __ORIGIN__`;
+const ONE_LINE=h=>`uvx --from __CAPTURE_PACKAGE__ agentgrinder grind${h?' --harness '+h:''} --push --open --no-rank --no-series --push-url __ORIGIN__`;
 // AUTOMATIC SYNC (Oscar, 25 Sep 2026 evening: "the uploads is awful ... automatic fetch").
 // Signed in, one button issues a private Connect token (migration 007) and shows one line to run
 // once on the computer the agent runs on. From then on `agentgrinder sync` uploads every finished
@@ -1568,7 +1569,7 @@ function wireAutoSync(root){
 function connectBodyHtml(){
   const capture=ONE_LINE('auto');
   const agentPrompt=`Open ${location.origin}/agents.md and help me preview this session on STRIVE. Keep it local until I choose to save it.`;
-  return StrivePostFlow.setupHtml({agentPrompt,capture,syncHtml:autoSyncHtml(),dropHtml:dropZoneHtml(),agentFiles:AGENT_FILES});
+  return StrivePostFlow.setupHtml({agentPrompt,capture,syncHtml:autoSyncHtml(),dropHtml:dropZoneHtml(),agentFiles:AGENT_FILES,agentCommands:Object.fromEntries(['claude','codex'].map(h=>[h,ONE_LINE(h)]))});
 }
 function wireConnectCopies(root){
   window.StrivePostFlow?.mountSetup(root||document);
@@ -1728,8 +1729,8 @@ function dropZoneHtml(){
   return `<div id="drop-stage"><label class="drop-zone" id="drop-zone">
       <input type="file" id="drop-file" class="visually-hidden" accept=".jsonl,.json,.txt,application/x-ndjson,application/jsonl,text/plain">
       <svg class="drop-ghost" viewBox="0 0 300 56" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,50 30,44 60,46 90,30 120,36 150,14 180,28 210,22 240,38 270,34 300,40"/></svg>
-      <strong>Import a session export</strong>
-      <span class="cta"><button class="act primary" type="button" id="select-export">Select export</button></span>
+      <strong>Open a session file</strong>
+      <span class="cta"><button class="act primary" type="button" id="select-export">Choose session file</button></span>
       <span class="drop-local" id="drop-progress">Read on this device. Nothing is saved until you choose to save it.</span>
     </label><p class="drop-error" id="drop-error" role="alert" hidden></p></div>`;
 }
@@ -1737,7 +1738,7 @@ function dropZoneHtml(){
 const AGENT_FILES=[
     ['Claude Code','~/.claude/projects/','one folder per project, newest .jsonl is your latest session',''],
     ['Cursor','~/.cursor/projects/','then <project>/agent-transcripts/<id>/<id>.jsonl',''],
-    ['Codex','~/.codex/sessions/','then YYYY/MM/DD/rollout-….jsonl','checked on test files only']];
+    ['Codex','~/.codex/sessions/','then YYYY/MM/DD/rollout-….jsonl','']];
 // The newest public runs, only Public ones: a Link run never reaches this door.
 async function fetchLatestPublicRuns(limit){
   if(!sb) return null;

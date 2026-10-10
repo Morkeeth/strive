@@ -7,8 +7,8 @@
   // They are context for the project, not evidence that the recorded session made them.
   const showcase={
     '599095f1-3b49-4c0e-b50c-13afd4ae369e':[
-      {src:'/media/favour-public-page-20261010.webp',label:'Public FAVOUR page · 10 Oct',url:'https://world-relay.vercel.app/',alt:'Public FAVOUR campaign page'},
-      {src:'/media/favour-campaign-builder-20261010.webp',label:'FAVOUR campaign builder · 10 Oct',url:'https://world-relay.vercel.app/',alt:'Public FAVOUR campaign builder section'}
+      {src:'/media/favour-public-page-20261010.webp',width:1024,height:1156,label:'Public FAVOUR page · 10 Oct',url:'https://world-relay.vercel.app/',alt:'Public FAVOUR campaign page'},
+      {src:'/media/favour-campaign-builder-20261010.webp',width:464,height:615,label:'FAVOUR campaign builder · 10 Oct',url:'https://world-relay.vercel.app/',alt:'Public FAVOUR campaign builder section'}
     ]
   };
   const disposers=new Set(),coverGeneration=new WeakMap();
@@ -76,6 +76,17 @@
       if(parsed.origin!==location.origin||parsed.pathname!=="/api/run-photos"||!parsed.searchParams.get("id")||!parsed.searchParams.get("run_id"))return null;
       return parsed.pathname+parsed.search;
     }catch(_){return null;}
+  }
+  // Anonymous public images use a stable URL: the browser can lazy-load and revalidate
+  // bytes itself. The endpoint still checks run visibility before every 200 or 304.
+  // Authenticated/private reads retain their bearer-token path and account-scoped cache.
+  function publicImage(path,host,requestHeaders,gallery=false){
+    const card=host.closest?.('[data-run-visibility]');
+    if(requestHeaders.Authorization||card?.dataset.runVisibility!=='public')return null;
+    const box=host.getBoundingClientRect?.().width||card.getBoundingClientRect?.().width||480;
+    const width=gallery?Math.min(Math.max(1,box-40)*.48,360):box;
+    const wanted=width*(root.devicePixelRatio||1),variant=[320,480,960].find(w=>w>=wanted)||960;
+    const url=new URL(path,location.origin);url.searchParams.set('w',variant);return url.pathname+url.search;
   }
   function cropper(file,host,onReady){
     const url=URL.createObjectURL(file), image=new Image(), state={mode:'original',zoom:1,x:.5,y:.5,ready:false};
@@ -169,20 +180,24 @@
         for(const photo of selected){
           const path=photoPath(photo);if(!path)continue;
           const imageHeaders=await headers(client);if(!current())return;
-          const imageRes=await get(path,{headers:imageHeaders,signal:controller.signal},960);
-          if(!current()||!imageRes.ok)return;
-          const blob=await imageRes.blob();if(!current())return;
-          const url=URL.createObjectURL(blob);urls.add(url);pendingUrls.add(url);
+          let url=publicImage(path,card,imageHeaders,true),objectUrl=false;
+          if(!url){
+            const imageRes=await get(path,{headers:imageHeaders,signal:controller.signal},960);
+            if(!current()||!imageRes.ok)return;
+            const blob=await imageRes.blob();if(!current())return;
+            url=URL.createObjectURL(blob);objectUrl=true;urls.add(url);pendingUrls.add(url);
+          }
           const figure=document.createElement('figure'),image=document.createElement('img');
-          image.className='run-photo-cover';if(photo.width&&photo.height){image.width=photo.width;image.height=photo.height}image.decoding='async';image.src=url;image.alt=roles[photo.role]||'Run photo';image.loading='lazy';images.add(image);
-          image.onload=image.onerror=()=>{URL.revokeObjectURL(url);urls.delete(url);pendingUrls.delete(url)};
+          image.className='run-photo-cover';if(photo.width&&photo.height){image.width=photo.width;image.height=photo.height}image.decoding='async';image.alt=roles[photo.role]||'Run photo';image.loading='lazy';image.src=url;images.add(image);
+          const release=()=>{if(objectUrl){URL.revokeObjectURL(url);urls.delete(url);pendingUrls.delete(url)}};
+          image.onload=release;image.onerror=()=>{release();figure.remove()};
           const link=document.createElement('a');link.href='/?run='+encodeURIComponent(runId)+'#run-photos';link.setAttribute('aria-label','Open '+(roles[photo.role]||'run image')+' at full size');link.append(image);figure.append(link);
           const caption=document.createElement('figcaption');caption.textContent=roles[photo.role]||'Photo';figure.append(caption);group.append(figure);
         }
         for(const visual of visuals){
           const figure=document.createElement('figure'),link=document.createElement('a'),image=document.createElement('img'),caption=document.createElement('figcaption');
           link.href=visual.url;link.target='_blank';link.rel='noopener noreferrer';link.setAttribute('aria-label','Open source of '+visual.label);
-          image.className='run-photo-cover';image.src=visual.src;image.alt=visual.alt;image.loading='lazy';
+          image.className='run-photo-cover';image.width=visual.width;image.height=visual.height;image.loading='lazy';image.decoding='async';image.src=visual.src;image.alt=visual.alt;
           caption.textContent=visual.label+' · project context';link.append(image);figure.append(link,caption);group.append(figure);
         }
         if(visuals.length)group.classList.add('run-project-gallery');
@@ -265,12 +280,13 @@
       // A run's own cover works the other way: the measured data stays until the cover is confirmed.
       const fall=()=>{if(!active||own)return;figure.dataset.state='fallback';const f=figure.querySelector('.dc-fallback');if(f)f.hidden=false;figure.querySelector('.dc-picture')?.remove();figure.querySelector('figcaption')?.remove()};
       try{
-        const list=await get(`/api/run-photos?run_id=${encodeURIComponent(figure.dataset.visualRun)}`,{headers:await headers(client),signal:controller.signal});
+        const requestHeaders=await headers(client);
+        const list=await get(`/api/run-photos?run_id=${encodeURIComponent(figure.dataset.visualRun)}`,{headers:requestHeaders,signal:controller.signal});
         if(!active)return;if(!list.ok)return fall();
         const photos=(await list.json())?.photos||[],photo=own?lead(photos,'cover'):photos.find(p=>p.id===figure.dataset.visualPhoto),path=photo&&photoPath(photo);if(!path)return fall();
-        const res=await get(path,{headers:await headers(client),signal:controller.signal},960);if(!active)return;if(!res.ok)return fall();
-        const url=URL.createObjectURL(await res.blob());urls.add(url);
-        const image=document.createElement('img');image.alt=figure.dataset.alt||'Picture chosen by the author';image.decoding='async';
+        let url=publicImage(path,figure,requestHeaders);
+        if(!url){const res=await get(path,{headers:requestHeaders,signal:controller.signal},960);if(!active)return;if(!res.ok)return fall();url=URL.createObjectURL(await res.blob());urls.add(url)}
+        const image=document.createElement('img');image.loading='lazy';image.alt=figure.dataset.alt||'Picture chosen by the author';image.decoding='async';
         if(photo.width&&photo.height){image.width=photo.width;image.height=photo.height}
         if(own){figure.dataset.was=figure.dataset.kind;figure.dataset.kind=photo.role==='personal'?'photo':'screenshot'}
         if(figure.dataset.kind==='photo')image.style.objectPosition=FOCUS[figure.dataset.focus]||FOCUS.center;

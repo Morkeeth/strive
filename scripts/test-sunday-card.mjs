@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {JSDOM} from 'jsdom';
 const w=new JSDOM('',{runScripts:'outside-only'}).window;
-for(const file of ['run-contract.js','run-estimates.js','run-context.js','run-story.js','feed-card.js','day.js','day-card.js','activity-order.js','activity-post.js'])w.eval(readFileSync('site/'+file,'utf8'));
+for(const file of ['run-contract.js','run-placeholders.js','run-estimates.js','run-context.js','run-story.js','feed-card.js','day.js','day-card.js','activity-order.js','activity-post.js'])w.eval(readFileSync('site/'+file,'utf8'));
 const C=w.StriveContext,P=w.StrivePost;
 // Input and cached usage are deliberately very different: adding cache twice must fail.
 const run={id:'11111111-1111-4111-a111-111111111111',profile_id:'owner',visibility:'public',title:'Real captured work',caption:'Author description',started_at:'2026-10-08T13:03:11Z',duration_s:355,prompts:0,commits:1,files_touched:1,capture_metadata:{basis:'claude-message-usage',models:['model-a'],input_tokens:1000,output_tokens:25,cached_input_tokens:900}};
@@ -18,3 +18,5 @@ html=P.render({...run,files_touched:17,code_route:{v:1,projects:[{id:'a'},{id:'b
 const fullCaption='Author '.repeat(40);assert.ok(P.render({...run,caption:fullCaption}).includes(fullCaption.trim()),'full authored caption is retained');
 const summary=C.profileFacts([run,run,{id:'missing',prompts:null,duration_s:400}]);assert.match(summary,/1,025/);assert.match(summary,/1 of 2 loaded runs have usage/);assert.match(summary,/1 of 2 loaded runs have human message counts/);assert.doesNotMatch(summary,/1,925|14m/);
 console.log('PASS Sunday card: no double-counted cache, recorded zero retained, missing bill and active time unknown, authored model kept separate, public profile coverage and saved visual choices preserved.');
+
+const missing=P.render({...run,capture_metadata:null,caption:'',story_result:''});assert.match(missing,/Usage not captured/);assert.doesNotMatch(missing,/<dl class="post-facts"[^>]*><\/dl>/);console.log('PASS missing usage gets an honest card state without an empty facts row.');

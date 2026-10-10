@@ -5,20 +5,22 @@
   const names=['Preview','Your story','Audience'];
   const steps=(current=0)=>`<ol class="post-flow-steps" aria-label="Run steps">${names.map((name,i)=>`<li${i===current?' aria-current="step"':''}><span>${i+1}</span>${name}</li>`).join('')}</ol>`;
 
-  function setupHtml({agentPrompt,capture,syncHtml,dropHtml,agentFiles=[]}){
+  function setupHtml({agentPrompt,capture,syncHtml,dropHtml,agentFiles=[],agentCommands={}}){
     const tabs=[['editor','Editor plugin'],['terminal','Terminal'],['automatic','Automatic imports'],['files','Find a session']];
-    return `<section class="post-start" aria-labelledby="post-start-title"><h2 id="post-start-title">Start with a session</h2>
+    return `<section class="post-start" aria-labelledby="post-start-title"><h2 id="post-start-title">Share what you made</h2>
       <p class="post-start-intro">Choose where you worked. STRIVE opens a private preview before you save a run.</p>${steps()}
       <div class="post-source-grid" aria-label="Choose your agent">
-        <button class="ghost" type="button" data-post-source="cursor"><img src="/media/cursor-mark.svg" alt=""><strong>Cursor</strong><span>Set up the editor plugin</span></button>
-        <button class="ghost" type="button" data-post-source="claude"><img src="/media/claude-mark.svg" alt=""><strong>Claude Code</strong><span>Set up the editor plugin</span></button>
-        <button class="ghost" type="button" data-post-source="codex"><img src="/media/openai-mark.svg" alt=""><strong>Codex</strong><span>Preview from a terminal</span></button>
-        <button class="ghost" type="button" data-post-source="grok"><span class="post-grok-mark" aria-hidden="true">𝕏</span><strong>Grok Bot</strong><span>Import a file</span></button>
+        <button class="ghost" type="button" data-post-source="cursor"><img src="/media/cursor-mark.svg" alt=""><strong>Cursor</strong><span>Choose a session file</span></button>
+        <button class="ghost" type="button" data-post-source="claude" data-command="${esc(agentCommands.claude||capture)}"><img src="/media/claude-mark.svg" alt=""><strong>Claude Code</strong><span>Find my latest session</span></button>
+        <button class="ghost" type="button" data-post-source="codex" data-command="${esc(agentCommands.codex||capture)}"><img src="/media/openai-mark.svg" alt=""><strong>Codex</strong><span>Find my latest session</span></button>
+        <button class="ghost" type="button" data-post-source="grok"><span class="post-grok-mark" aria-hidden="true">𝕏</span><strong>Grok Bot</strong><span>Ask your companion</span></button>
       </div>
+      <section class="post-quick-start" id="post-quick-start" hidden aria-live="polite"><h3 id="post-quick-title">Find your latest session</h3><p>Open Terminal on the computer where you used your agent. Run this command in your project folder. It finds the latest session and opens a private preview.</p><div class="cmd"><code class="c" id="post-quick-command"></code><button class="act" type="button" id="post-quick-copy" data-copy="">Copy command</button></div><p class="hint">Needs <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a>. Your transcript stays on this computer. Check the session and numbers before saving. To pick a different session, use Find my sessions below.</p></section>
       <div class="post-agent-entry"><div><strong>Working with your agent?</strong><span>Ask it to collect a private preview.</span></div><button class="act" type="button" data-copy="${esc(agentPrompt)}">Copy request</button></div>
       <p class="hint">You can preview without signing in. Nothing is saved until you choose to save it.</p>
     </section>
-    <section class="post-file-entry" aria-label="Import an existing export">${dropHtml}<p class="hint">JSON or JSONL from Cursor, Claude Code or Codex. For Grok, use an export your companion can actually read.</p></section>
+    <section class="post-file-entry" aria-label="Find a session"><h2>Find my sessions</h2><p>Choose a file from the agent you used. On macOS, click <strong>Choose session file</strong>, press <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>G</kbd> in the file picker, and paste the folder below.</p><dl class="post-source-folders">${agentFiles.map(([name,path,help])=>`<div data-agent-folder="${esc(name)}"><dt>${esc(name)}</dt><dd><code>${esc(path)}</code><button class="ghost" type="button" data-copy="${esc(path)}" aria-label="Copy ${esc(name)} session folder">Copy folder</button><span>${esc(help)}</span></dd></div>`).join('')}</dl>${dropHtml}<p class="hint">JSON or JSONL from Cursor, Claude Code or Codex. For Grok, use an export your companion can actually read.</p></section>
+    <p class="post-sample"><a href="/r/599095f1-3b49-4c0e-b50c-13afd4ae369e">See a real sample run →</a><span class="hint"> A public FAVOUR run. Your preview will use your own session.</span></p>
     <details class="post-setup" id="post-setup"><summary><span>Import setup</span><span class="post-setup-summary">Editor plugins, terminal and other sources</span></summary>
       <div class="post-setup-body"><div class="post-setup-tabs" role="tablist" aria-label="Import method">${tabs.map(([id,title],i)=>`<button type="button" role="tab" id="setup-tab-${id}" data-setup-tab="${id}" aria-controls="setup-${id}" aria-selected="${i===0}" tabindex="${i===0?'0':'-1'}">${title}</button>`).join('')}</div>
       <section id="setup-editor" role="tabpanel" aria-labelledby="setup-tab-editor"><h3>Keep STRIVE in your editor</h3><p>Install once, then ask for a private preview across the projects you choose.</p>
@@ -29,7 +31,7 @@
       </section>
       <section id="setup-terminal" role="tabpanel" aria-labelledby="setup-tab-terminal" hidden><h3>Preview from a terminal</h3><p>Run this where you build. Check the project and session, then open the private preview link.</p><div class="cmd"><code class="c">${esc(capture)}</code><button type="button" class="act" data-copy="${esc(capture)}">Copy</button></div><p class="hint">Uses uv and Python. Supports Cursor, Claude Code and Codex. <a href="/agents.md">Choose an exact session</a>.</p></section>
       <section id="setup-automatic" role="tabpanel" aria-labelledby="setup-tab-automatic" hidden>${syncHtml}</section>
-      <section id="setup-files" role="tabpanel" aria-labelledby="setup-tab-files" hidden><h3>Find your session file</h3><p>Use a transcript from the computer where you worked. In Finder, press Cmd+Shift+G and paste its folder.</p><dl class="post-source-folders">${agentFiles.map(([name,path,help,scope])=>`<div><dt>${esc(name)}</dt><dd><code>${esc(path)}</code><span>${esc(help)}${scope?' · '+esc(scope):''}</span></dd></div>`).join('')}</dl><p><a href="/?history-import">Recover an older build from a history file</a></p><p class="hint"><a href="/agents.md">MCP, Grok and other agent instructions</a></p></section>
+      <section id="setup-files" role="tabpanel" aria-labelledby="setup-tab-files" hidden><h3>Find your session file</h3><p>Use a transcript from the computer where you worked. In Finder, press Cmd+Shift+G and paste its folder.</p><dl class="post-source-folders">${agentFiles.map(([name,path,help,scope])=>`<div data-agent-folder="${esc(name)}"><dt>${esc(name)}</dt><dd><code>${esc(path)}</code><span>${esc(help)}${scope?' · '+esc(scope):''}</span></dd></div>`).join('')}</dl><p><a href="/?history-import">Recover an older build from a history file</a></p><p class="hint"><a href="/agents.md">MCP, Grok and other agent instructions</a></p></section>
       </div>
     </details>`;
   }
@@ -65,14 +67,20 @@
     scope.querySelectorAll('[data-post-source]').forEach(button=>button.addEventListener('click',()=>{
       const source=button.dataset.postSource;
       if(source==='grok'){
-        scope.querySelector('#drop-file')?.click();return;
+        scope.querySelector('.post-agent-entry')?.scrollIntoView({block:'center',behavior:'smooth'});
+        scope.querySelector('.post-agent-entry button')?.focus({preventScroll:true});return;
       }
-      setup.open=true;
-      select(setup.querySelector(source==='codex'?'[data-setup-tab="terminal"]':'[data-setup-tab="editor"]'));
-      if(source!=='codex'){
-        const editor=setup.querySelector('#post-editor');editor.value=source==='claude'?'claude':'cursor';editor.dispatchEvent(new Event('change'));
+      if(source==='cursor'){
+        const row=scope.querySelector('.post-file-entry [data-agent-folder="Cursor"]');
+        scope.querySelector('.post-file-entry')?.scrollIntoView({block:'start',behavior:'smooth'});
+        row?.classList.add('post-folder-selected');row?.querySelector('button')?.focus({preventScroll:true});return;
       }
-      setup.scrollIntoView({block:'start',behavior:'smooth'});
+      const quick=scope.querySelector('#post-quick-start');quick.hidden=false;
+      scope.querySelector('#post-quick-title').textContent='Find your latest '+({claude:'Claude Code',cursor:'Cursor',codex:'Codex'}[source]||'agent')+' session';
+      scope.querySelector('#post-quick-command').textContent=button.dataset.command;
+      scope.querySelector('#post-quick-copy').dataset.copy=button.dataset.command;
+      scope.querySelectorAll('[data-post-source]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+      quick.scrollIntoView({block:'nearest',behavior:'smooth'});
     }));
   }
 

@@ -31,7 +31,7 @@ const server=createServer(async(req,res)=>{try{
  }
  if(u.pathname==='/api/run-photos'){
   if(req.method!=='GET'){res.writeHead(403);return res.end('Read-only preview');}
-  const out=await fetch(origin+u.pathname+u.search);res.writeHead(out.status,{'Content-Type':out.headers.get('content-type')||'application/json'});return res.end(Buffer.from(await out.arrayBuffer()));
+  const out=await fetch(origin+u.pathname+u.search,{headers:req.headers['if-none-match']?{'If-None-Match':req.headers['if-none-match']}:{}});const photoHeaders={'Content-Type':out.headers.get('content-type')||'application/json'};for(const name of ['cache-control','etag','vary']){const value=out.headers.get(name);if(value)photoHeaders[name]=value}res.writeHead(out.status,photoHeaders);return res.end(Buffer.from(await out.arrayBuffer()));
  }
  if(req.method!=='GET'){res.writeHead(403);return res.end('Read-only preview');}
  if(u.pathname==='/local-supabase.js'){res.setHeader('Content-Type','text/javascript');return res.end(await readFile(process.env.STRIVE_SUPABASE_SDK));}

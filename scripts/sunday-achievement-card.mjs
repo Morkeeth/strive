@@ -6,16 +6,23 @@ const compact=n=>new Intl.NumberFormat('en-US',{notation:'compact',maximumFracti
 const date=s=>new Date(s).toLocaleString('en-GB',{timeZone:'Europe/Paris',dateStyle:'medium',timeStyle:'short'});
 const model=id=>({'gpt-6-sol':'GPT-6 Sol','claude-opus-5-5':'Opus 5.5','claude-fable-5-1':'Fable 5.1'}[id]||id);
 
+function activityTrail(c){
+ const a=c.activity;if(!a?.occupied_bins?.length)return '';
+ const last=Math.max(...a.occupied_bins,Math.ceil((Date.parse(c.end)-Date.parse(a.origin_utc))/60000)-1),bins=Array(50).fill(0);for(const n of a.occupied_bins)bins[Math.min(49,Math.floor(n*50/(last+1)))]++;
+ const top=Math.max(...bins),points=bins.map((n,i)=>(i*1000/49).toFixed(1)+','+(54-n/top*44).toFixed(1)).join(' ');
+ return `<div class="achievement-trail"><p><span>Activity trail</span><span>Captured tool activity</span></p><svg viewBox="0 0 1000 60" preserveAspectRatio="none" role="img" aria-label="Occupied tool-minute bins across this captured window"><path class="baseline" d="M0 55H1000"/><polyline points="${points}"/></svg></div>`;
+}
 export function achievementCard(c,index,images){
  const price=c.model_price_estimate;
  const rates=price?Object.entries(price.components||{}).map(([id,v])=>`<li>${esc(id)}: ${number(v.tokens)} tokens, $${v.usd.toFixed(2)} est. ${esc(v.rates_description||`Rates per million: input $${v.rates_per_million[0]}, output $${v.rates_per_million[1]}, cache reads $${v.rates_per_million[2]}, 5-minute writes $${v.rates_per_million[3]}, 1-hour writes $${v.rates_per_million[4]}.`)}</li>`).join(''):'';
  return `<article class="candidate achievement" id="${esc(c.id)}">
- <header><span class="pick-number">${index+1}</span><strong>${esc(c.project)}</strong><span class="achievement-state">${esc(c.state)}</span></header>
- <div class="shots hero-gallery" id="gallery-${esc(c.id)}" aria-label="${esc(c.project)} photos" tabindex="0">${images.join('')}</div>
- <div class="gallery-dots" aria-label="Choose a photo">${images.map((_,n)=>`<button type="button" data-gallery-dot="gallery-${esc(c.id)}" data-slide="${n}" aria-label="Show image ${n+1} of ${images.length}" aria-pressed="${n===0}"><i></i></button>`).join('')}</div>
+ <header><span class="pick-number">${index+1}</span><div class="achievement-author">${c.author?.avatar?`<img class="achievement-avatar" src="${esc(c.author.avatar)}" width="42" height="42" alt="" loading="lazy">`:''}<div><strong>${esc(c.author?.name||c.project)}</strong><small>${esc(c.project)} · ${esc(date(c.start))}</small></div></div><span class="achievement-state">${esc(c.state)}</span></header>
  <div class="story"><h2>${esc(c.title)}</h2><p>${esc(c.summary)}</p></div>
  <dl class="achievement-facts"><div><dt>Tokens</dt><dd title="${number(c.usage.total_tokens)} recorded tokens">${compact(c.usage.total_tokens)}</dd></div><div><dt>Est. dollars*</dt><dd>${price?'$'+price.usd.toFixed(2):'Unknown'}</dd></div><div><dt>Active time*</dt><dd>${c.tool_active_minutes_proxy} <small>min</small></dd></div></dl>
  <p class="achievement-model">${c.models.map(x=>esc(model(x))).join(' + ')} · ${c.commits.length} ${c.commits.length===1?'commit':'commits'}</p>
+ ${activityTrail(c)}
+ <div class="shots hero-gallery" id="gallery-${esc(c.id)}" aria-label="${esc(c.project)} photos" tabindex="0">${images.join('')}</div>
+ <div class="gallery-navigation"><span>${images.length} images · swipe or use arrows</span><button type="button" data-gallery-prev aria-label="Previous image">←</button><div class="gallery-dots" aria-label="Choose a photo">${images.map((_,n)=>`<button type="button" data-gallery-dot="gallery-${esc(c.id)}" data-slide="${n}" aria-label="Show image ${n+1} of ${images.length}" aria-pressed="${n===0}"><i></i></button>`).join('')}</div><button type="button" data-gallery-next aria-label="Next image">→</button></div>
  <details class="measurement-details"><summary>About these measurements</summary>
  <p><strong>Captured window:</strong> ${esc(date(c.start))} → ${esc(date(c.end))} · Paris. ${esc(c.stateNote)}</p>
  <p><strong>Images:</strong> ${esc(c.imageNote)}</p>

@@ -15,10 +15,11 @@ let reviewReads=0;const imageReads=[];const review={document:reviewDom.window.do
 vm.createContext(review);vm.runInContext(fs.readFileSync('site/run-photos.js','utf8'),review);
 await review.StriveRunPhotos.mountCovers({client:null,root:review.document});
 const [publicCard,privateCard]=review.document.querySelectorAll('.fc');
-assert.deepEqual([...publicCard.querySelectorAll('.run-project-gallery img')].map(img=>img.getAttribute('src')),['blob:chosen-cover','/media/favour-public-page-20261010.webp','/media/favour-campaign-builder-20261010.webp'],'saved author cover leads, with project screenshots beside it');
+assert.deepEqual([...publicCard.querySelectorAll('.run-project-gallery img')].map(img=>img.getAttribute('src')),['/api/run-photos?id=chosen&run_id='+favour+'&w=320','/media/favour-public-page-20261010.webp','/media/favour-campaign-builder-20261010.webp'],'saved author cover leads, with project screenshots beside it');
 assert.equal(privateCard.querySelector('.run-project-gallery'),null,'denied private run cannot inherit public project imagery');
 assert.equal(reviewReads,1,'showcase asks photo access; concurrent cards share the same in-flight read');
-assert.equal(imageReads.length,1,'only selected personal cover bytes are read');
+assert.equal(imageReads.length,1,'public cover defers bytes to native lazy image; concurrent private card retains authenticated blob path');
+assert.equal(publicCard.querySelector('img').loading,'lazy');
 assert.ok(!imageReads.some(path=>path.includes('not-chosen')));
 assert.equal(publicCard.querySelector('.fc-open').style.display,'','existing open link is not hidden by the gallery');
 review.StriveRunPhotos.disposeAll();assert.equal(publicCard.querySelector('.run-project-gallery'),null);assert.equal(publicCard.querySelector('.fc-open').style.display,'');
@@ -31,3 +32,14 @@ for(const ok of [true,false]){
  assert.equal(scope.document.querySelector('[data-photo-placeholder]').hidden,!ok,'only a successful empty read can state that there is no screenshot');scope.StriveRunPhotos.disposeAll();
 }
 console.log('PASS absent image placeholder is withheld on failed or denied photo reads');
+// Browser-managed public image URLs and authenticated image bytes remain distinct.
+for(const signedIn of [false,true]){
+ const d=new JSDOM('<article class="activity-post" data-photo-gallery data-run-id="r" data-run-visibility="public"></article>',{url:'https://striverun.app'}),calls=[];
+ d.window.document.querySelector('article').getBoundingClientRect=()=>({width:680});
+ const scope={document:d.window.document,location:d.window.location,devicePixelRatio:1,AbortController,URL:Object.assign(class extends URL{},{createObjectURL:()=> 'blob:private-reader',revokeObjectURL(){}}),fetch:async(path,opts)=>{calls.push({path,authorization:opts.headers.Authorization});return path.includes('?run_id=')?{ok:true,json:async()=>({photos:[{id:'cover',role:'personal',is_cover:true,width:1600,height:900,url:'/api/run-photos?id=cover&run_id=r'}]})}:{ok:true,blob:async()=>({})}}};
+ vm.createContext(scope);vm.runInContext(fs.readFileSync('site/run-photos.js','utf8'),scope);
+ await scope.StriveRunPhotos.mountCovers({client:signedIn?{auth:{getSession:async()=>({data:{session:{access_token:'test-account-token'}}})}}:null,root:scope.document});
+ const img=scope.document.querySelector('img');assert.equal(img.getAttribute('src'),signedIn?'blob:private-reader':'/api/run-photos?id=cover&run_id=r&w=320');assert.equal(img.width,1600);assert.equal(img.height,900);assert.equal(img.loading,'lazy');
+ assert.equal(calls.length,signedIn?2:1,'anonymous image bytes are deferred to the browser; bearer bytes remain authenticated');if(signedIn)assert.ok(calls.every(c=>c.authorization==='Bearer test-account-token'));scope.StriveRunPhotos.disposeAll();
+}
+console.log('PASS stable sized/lazy public image URL; authenticated image uses account bearer; no private bearer URL exposure.');
