@@ -104,9 +104,7 @@
     return context?.cardFacts?context.cardFacts(r):(contract()?.heroStats(r)||[]);
   }
 
-  function modelName(id){return id==='claude-opus-5-5'?'Claude Opus 5.5':id;}
-
-  function cardSummary(r){return story?.summary(r)||'';}
+  function cardSummary(r){return String(r?.story_result||r?.caption||story?.summary(r)||'').trim();}
 
   // THE BADGE. One small achievement per run, computed from the run's own numbers and nothing
   // else: no history, no other runs, no guess. The first rule that holds wins, and its detail line
@@ -454,7 +452,6 @@
     <${tag} class="fc-title">${esc(titleOf(r))}</${tag}>
     ${cardSummary(r) ? `<p class="fc-cap">${esc(cardSummary(r))}</p>` : ""}
     ${page||checkpoints||r.capture_metadata?`<dl class="fc-activity-stats" aria-label="Recorded facts">${recordedFacts(r).map(([label,value,detail,note])=>`<div><dt>${esc(label)}</dt><dd${detail?` title="${esc(detail)}"`:''}>${esc(value)}</dd>${note?`<small class="fc-fact-note">${esc(note)}</small>`:''}</div>`).join('')}</dl>`:''}
-    ${Array.isArray(r?.capture_metadata?.models)&&r.capture_metadata.models.length===1?`<p class="fc-model-tag">Model · ${esc(modelName(r.capture_metadata.models[0]))}</p>`:''}
     ${story?story.visual(r):''}
     ${r.feedback_question?`<p class="fc-question"><span>Feedback welcome</span>${esc(r.feedback_question)}</p>`:''}
     ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Typed by the author. No capture.</p>' : ''}${evidence?evidence.summary(r):''}

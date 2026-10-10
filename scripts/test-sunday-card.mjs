@@ -14,5 +14,7 @@ let html=P.render(run);assert.match(html,/Recorded work · 1 commit · 1 file to
 html=P.render(run,{token:'a'.repeat(12),choices:{projectVisuals:{['a'.repeat(12)]:{visual:'data'}}}});assert.doesNotMatch(html,/data-photo-gallery|data-visual-run/,'explicit Data suppresses images');
 const publicPhoto={run:run.id,id:'22222222-2222-4222-a222-222222222222'};
 html=P.render(run,{choices:{v:2,visual:'photo',photo:publicPhoto}});assert.match(html,/data-visual-photo/);assert.match(html,/data-gallery-supporting/,'a chosen photo remains separate from supporting project images');
+html=P.render({...run,files_touched:17,code_route:{v:1,projects:[{id:'a'},{id:'b'}]}});assert.match(html,/17 files touched/,'three headline facts must not drop recorded files from work details');
+const fullCaption='Author '.repeat(40);assert.ok(P.render({...run,caption:fullCaption}).includes(fullCaption.trim()),'full authored caption is retained');
 const summary=C.profileFacts([run,run,{id:'missing',prompts:null,duration_s:400}]);assert.match(summary,/1,025/);assert.match(summary,/1 of 2 loaded runs have usage/);assert.match(summary,/1 of 2 loaded runs have human message counts/);assert.doesNotMatch(summary,/1,925|14m/);
 console.log('PASS Sunday card: no double-counted cache, recorded zero retained, missing bill and active time unknown, authored model kept separate, public profile coverage and saved visual choices preserved.');

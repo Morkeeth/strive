@@ -65,7 +65,6 @@
     scope.querySelectorAll('[data-post-source]').forEach(button=>button.addEventListener('click',()=>{
       const source=button.dataset.postSource;
       if(source==='grok'){
-        const other=scope.querySelector('.post-other-ways');if(other)other.open=true;
         scope.querySelector('#drop-file')?.click();return;
       }
       setup.open=true;

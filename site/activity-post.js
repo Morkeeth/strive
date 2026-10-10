@@ -19,6 +19,8 @@
     const caption=String(r.story_result||F.cardSummary(r)||r.caption||'').trim();
     const measured=root.StriveContext?.cardFacts?.(r)||C.heroStats(r);
     const work=C.heroStats(r).filter(([label])=>label!=='Elapsed');
+    const files=r.files_touched??(r.code_route?.v===1&&!r.code_route.unavailable?r.code_route.stats?.files_changed:null);
+    if(Number.isSafeInteger(files)&&files>0&&!work.some(([label])=>/^Files /.test(label)))work.push([r.files_touched!=null?'Files touched':'Files changed',String(files)]);
     const pick=clean.projectVisuals[token],legacy=clean.photo?.run===id?{visual:clean.visual,photo:clean.photo,focus:clean.focus}:null;
     const choice=pick?.visual==='data'?pick:pick?.photo?.run===id?pick:legacy;
     const dataOnly=choice?.visual==='data'||(!pick&&clean.photo&&clean.visual==='data');

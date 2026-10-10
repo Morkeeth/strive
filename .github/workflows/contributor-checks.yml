@@ -23,6 +23,7 @@ jobs:
       - run: npm run test:dropin
       - run: npm run test:identity
       - run: npm run test:people
+      - run: npm run test:sunday
       - run: node scripts/test-runtime-config.mjs
       - run: npm run build
       - run: node scripts/test-people-identity.mjs

@@ -18,7 +18,8 @@
     "test:origin": "node scripts/test-origin.mjs",
     "test:ridge": "node scripts/test-ridge-persistence.mjs",
     "check:hosted-config": "node scripts/check-hosted-config.mjs",
-    "test:dropin": "node scripts/test-dropin-link-page.mjs && node scripts/test-dropin-links.mjs && node scripts/test-dropin-parity.mjs && node scripts/test-dropin-api.mjs"
+    "test:dropin": "node scripts/test-dropin-link-page.mjs && node scripts/test-dropin-links.mjs && node scripts/test-dropin-parity.mjs && node scripts/test-dropin-api.mjs",
+    "test:sunday": "node scripts/test-sunday-card.mjs && node scripts/test-people-spotlight.mjs && node scripts/test-photo-generation.mjs && node scripts/test-public-activity.mjs && node scripts/test-private-review-safety.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",

@@ -156,32 +156,14 @@
       const current=()=>{if(active&&card.isConnected!==false&&coverGeneration.get(card)===generation)return true;for(const url of pendingUrls){URL.revokeObjectURL(url);urls.delete(url)}pendingUrls.clear();return false;};
       try{
         const runId=card.dataset.runId;
-        if(card.dataset.runVisibility==='public'&&showcase[runId]){
-          const visuals=showcase[runId];
-          const group=document.createElement('div');group.className='run-media run-media-gallery run-project-gallery';
-          group.setAttribute('aria-label','Public FAVOUR project screenshots');group.tabIndex=0;
-          for(const visual of visuals){
-            const figure=document.createElement('figure'),link=document.createElement('a'),image=document.createElement('img'),caption=document.createElement('figcaption');
-            link.href=visual.url;link.target='_blank';link.rel='noopener noreferrer';
-            link.setAttribute('aria-label','Open source of '+visual.label);
-            image.className='run-photo-cover';image.src=visual.src;image.alt=visual.alt;image.loading='lazy';
-            caption.textContent=visual.label+' · project context';link.append(image);figure.append(link,caption);group.append(figure);
-          }
-          const route=card.querySelector(':scope > .checkpoint-route');
-          const body=card.querySelector('.history-visual')||card.querySelector('.fc-body');
-          if(route)route.after(group);else if(body)body.after(group);else if(card.querySelector('.post-open'))card.querySelector('.post-open').before(group);else card.append(group);
-          const open=card.querySelector('.fc-open');if(open)open.style.display='none';
-          const story=document.createElement('a');story.className='run-gallery-story-link';story.href='/?run='+encodeURIComponent(runId);story.textContent='View full run →';group.after(story);
-          if(card.classList.contains('activity-post'))story.remove();
-          images.add(group);images.add(story);return;
-        }
+        const visuals=card.dataset.runVisibility==='public'?showcase[runId]||[]:[];
         const listHeaders=await headers(client);if(!current())return;
         const list=await get(`/api/run-photos?run_id=${encodeURIComponent(runId)}`,{headers:listHeaders,signal:controller.signal});
         if(!current()||!list.ok)return;
         const payload=await list.json(), photos=payload?.photos||[];
         const mode=card.dataset.photoLayout||'cover';
         const selected=cardPhotos(card.dataset.gallerySupporting!==undefined?photos.filter(p=>p.role!=='personal'):photos,mode);
-        if(!selected.length){const empty=card.querySelector('[data-photo-placeholder]');if(empty)empty.hidden=false;return;}
+        if(!selected.length&&!visuals.length){const empty=card.querySelector('[data-photo-placeholder]');if(empty)empty.hidden=false;return;}
         // Build a detached group. Attach only while the same view is active, after all reads.
         const group=document.createElement('div');group.className='run-media run-media-gallery';group.setAttribute('aria-label','Images from this run');group.tabIndex=0;
         for(const photo of selected){
@@ -197,6 +179,13 @@
           const link=document.createElement('a');link.href='/?run='+encodeURIComponent(runId)+'#run-photos';link.setAttribute('aria-label','Open '+(roles[photo.role]||'run image')+' at full size');link.append(image);figure.append(link);
           const caption=document.createElement('figcaption');caption.textContent=roles[photo.role]||'Photo';figure.append(caption);group.append(figure);
         }
+        for(const visual of visuals){
+          const figure=document.createElement('figure'),link=document.createElement('a'),image=document.createElement('img'),caption=document.createElement('figcaption');
+          link.href=visual.url;link.target='_blank';link.rel='noopener noreferrer';link.setAttribute('aria-label','Open source of '+visual.label);
+          image.className='run-photo-cover';image.src=visual.src;image.alt=visual.alt;image.loading='lazy';
+          caption.textContent=visual.label+' · project context';link.append(image);figure.append(link,caption);group.append(figure);
+        }
+        if(visuals.length)group.classList.add('run-project-gallery');
         if(!current())return;
         card.querySelectorAll('.run-media').forEach(el=>el.remove());
         const route=card.querySelector(':scope > .checkpoint-route');

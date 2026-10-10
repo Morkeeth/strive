@@ -1,3 +1,4 @@
+import {safeReviewUrl} from './private-review-safety.mjs';
 // Private review presentation. All values and images come from the explicit local bundle.
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const number=n=>new Intl.NumberFormat('en-GB').format(n);
@@ -21,11 +22,11 @@ export function achievementCard(c,index,images){
  <p><strong>Tokens:</strong> ${number(c.usage.total_tokens)} recorded across this bounded builder window, including cached input once. The full window is measured, not usage attributed only to these commits.</p>
  <dl class="source-facts"><dt>Input, including cache</dt><dd>${number(c.usage.input_tokens)}</dd><dt>Output</dt><dd>${number(c.usage.output_tokens)}</dd><dt>Cached input</dt><dd>${number(c.usage.cached_input_tokens)}</dd><dt>Usage records</dt><dd>${number(c.usage.records)} · ${esc(c.usage.basis)}</dd></dl>
  <p><strong>* Active time is a tool-activity proxy:</strong> ${c.tool_active_minutes_proxy} one-minute clock bins contain at least one recorded tool call. It is not measured human active time or continuous tool runtime.</p>
- ${price?`<p><strong>Estimated dollars:</strong> ${esc(price.basis)} <a href="${esc(price.source)}" target="_blank" rel="noopener">${esc(price.source_label||'Published model pricing')}</a>, checked ${esc(price.verified_on)}.</p><ul>${rates}</ul><p>${esc(price.cache_note||`Recorded cache writes: ${number(price.cache_write_5m_tokens)} at 5 minutes and ${number(price.cache_write_1h_tokens)} at 1 hour.`)}</p>`:'<p>No bill or supported model-price estimate was recorded.</p>'}
- <p><strong>You typed:</strong> ${c.you_typed===null?`${c.user_messages} user-role messages were captured, including coordinator messages. No human typing count is claimed.`:`${number(c.you_typed)} direct human messages. System instructions and continuation summaries are excluded.`}</p>
- <p class="source">${esc(c.source.split('/').pop())}<br>Lines ${c.source_lines.join('–')}<br>SHA-256 ${esc(c.source_sha256)}</p>
+ ${price?`<p><strong>Estimated dollars:</strong> ${esc(price.basis)} <a href="${esc(safeReviewUrl(price.source))}" target="_blank" rel="noopener">${esc(price.source_label||'Published model pricing')}</a>, checked ${esc(price.verified_on)}.</p><ul>${rates}</ul><p>${esc(price.cache_note||`Recorded cache writes: ${number(price.cache_write_5m_tokens)} at 5 minutes and ${number(price.cache_write_1h_tokens)} at 1 hour.`)}</p>`:'<p>No bill or supported model-price estimate was recorded.</p>'}
+ <p><strong>You typed:</strong> ${c.you_typed===null?`${esc(c.user_messages)} user-role messages were captured, including coordinator messages. No human typing count is claimed.`:`${number(c.you_typed)} direct human messages. System instructions and continuation summaries are excluded.`}</p>
+ <p class="source">${esc(c.source.split('/').pop())}<br>Lines ${esc(c.source_lines.join('–'))}<br>SHA-256 ${esc(c.source_sha256)}</p>
  <h3>Git evidence · ${c.files.length} files</h3><ul>${c.commits.map(x=>`<li><code>${esc(x.sha.slice(0,7))}</code> ${esc(x.subject)}<small>${esc(date(x.date))}</small></li>`).join('')}</ul>
  <details><summary>Changed files</summary><ul>${c.files.map(x=>`<li><code>${esc(x)}</code></li>`).join('')}</ul></details>
- <h3>Quote candidate · Oscar approval needed</h3>${c.quote_candidate?`<p class="quote-text">${esc(c.quote_candidate.text)}</p><p>First direct human message · ${esc(date(c.quote_candidate.timestamp))} · source line ${c.quote_candidate.line}. Private; not selected or published.</p>`:'<p>No directly attributed Oscar message is available in this window. Coordinator text is not offered as his quote.</p>'}
+ <h3>Quote candidate · Oscar approval needed</h3>${c.quote_candidate?`<p class="quote-text">${esc(c.quote_candidate.text)}</p><p>First direct human message · ${esc(date(c.quote_candidate.timestamp))} · source line ${esc(c.quote_candidate.line)}. Private; not selected or published.</p>`:'<p>No directly attributed Oscar message is available in this window. Coordinator text is not offered as his quote.</p>'}
  </details></article>`;
 }
