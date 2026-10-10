@@ -15,10 +15,11 @@ function validate(m){
  if(m.estimates!==undefined){if(!estimates())throw Error('Estimate validator unavailable');estimates().validate(m.estimates,m);}
  return m;
 }
-function context(r){const goal=String(r.caption||r.note||'').trim(),result=String(r.story_result||'').trim();// The run's description is already on the card, above this. It is not said twice: this block adds
+function context(r,{shownText=''}={}){const goal=String(r.caption||r.note||'').trim(),result=String(r.story_result||'').trim();// The run's description is already on the card, above this. It is not said twice: this block adds
 // only what the author wrote about the result, and stays out of the way when there is nothing.
+if(result&&result===String(shownText).trim())return '';
 if(!result)return goal?'':'<p class="meta run-context-none">The author has not described this run. Activity alone cannot tell us what was achieved.</p>';
-return `<section class="run-context" aria-label="What changed"><h3>What changed</h3><p>${esc(result)}</p><p class="meta">In the author’s words.</p></section>`;}
+return `<section class="run-context" aria-label="What changed"><h3>What changed</h3><p>${esc(result)}</p></section>`;}
 function setup(r){let m=null;try{m=validate(r.capture_metadata)}catch{}
  const models=m?.models?.length?[...new Set(m.models)].join(', '):'Unknown — not recorded';
  const total=m&&count(m.input_tokens)&&count(m.output_tokens)?(m.input_tokens+m.output_tokens).toLocaleString('en-US'):'Unknown — not recorded';

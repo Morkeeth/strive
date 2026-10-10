@@ -455,7 +455,7 @@
     ${story?story.visual(r):''}
     ${r.feedback_question?`<p class="fc-question"><span>Feedback welcome</span>${esc(r.feedback_question)}</p>`:''}
     ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Typed by the author. No capture.</p>' : ''}${evidence?evidence.summary(r):''}
-    ${page&&context?context.context(r):''}
+    ${page&&context?context.context(r,{shownText:cardSummary(r)}):''}
     <div class="fc-route-secondary">${checkpoints?"":heroVisual(r)}</div>
     ${checkpoints?'':`<p class="fc-open">${preview?'Preview your story':'Open the story →'}</p>`}
   `;
