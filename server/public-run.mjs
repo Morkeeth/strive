@@ -270,14 +270,22 @@ const INK='#0a0a0a',SOFT='#6f6f6b',BLUE='#0047ff',WASH='#f2f5ff',BLUE_SOFT='#c4d
 export async function readAvatar(run,fetcher=fetch){
  if(run?.visibility!=='public')return null;
  const source=Feed.profileOf(run).avatar;
- let target;
- try{target=new URL(source)}catch(_){return null}
- if(target.protocol!=='https:'||!['github.com','avatars.githubusercontent.com','pbs.twimg.com'].includes(target.hostname))return null;
+ const hosts=new Set(['github.com','avatars.githubusercontent.com','pbs.twimg.com']);
+ const allowed=url=>{try{const u=new URL(url);return u.protocol==='https:'&&hosts.has(u.hostname)&&!u.username&&!u.password&&(u.port===''||u.port==='443')?u.href:null}catch(_){return null}};
+ let url=allowed(source);
+ if(!url)return null;
  try{
-  const response=await fetcher(target.href,{signal:AbortSignal.timeout(4000),redirect:'follow',headers:{Accept:'image/png,image/jpeg,image/webp'}});
+  let response;
+  for(let hop=0;hop<4;hop++){
+   response=await fetcher(url,{signal:AbortSignal.timeout(4000),redirect:'manual',headers:{Accept:'image/png,image/jpeg,image/webp'}});
+   if(response.status<300||response.status>=400)break;
+   const location=response.headers.get('location');
+   if(!location||hop===3)return null;
+   url=allowed(new URL(location,url).href);
+   if(!url)return null;
+  }
   if(!response.ok)return null;
-  const end=new URL(response.url||target.href);
-  if(end.protocol!=='https:'||!['github.com','avatars.githubusercontent.com','pbs.twimg.com'].includes(end.hostname))return null;
+  if(response.url&&!allowed(response.url))return null;
   const type=(response.headers.get('content-type')||'').split(';')[0].trim().toLowerCase();
   if(!['image/png','image/jpeg','image/webp'].includes(type))return null;
   if(Number(response.headers.get('content-length')||0)>1_000_000)return null;

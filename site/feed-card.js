@@ -145,8 +145,9 @@
     const name = p.display_name || p.name || handle || "Builder";
     // github_handle is guarded against the linked Auth identity by the database. A chosen
     // STRIVE handle and a legacy X label never establish ownership of those accounts.
-    const github = /^[a-z0-9_-]{1,60}$/i.test(p.github_handle || "") ? p.github_handle : null;
-    return { handle, name, github, avatar: github ? `https://github.com/${encodeURIComponent(github)}.png?size=160` : p.avatar_url || (shown && shown.avatar_url) || null };
+    const github = /^[a-z0-9-]{1,39}$/i.test(p.github_handle || "") ? p.github_handle : null;
+    const saved = /^https:\/\//i.test(p.avatar_url || "") ? p.avatar_url : null;
+    return { handle, name, github, avatar: saved || (github ? `https://github.com/${encodeURIComponent(github)}.png?size=160` : (shown && shown.avatar_url) || null) };
   }
 
   const BRAND_FACE = '<svg viewBox="0 0 64 64" aria-hidden="true"><polyline points="10,44 20,36 28,40 36,20 44,30 54,16" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="36" cy="20" r="5" fill="#fc4c02" stroke="white" stroke-width="2"/></svg>';
@@ -158,7 +159,7 @@
     const p = profileOf(r);
     const src = /^https:\/\//i.test(p.avatar || "") ? p.avatar : null;
     if (!src) return `<span class="fc-face fc-brand" style="--s:${s}px" aria-hidden="true">${BRAND_FACE}</span>`;
-    return `<span class="fc-face fc-brand" style="--s:${s}px" aria-hidden="true">${BRAND_FACE}<img src="${esc(src)}" alt="" width="${s}" height="${s}" loading="eager" referrerpolicy="no-referrer" onerror="this.remove()"></span>`;
+    return `<span class="fc-face fc-brand" style="--s:${s}px" aria-hidden="true">${BRAND_FACE}<img src="${esc(src)}" alt="" width="${s}" height="${s}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"></span>`;
   }
 
   // A short sitting spread over 50 bins is a comb of ones and zeros, and a comb is not a shape

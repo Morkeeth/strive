@@ -86,7 +86,7 @@
   function githubHandleOf(user) {
     const gh = identitiesOf(user).find((i) => i.provider === "github");
     const h = gh ? gh.handle : "";
-    return /^[a-z0-9_-]{1,60}$/i.test(h) ? h : null;
+    return /^[a-z0-9-]{1,39}$/i.test(h) ? h : null;
   }
   // The x_handle column is written only from an X identity (Supabase provider "x"; "twitter" is
   // the legacy OAuth 1.0a provider). X handles are 1 to 15 characters: letters, digits, underscore.
@@ -127,8 +127,8 @@
       id: p.id,
       handle,
       display_name,
-      avatar_url: (p.auth_uid && p.auth_uid === user?.id ? suggest(user).avatar_url : null)
-        || normalizeAvatarUrl(p.avatar_url),
+      avatar_url: normalizeAvatarUrl(p.avatar_url)
+        || (p.auth_uid && p.auth_uid === user?.id ? suggest(user).avatar_url : null),
       legacy: !str(p.handle),
       url: handle ? "/?u=" + encodeURIComponent(handle) : "/",
     };
