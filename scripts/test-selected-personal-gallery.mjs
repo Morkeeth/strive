@@ -49,3 +49,18 @@ console.log('PASS actual activity post with saved personal visual: explicit Resu
  const page=new JSDOM(html({...current,capture_metadata:full},{photos}));assert.equal(page.window.document.querySelectorAll('.public-run-photo-grid>figure').length,3);assert.equal(page.window.document.querySelectorAll('.public-image-lightbox').length,5);assert.equal(page.window.document.querySelector('.media-more-count').textContent,'+2');assert.ok(!page.window.document.body.innerHTML.includes(hidden.id));
 }
 console.log('PASS five authorized images become three visible project-first tiles, selected personal last, +2; full viewer retains five and never reads unchosen personal.');
+
+// The native detail path offers the full source and never widens reader access.
+{
+ const d=new JSDOM('<div id="detail"></div>',{url:'https://striverun.app',runScripts:'outside-only'}),w=d.window,reads=[];
+ w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.dispatchEvent(new w.Event('close'))};w.URL.createObjectURL=()=> 'blob:detail';w.URL.revokeObjectURL=()=>{};
+ w.fetch=async path=>{reads.push(path);return path.includes('&id=')?{ok:true,blob:async()=>new w.Blob(['TEST'])}:{ok:true,json:async()=>({photos:[personal,hidden,result,support]})}};
+ w.eval(fs.readFileSync('site/run-photos.js','utf8'));
+ await w.StriveRunPhotos.mount({client:null,run:current,slot:w.document.querySelector('#detail'),owner:false,status(){}});
+ assert.equal(w.document.querySelectorAll('.run-photo-grid--reader .photo-open').length,3);
+ w.document.querySelector('.photo-open').click();await new Promise(r=>setTimeout(r,0));
+ assert.equal(w.document.querySelector('.run-image-lightbox img').alt,'Result');assert.equal(w.document.querySelector('[data-image-count]').textContent,'1 / 3');
+ assert.ok(reads.some(p=>p.includes(result.id)&&!p.includes('&w=')),'detail viewer requests the full authorized source');assert.ok(!reads.some(p=>p.includes(hidden.id)),'detail viewer never requests unselected personal');
+ w.StriveRunPhotos.disposeAll();
+}
+console.log('PASS native detail: full-image control opens authorized source; unselected personal stays private.');
