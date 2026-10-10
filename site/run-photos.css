@@ -12,3 +12,6 @@
 .run-gallery-story-link:hover{border-color:var(--blue);background:var(--blue-wash)}
 @media(max-width:520px){.run-media-gallery{gap:8px;margin:0 14px 16px}.run-media-gallery figure a{min-height:120px}}
 @media(max-width:600px){.card.fc .run-project-gallery{display:grid;grid-auto-flow:row;grid-auto-columns:auto;grid-template-columns:minmax(0,1fr);overflow:visible}.card.fc .run-project-gallery figure a{min-height:0}}
+
+/* Detail is for inspection: keep the full source visible; feed crops are separate. */
+.run-photo-grid--reader{min-width:0}.run-photo-grid--reader figure{min-width:0}.run-photo-grid--reader .photo-open{display:block;width:100%;padding:0;margin:0;border:1px solid var(--rule);background:var(--rule-2);color:var(--blue);cursor:zoom-in;overflow:hidden}.run-photo-grid--reader .photo-open img{width:100%;height:auto;aspect-ratio:1;object-fit:contain;object-position:center}.run-photo-grid--reader .photo-open span{display:block;padding:8px;font-size:11px;background:white}
