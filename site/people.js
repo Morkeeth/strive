@@ -362,16 +362,7 @@ window.GrinderPeople = function ({
         );
       } else if (recent.length) {
         parts.push(
-          `<section class="people-section"><div class="head"><h2>Builders with public runs</h2><span class="meta">${recent.length}</span></div>` +
-            recent
-              .map((p) =>
-                personCard(p, {
-                  public_runs: Number(p.public_runs) || 0,
-                  followSlot: !!self,
-                }),
-              )
-              .join("") +
-            `</section>`,
+          `<section class="people-section people-meet"><div class="head"><div><p class="people-eyebrow">Building in public</p><h2>Meet a builder</h2></div>${recent.length>1?'<button type="button" id="people-roll" class="act ghost">Roll another ↻</button>':''}</div><div id="people-spotlight" aria-live="polite">${personCard(recent[0],{public_runs:Number.isFinite(Number(recent[0].public_runs))?Number(recent[0].public_runs):null,followSlot:!!self})}</div><p class="people-pool-note">${recent.length===1?'One builder has public runs so far.':'Explore '+recent.length+' recently active public builders. Roll for another; your follow list stays yours.'}</p>${recent.length>1?`<details class="people-all"><summary>Browse all ${recent.length} builders</summary>${recent.map(p=>personCard(p,{public_runs:Number.isFinite(Number(p.public_runs))?Number(p.public_runs):null,followSlot:!!self})).join('')}</details>`:''}</section>`,
         );
       } else {
         parts.push(
@@ -384,6 +375,14 @@ window.GrinderPeople = function ({
       }
 
       body.innerHTML = parts.join("");
+      let spotlightIndex=0;
+      byId("people-roll")?.addEventListener("click",async()=>{
+        if(!recent||recent.length<2)return;
+        spotlightIndex=(spotlightIndex+1+Math.floor(Math.random()*(recent.length-1)))%recent.length;
+        const person=recent[spotlightIndex],slot=byId("people-spotlight");if(!slot)return;
+        slot.innerHTML=personCard(person,{public_runs:Number.isFinite(Number(person.public_runs))?Number(person.public_runs):null,followSlot:!!self});
+        await wireFollowSlots(slot);
+      });
       byId("people-retry")?.addEventListener("click", () => load(query).catch(fail));
       const signin = byId("people-signin");
       if (signin) {

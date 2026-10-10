@@ -19,3 +19,11 @@ assert.equal(publicCard.querySelector('.run-gallery-story-link').getAttribute('h
 review.StriveRunPhotos.disposeAll();
 assert.equal(publicCard.querySelector('.run-project-gallery'),null);
 console.log('PASS public FAVOUR context stays on one public run; private record is not decorated');
+// A successful empty photo read and an access failure must not look the same.
+for(const ok of [true,false]){
+ const emptyDom=new JSDOM('<article class="activity-post" data-photo-gallery data-run-id="empty"><div data-photo-placeholder hidden>No screenshot added</div></article>',{url:'https://striverun.app'});
+ const scope={document:emptyDom.window.document,location:emptyDom.window.location,AbortController,URL,fetch:async()=>({ok,status:ok?200:404,json:async()=>({photos:[]})})};
+ vm.createContext(scope);vm.runInContext(fs.readFileSync('site/run-photos.js','utf8'),scope);await scope.StriveRunPhotos.mountCovers({client:null,root:scope.document});
+ assert.equal(scope.document.querySelector('[data-photo-placeholder]').hidden,!ok,'only a successful empty read can state that there is no screenshot');scope.StriveRunPhotos.disposeAll();
+}
+console.log('PASS absent image placeholder is withheld on failed or denied photo reads');

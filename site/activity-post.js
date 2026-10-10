@@ -36,7 +36,7 @@
       ${measured.length?`<dl class="post-facts" aria-label="Recorded activity">${measured.map(([label,value,detail])=>`<div${value==='Not recorded'?' class="post-fact-missing"':''}><dt>${esc(label)}</dt><dd${detail?` title="${esc(detail)}"`:''}>${esc(value)}</dd></div>`).join('')}</dl>`:''}
       ${work.length?`<p class="post-work">Recorded work · ${work.map(([label,value])=>esc(value)+' '+esc(value==='1'?({'Commits':'commit','Files touched':'file touched','Files changed':'file changed','Projects':'project'}[label]||label.toLowerCase()):label.toLowerCase())).join(' · ')}</p>`:''}
       <details class="post-measurement-note"><summary>About these measurements</summary>${measured.filter(row=>row[2]).map(([label,,detail])=>`<p><strong>${esc(label)}.</strong> ${esc(detail)}</p>`).join('')}</details>
-      ${trace}${visual}${r.feedback_question?`<p class="post-question">${esc(r.feedback_question)}</p>`:''}
+      ${trace}${visual}${gallery&&!photo?`<div class="post-media-empty" data-photo-placeholder hidden><svg viewBox="0 0 40 32" width="40" height="32" fill="none" aria-hidden="true"><rect x="1" y="1" width="38" height="30" rx="5"/><circle cx="12" cy="10" r="3"/><path d="m4 27 11-11 7 7 5-5 9 9"/></svg><strong>No screenshot added</strong><p>The recorded work is here. A project image can show what changed.</p>${owner?`<a href="${href}#run-photos">Add a project screenshot →</a>`:''}</div>`:''}${r.feedback_question?`<p class="post-question">${esc(r.feedback_question)}</p>`:''}
       <p class="post-open"><a href="${href}">View full run <span aria-hidden="true">→</span></a></p><footer class="fc-foot">${actions}</footer><section class="dc-comments" hidden aria-label="Comments on this run"></section>
     </article>`;
   }

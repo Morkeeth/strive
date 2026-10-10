@@ -153,6 +153,7 @@
     const cards=[...host.querySelectorAll('.activity-post[data-photo-gallery]:not([data-photo-checked]), .fc[data-run-id]:not([data-photo-checked]), .card[data-run-id]:not(.dc):not([data-photo-checked]), .history-run[data-run-id]:not([data-photo-checked])')];
     await Promise.all(cards.map(async card=>{
       card.dataset.photoChecked='true';
+      const placeholder=card.querySelector('[data-photo-placeholder]');if(placeholder)placeholder.hidden=true;
       const generation=Symbol(),pendingUrls=new Set();coverGeneration.set(card,generation);
       const current=()=>{if(active&&card.isConnected!==false&&coverGeneration.get(card)===generation)return true;for(const url of pendingUrls){URL.revokeObjectURL(url);urls.delete(url)}pendingUrls.clear();return false;};
       try{
@@ -182,7 +183,7 @@
         const payload=await list.json(), photos=payload?.photos||[];
         const mode=card.dataset.photoLayout||'cover';
         const selected=cardPhotos(card.dataset.gallerySupporting!==undefined?photos.filter(p=>p.role!=='personal'):photos,mode);
-        if(!selected.length)return;
+        if(!selected.length){const empty=card.querySelector('[data-photo-placeholder]');if(empty)empty.hidden=false;return;}
         // Build a detached group. Attach only while the same view is active, after all reads.
         const group=document.createElement('div');group.className='run-media run-media-gallery';group.setAttribute('aria-label','Images from this run');group.tabIndex=0;
         for(const photo of selected){
