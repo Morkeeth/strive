@@ -525,7 +525,7 @@ window.GrinderSocial = function ({
     if (!me()) {
       const label = slot.dataset.label || "Sign in with GitHub";
       slot.innerHTML =
-        `<button type="button" id="follow-signin" class="act blue">${esc(label)}</button>`;
+        `<button type="button" id="follow-signin" class="act blue follow-button">${esc(label)}</button>`;
       slot.querySelector("#follow-signin").onclick = () => {
         try {
           sessionStorage.setItem(
@@ -560,9 +560,17 @@ window.GrinderSocial = function ({
       let active = rows.length > 0;
       const button = document.createElement("button");
       button.type = "button";
-      button.textContent = active ? "Following" : "Follow";
-      button.className = active ? "act follow-button is-following" : "act blue follow-button";
-      button.setAttribute("aria-pressed", active ? "true" : "false");
+      let hovered = false;
+      const paintFollow = () => {
+        button.textContent = active ? (hovered || document.activeElement === button ? "Unfollow" : "Following") : "Follow";
+        button.className = active ? "act follow-button is-following" : "act blue follow-button";
+        button.setAttribute("aria-pressed", String(active));
+      };
+      button.addEventListener("mouseenter", () => { hovered = true; paintFollow(); });
+      button.addEventListener("mouseleave", () => { hovered = false; paintFollow(); });
+      button.addEventListener("focus", paintFollow);
+      button.addEventListener("blur", paintFollow);
+      paintFollow();
       slot.append(button);
       button.onclick = async () => {
         button.disabled = true;
@@ -588,9 +596,7 @@ window.GrinderSocial = function ({
                 ),
             );
           active = !active;
-          button.textContent = active ? "Following" : "Follow";
-          button.className = active ? "act follow-button is-following" : "act blue follow-button";
-          button.setAttribute("aria-pressed", active ? "true" : "false");
+          paintFollow();
           status(active ? "Following. Their public runs will appear in Following." : "Unfollowed.");
         } catch (e) {
           fail(e);
@@ -634,9 +640,7 @@ window.GrinderSocial = function ({
                   .eq("followed_id", person.id),
               );
               active = false;
-              button.textContent = "Follow";
-              button.className = "act blue follow-button";
-              button.setAttribute("aria-pressed", "false");
+              paintFollow();
             }
             await result(
               db
