@@ -546,3 +546,5 @@ button,summary{touch-action:manipulation}
 .post-start{margin-top:0;padding:20px}.post-command-details{min-width:0;max-width:100%}.post-command-details summary{font-size:12px;cursor:pointer;padding:8px}.post-quick-start .cmd{display:block}.post-command-details code{display:block;margin-top:10px}.post-command-details:not([open]) code{display:none}#run-edit .run-photo-grid[data-photo-count="1"]{grid-template-columns:minmax(0,180px)}#run-edit .run-photo-grid[data-photo-count="2"]{grid-template-columns:repeat(2,minmax(0,1fr))}
 
 @media(max-width:600px){.post-start{padding:10px 0}.post-start .post-flow-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.post-start .post-flow-steps li{white-space:normal;align-items:flex-start;line-height:1.35;font-size:11px}.post-start .post-flow-steps li>span{flex-shrink:0}}
+
+#app>.post-page-head{margin-bottom:8px}.post-start{padding:0}.post-start .post-start-intro{margin-bottom:16px;max-width:48ch}

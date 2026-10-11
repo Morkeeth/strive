@@ -7,8 +7,8 @@
 
   function setupHtml({agentPrompt,capture,syncHtml,dropHtml,agentFiles=[],agentCommands={}}){
     const tabs=[['editor','Editor plugin'],['terminal','Terminal'],['automatic','Automatic imports'],['files','Find a session']];
-    return `<section class="post-start" aria-labelledby="post-start-title"><h2 id="post-start-title">Choose your agent</h2>
-      <p class="post-start-intro">Choose your agent, run one command on your computer, then pick a session. Nothing is saved online yet.</p><ol class="post-flow-steps" aria-label="Import steps"><li aria-current="step"><span>1</span>Choose your agent</li><li><span>2</span>Pick a session</li><li><span>3</span>Private preview</li></ol>
+    return `<section class="post-start" aria-label="Choose your agent">
+      <p class="post-start-intro">Open a local session picker, then check your private preview. Nothing is saved online yet.</p><ol class="post-flow-steps" aria-label="Import steps"><li aria-current="step"><span>1</span>Choose your agent</li><li><span>2</span>Pick a session</li><li><span>3</span>Private preview</li></ol>
       <div class="post-source-grid" aria-label="Choose your agent">
         <button class="ghost" type="button" data-post-source="cursor" data-command="${esc(agentCommands.cursor||capture)}"><img src="/media/cursor-mark.svg" alt=""><strong>Cursor</strong><span>Open the local picker</span></button>
         <button class="ghost" type="button" data-post-source="claude" data-command="${esc(agentCommands.claude||capture)}"><img src="/media/claude-mark.svg" alt=""><strong>Claude Code</strong><span>Open the local picker</span></button>
