@@ -1,6 +1,10 @@
 /* A public feed post is one selected run. Day/project totals live in their own views. */
 (function(root){
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const links=(typeof module!=='undefined'&&module.exports?require('./run-links.js'):root.StriveLinks)||{
+    runHref:r=>'/?run='+encodeURIComponent(r?.id||''),
+    profileHref:h=>'/?u='+encodeURIComponent(h||'')
+  };
   function activitySeries(r){
     const valid=a=>Array.isArray(a)&&a.length>0&&a.every(v=>Number.isSafeInteger(v)&&v>=0);
     const typed=r.prompts??r.turns_typed,tools=r.tool_calls??r.ridge_tool_calls;
@@ -29,7 +33,7 @@
     return `<div class="post-trail"><div class="post-trail-label">Activity <span>${esc(label)}</span></div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}; idle gaps compressed">${bars}</svg><div class="post-trail-axis"><span>${data.idle?'Idle gaps compressed':'Recorded activity'}</span><span>${points.some(p=>p.commit)?'Ticks: commits':''}</span></div><details class="activity-basis"><summary>Receipts</summary><p>${esc(basis)}</p></details></div>`;
   }
   function render(r,{choices=null,token='',owner=false,cardId='post-'+r.id,actions='',dateLabel='' }={}){
-    const C=root.GrinderContract,F=root.GrinderFeed,clean=root.StriveDayCard.clean(choices),id=String(r.id),href='/?run='+encodeURIComponent(id),p=r.profiles||{},handle=p.handle||p.github_handle,name=p.display_name||p.name||handle||'Builder';
+    const C=root.GrinderContract,F=root.GrinderFeed,clean=root.StriveDayCard.clean(choices),id=String(r.id),href=links.runHref(r),p=r.profiles||{},handle=p.handle||p.github_handle,name=p.display_name||p.name||handle||'Builder';
     const project=root.StriveActivity.project(r.project),title=F.titleOf({...r,created_at:null});
     const caption=String(r.caption||F.cardSummary(r)||r.story_result||'').trim();
     const work=C.heroStats(r).filter(([label])=>label!=='Elapsed');
@@ -46,14 +50,14 @@
     const audience=owner?({public:'Public',private:'Only me',link:'Followers',close_friends:'Close friends',anonymous:'Only me'}[r.visibility]||'Only me'):r.visibility!=='public'?'Shared with you':'';
     const day=root.StriveActivity.time(r)!==null?root.StriveDay.localDay(new Date(r.started_at)):null;
     return `<article class="card dc dc-compact activity-post" id="${esc(cardId)}" data-run-id="${esc(id)}" data-run-visibility="${esc(r.visibility||'')}" data-run-owner="${owner}" data-media-seed="${esc(id)}" data-media-story="${esc(r.caption||title)}" data-media-harness="${esc(r.harness||'')}" data-media-model="${esc((Array.isArray(r.capture_metadata?.models)?r.capture_metadata.models:[]).join(', '))}" data-photo-layout="${esc(r.photo_layout||'cover')}"${r.photo_layout==='result'&&r.capture_metadata?.estimates?.v===1?' data-project-gallery':''}${gallery?' data-photo-gallery':''}${photo&&!projectFirst?' data-gallery-supporting':''} data-at="0" data-count="1">
-      <header class="dc-head">${F.face(r,36)}<div class="dc-identity">${handle?`<a class="dc-author" href="/?u=${encodeURIComponent(handle)}">${esc(name)}</a>`:`<strong class="dc-author">${esc(name)}</strong>`}<p class="meta">${esc(dateLabel)}${r.harness?' · '+esc(F.harnessName(r)):''}</p></div><details class="post-options"><summary aria-label="Run options">•••</summary><div><a href="${href}">Open run</a>${owner?`<a href="${href}#run-edit">Edit this run</a>`:''}${day?`<a href="/?day=${day}${owner?'':'&p='+encodeURIComponent(r.profile_id)}">Day summary</a>`:''}${root.StriveContext?.measurementDetails?.(r)||''}</div></details></header>
+      <header class="dc-head">${F.face(r,36)}<div class="dc-identity">${handle?`<a class="dc-author" href="${esc(links.profileHref(handle))}">${esc(name)}</a>`:`<strong class="dc-author">${esc(name)}</strong>`}<p class="meta">${esc(dateLabel)}${r.harness?' · '+esc(F.harnessName(r)):''}</p></div><details class="post-options"><summary aria-label="Run options">•••</summary><div><a href="${esc(href)}">Open run</a>${owner?`<a href="${esc(href)}#run-edit">Edit this run</a>`:''}${day?`<a href="/?day=${day}${owner?'':'&p='+encodeURIComponent(r.profile_id)}">Day summary</a>`:''}${root.StriveContext?.measurementDetails?.(r)||''}</div></details></header>
       ${audience?`<p class="dc-audience">${esc(audience)}</p>`:''}
-      <div class="post-story">${project?`<a class="post-project" href="/?project=${encodeURIComponent(r.project)}&scope=${owner?'mine':'public'}">${esc(project)}</a>`:''}<h2><a href="${href}">${esc(title)}</a></h2>${caption&&caption!==title?`<p class="post-caption">${esc(caption)}</p>`:!caption?(root.StrivePlaceholders?.render('description',{compact:true})||''):''}</div>
+      <div class="post-story">${project?`<a class="post-project" href="/?project=${encodeURIComponent(r.project)}&scope=${owner?'mine':'public'}">${esc(project)}</a>`:''}<h2><a href="${esc(href)}">${esc(title)}</a></h2>${caption&&caption!==title?`<p class="post-caption">${esc(caption)}</p>`:!caption?(root.StrivePlaceholders?.render('description',{compact:true})||''):''}</div>
       ${root.StriveContext?.headlineHtml?.(r)||''}
       <div class="post-workline">${!noImage?(root.StriveContext?.cardSecondary?.(r)||''):''}
       ${work.length?`<p class="post-work">Recorded work · ${work.map(([label,value])=>esc(value)+' '+esc(value==='1'?({'Commits':'commit','Files touched':'file touched','Files changed':'file changed','Projects':'project'}[label]||label.toLowerCase()):label.toLowerCase())).join(' · ')}</p>`:''}</div>
       ${visual}${gallery?`<div class="run-media-slot"><div class="post-media-empty" data-photo-placeholder>${noImage?(root.StrivePlaceholders?.render('screenshot',{story:r.caption||title,owner,seed:id,harness:r.harness,model:(Array.isArray(r.capture_metadata?.models)?r.capture_metadata.models:[]).join(', ')})||''):'<div class="media-loading" role="status" aria-label="Loading run images"></div>'}</div></div>`:''}${r.feedback_question?`<p class="post-question">${esc(r.feedback_question)}</p>`:''}
-      <p class="post-open"><a href="${href}">View full run <span aria-hidden="true">→</span></a></p><footer class="fc-foot">${actions}</footer><section class="dc-comments" hidden aria-label="Comments on this run"></section>
+      <p class="post-open"><a href="${esc(href)}">View full run <span aria-hidden="true">→</span></a></p><footer class="fc-foot">${actions}</footer><section class="dc-comments" hidden aria-label="Comments on this run"></section>
     </article>`;
   }
   root.StrivePost={render,trail,activitySeries};if(typeof module!=='undefined'&&module.exports)module.exports=root.StrivePost;
