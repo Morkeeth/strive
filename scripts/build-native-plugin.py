@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build the public native plugin download from source, without local state."""
 import hashlib
+import base64
 import importlib.util
 import json
 from pathlib import Path
@@ -9,6 +10,9 @@ import tempfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
+MCP_CONFIG = {'strive': {'command': 'uvx', 'args': ['--from', 'striverun==0.1.0', 'strive-mcp']}}
+MCP_ENCODED = base64.b64encode(json.dumps(MCP_CONFIG, separators=(',', ':')).encode()).decode()
+MCP_WEB_LINK = 'https://cursor.com/link/mcp/install?name=strive&config=' + MCP_ENCODED
 spec = importlib.util.spec_from_file_location('installer', ROOT/'scripts/strive-plugin.py')
 installer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(installer)
@@ -58,6 +62,13 @@ Run `/strive:strive` and name the project and session you want to review.
 
 ## Cursor
 
+After `striverun` is published on PyPI, [Add STRIVE's private preview tools to Cursor](%s).
+This installs a local MCP server with `list_sessions` and `preview_session` only.
+It does not install the `strive` skill or completion hook. Cursor will ask you to
+review the server before adding it. Python 3.9+ and `uvx` are required.
+
+For the full STRIVE skill and optional local hook, use the local plugin route below.
+
 Cursor's documented local plugin route loads a plugin from
 `~/.cursor/plugins/local`. Clone the public source and copy the self-contained
 plugin there:
@@ -101,5 +112,5 @@ Review and save in STRIVE starts as Only me. Choose your audience separately.
 
 Tell us what happened at https://striverun.app/?feedback: your editor, the action,
 what you expected and what happened. Do not include tokens or raw transcripts.
-''')
+''' % MCP_WEB_LINK)
 print('Built STRIVE native plugin '+manifest['version']+' '+sha)
