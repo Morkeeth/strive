@@ -56,14 +56,14 @@
   // marked Result when the layout asks for it. With a single picture on the run there is nothing to
   // guess. Otherwise no picture: the first upload is never assumed to be the right one.
   function lead(photos,mode){
-    photos=photos.filter(p=>p.is_selected!==false);
+    photos=photos.filter(p=>p.is_selected!==false&&p.is_private!==true);
     const shown=photos.filter(p=>p.role!=='personal'||p.personal_public_selected===true),cover=shown.find(p=>p.is_cover),result=shown.find(p=>p.role==='result');
     return (mode==='result'?result||cover:cover)||(shown.length===1?shown[0]:null);
   }
   // A feed card can show the selected cover and the work beside it. Keep at most one
   // personal picture, and never turn the other personal uploads into a public gallery.
   function cardPhotos(photos,mode,projectFirst=false){
-    photos=photos.filter(p=>p.is_selected!==false);
+    photos=photos.filter(p=>p.is_selected!==false&&p.is_private!==true);
     if(photos.length&&photos.every(p=>Number.isInteger(p.sort_position)))return photos.filter(p=>p.role!=='personal'||p.personal_public_selected===true).sort((a,b)=>a.sort_position-b.sort_position).slice(0,6);
     if(projectFirst){
       const work=photos.filter(p=>p.role!=='personal');
@@ -121,6 +121,24 @@
     };
     return dispose;
   }
+  async function compressPhoto(file){
+    if(file.size<=3*1024*1024)return file;
+    const source=URL.createObjectURL(file);
+    try{
+      const image=new Image();
+      await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject;image.src=source;});
+      const scale=Math.min(1,1600/Math.max(image.naturalWidth,image.naturalHeight));
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.max(1,Math.round(image.naturalWidth*scale));
+      canvas.height=Math.max(1,Math.round(image.naturalHeight*scale));
+      canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
+      let quality=.82,blob;
+      do {blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',quality));quality-=.12;}
+      while(blob?.size>3*1024*1024&&quality>=.34);
+      if(!blob)throw Error('Image compression failed');
+      return blob;
+    }finally{URL.revokeObjectURL(source);}
+  }
   async function openImage({path,client,label='Run image',gallery=[],initialId=null}){
     const dialog=document.createElement('dialog');dialog.className='run-image-lightbox';
     dialog.innerHTML='<header><button type="button" data-image-prev aria-label="Previous image">←</button><span data-image-count></span><button type="button" data-image-next aria-label="Next image">→</button><button type="button" data-image-close aria-label="Close image">Close ×</button></header><div data-image-body><p>Loading image…</p></div>';document.body.append(dialog);dialog.showModal();
@@ -133,7 +151,7 @@
   }
   async function mount({client,run,slot,owner,status,isCurrent=()=>true,onChanged=()=>{},staged=false}){
     if(!slot||!run?.id)return;
-    let active=true,cropDispose=null,placeholderDispose=null,draftPhotos=null,originalPhotos=[];
+    let active=true,cropDispose=null,placeholderDispose=null,draftPhotos=null,originalPhotos=[],lastRemoved=null;
     const controller=new AbortController(),objectUrls=[],imageBlobs=new Map();
     const current=()=>active&&isCurrent()&&slot.isConnected!==false;
     const dispose=()=>{active=false;controller.abort();cropDispose?.();placeholderDispose?.();clearUrls();imageBlobs.clear();slot.innerHTML='';disposers.delete(dispose)};
@@ -153,31 +171,72 @@
       else try{res=await request(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`);}catch(_){if(current())slot.innerHTML='<p class="hint">Photos could not load.</p>';return;}
       if(!current()||!res)return;
       if(!res.ok){const message=await responseMessage(res);if(current())slot.innerHTML=`<p class="hint">${esc(message)}</p>`;return;}
-      const body=await res.json();if(!current())return;const photos=Array.isArray(body)?body:(body.photos||[]);if(staged&&!draftPhotos){originalPhotos=photos.map(p=>({...p}));draftPhotos=photos.map(p=>({...p}));}if(owner&&photos.every(p=>Number.isInteger(p.sort_position))){const first=[...photos].sort((a,b)=>a.sort_position-b.sort_position)[0]?.id;photos.forEach(p=>p.is_cover=p.id===first);}
+      const body=await res.json();if(!current())return;const photos=Array.isArray(body)?body:(body.photos||[]);if(staged&&!draftPhotos){originalPhotos=photos.map(p=>({...p}));draftPhotos=photos.map(p=>({...p}));}if(owner&&photos.every(p=>Number.isInteger(p.sort_position))){const first=[...photos].filter(p=>p.is_selected!==false&&p.is_private!==true&&(p.role!=='personal'||p.personal_public_selected===true)).sort((a,b)=>a.sort_position-b.sort_position)[0]?.id;photos.forEach(p=>p.is_cover=p.id===first);}
       const selectedPersonal=photos.find(p=>p.role==='personal'&&p.personal_public_selected===true);
       // Readers see the chosen candid photo only. Owners retain every saved image for reselection.
       const projectFirst=run.photo_layout==='result'&&run.capture_metadata?.estimates?.v===1;
-      const displayed=owner?[...photos].sort((a,b)=>(a.sort_position??100)-(b.sort_position??100)||Number(b.is_cover)-Number(a.is_cover)):projectFirst?cardPhotos(photos,'result',true):photos.filter(p=>p.is_selected!==false&&(p.role!=='personal'||p.id===selectedPersonal?.id));
+      const displayed=owner?[...photos].filter(p=>p.is_selected!==false).sort((a,b)=>(a.sort_position??100)-(b.sort_position??100)||Number(b.is_cover)-Number(a.is_cover)):projectFirst?cardPhotos(photos,'result',true):photos.filter(p=>p.is_selected!==false&&p.is_private!==true&&(p.role!=='personal'||p.id===selectedPersonal?.id));
       if(!owner&&!displayed.length){slot.innerHTML=root.StrivePlaceholders?`<div class="run-detail-story">${root.StrivePlaceholders.render('image',{story:run.caption||run.title,harness:run.harness,model:run.model||(run.capture_metadata?.models||[]).join(', '),seed:run.id,width:640,height:280})}</div>`:'';placeholderDispose=root.StrivePlaceholders?.fit?.(slot);return;}
-      const canAdd=owner&&photos.length<6;
-      slot.innerHTML=`<section class="run-photos" aria-labelledby="run-photos-title"><div class="head"><h2 id="run-photos-title">Images from this run</h2><span class="meta">${owner?photos.length+' of 6':displayed.length+' image'+(displayed.length===1?'':'s')}</span></div>${owner&&photos.length?'<p class="hint photo-lead-hint" id="photo-lead-hint">Choose the lead image below. Save keeps your choice; sharing stays unchanged.</p>':''}<div class="run-photo-grid"${owner?' role="radiogroup" aria-label="Lead image"':''}></div>${canAdd?'<label class="photo-add"><span aria-hidden="true">＋</span> Add an image<input data-photo-file type="file" accept="image/jpeg,image/png,image/webp"></label><p class="hint">Add a photo of where you worked. Move images with the arrows or drag them; the first is the lead image. × hides it; ↶ brings it back. Save keeps your changes.</p><div data-photo-editor></div>':owner?'<p class="hint">Six photos added. Remove one before adding another.</p>':''}</section>`;
+      const canAdd=owner&&displayed.length<6&&photos.length<12;
+      const countNote=owner?`${displayed.length} of 6 shown`:displayed.length+' image'+(displayed.length===1?'':'s');
+      slot.innerHTML=`<section class="run-photos" aria-labelledby="run-photos-title"><div class="head"><h2 id="run-photos-title">Photos</h2><span class="meta">${countNote}</span></div>${owner?'<p class="photo-help">Drag to reorder. The first public photo is the cover.</p>':''}<div class="run-photo-grid" ${owner?'aria-label="Drag photos to reorder"':''}></div>${owner&&lastRemoved?'<div class="photo-undo" role="status">Photo removed from this run. <button type="button" data-photo-undo>Undo</button></div>':''}${owner&&!canAdd?'<p class="hint photo-limit">'+(photos.length>=12?'Twelve images are saved for this run.':'Remove a photo to add another.')+'</p>':''}</section>`;
       const grid=slot.querySelector('.run-photo-grid');grid.dataset.photoCount=displayed.length;if(!owner)grid.classList.add('run-photo-grid--reader');
       for(const photo of displayed){
-        try{const path=photoPath(photo);if(!path&&!photo.draftBlob)continue;const cached=photo.draftBlob||imageBlobs.get(path);const imageRes=cached?{ok:true,blob:async()=>cached}:await get(path,{headers:await headers(client),signal:controller.signal},480);if(!current())return;if(!imageRes?.ok)continue;const blob=await imageRes.blob();if(!current())return;if(path)imageBlobs.set(path,blob);const url=URL.createObjectURL(blob);objectUrls.push(url);const item=document.createElement('figure');item.classList.toggle('photo-hidden',photo.is_selected===false);if(owner){item.draggable=true;item.dataset.photoId=photo.id;}item.innerHTML=owner?`<button type="button" class="photo-thumb-cover" data-photo-cover="${esc(photo.id)}" role="radio" aria-label="${esc(roles[photo.role]||'Photo')} ${displayed.indexOf(photo)+1}: lead image" aria-checked="${!!photo.is_cover}" tabindex="${photo.is_cover?0:-1}"><img src="${url}" alt="${esc(roles[photo.role]||'Photo')}" loading="lazy"><span class="photo-lead-indicator" aria-hidden="true">${photo.is_cover?'●':'○'}</span><span class="photo-lead-label">${photo.is_cover?'Lead image':'Use as lead'}${photo.is_selected===false?' · Hidden':photo.role==='personal'&&!photo.personal_public_selected?' · Private':''}</span></button><button type="button" class="photo-hide" data-photo-selected="${esc(photo.id)}" aria-pressed="${photo.is_selected!==false}" aria-label="${photo.is_selected===false?'Show image':'Hide image'}">${photo.is_selected===false?'↶':'×'}</button><button type="button" class="photo-personal" data-photo-personal="${esc(photo.id)}" aria-pressed="${photo.role==='personal'}">${photo.role==='personal'?'Personal ✓':'Mark personal'}</button>${photo.role==='personal'?`<button type="button" class="photo-public" data-photo-public="${esc(photo.id)}" aria-pressed="${photo.personal_public_selected===true}">Show this photo publicly${photo.personal_public_selected===true?' ✓':''}</button><small class="photo-consent-note">Off keeps this photo private. On shares it with the run’s readers. Moving it does not change sharing.</small>`:''}<div class="photo-move"><button type="button" data-photo-move="${esc(photo.id)}" data-direction="-1" aria-label="Move image earlier" ${displayed.indexOf(photo)===0?'disabled':''}>←</button><button type="button" data-photo-move="${esc(photo.id)}" data-direction="1" aria-label="Move image later" ${displayed.indexOf(photo)===displayed.length-1?'disabled':''}>→</button></div><details class="photo-advanced"><summary>Advanced</summary><button type="button" class="ghost" data-photo-inspect="${esc(photo.id)}">Open full image</button><div class="photo-role-controls" role="group" aria-label="Image role">${Object.entries(roles).map(([key,label])=>`<button type="button" class="ghost" data-photo-role="${esc(photo.id)}" data-role="${key}" aria-pressed="${key===(photo.role||'photo')}">${label}</button>`).join('')}</div><button type="button" class="ghost" data-photo-delete="${esc(path||photo.id)}">Delete image</button></details>`:`<img src="${url}" alt="${esc(roles[photo.role]||'Photo')}" loading="lazy"><figcaption>${esc(roles[photo.role]||'Photo')}</figcaption>`;if(owner)item.querySelectorAll('button:not([disabled])').forEach(button=>{button.disabled=true;button.dataset.photoLoading='1'});if(!owner){
+        try{const path=photoPath(photo);if(!path&&!photo.draftBlob)continue;const cached=photo.draftBlob||imageBlobs.get(path);const imageRes=cached?{ok:true,blob:async()=>cached}:await get(path,{headers:await headers(client),signal:controller.signal},480);if(!current())return;if(!imageRes?.ok)continue;const blob=await imageRes.blob();if(!current())return;if(path)imageBlobs.set(path,blob);const url=URL.createObjectURL(blob);objectUrls.push(url);const item=document.createElement('figure');item.classList.toggle('photo-hidden',photo.is_selected===false);if(owner){item.draggable=true;item.dataset.photoId=photo.id;}item.innerHTML=owner?`<img src="${url}" alt="${esc(roles[photo.role]||'Photo')}" loading="lazy"><span class="photo-cover-tag" ${photo.is_cover?'':'hidden'}>Cover</span><button type="button" class="photo-remove" data-photo-selected="${esc(photo.id)}" aria-label="Remove image">×</button><button type="button" class="photo-lock" data-photo-private="${esc(photo.id)}" aria-pressed="${photo.is_private===true}" aria-label="${photo.is_private===true?'Make image public':'Make image private'}" title="${photo.is_private===true?'Private · only you':'Visible to run readers'}">${photo.is_private===true?'Private':'Public'}</button>`:`<img src="${url}" alt="${esc(roles[photo.role]||'Photo')}" loading="lazy"><figcaption>${esc(roles[photo.role]||'Photo')}</figcaption>`;if(owner)item.querySelectorAll('button:not([disabled])').forEach(button=>{button.disabled=true;button.dataset.photoLoading='1'});if(!owner){
           const image=item.querySelector('img'),button=document.createElement('button');button.type='button';button.className='photo-open ghost';button.setAttribute('aria-label','Open '+(roles[photo.role]||'image')+' at full size');button.append(image);const hint=document.createElement('span');hint.textContent='Open full image';button.append(hint);button.onclick=()=>void openImage({path,client,label:roles[photo.role]||'Run image',gallery:displayed});item.prepend(button);
         }grid.append(item);}catch(_){}
       }
       if(!current())return;
       if(canAdd){
-        slot.querySelector('[data-photo-file]').onchange=e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>12*1024*1024){status('Choose an image smaller than 12 MB.',true);return;}cropDispose=cropper(file,slot.querySelector('[data-photo-editor]'),async blob=>{try{if(!current())return;if(blob.size>3*1024*1024){status('The cropped image is still larger than 3 MB.',true);return;}if(staged){draftPhotos.push({id:'draft-'+Date.now(),role:'photo',is_cover:false,draftBlob:blob});status('Image added to your edit. Save changes to keep it.');await load();return;}const base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob)});const upload=await request('/api/run-photos',true,{method:'POST',body:JSON.stringify({run_id:run.id,image_base64:base64})});if(!current()||!upload)return;if(!upload.ok){const message=await responseMessage(upload);if(current())status(message,true);return;}const saved=await upload.json();if(!current())return;status(saved.duplicate?'This photo is already on this run. Choose Use as cover if you want it first.':'Photo added.');await load();await onChanged();}catch(_){if(current())status('Photo upload could not reach STRIVE. Try again.',true);}});};
+        grid.insertAdjacentHTML('beforeend','<label class="photo-add-tile"><span aria-hidden="true">＋</span><span>Add photos</span><input data-photo-file type="file" accept="image/jpeg,image/png,image/webp" multiple></label>');
+        slot.querySelector('[data-photo-file]').onchange=async e=>{
+          const files=[...(e.target.files||[])];if(!files.length)return;
+          let added=0;
+          for(const file of files){
+            if(displayed.length+added>=6||photos.length+added>=12)break;
+            if(file.size>12*1024*1024){status('Choose images smaller than 12 MB.',true);continue;}
+            try{
+              const blob=await compressPhoto(file);
+              if(blob.size>3*1024*1024){status('One image is still larger than 3 MB.',true);continue;}
+              if(staged){draftPhotos.push({id:'draft-'+Date.now()+'-'+added,role:'photo',is_selected:true,is_private:false,is_cover:false,sort_position:photos.length+added,draftBlob:blob});added++;continue;}
+              const image_base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob)});
+              const upload=await request('/api/run-photos',true,{method:'POST',body:JSON.stringify({run_id:run.id,image_base64})});
+              if(!current()||!upload)return;
+              if(!upload.ok){status(await responseMessage(upload),true);break;}
+              const saved=await upload.json();if(!saved.duplicate)added++;
+            }catch(_){status('Photo upload could not reach STRIVE. Try again.',true);break;}
+          }
+          if(!current())return;
+          if(added)status(added+' photo'+(added===1?'':'s')+' added.');
+          await load();if(added&&!staged)await onChanged();
+        };
       }
-      if(owner)slot.querySelectorAll('[data-photo-inspect]').forEach(button=>button.onclick=()=>{const photo=photos.find(p=>p.id===button.dataset.photoInspect);if(photo)void openImage({path:photoPath(photo),initialId:photo.id,client,label:roles[photo.role]||'Run image',gallery:photos})});
       if(owner)slot.querySelectorAll('[data-photo-selected]').forEach(button=>button.onclick=async()=>{
-        const selected=button.getAttribute('aria-pressed')!=='true';button.disabled=true;
-        try{if(staged){draftPhotos.find(p=>p.id===button.dataset.photoSelected).is_selected=selected;await load();return;}
-          const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:button.dataset.photoSelected,is_selected:selected})});
-          if(!current()||!res)return;if(!res.ok){status(await responseMessage(res),true);await load();return;}status(selected?'Image shown with the run.':'Image hidden from readers. The saved image is kept.');await load();await onChanged();
-        }catch(_){if(current())status('Image selection could not be saved. Reload and try again.',true);}finally{if(button.isConnected)button.disabled=false;}
+        const id=button.dataset.photoSelected;button.disabled=true;
+        try{
+          if(staged){draftPhotos.find(p=>p.id===id).is_selected=false;lastRemoved=id;await load();return;}
+          const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:id,is_selected:false})});
+          if(!res?.ok){status(await responseMessage(res),true);return;}
+          lastRemoved=id;await load();await onChanged();
+        }catch(_){status('Could not remove this photo. Try again.',true);}
+      });
+      if(owner&&lastRemoved){const undo=slot.querySelector('[data-photo-undo]');undo.onclick=async()=>{
+        const id=lastRemoved;
+        try{
+          if(staged){draftPhotos.find(p=>p.id===id).is_selected=true;lastRemoved=null;await load();return;}
+          const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:id,is_selected:true})});
+          if(!res?.ok){status(await responseMessage(res),true);return;}
+          lastRemoved=null;await load();await onChanged();
+        }catch(_){status('Could not restore this photo. Try again.',true);}
+      };}
+      if(owner)slot.querySelectorAll('[data-photo-private]').forEach(button=>button.onclick=async()=>{
+        const id=button.dataset.photoPrivate,privateNow=button.getAttribute('aria-pressed')!=='true';button.disabled=true;
+        try{
+          if(staged){const photo=draftPhotos.find(p=>p.id===id);photo.is_private=privateNow;if(!privateNow&&photo.role==='personal'){photo.role='photo';photo.personal_public_selected=false;}await load();return;}
+          const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:id,is_private:privateNow})});
+          if(!res?.ok){status(await responseMessage(res),true);return;}
+          await load();await onChanged();
+        }catch(_){status('Could not change photo privacy. Try again.',true);}
       });
       if(owner)slot.querySelectorAll('[data-photo-personal]').forEach(button=>button.onclick=async()=>{
         const photo=photos.find(p=>p.id===button.dataset.photoPersonal),role=photo.role==='personal'?(photo.previousProjectRole||'photo'):'personal';
@@ -186,12 +245,23 @@
       });
       if(owner)slot.querySelectorAll('[data-photo-role]').forEach(select=>select.onclick=async()=>{if(select.getAttribute('aria-pressed')==='true')return;select.disabled=true;try{if(staged){const draft=draftPhotos.find(p=>p.id===select.dataset.photoRole);draft.role=select.dataset.role;if(draft.role!=='personal')draft.personal_public_selected=false;await load();return;}const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:select.dataset.photoRole,role:select.dataset.role})});if(!current()||!res)return;if(!res.ok){status(await responseMessage(res),true);await load();return;}status('Image role saved.');await load();await onChanged();}catch(_){if(current())status('Image role could not be saved. Reload and try again.',true);}finally{if(select.isConnected)select.disabled=false;}});
       async function reorder(ids){
-        if(staged){draftPhotos=ids.map((id,index)=>({...draftPhotos.find(p=>p.id===id),sort_position:index,is_cover:index===0}));await load();return;}
-        const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_order:ids})});if(!res?.ok){status(await responseMessage(res),true);return;}await load();await onChanged();
+        const all=[...ids,...photos.filter(p=>!ids.includes(p.id)).map(p=>p.id)];
+        if(staged){draftPhotos=all.map((id,index)=>({...draftPhotos.find(p=>p.id===id),sort_position:index,is_cover:index===0}));await load();return;}
+        const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_order:all})});if(!res?.ok){status(await responseMessage(res),true);return;}await load();await onChanged();
       }
       if(owner){
         slot.querySelectorAll('[data-photo-move]').forEach(button=>button.onclick=async()=>{const ids=displayed.map(p=>p.id),i=ids.indexOf(button.dataset.photoMove),j=i+Number(button.dataset.direction);if(j<0||j>=ids.length)return;[ids[i],ids[j]]=[ids[j],ids[i]];await reorder(ids);});
-        let dragging=null;slot.querySelectorAll('[data-photo-id]').forEach(item=>{item.ondragstart=e=>{dragging=item.dataset.photoId;e.dataTransfer?.setData('text/plain',dragging)};item.ondragover=e=>e.preventDefault();item.ondrop=async e=>{e.preventDefault();if(!dragging||dragging===item.dataset.photoId)return;const ids=displayed.map(p=>p.id).filter(id=>id!==dragging);ids.splice(ids.indexOf(item.dataset.photoId),0,dragging);dragging=null;await reorder(ids);};});
+        const moveBefore=async(source,target)=>{if(!source||!target||source===target)return;const ids=displayed.map(p=>p.id).filter(id=>id!==source);ids.splice(ids.indexOf(target),0,source);await reorder(ids)};
+        let dragging=null;slot.querySelectorAll('[data-photo-id]').forEach(item=>{item.ondragstart=e=>{dragging=item.dataset.photoId;e.dataTransfer?.setData('text/plain',dragging)};item.ondragover=e=>e.preventDefault();item.ondrop=async e=>{e.preventDefault();const source=dragging;dragging=null;await moveBefore(source,item.dataset.photoId)};});
+        let touchSource=null,touchTarget=null,touchTimer=null;
+        const clearTouch=()=>{clearTimeout(touchTimer);touchTimer=null;touchSource?.classList.remove('photo-dragging');touchTarget?.classList.remove('photo-drop-target');touchSource=null;touchTarget=null};
+        slot.querySelectorAll('[data-photo-id] img').forEach(img=>{
+          img.onpointerdown=e=>{if(e.pointerType!=='touch')return;const item=img.closest('[data-photo-id]');touchTimer=setTimeout(()=>{touchSource=item;item.classList.add('photo-dragging');img.setPointerCapture(e.pointerId)},240)};
+          img.onpointermove=e=>{if(!touchSource)return;e.preventDefault();const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-photo-id]');touchTarget?.classList.remove('photo-drop-target');touchTarget=target&&target!==touchSource?target:null;touchTarget?.classList.add('photo-drop-target')};
+          img.onpointerup=async()=>{const source=touchSource?.dataset.photoId,target=touchTarget?.dataset.photoId;clearTouch();await moveBefore(source,target)};
+          img.onpointercancel=clearTouch;
+          img.oncontextmenu=e=>{if(touchSource)e.preventDefault()};
+        });
         slot.querySelectorAll('[data-photo-public]').forEach(button=>button.onclick=async()=>{const photo=photos.find(p=>p.id===button.dataset.photoPublic),selected=photo.personal_public_selected!==true;if(staged){if(selected)draftPhotos.forEach(p=>p.personal_public_selected=false);draftPhotos.find(p=>p.id===photo.id).personal_public_selected=selected;await load();return;}const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:photo.id,personal_public_selected:selected})});if(!res?.ok){status(await responseMessage(res),true);return;}await load();await onChanged();});
       }
       if(owner)slot.querySelectorAll('[data-photo-cover]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{if(staged){await reorder([button.dataset.photoCover,...displayed.map(p=>p.id).filter(id=>id!==button.dataset.photoCover)]);return;}const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:button.dataset.photoCover})});if(!current()||!res)return;if(!res.ok){status(await responseMessage(res),true);return;}status('Cover selected. Your other photos stay in the gallery.');await load();await onChanged();}catch(_){if(current())status('Cover could not be saved. Try again.',true);}finally{if(button.isConnected)button.disabled=false;}});
@@ -208,9 +278,11 @@
       let saved=0;const send=async(path,options)=>{const response=await request(path,options.method!=='DELETE',options);if(!response?.ok)throw Error(saved?'Some image changes were saved. '+await responseMessage(response):await responseMessage(response));saved++;if(!current())throw Error('The edit is no longer active. Reopen the run to check saved changes.');return response.json()};
       // Resolve edits through the existing owner-only API; audience is saved separately afterwards.
       for(const old of [...originalPhotos])if(!draftPhotos.some(p=>p.id===old.id)){await send(photoPath(old),{method:'DELETE'});originalPhotos=originalPhotos.filter(p=>p.id!==old.id);}
+      draftPhotos=draftPhotos.filter(p=>!p.draftBlob||p.is_selected!==false);
+      for(const photo of draftPhotos){const old=originalPhotos.find(p=>p.id===photo.id);if(old?.is_selected!==false&&photo.is_selected===false)await send('/api/run-photos',{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:photo.id,is_selected:false})});}
       for(const photo of draftPhotos){
         if(photo.draftBlob){const image_base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(photo.draftBlob)});const uploaded=await send('/api/run-photos',{method:'POST',body:JSON.stringify({run_id:run.id,image_base64})});photo.id=uploaded.photo.id;photo.url=uploaded.photo.url;delete photo.draftBlob;}
-        const old=originalPhotos.find(p=>p.id===photo.id);if((photo.is_selected!==false)!==(old?.is_selected!==false))await send('/api/run-photos',{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:photo.id,is_selected:photo.is_selected!==false})});if(!old||old.role!==photo.role)await send('/api/run-photos',{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:photo.id,role:photo.role})});
+        const old=originalPhotos.find(p=>p.id===photo.id);if(photo.is_selected!==false&&old?.is_selected===false)await send('/api/run-photos',{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:photo.id,is_selected:photo.is_selected!==false})});if((photo.is_private===true)!==(old?.is_private===true))await send('/api/run-photos',{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:photo.id,is_private:photo.is_private===true})});if(!old||old.role!==photo.role)await send('/api/run-photos',{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:photo.id,role:photo.role})});
       }
       // Consent changes are separate from order. Revoke first before granting a replacement.
       for(const photo of [...draftPhotos].sort((a,b)=>Number(a.personal_public_selected===true)-Number(b.personal_public_selected===true))){const old=originalPhotos.find(p=>p.id===photo.id);if(photo.role==='personal'&&(photo.personal_public_selected===true)!==(old?.personal_public_selected===true))await send('/api/run-photos',{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:photo.id,personal_public_selected:photo.personal_public_selected===true})});}

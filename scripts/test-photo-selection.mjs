@@ -10,7 +10,7 @@ await db.query("update strava.runs set visibility='public' where id=$1",[run]);
 const add=async role=>(await db.query('insert into strava.run_photos(run_id,width,height,byte_size,role) values($1,100,100,200,$2) returning *',[run,role])).rows[0];
 const project=await add('result'),personal=await add('personal'),unchosen=await add('personal');
 assert.equal(project.is_selected,true,'existing/default selection stays on');
-await db.query('select strava.choose_run_cover($1,$2)',[run,personal.id]);await db.query('select strava.set_run_personal_public($1,$2,true)',[run,personal.id]);
+await db.query('select strava.set_run_personal_public($1,$2,true)',[run,personal.id]);await db.query('select strava.choose_run_cover($1,$2)',[run,personal.id]);
 const set=(who,value)=>db.query('select strava.set_run_photo_selected($1,$2,$3)',[run,who,value]);
 await set(project.id,false);await anonymous();
 assert.deepEqual((await db.query('select id from strava.run_photos where run_id=$1',[run])).rows.map(p=>p.id),[personal.id],'RLS hides project and unchosen personal metadata from anonymous readers');
@@ -35,7 +35,9 @@ async function openEditor(){
 }
 let editor=await openEditor();await editor.button().onclick();assert.equal((await wire('GET',{run_id:run,id:project.id})).status,200,'staging Hide does not change reader access');await editor.editor.save();editor.editor();
 assert.equal((await wire('GET',{run_id:run,id:project.id})).status,404,'saved Hide removes known-id reader access');
-editor=await openEditor();assert.equal(editor.button().getAttribute('aria-pressed'),'false','reload shows saved hidden state to owner');await editor.button().onclick();await editor.editor.save();editor.editor();
+editor=await openEditor();assert.equal(editor.w.document.querySelectorAll('[data-photo-selected="'+project.id+'"]').length,0,'removed image stays out of the simple grid');editor.editor();
+assert.equal((await wire('GET',{run_id:run,id:project.id},undefined,true)).status,200,'owner still has the stored image');
+assert.equal((await wire('PATCH',{}, {run_id:run,photo_id:project.id,is_selected:true},true)).status,200,'owner can restore the same record');
 const restored=await wire('GET',{run_id:run,id:project.id});assert.equal(restored.status,200);assert.deepEqual(restored.body,storedBytes,'Show restores the same stored image bytes');
 await new Promise(resolve=>shim.server.close(resolve));await db.close();
 
