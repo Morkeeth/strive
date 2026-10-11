@@ -1923,6 +1923,9 @@ async function viewRun(id){
     const gate=$('run-gate-signin'); if(gate) gate.onclick=()=>showSignIn();
     return;
   }
+  if(r.visibility==='public'){
+    const path=GrinderSharing.cleanRunPath(r);if(path){let link=document.querySelector('link[rel="canonical"]');if(!link){link=document.createElement('link');link.rel='canonical';document.head.append(link)}link.href=location.origin+path;}
+  }
   noteTraces([r]);
   const ad=await ackData([r]);
   if(!current())return;
@@ -1946,7 +1949,7 @@ async function viewRun(id){
     +`<section id="run-photos"></section>`
     +`<section id="grind-thread"></section><div class="head"><h2>XUDOS</h2><span class="meta">${acks===null?'Unavailable':acks.length}</span></div><div class="panel">`+ackListHtml(acks)+`</div>`
 ;
-  const copyLink=$('run-copy-link');if(copyLink)copyLink.onclick=async()=>{try{const sharePath=r.visibility==='public'?'/r/'+r.id:'/?run='+r.id;await navigator.clipboard.writeText(location.origin+sharePath);copyLink.textContent='Link copied'}catch(_){status('Copy this page address to share your run.')}};
+  const copyLink=$('run-copy-link');if(copyLink)copyLink.onclick=async()=>{try{const sharePath=GrinderSharing.cleanRunPath(r)||(r.visibility==='public'?'/r/'+r.id:'/?run='+r.id);await navigator.clipboard.writeText(location.origin+sharePath);copyLink.textContent='Link copied'}catch(_){status('Copy this page address to share your run.')}};
   const photoEditor=window.StriveRunPhotos?await StriveRunPhotos.mount({client:sb,run:r,slot:$('run-photos'),owner,staged:owner,status,isCurrent:current,onChanged:async()=>{if(!current())return;const card=document.querySelector('[data-run-id="'+r.id+'"]');if(card){card.querySelectorAll('.run-media, .run-personal-photo, .run-photo-cover').forEach(image=>image.remove());delete card.dataset.photoChecked;await StriveRunPhotos.mountCovers({client:sb,root:document});}}}):null;
   if(!current())return;
   if(ME?.id===r.profile_id){
@@ -2414,6 +2417,7 @@ async function viewProfile(handle){
   if(!current())return;
   if(prof)handle=profileHandle(prof);
   if(!prof){ app.innerHTML='<div class="card"><div class="empty">Profile not found.</div></div>'; return; }
+  const canonicalProfile=GrinderSharing.cleanProfilePath(handle);if(canonicalProfile){let link=document.querySelector('link[rel="canonical"]');if(!link){link=document.createElement('link');link.rel='canonical';document.head.append(link)}link.href=location.origin+canonicalProfile;}
   const isOwner=ME&&ME.id===prof.id,preview=isOwner&&new URLSearchParams(location.search).get('preview')==='public',mine=isOwner&&!preview;
   const {data:runs,error:profileRunsError}=await sb.from('runs').select('*, profiles!runs_profile_id_fkey(github_handle,name,rig,handle,display_name,avatar_url)')
     .eq('profile_id',prof.id)[mine||(!preview&&ME)?'in':'eq']('visibility',mine?['public','link','private','close_friends','anonymous']:!preview&&ME?['public','close_friends']:'public').order('started_at',{ascending:false,nullsFirst:false}).order('id',{ascending:false}).limit(50);
@@ -2824,7 +2828,7 @@ async function viewShareProfile(handle){
   });
   fitShareCard(); window.addEventListener('resize',fitShareCard);
   const copy=$('share-copy'); if(copy) copy.addEventListener('click',()=>{
-    navigator.clipboard.writeText(location.origin+'/?u='+encodeURIComponent(handle)).then(()=>status('Link copied.'));
+    navigator.clipboard.writeText(location.origin+(GrinderSharing.cleanProfilePath(handle)||'/?u='+encodeURIComponent(handle))).then(()=>status('Link copied.'));
   });
 }
 function viewClaim(){

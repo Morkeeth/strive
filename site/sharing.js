@@ -2,6 +2,15 @@
 (function(root){
 'use strict';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const reservedHandles=new Set(['api','capture','about','privacy','terms','feed','people','add','r','l','d','proof','agents','account','connect','favicon','robots','sitemap','login','sign-in','post','projects','project','boards','inbox','following','mine','share']);
+function cleanProfilePath(handle){return typeof handle==='string'&&/^[a-z0-9](?:[a-z0-9_-]{0,38}[a-z0-9])?$/i.test(handle)&&!reservedHandles.has(handle.toLowerCase())?'/'+encodeURIComponent(handle.toLowerCase()):null;}
+function cleanRunPath(run){
+ const handle=run?.profiles?.handle||run?.profiles?.github_handle;
+ const profile=cleanProfilePath(handle);
+ if(run?.visibility!=='public'||!profile||!/^[0-9a-f]{8}-/i.test(run.id||''))return null;
+ const slug=String(run.title||'run').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,64).replace(/-$/,'')||'run';
+ return profile+'/'+run.id.slice(0,8).toLowerCase()+'-'+slug;
+}
 function sessionSeconds(run){
  const values=[run.ridge_basis==='wall-time'?run.ridge_wall_seconds:null,run.wall_time_s,run.duration_s];
  const value=values.find(v=>typeof v==='number'&&Number.isFinite(v)&&v>=0);
@@ -120,7 +129,7 @@ function mount({run,slot,status,moment=null,review=null}){
   slot.innerHTML='<p>This moment belongs to a different measurement. Return to the grind and choose a current moment before making a card.</p>';return;
  }
  const publicShare=run.visibility==='public', handle=run.profiles?.github_handle;
- const url=moment?location.origin+'/?run='+encodeURIComponent(run.id)+'&moment='+encodeURIComponent(moment.id):location.origin+(publicShare?'/r/':'/?run=')+encodeURIComponent(run.id);
+ const url=moment?location.origin+'/?run='+encodeURIComponent(run.id)+'&moment='+encodeURIComponent(moment.id):location.origin+(cleanRunPath(run)||(publicShare?'/r/':'/?run=')+encodeURIComponent(run.id));
  slot.innerHTML=`<div class="head"><h2>${review?"Share my outcome":"Share your run"}</h2>${review?"":`<a href="/?run=${encodeURIComponent(run.id)}">Back to run</a>`}</div>
  <p class="hint">${publicShare?'Public run · anyone can read it at /r/.':run.visibility==='link'?'Followers · signed-in followers and close friends can open it.':'Private run · exporting an image does not change who can read the run.'}</p>
  <div class="share-studio"><form id="post-editor" class="panel reply-form">
@@ -213,5 +222,5 @@ function mountReview({attempt,viewerId,slot,status}){
  if(!value){slot.textContent='Only your own saved review can be exported.';return;}
  return mount({...value,slot,status});
 }
-root.GrinderSharing={mount,reviewExport,mountReview,metricStrip,storyFacts,traceSeries};
+root.GrinderSharing={mount,reviewExport,mountReview,metricStrip,storyFacts,traceSeries,cleanRunPath,cleanProfilePath};
 })(window);

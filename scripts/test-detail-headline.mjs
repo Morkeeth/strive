@@ -11,7 +11,7 @@ const ctx={URL,URLSearchParams,TextEncoder,document:dom.window.document,location
  runAttribution:()=>({handle:'builder',name:'Builder'}),safeOutputUrl:()=>null,projectLinkHtml:()=>'',runUploadIdentity:()=>'',fiveRow:()=>'',coachBlock:()=>'',typedOnlyRun:()=>false,chosenRunHero:()=>null,
  StriveHistory:{historical:()=>false},StriveEvidence:{detail:()=>'',summary:()=>''},
 };ctx.window=ctx;ctx.StriveRunPhotos={disposeAll(){},mount:async()=>{throw Error('STOP_AFTER_REAL_VIEW_RENDER')}};vm.createContext(ctx);
-for(const name of ['run-contract.js','run-placeholders.js','run-estimates.js','run-context.js','run-story.js','feed-card.js','day.js','day-card.js','activity-order.js','activity-post.js'])vm.runInContext(fs.readFileSync('site/'+name,'utf8'),ctx);
+for(const name of ['run-contract.js','run-placeholders.js','run-estimates.js','run-context.js','run-story.js','feed-card.js','day.js','day-card.js','activity-order.js','activity-post.js','sharing.js'])vm.runInContext(fs.readFileSync('site/'+name,'utf8'),ctx);
 vm.runInContext(card+'\n'+view,ctx);
 const base={id:'11111111-1111-4111-a111-111111111111',profile_id:'someone-else',title:'TEST DATA captured work',visibility:'public',profiles:{handle:'builder'},commits:6,files_touched:21,duration_s:6992,rhythm:[1,2,1],capture_metadata:full};
 async function render(r){row=r;await assert.rejects(ctx.viewRun(r.id),/STOP_AFTER_REAL_VIEW_RENDER/);return dom.window.document.querySelector('#card-'+r.id);}
