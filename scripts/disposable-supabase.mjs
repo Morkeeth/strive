@@ -65,7 +65,7 @@ export function sessionFor(sub, email, handle) {
   };
 }
 
-export async function bootDisposable({ grinder = false, photoOrder = true } = {}) {
+export async function bootDisposable({ grinder = false, photoOrder = true, photoCap = true } = {}) {
   const { PGlite } = await import("@electric-sql/pglite");
   const db = new PGlite();
   await db.exec(`create role anon; create role authenticated;
@@ -84,6 +84,7 @@ create table auth.identities(id uuid primary key default gen_random_uuid(), user
   }
   let install=execFileSync("python3", [join(ROOT, "scripts/prepare-strava-database.py")], {encoding:"utf8"});
   if(!photoOrder)install=install.replace(/-- strava\/037_photo_order_consent.sql[\s\S]*?(?=-- strava\/)/, "");
+  if(!photoCap||!photoOrder)install=install.replace(/-- strava\/039_visible_photo_capacity.sql[\s\S]*?(?=-- strava\/)/, "");
   await db.exec(install);
   await db.exec("set search_path=strava,pg_temp");
   async function as(id) {

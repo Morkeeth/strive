@@ -5,7 +5,7 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const MAX_PHOTO_BYTES=3*1024*1024;
 const BUCKET='strive-run-photos';
 export const WIDTHS=[64,320,480,960];
-const fields='id,run_id,width,height,byte_size,created_at,is_cover,role,is_selected,sort_position,personal_public_selected';
+const fields='id,run_id,width,height,byte_size,created_at,is_cover,role,is_selected,is_private,sort_position,personal_public_selected';
 export const PHOTO_HEADERS={'Cache-Control':'private, no-store, max-age=0',Vary:'Authorization','X-Content-Type-Options':'nosniff'};
 function result(status,body,headers={}) {return {status,body,headers:{...PHOTO_HEADERS,...headers}};}
 function present(p){return {...p,url:`/api/run-photos?id=${p.id}&run_id=${p.run_id}`};}
@@ -78,7 +78,7 @@ export async function runPhotos({method,headers={},query={},body},config,fetchIm
    if(!runId||(!Object.hasOwn(body,'photo_order')&&!UUID.test(String(body?.photo_id)))) return result(400,{error:'Choose a saved photo for this run.'});
    if(!await ownsRun(runId)) return result(404,{error:'Run not found.'});
    if(Object.hasOwn(body,'photo_order')) {
-    if(!Array.isArray(body.photo_order)||body.photo_order.length>6||body.photo_order.some(id=>!UUID.test(String(id)))||new Set(body.photo_order).size!==body.photo_order.length)return result(400,{error:'Choose each saved image once.'});
+    if(!Array.isArray(body.photo_order)||body.photo_order.length>12||body.photo_order.some(id=>!UUID.test(String(id)))||new Set(body.photo_order).size!==body.photo_order.length)return result(400,{error:'Choose each saved image once.'});
     try{await rows('rpc/reorder_run_photos',{method:'POST',body:JSON.stringify({target_run:runId,ordered_photos:body.photo_order})});return result(200,{photo_order:body.photo_order});}
     catch{return result(409,{error:'The images changed. Reload before reordering.'});}
    }
@@ -90,7 +90,12 @@ export async function runPhotos({method,headers={},query={},body},config,fetchIm
    if(Object.hasOwn(body,'is_selected')) {
     if(typeof body.is_selected!=='boolean')return result(400,{error:'Choose whether to show this image.'});
     try{await rows('rpc/set_run_photo_selected',{method:'POST',body:JSON.stringify({target_run:runId,target_photo:body.photo_id,selected:body.is_selected})});return result(200,{photo_id:body.photo_id,is_selected:body.is_selected});}
-    catch{return result(404,{error:'This photo is not available on your run.'});}
+    catch{return result(409,{error:'Show up to six images. Remove another image before restoring this one.'});}
+   }
+   if(Object.hasOwn(body,'is_private')) {
+    if(typeof body.is_private!=='boolean')return result(400,{error:'Choose whether this image is private.'});
+    try{await rows('rpc/set_run_photo_private',{method:'POST',body:JSON.stringify({target_run:runId,target_photo:body.photo_id,private:body.is_private})});return result(200,{photo_id:body.photo_id,is_private:body.is_private});}
+    catch{return result(409,{error:'The image changed. Reload and try again.'});}
    }
    if(Object.hasOwn(body,'role')) {
     if(!['photo','result','before','after','personal'].includes(body.role))return result(400,{error:'Choose an image role.'});
@@ -126,7 +131,7 @@ export async function runPhotos({method,headers={},query={},body},config,fetchIm
    const p={id:randomUUID(),run_id:runId,width:image.width,height:image.height,byte_size:image.data.length,content_sha256:digest};
    let saved;
    try {saved=await rows('run_photos?select='+fields,{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(p)});}
-   catch(error) {if(error.status===409){const prior=await existingPhoto();if(prior)return prior;}return result(error.status===401?401:400,{error:'This run cannot accept the photo. Use your own recorded session, with no more than six photos.'});}
+   catch(error) {if(error.status===409){const prior=await existingPhoto();if(prior)return prior;}return result(error.status===401?401:400,{error:'This run can show six images and keep twelve saved images. Remove one from the run before adding another.'});}
    let uploaded;
    try {uploaded=await storage(BUCKET+'/'+path(p),{method:'POST',headers:{'Content-Type':'image/jpeg','x-upsert':'false'},body:image.data});} catch {}
    if(!uploaded?.ok) {
@@ -148,8 +153,8 @@ export async function runPhotos({method,headers={},query={},body},config,fetchIm
    if(!accessible.length) return result(404,{error:'Run not found.'});
    const photos=await rows('run_photos?select='+fields+'&run_id=eq.'+runId+'&order=sort_position.asc,created_at.asc,id.asc');
    // A public run may have one chosen candid. Other personal photos remain the owner's.
-   const owner=bearer&&photos.some(p=>p.is_selected===false||(p.role==='personal'&&p.personal_public_selected!==true))?await ownsRun(runId):false;
-   return result(200,{photos:photos.filter(p=>owner||(p.is_selected!==false&&(p.role!=='personal'||p.personal_public_selected===true))).map(present)});
+   const owner=bearer&&photos.some(p=>p.is_selected===false||p.is_private===true||(p.role==='personal'&&p.personal_public_selected!==true))?await ownsRun(runId):false;
+   return result(200,{photos:photos.filter(p=>owner||(p.is_selected!==false&&p.is_private!==true&&(p.role!=='personal'||p.personal_public_selected===true))).map(present)});
   }
   const found=await rows('run_photos?select='+fields+'&id=eq.'+query.id+(runId?'&run_id=eq.'+runId:''));
   if(!found.length) return result(404,{error:'Photo not found.'});
@@ -162,7 +167,7 @@ export async function runPhotos({method,headers={},query={},body},config,fetchIm
    await rows('run_photos?id=eq.'+p.id,{method:'DELETE'});
    return result(200,{removed:true});
   }
-  if((p.is_selected===false||(p.role==='personal'&&p.personal_public_selected!==true))&&(!bearer||!await ownsRun(p.run_id)))
+  if((p.is_selected===false||p.is_private===true||(p.role==='personal'&&p.personal_public_selected!==true))&&(!bearer||!await ownsRun(p.run_id)))
    return result(404,{error:'Photo not found.'});
   // Metadata RLS was checked above, under the caller's own sign-in, and is checked on every request.
   // No signed URL survives a revoke or delete. A photo's bytes never change under its id, so a browser

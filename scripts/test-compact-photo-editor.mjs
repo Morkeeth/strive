@@ -1,23 +1,36 @@
-import assert from 'node:assert/strict';import fs from 'node:fs';import {JSDOM} from 'jsdom';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {JSDOM} from 'jsdom';
 const run={id:'11111111-1111-4111-a111-111111111111',visibility:'public'};
-const photo=(id,role,cover=false)=>({id,role,is_cover:cover,url:`/api/run-photos?run_id=${run.id}&id=${id}`});
-const seed=[photo('one','personal',true),photo('two','result'),photo('three','personal')];
-async function setup(){const w=new JSDOM('<div id="photos"></div>',{url:'https://striverun.app',runScripts:'outside-only'}).window,writes=[];w.URL.createObjectURL=()=> 'blob:TEST';w.URL.revokeObjectURL=()=>{};w.fetch=async(path,opts={})=>{if(opts.method&&opts.method!=='GET'){writes.push({path,...opts,body:opts.body?JSON.parse(opts.body):null});return {ok:true,json:async()=>({})}}return path.includes('?run_id=')&&!path.includes('&id=')?{ok:true,json:async()=>({photos:seed.map(p=>({...p}))})}:{ok:true,blob:async()=>new w.Blob(['TEST'])}};w.eval(fs.readFileSync('site/run-photos.js','utf8'));const editor=await w.StriveRunPhotos.mount({client:null,run,slot:w.document.querySelector('#photos'),owner:true,staged:true,status(){}});return {w,editor,writes};}
-const {w,editor,writes}=await setup();assert.equal(w.document.querySelectorAll('select[data-photo-role]').length,0);
-await w.document.querySelector('[data-photo-role="two"][data-role="before"]').onclick();await w.document.querySelector('[data-photo-cover="two"]').onclick();
-assert.equal(writes.length,0,'role and cover stay local until the form Save');assert.equal(w.document.querySelector('[data-photo-role="two"][data-role="before"]').getAttribute('aria-pressed'),'true');
-await editor.save();assert.deepEqual(writes.map(x=>x.body),[{run_id:run.id,photo_id:'two',role:'before'},{run_id:run.id,photo_order:['two','one','three']}]);
-const cancel=await setup();await cancel.w.document.querySelector('[data-photo-role="two"][data-role="after"]').onclick();cancel.editor();assert.equal(cancel.writes.length,0,'Cancel/disposal never saves a staged image choice');
-const removal=await setup();await removal.w.document.querySelector('[data-photo-delete$="id=three"]').onclick();assert.equal(removal.writes.length,0);await removal.editor.save();assert.equal(removal.writes[0].method,'DELETE');assert.match(removal.writes[0].path,/id=three/);
-console.log('PASS real photo editor: direct role controls; role, cover, removal staged; one Save invokes existing owner API; Cancel makes no writes.');
-const selection=await setup();await selection.w.document.querySelector('[data-photo-selected="two"]').onclick();assert.equal(selection.writes.length,0);assert.equal(selection.w.document.querySelector('[data-photo-selected="two"]').getAttribute('aria-pressed'),'false');await selection.editor.save();assert.deepEqual(selection.writes.map(x=>x.body),[{run_id:run.id,photo_id:'two',is_selected:false}]);await selection.w.document.querySelector('[data-photo-selected="two"]').onclick();await selection.editor.save();assert.equal(selection.writes.at(-1).body.is_selected,true,'owner restores the same image without reupload');
-const cancelSelection=await setup();await cancelSelection.w.document.querySelector('[data-photo-selected="two"]').onclick();cancelSelection.editor();assert.equal(cancelSelection.writes.length,0,'Cancel discards staged hiding');
-console.log('PASS image selection is staged until Save, reversible on the same image, and Cancel makes no writes.');
-
-const simple=await setup();const sd=simple.w.document;assert.equal(sd.querySelectorAll('.photo-thumb-cover').length,3);assert.equal(sd.querySelectorAll('.photo-personal').length,3);assert.equal(sd.querySelectorAll('.photo-advanced:not([open])').length,3);assert.ok([...sd.querySelectorAll('[data-photo-role]')].every(el=>el.closest('details')),'roles are all behind Advanced');
-await sd.querySelector('[data-photo-personal="two"]').onclick();assert.equal(sd.querySelector('[data-photo-personal="two"]').getAttribute('aria-pressed'),'true');await sd.querySelector('[data-photo-selected="two"]').onclick();await sd.querySelector('[data-photo-cover="two"]').onclick();assert.equal(sd.querySelector('.photo-thumb-cover').dataset.photoCover,'two','selected cover moves first');assert.equal(sd.querySelector('[data-photo-selected="two"]').getAttribute('aria-pressed'),'false','moving a hidden image never changes its selection');assert.equal(simple.writes.length,0);await simple.editor.save();assert.ok(simple.writes.every(w=>w.method!=='DELETE'),'simple controls never delete');assert.deepEqual(simple.writes.at(-1).body.photo_order,['two','one','three']);
-console.log('PASS simple thumbnails: cover first, personal toggle, reversible hide/restore, Advanced role chips, no implicit deletes or writes.');
-const keyboard=await setup(),kd=keyboard.w.document;let prevented=false;
-await kd.querySelector('[data-photo-cover="one"]').onkeydown({key:'ArrowRight',preventDefault(){prevented=true}});
-assert.equal(prevented,true);assert.equal(kd.querySelectorAll('[role="radio"][aria-checked="true"]').length,1);assert.equal(kd.querySelector('[aria-checked="true"]').dataset.photoCover,'two');assert.equal(kd.activeElement.dataset.photoCover,'two');assert.equal(keyboard.writes.length,0);await keyboard.editor.save();assert.deepEqual(keyboard.writes.at(-1).body.photo_order,['two','one','three']);
-console.log('PASS keyboard single-select: arrow chooses one actual thumbnail, retains focus, stays staged until Save.');
+const seed=['one','two','three'].map((id,sort_position)=>({id,role:'photo',is_selected:true,is_private:false,sort_position,url:`/api/run-photos?run_id=${run.id}&id=${id}`}));
+async function setup(){
+ const w=new JSDOM('<div id="photos"></div>',{url:'https://striverun.app',runScripts:'outside-only'}).window,writes=[];
+ w.URL.createObjectURL=()=> 'blob:TEST';w.URL.revokeObjectURL=()=>{};
+ w.fetch=async(path,opts={})=>{if(opts.method&&opts.method!=='GET'){writes.push({path,method:opts.method,body:opts.body?JSON.parse(opts.body):null});return {ok:true,json:async()=>({})}}return path.includes('?run_id=')&&!path.includes('&id=')?{ok:true,json:async()=>({photos:seed.map(p=>({...p}))})}:{ok:true,blob:async()=>new w.Blob(['TEST'])}};
+ w.eval(fs.readFileSync('site/run-photos.js','utf8'));
+ const editor=await w.StriveRunPhotos.mount({client:null,run,slot:w.document.querySelector('#photos'),owner:true,staged:true,status(){}});
+ return {w,editor,writes};
+}
+const edit=await setup(),d=edit.w.document;
+assert.equal(d.querySelectorAll('.run-photo-grid figure').length,3);
+assert.equal(d.querySelectorAll('[data-photo-role],[data-photo-cover],[data-photo-delete]').length,0,'no old control jungle');
+assert.equal(d.querySelectorAll('[data-photo-private]').length,3);
+assert.equal(d.querySelectorAll('[data-photo-selected]').length,3);
+assert.equal(d.querySelector('[data-photo-file]').multiple,true);
+await d.querySelector('[data-photo-selected="two"]').onclick();
+assert.equal(d.querySelectorAll('.run-photo-grid figure').length,2,'removed image leaves grid');
+assert.equal(edit.writes.length,0,'edit staged until Save');
+await d.querySelector('[data-photo-undo]').onclick();
+assert.equal(d.querySelectorAll('.run-photo-grid figure').length,3,'Undo restores the same image');
+await d.querySelector('[data-photo-private="one"]').onclick();
+assert.equal(d.querySelector('[data-photo-private="one"]').getAttribute('aria-pressed'),'true');
+const dragged=d.querySelector('[data-photo-id="three"]'),target=d.querySelector('[data-photo-id="one"]');
+dragged.ondragstart({dataTransfer:{setData(){}}});await target.ondrop({preventDefault(){}});
+assert.equal(d.querySelector('.run-photo-grid figure').dataset.photoId,'three','drop reorders the grid');
+await edit.editor.save();
+assert.deepEqual(edit.writes.map(w=>w.body),[
+ {run_id:run.id,photo_id:'one',is_private:true},
+ {run_id:run.id,photo_order:['three','one','two']}
+]);
+const cancel=await setup();await cancel.w.document.querySelector('[data-photo-selected="two"]').onclick();cancel.editor();assert.equal(cancel.writes.length,0);
+console.log('PASS compact editor: one grid, remove/Undo, privacy, drag order, staged Save and Cancel.');
