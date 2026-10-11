@@ -6,7 +6,8 @@ const photos=await readPublicPhotos(run,async()=>new Response(JSON.stringify([{i
 assert.equal(photos[1].is_cover,true,'public reader keeps the author-selected cover flag');
 const page=html(run,{photos,kudos:0});
 assert.ok(page.indexOf('Open in STRIVE')<page.indexOf('class="card fc"'),'full app entry precedes the card and evidence');
-assert.ok(page.includes('href="/?run='+id+'">Open in STRIVE'),'entry opens this exact run');
+assert.ok(page.includes('href="/?legacy=1&run='+id+'">Open in STRIVE'),'entry opens this exact run in the interactive app');
+assert.ok(page.includes('<link rel="canonical" href="https://striverun.app/test-author/11111111-test-data-work">'),'shared address stays clean');
 assert.ok(page.indexOf('aria-label="Recorded facts"')<page.indexOf('fc-route-secondary'),'measured stats precede the trace');
 assert.doesNotMatch(page,/<dt>(?:Active time|Tool-active time · proxy)<\/dt>/,'elapsed duration must not become an active-time metric');
 assert.doesNotMatch(page,/<dt>(?:Dollars|Est. dollars)<\/dt>/,'missing price inputs omit the face metric');assert.match(page,/About these measurements/);

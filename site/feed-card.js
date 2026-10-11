@@ -5,6 +5,11 @@
   const story=typeof module!=="undefined"&&module.exports?require("./run-story.js"):root.StriveStory;
   const historical=typeof module!=="undefined"&&module.exports?require("./historical-import.js"):root.StriveHistory;
   const evidence=typeof module!=="undefined"&&module.exports?require("./run-evidence.js"):root.StriveEvidence;
+  const links=(typeof module!=="undefined"&&module.exports?require("./run-links.js"):root.StriveLinks)||{
+    runHref:r=>'/?run='+encodeURIComponent(r?.id||''),
+    profileHref:h=>'/?u='+encodeURIComponent(h||''),
+    runPath:()=>null
+  };
   const esc = (s) =>
     String(s ?? "").replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c]));
   const whole = (v) => (Number.isFinite(v) && v >= 0 ? Math.round(v) : null);
@@ -408,13 +413,13 @@
     const xudos = o.mode === "preview"
       ? `<span class="fc-act" aria-label="Send XUDOS">${heart}</span>`
       : o.mode === "page"
-      ? `<a class="fc-act" href="/?run=${id}" aria-label="Send XUDOS${said}">${heart}${n}</a>`
+      ? `<a class="fc-act" href="${esc(o.runHref||'/?run='+id)}" aria-label="Send XUDOS${said}">${heart}${n}</a>`
       : o.mode === "mine"
       ? `<span class="fc-act fc-kudos-mine" aria-label="XUDOS on your run${said}">${heart}${n}</span>`
       : `<button class="fc-act kudo${o.acked ? " on" : ""}" data-run="${id}" data-to="${esc(o.to)}" aria-label="${o.acked ? "XUDOS sent" : "Send XUDOS"}${said}">${heart}${n}</button>`;
     const talk = o.mode === "preview"
       ? `<span class="fc-act" aria-label="Comment">${TALK_ICON}<span>Comment</span></span><span class="fc-act" aria-label="Share">${SHARE_ICON}<span>Share</span></span>`
-      : `<a class="fc-act" href="${o.commentHref ? esc(o.commentHref) : `/?run=${id}#grind-thread`}" aria-label="Comment"${o.commentHref ? " data-comment" : ""}>${TALK_ICON}<span>Comment</span></a><a class="fc-act" href="${o.shareHref ? esc(o.shareHref) : `/?share=1&amp;run=${id}`}" aria-label="Share">${SHARE_ICON}<span>Share</span></a>`;
+      : `<a class="fc-act" href="${o.commentHref ? esc(o.commentHref) : esc(o.runHref||'/?run='+id)+'#grind-thread'}" aria-label="Comment"${o.commentHref ? " data-comment" : ""}>${TALK_ICON}<span>Comment</span></a><a class="fc-act" href="${o.shareHref ? esc(o.shareHref) : esc(o.runHref||'/?run='+id)}"${o.publicShare?' data-share-public="1"':''} aria-label="Share">${SHARE_ICON}<span>Share</span></a>`;
     return xudos + talk;
   }
 
@@ -436,7 +441,7 @@
       ? `<span class="fc-name">Anonymous builder</span>`
       : preview
       ? `<span class="fc-name">${esc(p.name)}</span>`
-      : `<a class="fc-name" href="/?u=${encodeURIComponent(p.handle)}">${esc(p.name)}</a>`;
+      : `<a class="fc-name" href="${esc(links.profileHref(p.handle))}">${esc(p.name)}</a>`;
     // Partial observations have no measured event date. Creation time is only a posting date.
     const sourceDate = r.started_at || r.started;
     const posted = when(r.created_at);
@@ -446,7 +451,7 @@
         : posted;
     const meta = [esc(harnessName(r)), esc(dateLabel), opts.metaExtra ? esc(opts.metaExtra) : ""].filter(Boolean).join(" · ");
     const shipped = r.output_url && /^https:\/\//i.test(r.output_url) ? `<span class="fc-chip">Work linked</span>` : "";
-    const faceHtml = anon || preview ? face(r) : `<a href="/?u=${encodeURIComponent(p.handle)}" tabindex="-1">${face(r)}</a>`;
+    const faceHtml = anon || preview ? face(r) : `<a href="${esc(links.profileHref(p.handle))}" tabindex="-1">${face(r)}</a>`;
     const strideHtml = opts.stride === false || !(preview || page || opts.url) ? "" : stride(r, { url: opts.url, copy: !!opts.copy });
     const body = `
     <${tag} class="fc-title">${esc(titleOf(r))}</${tag}>
@@ -461,11 +466,11 @@
   `;
     return `<article class="card fc"${preview ? "" : ` id="card-${id}" data-run-id="${id}" data-run-visibility="${esc(r.visibility||'')}" data-photo-layout="${esc(r.photo_layout||'cover')}"${r.photo_layout==='result'&&r.capture_metadata?.estimates?.v===1?' data-project-gallery':''}`}>
   <header class="fc-top">${faceHtml}<div class="fc-who">${who}<small>${meta}</small></div>${shipped}</header>
-  ${preview||page ? `<div class="fc-body">${body}</div>` : `<a class="fc-body" href="/?run=${id}">${body}</a>`}
+  ${preview||page ? `<div class="fc-body">${body}</div>` : `<a class="fc-body" href="${esc(links.runHref(r))}">${body}</a>`}
   ${page||checkpoints||r.capture_metadata?context?.measurementDetails?.(r)||'':''}
   ${checkpoints}
   ${!preview&&typeof r.output_url==='string'&&/^https:\/\/[^\s<>"'\\]+$/i.test(r.output_url)?`<p class="fc-output-link"><a href="${esc(r.output_url)}" target="_blank" rel="noopener noreferrer">Open the work ↗</a></p>`:''}
-  ${opts.foot === false ? "" : `<footer class="fc-foot">${actions({ id: r.id, to: r.profile_id, count: preview || (opts.count === null && page) ? null : opts.count, acked: opts.acked, mode: preview ? "preview" : page ? "page" : mine ? "mine" : "" })}</footer>`}
+  ${opts.foot === false ? "" : `<footer class="fc-foot">${actions({ id: r.id, runHref:page?(opts.appRunHref||links.runHref(r)):links.runHref(r), publicShare:!page&&!!links.runPath(r), to: r.profile_id, count: preview || (opts.count === null && page) ? null : opts.count, acked: opts.acked, mode: preview ? "preview" : page ? "page" : mine ? "mine" : "" })}</footer>`}
 </article>`;
   }
 
@@ -479,7 +484,7 @@
   // module fills. Built only from profiles that have a public run.
   function builderRow(r) {
     const p = profileOf(r);
-    return `<div class="fc-builder strive-person">${face(r, 44)}<div class="fc-who"><a class="fc-name" href="/?u=${encodeURIComponent(p.handle)}">${esc(p.name)}</a><small>Recent: <a href="/?run=${esc(r.id)}">${esc(titleOf(r))}</a></small></div><span class="card-follow" data-profile="${esc(r.profile_id)}" data-handle="${esc(p.handle)}" data-label="Follow"></span></div>`;
+    return `<div class="fc-builder strive-person">${face(r, 44)}<div class="fc-who"><a class="fc-name" href="${esc(links.profileHref(p.handle))}">${esc(p.name)}</a><small>Recent: <a href="${esc(links.runHref(r))}">${esc(titleOf(r))}</a></small></div><span class="card-follow" data-profile="${esc(r.profile_id)}" data-handle="${esc(p.handle)}" data-label="Follow"></span></div>`;
   }
 
   const api = { card, cardSummary, actions, face, headline, stats, achievement, harnessName, badge, spark, settle, routeGeometry, routeMap, proofRoute, changeAtlas, resultVisual, photoVisual, heroChoices, heroVisual, strideBars, strideText, strideHtml, stride, wireStride, nextSlot, builderRow, profileOf, durationLabel, when, titleOf };

@@ -61,7 +61,7 @@ window.GrinderPeople = function ({
       display_name,
       avatar_url,
       label: display_name || (handle ? "@" + handle : "A builder"),
-      href: handle ? "/?u=" + encodeURIComponent(handle) : null,
+      href: handle ? window.StriveLinks.profileHref(handle) : null,
     };
   }
 
@@ -515,7 +515,8 @@ window.GrinderPeople = function ({
       } else {
         byId("people-runs").innerHTML = R.map((r) => {
           const title = esc(r.title || "Run");
-          return `<article class="card"><h3><a href="/?run=${encodeURIComponent(r.id)}">${title}</a></h3><p class="meta"><a href="/?run=${encodeURIComponent(r.id)}#grind-thread">Respond</a></p></article>`;
+          const href=window.StriveLinks.runHref(r);
+          return `<article class="card"><h3><a href="${esc(href)}">${title}</a></h3><p class="meta"><a href="${esc(href)}#grind-thread">Respond</a></p></article>`;
         }).join("");
       }
       if (social?.followControl) {
