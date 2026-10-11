@@ -7,6 +7,7 @@ module.exports=async function handler(req,res){
   const handle=String(req.query.handle||'');
   if(!validHandle(handle))return res.status(404).send('Page unavailable.');
   const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const crawler=/(?:bot|crawler|spider|facebookexternalhit|facebot|whatsapp|discord|slack|telegram|linkedin|pinterest|preview|embed|opengraph)/i.test(String(req.headers?.['user-agent']||''));
   if(req.query.run){
    const match=String(req.query.run).match(/^([0-9a-f]{8})(?:-[a-z0-9-]+)?$/i);
    if(!match)return res.status(404).send('Run unavailable.');
@@ -15,6 +16,7 @@ module.exports=async function handler(req,res){
    const path=runPath(run);
    if(!path)return res.status(404).send('Run unavailable.');
    if(`${handle}/${req.query.run}`!==path.slice(1)){res.writeHead(301,{Location:path});return res.end()}
+   if(!crawler){res.writeHead(307,{Location:'/?run='+encodeURIComponent(run.id)+'&legacy=1'});return res.end()}
    const [kudos,photos,avatar,activities]=await Promise.all([readKudos(run.id),readPublicPhotos(run),readAvatar(run),readProfileActivities({id:run.profile_id}).catch(()=>[])]);
    res.setHeader('Content-Type','text/html; charset=utf-8');return res.end(html(run,{kudos,photos,avatar,moreRuns:activities.filter(item=>item.id!==run.id).slice(0,3)}));
   }
@@ -24,6 +26,7 @@ module.exports=async function handler(req,res){
   if(!preferred||!validHandle(preferred))return res.status(404).send('Profile unavailable.');
   const path=profilePath(preferred);
   if(handle!==path.slice(1)){res.writeHead(301,{Location:path});return res.end()}
+  if(!crawler){res.writeHead(307,{Location:'/?u='+encodeURIComponent(preferred)+'&legacy=1'});return res.end()}
   const title=escape(profile.display_name||preferred),url=canonicalProfile(preferred),image=shareOrigin+'/api/og?profile='+encodeURIComponent(preferred);
   const description=escape(`Public runs by ${profile.display_name||'@'+preferred} on STRIVE.`);
   const activities=await readProfileActivities(profile);
