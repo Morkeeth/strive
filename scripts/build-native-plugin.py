@@ -34,30 +34,62 @@ with tempfile.TemporaryDirectory(prefix='strive-public-plugin-') as folder:
     shutil.copyfile(target,immutable)
     manifest = json.loads((bundle/'.claude-plugin/plugin.json').read_text())
     (out/'release.json').write_text(json.dumps({'name':'strive','version':manifest['version'],
-        'package':'/plugins/'+sha+'.zip','sha256':sha,'editors':['cursor','claude'],
+        'package':'/plugins/'+sha+'.zip','sha256':sha,'editors':['cursor','claude','codex'],
         'install':'/plugins/install.md'},indent=2)+'\n')
-    (out/'install.md').write_text('''# STRIVE for Cursor and Claude Code
+    (out/'install.md').write_text('''# Install STRIVE
 
-Download the plugin linked in `/plugins/release.json`, check its SHA-256 and unzip it.
-Open a terminal inside the extracted `strive` folder. Python 3.9 or newer is required.
+STRIVE captures selected real agent sessions and opens a local card for review.
+Python 3.9+ is required to capture. No model API key is needed.
 
-Cursor:
+## Claude Code
+
+Run these two lines in a terminal, then restart Claude Code:
+
 ```sh
-python3 scripts/strive-plugin.py install cursor
+claude plugin marketplace add Morkeeth/strive
+claude plugin install strive@strive
 ```
 
-Claude Code:
+Run `/strive:strive` and name the project and session you want to review.
+
+## Cursor
+
+Cursor's documented local plugin route loads a plugin from
+`~/.cursor/plugins/local`. Clone the public source and copy the self-contained
+plugin there:
+
 ```sh
-python3 scripts/strive-plugin.py install claude
+git clone --depth 1 https://github.com/Morkeeth/strive.git strive-plugin-source
+python3 strive-plugin-source/scripts/strive-plugin.py install cursor
 ```
 
-Restart the editor, open STRIVE in its plugin list and invoke its `strive` skill
-(Claude Code: `/strive:strive`). Ask it to preview selected real sessions from your
-named projects. No API key is needed for capture.
+Reload Cursor, open Customize → Plugins, and select STRIVE's `strive` skill.
+Local plugin imports must be allowed. If another STRIVE marketplace plugin is
+already installed, Cursor gives that one precedence.
 
-Already installed? The installer refuses to overwrite a plugin. From this same
-folder, run `python3 scripts/strive-plugin.py uninstall cursor` (or `claude`), then
-the install command above. Capture history is preserved; other plugins are untouched.
+## Codex
+
+Run these two lines, then start a new Codex session:
+
+```sh
+codex plugin marketplace add Morkeeth/strive
+codex plugin add strive@strive
+```
+
+Invoke the `strive` skill in a new conversation.
+The package contains the same local capture runtime. It does not install hooks
+in Codex.
+
+## ZIP fallback
+
+If your editor cannot use the routes above, download the versioned archive in
+`/plugins/release.json`, verify its SHA-256, and unzip it. From inside the
+extracted `strive` folder, run `python3 scripts/strive-plugin.py install cursor`
+or `python3 scripts/strive-plugin.py install claude`.
+
+The installer refuses to overwrite an existing local package. To update it,
+run the corresponding `uninstall` command first, then install again. Capture
+history and other plugins remain untouched.
 
 The blue local preview lets you add a caption and your selected photo, switch
 projects, and download Post, Story or Square images. Downloads do not publish.
