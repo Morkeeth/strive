@@ -8,6 +8,8 @@ The rules live in three places that must agree:
 - `site/design.css`: the tokens and the COMPONENT RULES block.
 - `site/day-card.js`, `site/feed-card.js`, `site/run-photos.js`: the one function that draws each part.
 
+The day page opens on an Activities list using the same run card as Feed and Profile. Its day card is available in the "Day card" disclosure beneath that list. Opening the disclosure preserves the author's saved visual choices, page links, owner menu and Sharing flow.
+
 An author's face uses their verified GitHub account photo first, then a photo from a connected X identity when available. If no account photo loads, show the STRIVE route mark from `site/favicon.svg`. A chosen STRIVE handle or an old unverified X label never supplies a provider photo. The same rule applies to the feed, profile header and public run card.
 
 `scripts/test-card-system.mjs` fails if a token or class named here is missing from the styles. `scripts/test-day-card.mjs` checks the rules themselves. Run both after any change:
@@ -162,7 +164,7 @@ Old saved choices: before version 2 a card could hold one picture under the head
 
 Follows the rules:
 
-- Day card: project screens (`/?day=`), with whole-day evidence below.
+- Day card: project screens in the "Day card" disclosure (`/?day=`), with whole-day evidence below.
 - Edit card (`&setup=1`) and its live preview.
 - Sharing (`&share=1`): owner menu and the reader link.
 - Action row on the feed card, the run page and the day card: one function, one height token.
