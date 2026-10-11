@@ -13,7 +13,7 @@
     "test:shared-schema": "node scripts/test-shared-schema.mjs",
     "build": "node scripts/build-site.mjs",
     "test:identity": "node scripts/test-identity.mjs",
-    "test:people": "node scripts/test-people-schema.mjs",
+    "test:people": "node scripts/test-people-schema.mjs && node scripts/test-follow-states.mjs",
     "test:account": "node scripts/test-account.mjs",
     "test:origin": "node scripts/test-origin.mjs",
     "test:ridge": "node scripts/test-ridge-persistence.mjs",
