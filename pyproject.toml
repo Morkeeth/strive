@@ -1,6 +1,6 @@
 [project]
 name = "striverun"
-version = "0.1.0"
+version = "0.1.1"
 description = "STRIVE local coding-session capture and private preview tools."
 readme = "README.md"
 requires-python = ">=3.9"      # measured, not assumed: every command runs under macOS system python 3.9.6
