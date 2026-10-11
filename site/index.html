@@ -1575,8 +1575,9 @@ function wireAutoSync(root){
 }
 function connectBodyHtml(){
   const capture=ONE_LINE('auto');
+  const picker=h=>`uvx --from __CAPTURE_PACKAGE__ agentgrinder sessions --harness ${h} --open --site __ORIGIN__`;
   const agentPrompt=`Open ${location.origin}/agents.md and help me preview this session on STRIVE. Keep it local until I choose to save it.`;
-  return StrivePostFlow.setupHtml({agentPrompt,capture,syncHtml:autoSyncHtml(),dropHtml:dropZoneHtml(),agentFiles:AGENT_FILES,agentCommands:Object.fromEntries(['claude','codex'].map(h=>[h,ONE_LINE(h)]))});
+  return StrivePostFlow.setupHtml({agentPrompt,capture,syncHtml:autoSyncHtml(),dropHtml:dropZoneHtml(),agentFiles:AGENT_FILES,agentCommands:Object.fromEntries(['cursor','claude','codex'].map(h=>[h,picker(h)]))});
 }
 function wireConnectCopies(root){
   window.StrivePostFlow?.mountSetup(root||document);
@@ -1720,9 +1721,9 @@ function playStrip(){
 function landingHTML(){
   return `<div class="home ${ME?'home-member':''}">
     <div class="home-layout">
-      <section class="home-sec landing-feature" aria-labelledby="h-popular" id="landing-feature"><div class="land-head"><h2 id="h-popular">${ME?'Your feed':'Public runs'}</h2>${ME?'':'<a href="/?people">Find people</a>'}</div><div id="landing-feature-body">${skeletonCard()}</div><p id="public-run-count" class="public-run-count" role="status"></p></section>
+      <section class="home-sec landing-feature" aria-labelledby="h-popular" id="landing-feature"><div class="land-head"><h2 id="h-popular">${ME?'Your feed':'Public runs'}</h2></div><div id="landing-feature-body">${skeletonCard()}</div><p id="public-run-count" class="public-run-count" role="status"></p></section>
       <aside class="home-around" id="home-people-clubs" aria-label="Around STRIVE" tabindex="-1">
-        <section class="home-sec" aria-labelledby="h-builders"><div class="land-head"><h2 id="h-builders">People building</h2><a href="/?people">Find people</a></div><div id="home-builders"></div></section>
+        <section class="home-sec" aria-labelledby="h-builders"><div class="land-head"><h2 id="h-builders">People building</h2><a class="home-people-link" href="/?people">Find people</a></div><div id="home-builders"></div></section>
         <section class="home-sec" id="home-week-section" aria-labelledby="h-week"><div class="land-head"><h2 id="h-week">This week</h2></div><div id="home-week"><div class="wk-skel"></div></div></section>
 
       </aside>
@@ -1953,7 +1954,10 @@ async function viewRun(id){
     const textColumn=document.createElement('div');textColumn.className='run-edit-copy';
     const mediaColumn=document.createElement('div');mediaColumn.className='run-edit-media';
     for(const selector of ['.run-story-fields','.run-extra-story'])textColumn.append(controls.querySelector(selector));
-    for(const selector of ['#run-audience-label','.run-lead-choice','#run-editor-photos','.run-presentation'])mediaColumn.append(controls.querySelector(selector));
+    for(const selector of ['#run-audience-label','#run-editor-photos','.run-presentation'])mediaColumn.append(controls.querySelector(selector));
+    mediaColumn.querySelector('.run-presentation summary').textContent='Advanced';
+    mediaColumn.querySelector('.run-presentation').prepend(controls.querySelector('.run-lead-choice'));
+    mediaColumn.querySelector('.run-presentation').prepend(mediaColumn.querySelector('.run-presentation summary'));
     controls.querySelector('.run-edit-actions').before(textColumn,mediaColumn);
     controls.hidden=true;
     const showEditor=(focus='run-title')=>{for(const child of app.children)if(child!==controls)child.hidden=true;controls.hidden=false;app.classList.add('is-editing-run');history.replaceState(null,'','/?run='+r.id+'#run-edit');window.scrollTo?.(0,0);controls.querySelector('#'+focus)?.focus({preventScroll:true});};

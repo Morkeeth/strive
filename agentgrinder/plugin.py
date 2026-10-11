@@ -391,7 +391,11 @@ def main(argv=None):
     q = sub.add_parser('hook'); q.add_argument('--harness',choices=['claude','cursor'],required=True)
     sub.add_parser('collect'); sub.add_parser('status'); sub.add_parser('doctor')
     q = sub.add_parser('remove'); q.add_argument('draft')
+    q = sub.add_parser('pick', help='open a local recent-session picker'); q.add_argument('--harness', choices=['claude','cursor','codex'], required=True); q.add_argument('--open', action='store_true'); q.add_argument('--site', default='https://striverun.app')
     args = p.parse_args(argv)
+    if args.command=='pick':
+        from .session_picker import main as picker
+        return picker(args.harness, root=args.state, site=args.site, open_browser=args.open)
     try:
         root = root_path(args.state)
         with connect(root) as db:

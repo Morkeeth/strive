@@ -320,3 +320,7 @@ Review refinement: the signed-out feed has no empty hero heading. Five showcase 
 ## Saved image selection
 
 A saved image can be hidden from readers without deletion. The owner editor stages the selection until Save, with Cancel discarding it. Only selected images enter feed, detail, public page and project pictures. Personal images still require the one selected cover. A hidden image's known URL does not grant access. See `docs/PHOTO-SELECTION-RELEASE.md`.
+
+## 11 Oct morning — fewer image choices
+
+The owner sees a thumbnail strip: tap for cover, × to hide reversibly, plus to add, and one Personal toggle. The selected cover appears first. Role chips, deletion and lead-image modes live under Advanced. Changes stay local until Save; Cancel discards them. Hidden bytes and unchosen personal images remain owner-only. No saved role, cover, layout or audience changes on load.

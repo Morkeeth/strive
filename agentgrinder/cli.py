@@ -360,9 +360,16 @@ def main(argv=None) -> int:
     pr = sub.add_parser("profile", help="build a builder profile + run feed from a GitHub user + local runs")
     pr.add_argument("username"); pr.add_argument("--runs", default="samples")
     pr.add_argument("-o", "--out", default="profile.html"); pr.add_argument("--no-open", action="store_true"); pr.add_argument("--open", action="store_true", help="open the result in a browser (default: print the path or link, open nothing)")
+    pick = sub.add_parser("sessions", help="choose a recent local session and prepare a private preview")
+    pick.add_argument("--harness", choices=["claude", "cursor", "codex"], required=True)
+    pick.add_argument("--site", default="https://striverun.app")
+    pick.add_argument("--open", action="store_true")
     args = p.parse_args(argv)
     _BROWSER.allowed = _browser_allowed(args)
 
+    if args.cmd == "sessions":
+        from .session_picker import main as picker
+        return picker(args.harness, site=args.site, open_browser=args.open)
     if args.cmd == "code-route":
         from .route_capture import run_cli
         return run_cli(args)
