@@ -199,7 +199,7 @@ const shareMore=run=>{
  const rows=(Array.isArray(run)?run:[]).filter(item=>item?.visibility==='public'&&validId(item.id)&&runPath(item)).slice(0,3);
  return rows.length?`<aside class="share-side"><h2>More from this builder</h2><ul>${rows.map(item=>`<li><a href="${esc(runPath(item))}">${esc(Feed.titleOf(item))}</a><small>${esc(item.project||'Public run')}</small></li>`).join('')}</ul></aside>`:'';
 };
-export function html(run,opts={}){const title=esc(Feed.titleOf(run)),insight=Checkpoints.claimed(run)?'':routeInsight(run&&run.code_route),summary=String(run.caption||'').split(/\r?\n/).find(Boolean)||Feed.cardSummary(run)||insight||'See the work and its recorded activity.',description=esc(wholeWords(summary.match(/^[^.!?]+[.!?]/)?.[0]||summary,105)),shareTitle=esc(wholeWords(Feed.titleOf(run),70)),id=encodeURIComponent(run.id),image=shareOrigin+'/api/og?run='+id,url=shareOrigin+(runPath(run)||'/r/'+id);
+export function html(run,opts={}){const title=esc(Feed.titleOf(run)),insight=Checkpoints.claimed(run)?'':routeInsight(run&&run.code_route),summary=String(run.caption||'').split(/\r?\n/).find(Boolean)||Feed.cardSummary(run)||insight||'See the work and its recorded activity.',description=esc(wholeWords(summary.match(/^[^.!?]+[.!?]/)?.[0]||summary,105)),shareTitle=esc(wholeWords(Feed.titleOf(run),70)),id=encodeURIComponent(run.id),image=shareOrigin+'/api/og?run='+id+'&v=2',url=shareOrigin+(runPath(run)||'/r/'+id);
  const handle=run.profiles?.handle||run.profiles?.github_handle;
  const profileHref=profilePath(handle)||'';
  // opts.kudos is the count readKudos returned: a number, or null when it could not be read.
