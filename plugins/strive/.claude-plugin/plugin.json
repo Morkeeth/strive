@@ -1,11 +1,17 @@
 {
   "name": "strive",
-  "version": "0.3.4",
+  "displayName": "STRIVE",
+  "version": "0.3.5",
   "description": "Turn selected real coding sessions into private run cards across named projects. Review first, save privately, share deliberately.",
   "author": {
     "name": "STRIVE"
   },
   "homepage": "https://striverun.app",
+  "documentationUrl": "https://striverun.app/plugins/install.md",
+  "privacyPolicyUrl": "https://striverun.app/privacy",
+  "supportUrl": "https://striverun.app/?feedback",
+  "termsOfServiceUrl": "https://striverun.app/terms",
+  "keywords": ["agent sessions", "run cards", "coding activity", "project progress"],
   "repository": "https://github.com/Morkeeth/strive",
   "license": "MIT",
   "hooks": "./config/claude-hooks.json"
