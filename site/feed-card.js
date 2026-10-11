@@ -90,7 +90,7 @@
       if (out.length >= 3 || value == null || value === "" || (lead && (lead.key === key || lead.also === key)) || out.some((f) => f[0] === label)) return;
       out.push([label, value]);
     };
-    add("time", "Time", durationLabel(r.wall_time_s ?? r.duration_s));
+    add("time", "Elapsed", durationLabel(r.wall_time_s ?? r.duration_s));
     const turns = whole(r.prompts ?? r.turns_typed);
     const tools = toolCalls(r);
     add("turns", "Turns", turns);
