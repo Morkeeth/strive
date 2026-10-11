@@ -509,6 +509,8 @@ window.GrinderSocial = function ({
 
   async function followControl(person, slot) {
     if (!slot || !person?.id) return;
+    const viewerId=me()?.id;
+    if(person.id===viewerId){const suggestion=slot.closest('.fc-builder');if(suggestion)suggestion.remove();else slot.replaceChildren();return;}
     try {
       if (
         sessionStorage.getItem(RESPONSE_RETURN_KEY) === "?inbox" &&
@@ -553,6 +555,8 @@ window.GrinderSocial = function ({
           .eq("follower_id", me().id)
           .eq("followed_id", person.id),
       );
+      if(me()?.id!==viewerId){slot.replaceChildren();return;}
+      if(person.id===me()?.id){slot.closest('.fc-builder')?.remove();slot.replaceChildren();return;}
       let active = rows.length > 0;
       const button = document.createElement("button");
       button.type = "button";

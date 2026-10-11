@@ -39,7 +39,7 @@
     const choice=pick?.visual==='data'?pick:pick?.photo?.run===id?pick:legacy;
     const dataOnly=choice?.visual==='data'||(!pick&&clean.photo&&clean.visual==='data');
     const photo=choice?.photo?.run===id&&choice.visual!=='data'?choice.photo:null;
-    const gallery=!dataOnly;
+    const gallery=!dataOnly,noImage=gallery&&r._readablePhotoCount===0;
     const kind=photo?choice.visual:'data';
     const projectFirst=r.photo_layout==='result'&&r.capture_metadata?.estimates?.v===1;
     const visual=(dataOnly||!photo||projectFirst)?'':`<figure class="dc-visual post-visual" data-kind="${esc(kind)}"${dataOnly?'':` data-visual-run="${esc(id)}"${photo?` data-visual-photo="${esc(photo.id)}" data-focus="${esc(choice.focus||'center')}"`:' data-visual-cover'}`}><div class="dc-fallback"${photo?' hidden':''}></div>${dataOnly?'':`<div class="dc-picture"${photo?'':' hidden'}></div>`}</figure>`;
@@ -50,9 +50,9 @@
       ${audience?`<p class="dc-audience">${esc(audience)}</p>`:''}
       <div class="post-story">${project?`<a class="post-project" href="/?project=${encodeURIComponent(r.project)}&scope=${owner?'mine':'public'}">${esc(project)}</a>`:''}<h2><a href="${href}">${esc(title)}</a></h2>${caption&&caption!==title?`<p class="post-caption">${esc(caption)}</p>`:!caption?(root.StrivePlaceholders?.render('description',{compact:true})||''):''}</div>
       ${root.StriveContext?.headlineHtml?.(r)||''}
-      <div class="post-workline">${root.StriveContext?.cardSecondary?.(r)||''}
+      <div class="post-workline">${!noImage?(root.StriveContext?.cardSecondary?.(r)||''):''}
       ${work.length?`<p class="post-work">Recorded work · ${work.map(([label,value])=>esc(value)+' '+esc(value==='1'?({'Commits':'commit','Files touched':'file touched','Files changed':'file changed','Projects':'project'}[label]||label.toLowerCase()):label.toLowerCase())).join(' · ')}</p>`:''}</div>
-      ${visual}${gallery?`<div class="run-media-slot"><div class="post-media-empty" data-photo-placeholder>${root.StrivePlaceholders?.render('screenshot',{story:r.caption||title,pending:true,owner,seed:id,harness:r.harness,model:(Array.isArray(r.capture_metadata?.models)?r.capture_metadata.models:[]).join(', ')})||''}</div></div>`:''}${r.feedback_question?`<p class="post-question">${esc(r.feedback_question)}</p>`:''}
+      ${visual}${gallery?`<div class="run-media-slot"><div class="post-media-empty" data-photo-placeholder>${noImage?(root.StrivePlaceholders?.render('screenshot',{story:r.caption||title,owner,seed:id,harness:r.harness,model:(Array.isArray(r.capture_metadata?.models)?r.capture_metadata.models:[]).join(', ')})||''):'<div class="media-loading" role="status" aria-label="Loading run images"></div>'}</div></div>`:''}${r.feedback_question?`<p class="post-question">${esc(r.feedback_question)}</p>`:''}
       <p class="post-open"><a href="${href}">View full run <span aria-hidden="true">→</span></a></p><footer class="fc-foot">${actions}</footer><section class="dc-comments" hidden aria-label="Comments on this run"></section>
     </article>`;
   }
