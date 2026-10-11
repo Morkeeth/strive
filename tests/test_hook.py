@@ -57,6 +57,32 @@ def test_finished_composer_captures_exactly_once(tmp_path, monkeypatch):
     assert opened == [f"http://127.0.0.1:8765/{COMPOSER}.html"]
 
 
+def test_completed_composer_without_typed_request_does_not_block_next_one(tmp_path, monkeypatch):
+    source = store(tmp_path)
+    later = "bbbbbbbb-0000-0000-0000-000000000002"
+    with sqlite3.connect(source) as db:
+        db.execute("insert into cursorDiskKV values(?,?)", (
+            "composerData:" + later,
+            json.dumps({"status": "completed", "lastUpdatedAt": 1789480800001}),
+        ))
+        db.execute("insert into composerHeaders values(?,0)", (later,))
+    seen = []
+    monkeypatch.setattr(hook, "_store_private", lambda _root, composer_id, _run: f"{composer_id}.html")
+    monkeypatch.setattr(hook, "_ensure_server", lambda *_args: None)
+
+    def capture(composer_id):
+        seen.append(composer_id)
+        if composer_id == COMPOSER:
+            raise ValueError("no typed <user_query> turns in completed transcript")
+        return {"composer_id": composer_id}
+
+    first = hook.run_once(tmp_path / "private", source, capture_one=capture)
+    second = hook.run_once(tmp_path / "private", source, capture_one=capture)
+    assert first["composer_ids"] == [later]
+    assert second == {"captured": 0, "composer_ids": []}
+    assert seen == [COMPOSER, later]
+
+
 def test_subagent_and_unfinished_composers_are_not_captured(tmp_path):
     source = store(tmp_path)
     db = sqlite3.connect(source)

@@ -224,6 +224,14 @@ def run_once(directory=None, db=None, port: int = DEFAULT_PORT,
                         state.execute("delete from processed where composer_id=?", (composer_id,))
                     continue
                 card_name = _store_private(root, composer_id, run)
+            except ValueError as exc:
+                if str(exc).startswith("no typed <user_query> turns in "):
+                    # A completed Cursor composer may contain tool traffic but no typed user
+                    # request. It cannot become a run; keep the claim so the timer moves on.
+                    continue
+                with state:
+                    state.execute("delete from processed where composer_id=?", (composer_id,))
+                raise
             except Exception:
                 with state:
                     state.execute("delete from processed where composer_id=?", (composer_id,))
