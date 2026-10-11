@@ -1,5 +1,6 @@
 import {runtimeConfig} from './runtime-config.mjs';
 import {BRAND,TAGLINE} from './brand.mjs';
+import {runPath,profilePath} from './share-routes.mjs';
 // The feed's card. A CommonJS module (site/feed-card.js), so its default import is its exports.
 import Feed from '../site/feed-card.js';
 import Evidence from '../site/run-evidence.js';
@@ -177,9 +178,9 @@ const pageCodeRoute=run=>{
  return `<section class="code-route" aria-label="${esc(aria)}"><h2>Code Route</h2><svg viewBox="0 0 ${width} ${height}" role="img" aria-hidden="true"><path class="code-route-line" pathLength="1" d="${line}" fill="none" stroke="#123cff" stroke-width="2.5"/>${dots}${lanes}</svg><ol class="code-route-projects">${projectList}</ol>${insight?`<p class="code-route-insight">${esc(insight)}</p>`:''}<div class="code-route-stops">${stopList}</div>${harness}</section>`;
 };
 
-export function html(run,opts={}){const title=esc(Feed.titleOf(run)),insight=Checkpoints.claimed(run)?'':routeInsight(run&&run.code_route),description=esc(Feed.cardSummary(run)||insight||'See the work, its recorded activity and the conversation.'),id=encodeURIComponent(run.id),image=origin+'/api/run?id='+id+'&image=1',url=origin+'/r/'+id;
+export function html(run,opts={}){const title=esc(Feed.titleOf(run)),insight=Checkpoints.claimed(run)?'':routeInsight(run&&run.code_route),description=esc((String(run.caption||'').split(/\r?\n/).find(Boolean)||Feed.cardSummary(run)||insight||'See the work, its recorded activity and the conversation.').slice(0,180)),id=encodeURIComponent(run.id),image=origin+'/api/og?run='+id,url=origin+(runPath(run)||'/r/'+id);
  const handle=run.profiles?.handle||run.profiles?.github_handle;
- const profileHref=handle?'/?u='+encodeURIComponent(handle):'';
+ const profileHref=profilePath(handle)||'';
  // opts.kudos is the count readKudos returned: a number, or null when it could not be read.
  // The stride line is on the card with its address; the page carries no script (the probe in
  // tests/fixtures/public_outcome_probe.mjs holds it to that), so it is text to select, not a button.
@@ -410,6 +411,30 @@ export function homeCard(run=null){
    el('div',{style:{display:'flex',fontSize:41,fontWeight:700,lineHeight:1.1}},bins?String(run.title||'One public run').slice(0,110):'Show what you made.'),
    bins?el('svg',{width:1030,height:170,viewBox:'0 0 1030 170',style:{marginTop:20}},el('polyline',{points,stroke:'#0047ff',strokeWidth:5,strokeLinejoin:'round',strokeLinecap:'round',fill:'none'})):null,
    el('div',{style:{display:'flex',fontSize:25,color:'#666',marginTop:'auto'}},bins?'Recorded activity · one public run on STRIVE':'Real sessions. The work behind them. The people building next.')));
+}
+
+export function photoCard(run,photoUrl){
+ const who=Feed.profileOf(run),lead=Feed.headline(run),stats=Feed.stats(run,lead);
+ return el('div',{style:{display:'flex',width:1200,height:630,background:'#fff',fontFamily:'sans-serif',color:'#111'}},
+  el('div',{style:{display:'flex',width:620,height:630,background:'#edf2ff',overflow:'hidden'}},el('img',{src:photoUrl,width:620,height:630,style:{width:620,height:630,objectFit:'cover'}})),
+  el('div',{style:{display:'flex',flexDirection:'column',width:580,padding:'36px 40px'}},
+   el('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',color:'#0047ff',fontSize:22,fontWeight:700}},BRAND),
+   el('div',{style:{display:'flex',fontSize:25,marginTop:34}},String(who.name).slice(0,45)),
+   el('div',{style:{display:'flex',fontSize:42,fontWeight:700,lineHeight:1.1,marginTop:22,maxHeight:150,overflow:'hidden'}},String(Feed.titleOf(run)).slice(0,100)),
+   el('div',{style:{display:'flex',fontSize:21,color:'#555',lineHeight:1.3,marginTop:20,maxHeight:106,overflow:'hidden'}},String(run.caption||'').split(/\r?\n/)[0].slice(0,145)),
+   el('div',{style:{display:'flex',marginTop:'auto',borderTop:'2px solid #0047ff',paddingTop:16,gap:22}},
+    ...([lead?[lead.unit,lead.n]:null,...stats].filter(Boolean).slice(0,3).map(([label,value])=>el('div',{style:{display:'flex',flexDirection:'column',minWidth:120}},el('div',{style:{display:'flex',fontSize:14,color:'#666'}},String(label)),el('div',{style:{display:'flex',fontSize:25,fontWeight:700}},String(value))))))));
+}
+
+export function profileCard(profile){
+ const name=String(profile.display_name||profile.handle||profile.github_handle||'Builder').slice(0,70);
+ const handle=String(profile.handle||profile.github_handle||'').slice(0,40);
+ return el('div',{style:{display:'flex',width:1200,height:630,background:'#f7f7f5',padding:44,fontFamily:'sans-serif',color:'#111'}},
+  el('div',{style:{display:'flex',flexDirection:'column',width:'100%',height:'100%',background:'#fff',border:'1px solid #e3e3df',padding:48}},
+   el('div',{style:{display:'flex',fontSize:30,fontWeight:700,color:'#0047ff'}},BRAND),
+   el('div',{style:{display:'flex',fontSize:78,fontWeight:700,marginTop:80}},name),
+   el('div',{style:{display:'flex',fontSize:35,color:'#0047ff',marginTop:16}},'@'+handle),
+   el('div',{style:{display:'flex',fontSize:24,color:'#666',marginTop:'auto'}},'Public runs and activities on STRIVE')));
 }
 
 export function privateCard(){
