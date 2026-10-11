@@ -225,12 +225,21 @@ window.GrinderSocial = function ({
 
   async function refreshUnread() {
     const badges = [
-      byId("nav-inbox-badge"),
       ...document.querySelectorAll(".mobile-inbox-badge"),
     ].filter(Boolean);
+    const accountTrigger = document.querySelector("#account-menu > summary");
+    const responsesLink = document.querySelector("[data-responses-link]");
+    const showUnread = (count) => {
+      if (accountTrigger) {
+        accountTrigger.dataset.unread = count > 0 ? "true" : "false";
+        accountTrigger.setAttribute("aria-label", count > 0
+          ? `Profile and settings, ${count} unread ${count === 1 ? "response" : "responses"}`
+          : "Profile and settings");
+      }
+      if (responsesLink) responsesLink.textContent = count > 0 ? `Responses · ${count > 9 ? "9+" : count} unread` : "Responses";
+    };
     if (!me()) {
-      const navBell = byId("notifications-toggle");
-      if (navBell) navBell.hidden = true;
+      showUnread(0);
       for (const badge of badges) {
         badge.hidden = true;
         badge.setAttribute("aria-hidden", "true");
@@ -248,8 +257,7 @@ window.GrinderSocial = function ({
           .limit(50),
       );
       const count = rows.length;
-      const navBell = byId("notifications-toggle");
-      if (navBell) navBell.hidden = count === 0;
+      showUnread(count);
       for (const badge of badges) {
         if (count > 0) {
           badge.hidden = false;
@@ -268,6 +276,7 @@ window.GrinderSocial = function ({
       }
       return count;
     } catch (_) {
+      showUnread(0);
       return 0;
     }
   }
@@ -1185,8 +1194,8 @@ window.GrinderSocial = function ({
         body.innerHTML =
           filters +
           empty(
-            "Post a real run and share it with a friend. Their XUDOS and replies will bring you back to the conversation.",
-            `<div class="cta"><a class="act blue" href="/?post">Post your first run</a><a class="act" href="/?people">Find people</a></div>`,
+            "No responses yet. Share a public run with a friend to start a conversation.",
+            `<div class="cta"><a class="act blue" href="/?mine">Open your runs</a><a class="act" href="/?people">Find people</a></div>`,
           );
         await refreshUnread();
         return;
