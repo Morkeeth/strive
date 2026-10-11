@@ -1,0 +1,12 @@
+{
+  "name": "strive",
+  "owner": { "name": "STRIVE" },
+  "metadata": { "description": "Record selected coding sessions as private STRIVE runs" },
+  "plugins": [
+    {
+      "name": "strive",
+      "source": "plugins/strive",
+      "description": "Turn selected real coding sessions into private runs. Review first, save privately, share deliberately."
+    }
+  ]
+}

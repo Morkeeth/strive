@@ -74,7 +74,7 @@ console.log('PASS native detail: full-image control opens authorized source; uns
  const noImage={...current,harness:'Codex',caption:'Author describes the measured comparison.',capture_metadata:{...full,models:['test-model']}};
  await w.StriveRunPhotos.mount({client:null,run:noImage,slot:w.document.querySelector('#detail'),owner:false,status(){}});
  const native=w.document.querySelector('.run-detail-story');assert.ok(native.querySelector('.harness-mark'));assert.match(native.textContent,/test-model/);assert.ok(!native.textContent.includes('Project image not added'));assert.equal(native.querySelectorAll('.empty-source').length,0);
- const shared=new JSDOM(html(noImage,{photos:[]})).window.document;assert.ok(shared.querySelector('.share-card-image'));assert.match(JSON.stringify(linkPreviewCard(noImage)),/Author describes the measured comparison/);assert.match(shared.querySelector('.share-chips').textContent,/test-model/);assert.ok(!shared.body.textContent.includes('Project image not added'));w.StriveRunPhotos.disposeAll();
+ const shared=new JSDOM(html(noImage,{photos:[]})).window.document;assert.ok(shared.querySelector('.share-quote'));assert.match(JSON.stringify(linkPreviewCard(noImage)),/Author describes the measured comparison/);assert.match(shared.querySelector('.share-chips').textContent,/test-model/);assert.ok(!shared.body.textContent.includes('Project image not added'));w.StriveRunPhotos.disposeAll();
 }
 console.log('PASS no-image native detail and share use authored story, with harness/model and no owner request.');
 

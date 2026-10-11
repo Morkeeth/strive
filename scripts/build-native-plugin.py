@@ -29,7 +29,8 @@ with tempfile.TemporaryDirectory(prefix='strive-public-plugin-') as folder:
                 continue
             relative = path.relative_to(bundle)
             listing_icon = relative == Path('.claude-plugin/icon.png') and path.stat().st_size <= 2_000_000
-            if not listing_icon and path.name != 'LICENSE' and path.suffix not in ('.py','.js','.json','.md'):
+            listing_logo = relative == Path('assets/logo.svg') and path.stat().st_size <= 100_000
+            if not listing_icon and not listing_logo and path.name != 'LICENSE' and path.suffix not in ('.py','.js','.json','.md'):
                 raise ValueError('Unexpected file in public plugin: '+str(path.relative_to(bundle)))
             info = zipfile.ZipInfo(str(path.relative_to(bundle.parent)), (2026,10,8,0,0,0))
             info.compress_type = zipfile.ZIP_DEFLATED
