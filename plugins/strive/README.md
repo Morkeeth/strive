@@ -1,5 +1,9 @@
 # STRIVE for Claude Code, Cursor and Codex
 
+The session-end hook records nothing until you register a project. Nothing
+leaves this machine until you press **Save run** in STRIVE or explicitly approve
+a direct private save.
+
 Capture selected real coding sessions from named projects, see the cards together, and save them privately. Sharing stays a separate choice in STRIVE. Python 3.9+ is the only runtime requirement; capture needs no model API key.
 
 ## Your first private run

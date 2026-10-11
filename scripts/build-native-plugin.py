@@ -38,6 +38,10 @@ with tempfile.TemporaryDirectory(prefix='strive-public-plugin-') as folder:
         'install':'/plugins/install.md'},indent=2)+'\n')
     (out/'install.md').write_text('''# Install STRIVE
 
+The session-end hook records nothing until you register a project. Nothing
+leaves this machine until you press **Save run** in STRIVE or explicitly approve
+a direct private save.
+
 STRIVE captures selected real agent sessions and opens a local card for review.
 Python 3.9+ is required to capture. No model API key is needed.
 
