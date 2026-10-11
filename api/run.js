@@ -13,6 +13,6 @@ module.exports=async function handler(req,res){
    // message unfurls a neutral image instead of nothing, and a tap lands on a way in.
    res.statusCode=200;res.setHeader('Content-Type','text/html; charset=utf-8');res.end(neutralHtml(req.query.id))}
   else if(!run){res.statusCode=404;res.setHeader('Content-Type','text/plain; charset=utf-8');res.end('This public run is unavailable.')}
-  else{const [kudos,photos,activities]=await Promise.all([readKudos(run.id),readPublicPhotos(run),readProfileActivities({id:run.profile_id}).catch(()=>[])]);res.setHeader('Content-Type','text/html; charset=utf-8');res.end(html(run,{kudos,photos,moreRuns:activities.filter(item=>item.id!==run.id).slice(0,3)}))}
+  else{const [kudos,photos,avatar,activities]=await Promise.all([readKudos(run.id),readPublicPhotos(run),readAvatar(run),readProfileActivities({id:run.profile_id}).catch(()=>[])]);res.setHeader('Content-Type','text/html; charset=utf-8');res.end(html(run,{kudos,photos,avatar,moreRuns:activities.filter(item=>item.id!==run.id).slice(0,3)}))}
  }catch(_){res.statusCode=503;res.setHeader('Content-Type','text/plain; charset=utf-8');res.end('Run preview temporarily unavailable.');}
 };

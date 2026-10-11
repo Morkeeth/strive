@@ -3,7 +3,7 @@ import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
 import sharp from 'sharp';
-import {html as publicHtml,neutralHtml,readPublic,readPublicPhotos,readKudos,validId,homeCard} from '../server/public-run.mjs';
+import {html as publicHtml,neutralHtml,readPublic,readPublicPhotos,readKudos,readAvatar,validId,homeCard} from '../server/public-run.mjs';
 import {readProfileActivities} from '../server/share-routes.mjs';
 const origin='https://striverun.app',live=await (await fetch(origin)).text();
 const url=live.match(/const SB_URL="([^"]+)"/)[1],key=live.match(/const SB_KEY="([^"]+)"/)[1];
@@ -36,7 +36,7 @@ const server=createServer(async(req,res)=>{try{
   const id=u.pathname.slice(3);if(!validId(id)){res.writeHead(404);return res.end('No run');}
   const publicFetch=publicRequest;
   const run=await readPublic(id,publicFetch);res.setHeader('Content-Type','text/html');if(!run)return res.end(neutralHtml(id));
-  const [photos,kudos,activities]=await Promise.all([readPublicPhotos(run,publicFetch),readKudos(id,publicFetch),readProfileActivities({id:run.profile_id},publicFetch).catch(()=>[])]);return res.end(publicHtml(run,{photos,kudos,moreRuns:activities.filter(item=>item.id!==run.id).slice(0,3)}));
+  const [photos,kudos,avatar,activities]=await Promise.all([readPublicPhotos(run,publicFetch),readKudos(id,publicFetch),readAvatar(run),readProfileActivities({id:run.profile_id},publicFetch).catch(()=>[])]);return res.end(publicHtml(run,{photos,kudos,avatar,moreRuns:activities.filter(item=>item.id!==run.id).slice(0,3)}));
  }
  if(u.pathname.startsWith('/public-read/')){
   const path=u.pathname.slice('/public-read'.length),readRpc=['/rest/v1/rpc/read_day_card','/rest/v1/rpc/strava_profile_by_handle','/rest/v1/rpc/grinder_recent_builders','/rest/v1/rpc/grinder_find_people'].includes(path)&&req.method==='POST';

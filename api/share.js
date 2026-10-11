@@ -3,7 +3,7 @@ module.exports=async function handler(req,res){
  res.setHeader('X-Content-Type-Options','nosniff');
  try{
   const {readProfile,readProfileActivities,readShortRun,canonicalProfile,profilePath,runPath,validHandle,shareOrigin}=await import('../server/share-routes.mjs');
-  const {readKudos,readPublicPhotos,html}=await import('../server/public-run.mjs');
+  const {readKudos,readPublicPhotos,readAvatar,html}=await import('../server/public-run.mjs');
   const handle=String(req.query.handle||'');
   if(!validHandle(handle))return res.status(404).send('Page unavailable.');
   const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -15,8 +15,8 @@ module.exports=async function handler(req,res){
    const path=runPath(run);
    if(!path)return res.status(404).send('Run unavailable.');
    if(`${handle}/${req.query.run}`!==path.slice(1)){res.writeHead(301,{Location:path});return res.end()}
-   const [kudos,photos,activities]=await Promise.all([readKudos(run.id),readPublicPhotos(run),readProfileActivities({id:run.profile_id}).catch(()=>[])]);
-   res.setHeader('Content-Type','text/html; charset=utf-8');return res.end(html(run,{kudos,photos,moreRuns:activities.filter(item=>item.id!==run.id).slice(0,3)}));
+   const [kudos,photos,avatar,activities]=await Promise.all([readKudos(run.id),readPublicPhotos(run),readAvatar(run),readProfileActivities({id:run.profile_id}).catch(()=>[])]);
+   res.setHeader('Content-Type','text/html; charset=utf-8');return res.end(html(run,{kudos,photos,avatar,moreRuns:activities.filter(item=>item.id!==run.id).slice(0,3)}));
   }
   const profile=await readProfile(handle);
   if(!profile)return res.status(404).send('Profile unavailable.');
