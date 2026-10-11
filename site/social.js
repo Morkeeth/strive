@@ -560,7 +560,8 @@ window.GrinderSocial = function ({
       let active = rows.length > 0;
       const button = document.createElement("button");
       button.type = "button";
-      button.textContent = active ? "Following · unfollow" : "Follow";
+      button.textContent = active ? "Following" : "Follow";
+      button.className = active ? "act follow-button is-following" : "act blue follow-button";
       button.setAttribute("aria-pressed", active ? "true" : "false");
       slot.append(button);
       button.onclick = async () => {
@@ -587,7 +588,8 @@ window.GrinderSocial = function ({
                 ),
             );
           active = !active;
-          button.textContent = active ? "Following · unfollow" : "Follow";
+          button.textContent = active ? "Following" : "Follow";
+          button.className = active ? "act follow-button is-following" : "act blue follow-button";
           button.setAttribute("aria-pressed", active ? "true" : "false");
           status(active ? "Following. Their public runs will appear in Following." : "Unfollowed.");
         } catch (e) {
@@ -633,6 +635,7 @@ window.GrinderSocial = function ({
               );
               active = false;
               button.textContent = "Follow";
+              button.className = "act blue follow-button";
               button.setAttribute("aria-pressed", "false");
             }
             await result(
