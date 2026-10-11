@@ -4,9 +4,9 @@ STRIVE turns a recorded coding-agent session into a visual run you can save priv
 
 **[Open STRIVE](https://striverun.app)** · [Contribute](CONTRIBUTING.md)
 
-![A real STRIVE run card for work on FAVOUR, captured on 8 October 2026.](docs/review/import-followup/after-card-1440.png)
+![Live STRIVE card for a FAVOUR review-request run, with recorded activity and project screenshots.](docs/strive-live-favour-card-20261011.png)
 
-_A real captured session. This image records the card as it appeared on 8 October; the current app may look different. The personal photo is optional._
+_Captured from [the public FAVOUR run](https://striverun.app/?run=47e8f731-a4a3-44ce-add2-63fa6e815af5) on 11 October 2026._
 
 ## Make your first private run
 
