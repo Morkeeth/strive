@@ -316,3 +316,7 @@ Keep card copy, measurements, and the activity trail compact, with consistent si
 Editing opens one dedicated view with text and media side by side on desktop and a compact stack on phones. Image roles and lead-image choices use direct controls. Save/Cancel remain in view. Reserve the feed media strip before asynchronous photo discovery, prioritize the first card, and preserve visibility checks before every image response.
 
 Review refinement: the signed-out feed has no empty hero heading. Five showcase cards target under 560px desktop / 600px phone. Media fills the content width with cover crops; only the full-image viewer uses contain. Project chronology and scope stay inside Receipts on the run detail.
+
+## Saved image selection
+
+A saved image can be hidden from readers without deletion. The owner editor stages the selection until Save, with Cancel discarding it. Only selected images enter feed, detail, public page and project pictures. Personal images still require the one selected cover. A hidden image's known URL does not grant access. See `docs/PHOTO-SELECTION-RELEASE.md`.
