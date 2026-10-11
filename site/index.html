@@ -545,7 +545,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.fade{opacity:1}.capture-actions .act:hover{transform:none}}
 
 </style><link rel="stylesheet" href="/social.css"><link rel="stylesheet" href="/people.css"><link rel="stylesheet" href="/account.css"><link rel="stylesheet" href="/feed.css"><link rel="stylesheet" href="/dropin.css"><link rel="stylesheet" href="/home.css"><link rel="stylesheet" href="/run-photos.css"><link rel="stylesheet" href="/run-media-frame.css"><link rel="stylesheet" href="/activity.css">
-<link rel="stylesheet" href="/navigation.css">
+<link rel="stylesheet" href="/navigation.css"><link rel="stylesheet" href="/shared-ui.css">
 <script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};</script>
 <script defer src="/_vercel/insights/script.js"></script>
 </head>
@@ -571,13 +571,13 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 
 <div id="notifications-scrim" class="notice-scrim" hidden></div>
 <aside id="notifications-drawer" class="notice-drawer" aria-label="Notifications" aria-hidden="true" inert><div class="notice-head"><h2>Notifications</h2><div class="notice-actions"><button id="notifications-read-all" class="ghost" type="button">Mark all read</button><button id="notifications-close" class="icon-button" type="button" aria-label="Close notifications">×</button></div></div><div id="notifications-body" class="notice-body"><p class="notice-empty">Loading…</p></div></aside>
-<div id="status"></div>
+<div id="status" role="status" aria-live="polite" aria-atomic="true"></div>
 <div class="shell solo" id="shell">
   <aside class="rail" id="rail"></aside>
   <main class="main" id="app"></main>
   <aside class="side" id="side"></aside>
 </div>
-<footer class="site-foot"><a href="/agents.md">For agents</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/?feedback">Feedback</a><a href="/privacy#deletion" id="delete-info">Delete your data</a><span id="deletewrap" hidden><a href="/?account#danger" id="delete">Delete my __BRAND__ profile</a></span></footer>
+<footer class="site-foot"><a href="/agents.md">For agents</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/?feedback">Feedback</a><a href="/privacy#deletion" id="delete-info">Delete your data</a></footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/navigation.js"></script>
@@ -732,7 +732,8 @@ function skeletonCard(){
     <div class="boxes">${bx.repeat(5)}</div>
     <div class="tw"><span class="sk" style="height:60px"></span></div></div></div>`;
 }
-const status=(m,e)=>{const s=$('status');s.textContent=m||'';s.className=e?'err':'';};
+let statusTimer;
+const status=(m,e)=>{const s=$('status');clearTimeout(statusTimer);s.textContent=m||'';s.className=m?(e?'err shown':'shown'):'';if(m&&!e)statusTimer=setTimeout(()=>{s.textContent='';s.className=''},4400);};
 if(!window.supabase) status("Couldn't load, refresh.",true);
 // Link and other non-public rows are relationship-gated. Only a signed-in session may
 // carry the run-id bearer header; strangers must not learn the row from the URL alone.
@@ -2302,12 +2303,13 @@ async function viewDay(day){
   // &head=<run id> names the run that leads the day. Its own written result is the headline, so a
   // day's headline is always a sentence the author wrote on a run, never one made up for the day.
   const model=StriveDay.compute(data||[],day,v=>GrinderContract.projectLabel(v),through,params.get('head'));
+  const dayRuns=StriveActivity.sort([...new Map([...model.items,...model.recovered].map(item=>[item.run.id,item.run])).values()]);
   const long=(a,b,c)=>new Date(a,b-1,c).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const label=through?`${new Date(y,m-1,d).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'})} to ${long(ty,tm,td)}`:long(y,m,d);
   const extra=(through?'&through='+through:'');
   const link=(to,text)=>`<a href="/?day=${to}${other?'&p='+encodeURIComponent(other):''}">${text}</a>`;
-  const nav=(mine?myRunsTabs('day'):'')+`<nav class="day-nav" aria-label="Days">${link(StriveDay.shift(day,-1),'← Day before')}${day<StriveDay.localDay(new Date())?link(StriveDay.shift(day,1),'Day after →'):''}</nav>`;
-  if(!model.items.length){
+  const nav=`<nav class="day-nav" aria-label="Browse activity dates">${link(StriveDay.shift(day,-1),'← Previous day')}<span>${esc(label)}</span>${day<StriveDay.localDay(new Date())?link(StriveDay.shift(day,1),'Next day →'):''}</nav>`;
+  if(!dayRuns.length){
     app.innerHTML=nav+`<div class="card"><div class="empty"><h3>${mine?'No saved runs on this day':'No public runs on this day'}</h3><p>${esc(label)}. ${mine?'A run appears here once it is saved. Sessions that were never saved are not counted.':'Private runs are never shown here.'}</p>${mine?'<div class="cta"><a class="act blue" href="/?post">Post a run</a></div>':''}</div></div>`;return;}
   const head=model.lead&&params.get('head')===model.lead.run.id?'&head='+encodeURIComponent(model.lead.run.id):'';
   // The owner's four places, the same list on the card, on Edit card and on Sharing. A reader gets none of it.
@@ -2344,7 +2346,9 @@ async function viewDay(day){
   const pageHref=key=>{const q=new URLSearchParams(location.search);q.delete('card');key?q.set('page',key):q.delete('page');return '/?'+q.toString()};
   // The owner looking at their own card through a reader's address is told so, with the way back.
   const previewing=!mine&&!!profileId&&other===profileId?`<p class="hint dc-previewing" role="status">You are previewing this card as a reader sees it. <a href="/?day=${day}${extra}">Back to your card</a></p>`:'';
-  app.innerHTML=nav+previewing+`<div class="head"><h1>Day summary</h1><span class="meta">${esc(label)}</span></div><p class="page-intro">${model.items.length} saved runs across ${model.groups.filter(g=>g.label).length} projects. Scroll through each project's recorded activity.</p>`+StriveDayCard.flow(deck,{...cardOpts,actions:' ',pageHref,menu:ownerLinks,setupHref:mine?ownerLinks.edit:null,visualHref:mine?ownerLinks.visual:null});
+  const activityRows=await feedCards(dayRuns,ad,{ownerView:mine});
+  if(ME?.id!==profileId)return viewDay(day);
+  app.innerHTML=nav+previewing+`<div class="head"><h1>Activities</h1></div><p class="page-intro">${dayRuns.length} ${dayRuns.length===1?'run':'runs'} on this day.</p>`+activityRows+`<details class="day-card-details"><summary>Day card</summary>${StriveDayCard.flow(deck,{...cardOpts,actions:' ',pageHref,menu:ownerLinks,setupHref:mine?ownerLinks.edit:null,visualHref:mine?ownerLinks.visual:null})}</details>`;
   deck.slides.forEach((slide,i)=>bindCompactCard($('day-project-'+i),{...deck,slides:[slide]},ad,{shareHref:mine?ownerLinks.sharing:null}));
   if(params.get('page')||params.get('card'))requestAnimationFrame(()=>$('day-project-'+startAt)?.scrollIntoView({block:'start'}));
   if(DAY_POP)window.removeEventListener('popstate',DAY_POP);DAY_POP=null;
@@ -2431,24 +2435,25 @@ async function viewProfile(handle){
     ...vptTotals(R)};
   const harnesses=[...new Set(R.map(r=>r.harness).filter(Boolean))];
   const rg=prof.rig||{};
-  const setup=harnesses.map(toolLogoHtml).join('');
+  const setup=mine?harnesses.map(toolLogoHtml).join(''):'';
+  const projects=profileProjectsHtml(R,mine);
   frame(railHtml(mine?'profile':null,R), null); if(mine)setPrimarySection('profile');
   // A person's profile shows their face: their photo link, else their GitHub picture. An agent keeps its trace tile.
   const profileFace=isOwner&&AUTH_USER?{...prof,avatar_url:GrinderAuth.present(prof,AUTH_USER)?.avatar_url||prof.avatar_url}:prof;
   const profileHtml=`${isOwner?`<div class="profile-view-mode"><span>${preview?'Public profile preview':'Your profile · includes private work'}</span><a href="/?u=${encodeURIComponent(handle)}${preview?'':'&preview=public'}">${preview?'Back to your profile':'Preview public profile'}</a></div>`:''}<section class="profile-header"><div class="phero">${!isAgentProfile(prof)&&window.GrinderFeed?.face?GrinderFeed.face({profiles:profileFace},56):avatar(handle,{size:36,agent:isAgentProfile(prof)})}
       <div class="profile-name"><h1>${esc(prof.display_name||prof.name||handle)}</h1><div class="h">@${esc(handle)}</div>${profileLinksHtml(prof,mine)}</div>${mine?'<div class="profile-actions"><button id="edit-profile-open" class="ghost">Edit profile</button></div>':'<div id="social-follow" class="social-follow profile-follow" data-label="Follow"></div>'}</div>
     <section class="profile-activity-stats" aria-label="Activity in the loaded runs"><div><span>Runs</span><strong>${R.length}</strong></div><div><span>Projects</span><strong>${new Set(R.map(r=>GrinderContract.projectLabel(r.project)).filter(Boolean)).size}</strong></div><div><span>XUDOS received</span><strong>${acksR===null?'Unavailable':acksR}</strong></div></section><p class="profile-stats-scope">${mine?'Your latest':'Latest visible'} ${R.length} runs · ${mine?'Includes private work':'Only runs you can open'}</p>
-    <details class="profile-recorded-details"><summary>Recorded activity</summary>${StriveContext.profileFacts(R)}</details></section>${mine?myRunsTabs('profile'):""}
-    <details class="profile-project-list"><summary>Projects & tools</summary>${profileProjectsHtml(R,mine)}
+    <details class="profile-recorded-details"><summary>Recorded activity</summary>${StriveContext.profileFacts(R)}</details></section>
+    ${projects||setup?`<details class="profile-project-list"><summary>${mine?'Projects & tools':'Projects'}</summary>${projects}
     ${setup?`<div class="head"><h2>Tools</h2></div><div class="profile-tools">${setup}</div>`:''}
-    </details>${heatmapSvg(R)}
+    </details>`:''}${heatmapSvg(R)}
     ${mine?`<dialog id="profile-edit-dialog" class="profile-edit-dialog"><div class="dialog-head"><h2>Edit profile</h2><button id="edit-profile-close" class="icon-button" type="button" aria-label="Close">×</button></div><div class="dialog-body"><label>Name<input id="e_name" maxlength="60" value="${esc(prof.display_name||prof.name||'')}"><span class="hint">Shown beside your runs. It does not need to be unique.</span></label><label>__BRAND__ username<input id="e_handle" maxlength="40" value="${esc(handle)}"><span class="hint">Your unique @username and profile link.</span></label>${prof.github_handle?`<div class="profile-photo-choice"><img src="https://github.com/${encodeURIComponent(prof.github_handle)}.png?size=160" alt=""><div><button id="use-github-photo" type="button" class="ghost">Use GitHub photo</button><p class="hint">From your linked GitHub account. This does not change your __BRAND__ username.</p></div></div>`:'<p class="hint">Your linked GitHub account is managed in Settings. Any legacy X username is shown only as an unverified social link.</p>'}<button id="savep">Save profile</button><div id="linked-accounts"><p class="meta">Linked accounts and profile deletion are in <a href="/?account">Settings</a>.</p></div></div></dialog>`:''}
 
     ${pinnedHtml}
-    <div class="head"><h2>${mine?'Your recent runs':(!preview&&ME?'Recent runs you can see':'Recent public runs')}</h2><span class="meta">${R.length||'none yet'}${mine?` · <a href="/?share=1&u=${encodeURIComponent(handle)}">Share public profile</a>`:''}</span></div>
+    <div class="head"><h2>Activities</h2><span class="meta">${R.length||'none yet'}${mine?` · <a href="/?share=1&u=${encodeURIComponent(handle)}">Share public profile</a>`:''}</span></div>
     ${!mine&&(!ME||preview)?'<p class="hint profile-public-note">Only Public runs appear here. Followers-only runs stay off this profile.</p>':''}
     ${RECENT.length?(await (async()=>{const ad=await ackData(RECENT);return feedCards(RECENT,ad,{ownerView:!!mine});})()):R.length?'':(mine?GrinderFeed.nextSlot():`<div class="card"><div class="empty"><h3>${ME?'No runs you can see yet':'No public runs yet'}</h3><p>${ME?'Public runs and Close friends runs (if you are on their list) show here. Following only lists Public runs.':'You can follow this builder now; their public runs will appear in Following when they post.'}</p></div></div>`)}
-    <details class="profile-summary"><summary>Profile totals</summary><div class="ptotals num"><div><div class="k">Public runs</div><div class="v" data-count="${publicCount}">0</div></div>${visibleExtra?`<div><div class="k">Visible to you</div><div class="v" data-count="${R.length}">0</div></div>`:''}<div><div class="k">XUDOS received</div><div class="v"${acksR===null?'':` data-count="${acksR}"`}>${acksR===null?'Unavailable':'0'}</div></div></div></details>`;
+    ${mine?`<details class="profile-summary"><summary>Activity details</summary><div class="ptotals num"><div><div class="k">Public runs</div><div class="v" data-count="${publicCount}">0</div></div><div><div class="k">XUDOS received</div><div class="v"${acksR===null?'':` data-count="${acksR}"`}>${acksR===null?'Unavailable':'0'}</div></div></div></details>`:''}`;
   if(!current())return;app.innerHTML=profileHtml;
   wireKudos(); countUp();
   await social.followControl(prof,$('social-follow'));
@@ -2513,7 +2518,7 @@ async function refreshAuth(){
         ? `<span id="nav-avatar">${GrinderFeed.face({profiles:{...ME,avatar_url:shown?.avatar_url}},30)}</span>`
         : `<span id="nav-avatar" class="profile-fallback"><img src="/favicon.svg" alt="" width="30" height="30"></span>`;
     }
-    $('account-menu').hidden=!current.user;$('auth').hidden=!!current.user;$('auth').textContent='Sign in';if($('deletewrap'))$('deletewrap').hidden=!ME;if($('delete-info'))$('delete-info').hidden=!!ME;
+    $('account-menu').hidden=!current.user;$('auth').hidden=!!current.user;$('auth').textContent='Sign in';
     syncAuthNav();document.documentElement.dataset.authHint=current.user?'member':'guest';document.documentElement.dataset.authBoot='ready';status('');
     if(social.refreshUnread) social.refreshUnread();
   }catch(e){if(generation!==AUTH_GENERATION)return;AUTH_USER=null;ME=null;IDENTITY_SETUP=null;document.documentElement.dataset.authBoot='ready';status(e.detail?.message||'Sign-in could not be restored. Try again.',true);}
