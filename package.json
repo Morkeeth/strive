@@ -13,13 +13,14 @@
     "test:shared-schema": "node scripts/test-shared-schema.mjs",
     "build": "node scripts/build-site.mjs",
     "test:identity": "node scripts/test-identity.mjs",
-    "test:people": "node scripts/test-people-schema.mjs",
+    "test:people": "node scripts/test-people-schema.mjs && node scripts/test-follow-states.mjs",
     "test:account": "node scripts/test-account.mjs",
     "test:origin": "node scripts/test-origin.mjs",
     "test:ridge": "node scripts/test-ridge-persistence.mjs",
     "check:hosted-config": "node scripts/check-hosted-config.mjs",
     "test:dropin": "node scripts/test-dropin-link-page.mjs && node scripts/test-dropin-links.mjs && node scripts/test-dropin-parity.mjs && node scripts/test-dropin-api.mjs",
-    "test:sunday": "node scripts/test-dropin-usage.mjs && node scripts/test-sunday-card.mjs && node scripts/test-people-spotlight.mjs && node scripts/test-photo-generation.mjs && node scripts/test-public-activity.mjs && node scripts/test-private-review-safety.mjs && node scripts/test-run-estimates.mjs && node scripts/test-selected-personal-gallery.mjs && node scripts/test-detail-headline.mjs && node scripts/test-compact-photo-editor.mjs && node scripts/test-home-share.mjs && node scripts/test-clean-public-links.mjs && node scripts/test-personal-photo-server-access.mjs && python3 -m unittest discover -s tests -p test_session_picker.py && node scripts/test-capture-estimate-parity.mjs && node scripts/test-photo-order-consent.mjs && node scripts/test-activity-bars.mjs && node scripts/test-feed-stability.mjs && node scripts/test-visual-lead-profile.mjs"
+    "test:sunday": "node scripts/test-dropin-usage.mjs && node scripts/test-sunday-card.mjs && node scripts/test-people-spotlight.mjs && node scripts/test-photo-generation.mjs && node scripts/test-public-activity.mjs && node scripts/test-private-review-safety.mjs && node scripts/test-run-estimates.mjs && node scripts/test-selected-personal-gallery.mjs && node scripts/test-detail-headline.mjs && node scripts/test-compact-photo-editor.mjs && node scripts/test-home-share.mjs && node scripts/test-clean-public-links.mjs && node scripts/test-personal-photo-server-access.mjs && python3 -m unittest discover -s tests -p test_session_picker.py && node scripts/test-capture-estimate-parity.mjs && node scripts/test-photo-order-consent.mjs && node scripts/test-activity-bars.mjs && node scripts/test-feed-stability.mjs && node scripts/test-visual-lead-profile.mjs",
+    "test:capture-phase1": "python3 -m unittest discover -s tests -p test_stream_capture.py && python3 -m unittest discover -s tests -p test_session_picker.py && node scripts/test-capture-drop.mjs && node scripts/test-email-cooldown.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",

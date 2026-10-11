@@ -1580,7 +1580,7 @@ function wireAutoSync(root){
 }
 function connectBodyHtml(){
   const capture=ONE_LINE('auto');
-  const picker=h=>`uvx --from __CAPTURE_PACKAGE__ agentgrinder sessions --harness ${h} --open --site __ORIGIN__`;
+  const picker=h=>`uvx --from __CAPTURE_PACKAGE__ strive sessions --harness ${h} --open --site __ORIGIN__`;
   const agentPrompt=`Open ${location.origin}/agents.md and help me preview this session on STRIVE. Keep it local until I choose to save it.`;
   return StrivePostFlow.setupHtml({agentPrompt,capture,syncHtml:autoSyncHtml(),dropHtml:dropZoneHtml(),agentFiles:AGENT_FILES,agentCommands:Object.fromEntries(['cursor','claude','codex'].map(h=>[h,picker(h)]))});
 }
@@ -2495,7 +2495,7 @@ function showSignIn(opts={}){
   dialog.innerHTML='<h2 id="signin-title">'+title+'</h2><p id="signin-explanation">'+explanation+'</p><p class="hint">Closing or cancelling sign-in posts nothing and changes no audience.</p>'+PROVIDERS_ENABLED.filter(p=>p==='github'||p==='x'||p==='twitter').map(p=>'<button data-provider="'+p+'">Continue with '+providerLabel(p)+'</button>').join('')+(PROVIDERS_ENABLED.includes('email')?'<form id="signin-email" class="reply-form"><label>Email<input name="email" type="email" autocomplete="email" required></label><p>Your email stays out of your public profile.</p><button>Send a sign-in link</button></form>':'')+'<p id="signin-state" role="status"></p><button class="ghost" id="signin-close">Close</button>';
   document.body.append(dialog);dialog.showModal();$('signin-close').onclick=()=>dialog.close();
   dialog.querySelectorAll('[data-provider]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{await auth.signIn(button.dataset.provider,{returnTo:location.search})}catch(e){$('signin-state').textContent=e.detail?.message||'Sign-in could not start. Try again.';button.disabled=false}});
-  if($('signin-email'))$('signin-email').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,button=f.querySelector('button');button.disabled=true;try{await auth.signIn('email',{email:f.elements.email.value,returnTo:location.search});$('signin-state').textContent='Check your email for the sign-in link. Keep this tab open to return to your draft.'}catch(e){$('signin-state').textContent=e.detail?.message||'Sign-in could not connect. Try again.'}finally{button.disabled=false}};
+  GrinderAuth.mountEmailForm($('signin-email'),$('signin-state'),auth,location.search);
 }
 
 function viewIdentitySetup(){

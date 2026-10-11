@@ -1,0 +1,10 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "strive",
+  "version": "0.3.3",
+  "description": "Capture selected real coding sessions as private STRIVE cards, then choose what to share.",
+  "author": {"name": "STRIVE"},
+  "homepage": "https://striverun.app",
+  "repository": "https://github.com/Morkeeth/strive",
+  "license": "MIT"
+}

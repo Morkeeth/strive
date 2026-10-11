@@ -21,7 +21,7 @@ from urllib.parse import urlsplit
 import uuid
 from datetime import datetime
 
-VERSION = '0.3.1'
+VERSION = '0.3.2'
 MAX_SOURCE = 64 * 1024 * 1024
 FIELDS = {'harness', 'capture_metadata', 'project', 'turns_typed', 'duration_s',
           'tool_calls', 'files_touched', 'commits', 'started', 'rhythm', 'ridge',
@@ -125,10 +125,23 @@ def capture(db, root, name, harness, source, sitting=-1, code_route=None):
         return capture_route(db,root,code_route)
     if not db.execute('select 1 from projects where name=?', (name,)).fetchone():
         raise ValueError('Register the named project first.')
-    path, raw, rows = read_source(source)
-    session = source_identity(rows, harness, path)
+    path = Path(source).expanduser().resolve(strict=True)
+    selection = None
+    if path.stat().st_size > MAX_SOURCE:
+        from .stream_capture import selected_source
+        with selected_source(path, harness, sitting, root) as selected:
+            _, raw, rows = read_source(selected['path'])
+            selection = {k:selected[k] for k in ('sha256','bytes','selected_bytes','selected_records','skipped_sittings')}
+            selection['selected'] = {k:v for k,v in selected['selected'].items() if k in ('sitting','start','end','typed','records')}
+            source_hash = selected['sha256']
+            session = selected['session']
+        sitting = -1  # the bounded copy contains only the explicitly chosen sitting
+    else:
+        path, raw, rows = read_source(path)
+        session = source_identity(rows, harness, path)
+        source_hash = digest(raw)
     duplicate=db.execute('select id,project,payload from drafts where harness=? and source_hash=? and session<>?',
-                         (harness,digest(raw),session)).fetchone()
+                         (harness,source_hash,session)).fetchone()
     if duplicate:
         if duplicate['project']!=name:
             raise ValueError('This source is already selected under another project.')
@@ -152,7 +165,7 @@ def capture(db, root, name, harness, source, sitting=-1, code_route=None):
     run.pop('code_route', None) # legacy count summaries are not new consented checkpoints
     run['project'] = name
     run['project_proven'] = True  # explicitly declared, never inferred from a folder name
-    run['input_digest'] = digest(raw)
+    run['input_digest'] = source_hash
     record_and_attach(run, path=str(root/'series.db'), command='strive selected capture')
     os.chmod(root/'series.db', 0o600)
     payload = {k:v for k,v in export_run(run).items() if k in FIELDS}
@@ -175,6 +188,7 @@ def capture(db, root, name, harness, source, sitting=-1, code_route=None):
             estimate = estimate_inputs(selected, harness, raw, payload.get('capture_metadata') or {},
                                        started=run['started'], ended=run['ended'])
         if estimate:
+            estimate['source']['sha256'] = source_hash
             payload['capture_metadata']['estimates'] = estimate
     payload.update(title=name + ' run', visibility='private')
     key = digest([harness, session, run['started']])
@@ -183,9 +197,9 @@ def capture(db, root, name, harness, source, sitting=-1, code_route=None):
         raise ValueError('This session is already selected under another project; remove that draft before relabelling.')
     with db:
         db.execute('insert into drafts values(?,?,?,?,?,?,?,?) on conflict(id) do update set source_hash=excluded.source_hash,payload=excluded.payload',
-                   (key, name, harness, session, str(path), digest(raw), run['started'], encoded(payload)))
+                   (key, name, harness, session, str(path), source_hash, run['started'], encoded(payload)))
     return {'draft': key, 'project': name, 'status': 'unchanged' if prior and prior['payload'] == encoded(payload) else 'captured',
-            'payload': payload, 'uploaded': 0}
+            'payload': payload, 'selection': selection, 'uploaded': 0}
 
 
 

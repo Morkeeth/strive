@@ -1,0 +1,12 @@
+{
+  "name": "strive",
+  "description": "STRIVE: turn selected real agent sessions into private cards",
+  "owner": {"name": "STRIVE"},
+  "plugins": [
+    {
+      "name": "strive",
+      "source": "./plugins/strive",
+      "description": "Capture and review selected real agent sessions"
+    }
+  ]
+}

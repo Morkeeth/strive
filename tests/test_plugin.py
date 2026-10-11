@@ -5,6 +5,8 @@ import socket
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import uuid
+import hashlib
+import zipfile
 
 import pytest
 from agentgrinder import plugin
@@ -142,6 +144,39 @@ def test_default_claude_install_keeps_native_auth_location(tmp_path,monkeypatch)
     assert 'CLAUDE_CONFIG_DIR' not in calls[-1][1]['env']
     installer.run_claude(tmp_path/'isolated','list')
     assert calls[-1][1]['env']['CLAUDE_CONFIG_DIR']==str(tmp_path/'isolated')
+
+
+def test_public_marketplace_package_matches_capture_source():
+    root=Path(__file__).parents[1]
+    bundled=root/'plugins/strive'
+    source=root/'agentgrinder'
+    source_files={p.relative_to(source) for p in source.rglob('*.py')}
+    bundled_files={p.relative_to(bundled/'runtime/agentgrinder') for p in (bundled/'runtime/agentgrinder').rglob('*.py')}
+    assert source_files==bundled_files
+    for relative in source_files:
+        assert (source/relative).read_bytes()==(bundled/'runtime/agentgrinder'/relative).read_bytes()
+    assert (root/'LICENSE').read_bytes()==(bundled/'LICENSE').read_bytes()
+    assert (root/'scripts/strive-plugin.py').read_bytes()==(bundled/'scripts/strive-plugin.py').read_bytes()
+    for market in (root/'.claude-plugin/marketplace.json',root/'.agents/plugins/marketplace.json'):
+        data=json.loads(market.read_text())
+        assert data['plugins'][0]['name']=='strive'
+        assert (root/'plugins/strive').is_dir()
+
+
+def test_public_zip_runtime_and_version_match_marketplace_package():
+    root=Path(__file__).parents[1]
+    release=json.loads((root/'dist/plugins/release.json').read_text())
+    package=root/'dist'/release['package'].lstrip('/')
+    assert hashlib.sha256(package.read_bytes()).hexdigest()==release['sha256']
+    source=root/'plugins/strive'
+    manifests=(source/'plugin.json',source/'.claude-plugin/plugin.json',source/'.cursor-plugin/plugin.json')
+    assert all(json.loads(path.read_text())['version']==release['version'] for path in manifests)
+    with zipfile.ZipFile(package) as archive:
+        names=set(archive.namelist())
+        for file in (source/'runtime/agentgrinder').rglob('*.py'):
+            member='strive/'+str(file.relative_to(source))
+            assert member in names
+            assert archive.read(member)==file.read_bytes()
 
 
 def test_claude_install_cannot_auto_discover_duplicate_cursor_components(tmp_path):

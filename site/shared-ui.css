@@ -4,7 +4,7 @@
 /* The feed and its right column keep a full card-width breathing space. */
 #shell.home-shell{max-width:1180px}
 @container(min-width:890px){
-  .home-layout{grid-template-columns:minmax(0,1fr) 260px;gap:56px}
+  .home-layout{grid-template-columns:minmax(0,1fr) 300px;gap:56px}
   .home-around{padding-left:28px}
 }
 .home-around .fc-builder.strive-person{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:10px;margin:0;padding:12px 0}
@@ -20,8 +20,11 @@
 .strive-person .people-card-copy h3,.strive-person .people-card-copy p{margin:0}
 .strive-person .people-card-copy{display:grid;gap:3px}
 .strive-person .follow-button,.profile-header .follow-button{box-sizing:border-box;min-height:var(--strive-control-height);height:var(--strive-control-height);padding:0 14px;border-radius:7px;font-size:13px;line-height:1;white-space:nowrap}
-.follow-button.is-following{background:#fff;color:var(--blue);border:1px solid #b8caff}
-.follow-button.is-following:hover{background:#f1f5ff}
+/* Outrank the global primary-button rule, including its :not() specificity. */
+button.act.follow-button{min-width:calc(9ch + 30px);background:var(--blue);border:1px solid var(--blue);color:#fff}
+button.act.follow-button.is-following[aria-pressed="true"]{background:#fff;border:1px solid var(--rule);color:var(--ink)}
+button.act.follow-button.is-following[aria-pressed="true"]:hover,button.act.follow-button.is-following[aria-pressed="true"]:focus{background:#fff;border-color:var(--ink);color:var(--ink)}
+button.act.follow-button:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
 .strive-person .people-card-actions>.act{box-sizing:border-box;min-height:var(--strive-control-height);height:var(--strive-control-height);display:inline-flex;align-items:center;justify-content:center;padding:0 14px;border-radius:7px;white-space:nowrap}
 .strive-person .profile-more,.profile-header .profile-more{position:relative;flex:none}
 .strive-person .profile-more>summary,.profile-header .profile-more>summary{box-sizing:border-box;display:grid;place-items:center;width:var(--strive-control-height);height:var(--strive-control-height);border:1px solid var(--rule);border-radius:7px;font-size:20px;line-height:1;background:#fff}

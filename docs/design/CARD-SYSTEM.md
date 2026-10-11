@@ -326,3 +326,7 @@ A saved image can be hidden from readers without deletion. The owner editor stag
 ## 11 Oct morning — fewer image choices
 
 The owner sees a thumbnail strip: tap for cover, × to hide reversibly, plus to add, and one Personal toggle. The selected cover appears first. Role chips, deletion and lead-image modes live under Advanced. Changes stay local until Save; Cancel discards them. Hidden bytes and unchosen personal images remain owner-only. No saved role, cover, layout or audience changes on load.
+
+## Follow states · 11 October 16:20
+
+All person Follow controls use `GrinderSocial.followControl` and the shared `.follow-button` rules. Follow is solid blue. Following is white with a one-pixel border and dark text; hover or keyboard focus says Unfollow. The button keeps its width across labels. Self controls remain absent, and signed-out Follow opens sign-in without writing a relationship. The profile header, People page and feed rail share these states.
