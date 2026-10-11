@@ -1979,7 +1979,7 @@ async function viewRun(id){
     $('run-delete').onclick=async()=>{if(!confirm('Delete this run and its discussion?'))return;const {error}=await sb.from('runs').delete().eq('id',r.id);if(error){status(error.message,true);return}history.replaceState(null,'','/?mine');viewMe()};
   }
   wireKudos(); if(openAck){ const card=$('card-'+id); if(card) wireAckPicker(card,r,preselect); }
-  if(q.get('ack')) history.replaceState(null,'',`/?run=${id}`);
+  if(q.get('ack')) history.replaceState(null,'',StriveLinks.runPath(r)||`/?run=${id}`);
   // Where this run sits in its project (site/journey.js). The owner sees every run of theirs on the
   // project; anyone else sees the public ones. One other run is needed before there is a journey.
   if(r.project&&$('run-journey')){
