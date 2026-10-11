@@ -24,3 +24,6 @@ grind.html
 
 # Website deployment output
 dist/
+
+# Local shared-state acknowledgements identify agent sessions, not product code.
+.fleet/ACK.jsonl

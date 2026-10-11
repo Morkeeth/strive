@@ -106,7 +106,7 @@ The checked-in `local-development-only` key is not a working credential. Do not 
 
 ## Feedback and sensitive reports
 
-The signed-in [feedback form](https://striverun.app/?feedback) is for private product feedback. Saving the message and notifying a maintainer are separate outcomes. Public implementation discussion belongs in issues or PRs. Do not attach private transcripts to either surface. Read [SECURITY.md](SECURITY.md) before reporting a vulnerability; do not assume GitHub has private reporting enabled.
+The signed-in [feedback form](https://striverun.app/?feedback) is for private product feedback. Saving the message and notifying a maintainer are separate outcomes. Public implementation discussion belongs in issues or PRs. Do not attach private transcripts to either surface. Use the [private vulnerability reporting link](SECURITY.md) for sensitive reports.
 
 ## Working together
 
