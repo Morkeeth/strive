@@ -339,7 +339,7 @@
   // One reader over a sequence of lines. It holds no line after it has counted it.
   function createReader() {
     let reader = null, lines = 0, records = 0, bad = 0;
-    const usage=usageReader();
+    const usage=usageReader(),estimate=(root.StriveCaptureEstimates||(typeof require==='function'?require('./capture-estimates.js'):null))?.reader();
     return {
       line(raw) {
         lines += 1;
@@ -354,14 +354,14 @@
           if (!make) return;
           reader = make();
         }
-        usage.add(o,reader.harness);reader.add(o);
+        usage.add(o,reader.harness);estimate?.add(o,reader.harness);reader.add(o);
       },
       finish() {
         if (!lines) throw readError("empty");
         // Text that is not JSON lines (a README, a CSV) is the wrong file, not a broken one.
         if (!reader) throw readError(records || bad ? "unknown" : "empty");
-        const out = reader.done();
-        return { harness: reader.harness, ...out, capture_metadata:usage.done(reader.harness), started: out.started == null ? null : new Date(out.started * 1000).toISOString() };
+        const out = reader.done(),metadata=usage.done(reader.harness);
+        return { harness: reader.harness, ...out, capture_metadata:metadata, estimate_inputs:estimate?.finish(metadata)||null, started: out.started == null ? null : new Date(out.started * 1000).toISOString() };
       },
     };
   }

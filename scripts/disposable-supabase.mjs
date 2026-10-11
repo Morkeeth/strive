@@ -65,7 +65,7 @@ export function sessionFor(sub, email, handle) {
   };
 }
 
-export async function bootDisposable({ grinder = false } = {}) {
+export async function bootDisposable({ grinder = false, photoOrder = true } = {}) {
   const { PGlite } = await import("@electric-sql/pglite");
   const db = new PGlite();
   await db.exec(`create role anon; create role authenticated;
@@ -82,7 +82,9 @@ create table auth.identities(id uuid primary key default gen_random_uuid(), user
     await db.exec(await readFile(join(ROOT, "tests/fixtures/hosted-base.sql"), "utf8"));
     await db.query("insert into public.profiles(id,auth_uid,name,github_handle) values($1,$1,'TEST DATA Grinder sentinel','test-casey')", [CASEY]);
   }
-  await db.exec(execFileSync("python3", [join(ROOT, "scripts/prepare-strava-database.py")], {encoding:"utf8"}));
+  let install=execFileSync("python3", [join(ROOT, "scripts/prepare-strava-database.py")], {encoding:"utf8"});
+  if(!photoOrder)install=install.replace(/-- strava\/037_photo_order_consent.sql[\s\S]*?(?=-- strava\/)/, "");
+  await db.exec(install);
   await db.exec("set search_path=strava,pg_temp");
   async function as(id) {
     await db.exec("reset role");

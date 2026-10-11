@@ -11,38 +11,9 @@ import hashlib
 
 # Rates checked against the providers' model pages on 2026-10-11. Keep this
 # deliberately small: an unlisted model receives no dollar estimate.
-PRICES = {
-    'gpt-6-sol': {
-        'table_url': 'https://developers.openai.com/api/docs/models/gpt-6-sol',
-        'rates_per_million': {'input': 2, 'output': 10, 'cache_read': .2,
-                              'cache_write_5m': None, 'cache_write_1h': None},
-        'context_tier': 'input <=272K', 'service_tier': 'standard-assumed',
-    },
-    'claude-opus-5-5': {
-        'table_url': 'https://platform.claude.com/docs/en/models/opus-5-5/overview',
-        'rates_per_million': {'input': 4, 'output': 20, 'cache_read': .2,
-                              'cache_write_5m': 5, 'cache_write_1h': 8},
-        'context_tier': 'standard global', 'service_tier': 'standard',
-    },
-    'claude-fable-5-1': {
-        'table_url': 'https://platform.claude.com/docs/en/models/fable-5-1/overview',
-        'rates_per_million': {'input': 10, 'output': 50, 'cache_read': .25,
-                              'cache_write_5m': 12.5, 'cache_write_1h': 20},
-        'context_tier': 'standard global', 'service_tier': 'standard',
-    },
-    'claude-sonnet-5-5': {
-        'table_url': 'https://platform.claude.com/docs/en/models/sonnet-5-5/overview',
-        'rates_per_million': {'input': 2, 'output': 10, 'cache_read': .1,
-                              'cache_write_5m': 2.5, 'cache_write_1h': 4},
-        'context_tier': 'standard global', 'service_tier': 'standard',
-    },
-    'claude-haiku-5-5': {
-        'table_url': 'https://platform.claude.com/docs/en/models/haiku-5-5/overview',
-        'rates_per_million': {'input': .1, 'output': .5, 'cache_read': .01,
-                              'cache_write_5m': .125, 'cache_write_1h': .2},
-        'context_tier': 'input <=100K', 'service_tier': 'standard',
-    },
-}
+from pathlib import Path
+import json
+PRICES = json.loads((Path(__file__).parent/'data/estimate-prices.json').read_text())
 
 
 def _stamp(row):

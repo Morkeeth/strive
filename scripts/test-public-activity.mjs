@@ -10,13 +10,13 @@ assert.ok(page.includes('href="/?run='+id+'">Open in STRIVE'),'entry opens this 
 assert.ok(page.indexOf('aria-label="Recorded facts"')<page.indexOf('fc-route-secondary'),'measured stats precede the trace');
 assert.doesNotMatch(page,/<dt>(?:Active time|Tool-active time · proxy)<\/dt>/,'elapsed duration must not become an active-time metric');
 assert.doesNotMatch(page,/<dt>(?:Dollars|Est. dollars)<\/dt>/,'missing price inputs omit the face metric');assert.match(page,/About these measurements/);
-assert.match(page,/You typed 0/,'recorded zero remains a recorded zero');
-for(const label of ['Recorded tokens'])assert.ok(page.includes('<dt>'+label+'</dt>'));
-assert.ok(!page.includes('<dt>Tool calls</dt>'),'technical counters stay out of headline facts');
+assert.match(page,/<dd[^>]*>0<\/dd>/,'recorded zero remains a recorded zero');
+for(const label of ['Typed turns'])assert.ok(page.includes('>'+label+'</summary>'));
+assert.ok(page.includes('>Tool calls</summary>'),'recorded tools fill the token-absent ladder');
 assert.ok(page.indexOf('/api/run-photos?id='+cover)<page.indexOf('/api/run-photos?id='+first),'selected cover leads the public gallery even when metadata is unordered');
 assert.ok(!page.includes('<script'),'shared public page stays script-free');
 const extra='44444444-4444-4444-8444-444444444444';
-const candid=[{id:first,run_id:id,role:'personal',is_cover:false},{id:cover,run_id:id,role:'personal',is_cover:true},{id:extra,run_id:id,role:'result',is_cover:false}];
+const candid=[{id:first,run_id:id,role:'personal',is_cover:false},{id:cover,run_id:id,role:'personal',personal_public_selected:true,is_cover:true},{id:extra,run_id:id,role:'result',is_cover:false}];
 const candidPage=html(run,{photos:candid});
 assert.ok(candidPage.includes('/api/run-photos?id='+cover),'the author-chosen candid remains visible');
 assert.ok(!candidPage.includes('/api/run-photos?id='+first),'a second candid is not displayed');
@@ -24,7 +24,7 @@ assert.ok(candidPage.includes('/api/run-photos?id='+extra),'supporting result re
 assert.ok(!html(run,{photos:[candid[0]]}).includes('/api/run-photos?id='+first),'a personal cover is never guessed');
 assert.deepEqual(candid.map(p=>p.is_cover),[false,true,false],'rendering leaves saved choices untouched');
 const favour='599095f1-3b49-4c0e-b50c-13afd4ae369e';
-const favourPage=html({...run,id:favour,caption:'Reviewing FAVOUR. Personal photo from 4 October.',profiles:{handle:'morkeeth',display_name:'Oscar Morkeeth'}},{photos:[{id:cover,run_id:favour,role:'personal',is_cover:true}]});
+const favourPage=html({...run,id:favour,caption:'Reviewing FAVOUR. Personal photo from 4 October.',profiles:{handle:'morkeeth',display_name:'Oscar Morkeeth'}},{photos:[{id:cover,run_id:favour,role:'personal',personal_public_selected:true,is_cover:true}]});
 assert.ok(favourPage.includes('Oscar Morkeeth'));
 assert.match(favourPage,/<section class="public-run-photos public-project-shots"/,'showcase markup activates its mobile gallery rule');
 assert.ok(favourPage.includes('/media/favour-public-page-20261010.webp'));

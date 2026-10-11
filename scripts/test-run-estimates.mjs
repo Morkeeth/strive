@@ -25,9 +25,9 @@ assert.deepEqual(readyUpload.capture_metadata,full,'explicitly enabled build ret
 
 Context.validate(full);assert.equal(Estimates.facts(full).rows[0][1],'$1.89');assert.equal(Estimates.facts(full).rows[1][1],'3 min');
 const render=m=>html({id:'11111111-1111-4111-a111-111111111111',title:'TEST DATA estimate',visibility:'public',capture_metadata:m});
-assert.match(render(full),/<dt>Est. dollars<sup[^>]*>\*<\/sup><\/dt>/);assert.match(render(full),/<dt>Tool-active time · proxy<\/dt>/);assert.match(render(full),/About these measurements/);assert.match(render(full),/not continuous tool runtime or measured human active time/);
+assert.match(render(full),/>Est. dollars<sup[^>]*>\*<\/sup><\/summary>/);assert.match(render(full),/>Tool-active time<\/summary>/);assert.match(render(full),/About these measurements/);assert.match(render(full),/not continuous tool runtime or measured human active time/);
 assert.doesNotMatch(render(base),/<dt>(?:Est. dollars|Tool-active time · proxy)<\/dt>/);assert.match(render(base),/No stored per-model usage/);
-const unknown=structuredClone(full);unknown.estimates.cost.components[0].price=null;Context.validate(unknown);assert.doesNotMatch(render(unknown),/<dt>Est. dollars<sup[^>]*>\*<\/sup><\/dt>/);assert.match(render(unknown),/No recorded price for model-test/);
+const unknown=structuredClone(full);unknown.estimates.cost.components[0].price=null;Context.validate(unknown);assert.doesNotMatch(render(unknown),/>Est. dollars<sup[^>]*>\*<\/sup><\/summary>/);assert.match(render(unknown),/No recorded price for model-test/);
 const unused=structuredClone(full);unused.estimates.cost.components[0].cache_write_1h_tokens=0;unused.estimates.cost.components[0].price.rates_per_million.cache_write_1h=null;Context.validate(unused);
 const missingUsedRate=structuredClone(full);missingUsedRate.estimates.cost.components[0].price.rates_per_million.output=null;assert.throws(()=>Context.validate(missingUsedRate));
 const bad=structuredClone(full);bad.estimates.cost.components[0].input_tokens++;assert.throws(()=>Context.validate(bad));

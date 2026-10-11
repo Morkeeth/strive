@@ -16,13 +16,13 @@ vm.runInContext(card+'\n'+view,ctx);
 const base={id:'11111111-1111-4111-a111-111111111111',profile_id:'someone-else',title:'TEST DATA captured work',visibility:'public',profiles:{handle:'builder'},commits:6,files_touched:21,duration_s:6992,rhythm:[1,2,1],capture_metadata:full};
 async function render(r){row=r;await assert.rejects(ctx.viewRun(r.id),/STOP_AFTER_REAL_VIEW_RENDER/);return dom.window.document.querySelector('#card-'+r.id);}
 let actual=await render(base);const expected=JSON.parse(JSON.stringify(ctx.StriveContext.headlineFacts(base)));
-assert.deepEqual([...actual.querySelectorAll('.run-metrics dt')].map(e=>e.textContent),['Recorded tokens','Est. dollars*','Tool-active time · proxy']);
-assert.deepEqual([...actual.querySelectorAll('.run-metrics dd')].map(e=>e.textContent),expected.map(x=>x[1]));
+assert.deepEqual([...actual.querySelectorAll('.run-metrics dt')].map(e=>(e.querySelector('summary')||e).textContent),['Recorded tokens','Est. dollars*','Tool-active time']);
+assert.deepEqual([...actual.querySelectorAll('.run-metrics dd')].map(e=>(e.querySelector('summary')||e).textContent),expected.map(x=>x[1]));
 assert.ok(actual.querySelector('.run-explore #run-journey'),'project bookkeeping stays inside the receipts disclosure');
 assert.equal(dom.window.document.querySelectorAll('#run-journey').length,1);
 assert.ok(actual.querySelector('.post-measurement-note'));assert.match(actual.querySelector('.post-measurement-note').textContent,/not continuous tool runtime or measured human active time/);
 const absent=structuredClone(base);delete absent.capture_metadata.estimates;actual=await render(absent);
-assert.deepEqual([...actual.querySelectorAll('.run-metrics dt')].map(e=>e.textContent),JSON.parse(JSON.stringify(ctx.GrinderContract.heroStats(absent))).map(x=>x[0]),'existing non-estimate detail facts remain unchanged');
+assert.deepEqual([...actual.querySelectorAll('.run-metrics dt')].map(e=>(e.querySelector('summary')||e).textContent),['Recorded tokens','Tool calls','Elapsed'],'detail uses the same three-position ladder without estimates');
 const unknown=structuredClone(base);unknown.capture_metadata.estimates.cost.components.forEach(c=>c.price=null);actual=await render(unknown);assert.ok(![...actual.querySelectorAll('.run-metrics dt')].some(e=>e.textContent==='Est. dollars*'));assert.match(actual.querySelector('.post-measurement-note').textContent,/No recorded price/);
 console.log('PASS actual signed-out viewRun → runCard: shared three estimate facts and basis; absent legacy metrics unchanged; unknown price never becomes dollars.');
 
@@ -38,6 +38,6 @@ for(const capture_metadata of [full,null]){
 }
 console.log('PASS public and app detail: one copy of description, unique provenance retained, no empty author-words line, with and without estimates.');
 
-const pricedNoTime=structuredClone(base);delete pricedNoTime.capture_metadata.estimates.tool_activity;const partial=await render(pricedNoTime);assert.deepEqual([...partial.querySelectorAll('.run-metrics dt')].map(e=>e.textContent),['Recorded tokens','Est. dollars*','Tool-active time · proxy']);assert.equal(partial.querySelector('.post-fact-placeholder dd').textContent,'Not captured');assert.equal(partial.querySelectorAll('.run-metrics dd')[1].textContent,'$1.89');const sharedPartial=new JSDOM(publicHtml(pricedNoTime));assert.match(sharedPartial.window.document.body.textContent,/Not captured/);assert.match(sharedPartial.window.document.body.textContent,/\$1.89/);
+const pricedNoTime=structuredClone(base);delete pricedNoTime.capture_metadata.estimates.tool_activity;const partial=await render(pricedNoTime);assert.deepEqual([...partial.querySelectorAll('.run-metrics dt')].map(e=>(e.querySelector('summary')||e).textContent),['Recorded tokens','Est. dollars*','Elapsed']);assert.equal(partial.querySelectorAll('.run-metrics dd')[1].textContent,'$1.89');const sharedPartial=new JSDOM(publicHtml(pricedNoTime));assert.match(sharedPartial.window.document.body.textContent,/\$1.89/);
 
-const cursorDetail=await render({...base,harness:"cursor",turns_typed:3,tool_calls:15,files_touched:2,capture_metadata:{basis:"cursor-model-info",models:["auto"]}});assert.deepEqual([...cursorDetail.querySelectorAll(".run-metrics dd")].map(e=>e.textContent),["3","15","2"]);assert.match(cursorDetail.textContent,/Cursor does not record tokens/);
+const cursorDetail=await render({...base,harness:"cursor",duration_s:null,turns_typed:3,tool_calls:15,files_touched:2,capture_metadata:{basis:"cursor-model-info",models:["auto"]}});assert.deepEqual([...cursorDetail.querySelectorAll(".run-metrics dd")].map(e=>(e.querySelector('summary')||e).textContent),["3","15","2"]);assert.match(cursorDetail.textContent,/Cursor does not record tokens/);

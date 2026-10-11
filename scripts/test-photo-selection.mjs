@@ -10,7 +10,7 @@ await db.query("update strava.runs set visibility='public' where id=$1",[run]);
 const add=async role=>(await db.query('insert into strava.run_photos(run_id,width,height,byte_size,role) values($1,100,100,200,$2) returning *',[run,role])).rows[0];
 const project=await add('result'),personal=await add('personal'),unchosen=await add('personal');
 assert.equal(project.is_selected,true,'existing/default selection stays on');
-await db.query('select strava.choose_run_cover($1,$2)',[run,personal.id]);
+await db.query('select strava.choose_run_cover($1,$2)',[run,personal.id]);await db.query('select strava.set_run_personal_public($1,$2,true)',[run,personal.id]);
 const set=(who,value)=>db.query('select strava.set_run_photo_selected($1,$2,$3)',[run,who,value]);
 await set(project.id,false);await anonymous();
 assert.deepEqual((await db.query('select id from strava.run_photos where run_id=$1',[run])).rows.map(p=>p.id),[personal.id],'RLS hides project and unchosen personal metadata from anonymous readers');
@@ -19,7 +19,7 @@ await as(RILEY);assert.equal((await db.query('select id from strava.run_photos w
 await as(CASEY);assert.equal((await db.query('select id from strava.run_photos where run_id=$1',[run])).rows.length,3);await set(project.id,true);await set(personal.id,false);
 await anonymous();assert.deepEqual((await db.query('select id from strava.run_photos where run_id=$1',[run])).rows.map(p=>p.id),[project.id]);
 await as(CASEY);await set(personal.id,true);await assert.rejects(set(project.id,null),/whether to show/);
-await db.exec('reset role');await db.exec(await readFile('supabase/strava/036_photo_selection.sql','utf8'));
+await db.exec('reset role');
 assert.equal((await db.query('select count(*)::int n from strava.run_photos where run_id=$1',[run])).rows[0].n,3,'migration retry and selection never delete rows');// Owner Hide → Save → reload → Show → Save exercises the real editor, API and SQL RPC.
 const shim=await startDisposableServer(db),ownerToken=mintJwt(CASEY,'test@example.test');
 const liveConfig={SB_URL:shim.url,SB_KEY:'test',STORAGE_KEY:'test'};

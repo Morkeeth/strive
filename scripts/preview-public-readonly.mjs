@@ -7,6 +7,15 @@ import {html as publicHtml,neutralHtml,readPublic,readPublicPhotos,readKudos,val
 const origin='https://striverun.app',live=await (await fetch(origin)).text();
 const url=live.match(/const SB_URL="([^"]+)"/)[1],key=live.match(/const SB_KEY="([^"]+)"/)[1];
 const root=resolve('dist'),port=Number(process.env.PORT)||8128;
+// Local review of 037 before approval: backfill only a public response, never write it.
+const photoOrderPreview=process.env.STRIVE_PHOTO_ORDER_PREVIEW==='1';
+const photoBackfill=photos=>photos.map((p,i)=>({...p,sort_position:i,personal_public_selected:p.role==='personal'&&p.is_cover===true}));
+async function publicRequest(request,options={}){
+ const parsed=new URL(request);if(photoOrderPreview&&parsed.pathname.endsWith('/run_photos')){parsed.searchParams.set('select',parsed.searchParams.get('select').replace(',sort_position,personal_public_selected',''));parsed.searchParams.set('order','is_cover.desc,created_at.asc,id.asc');}
+ const response=await fetch(url+parsed.pathname+parsed.search,{...options,method:'GET',headers:{...options.headers,apikey:key,authorization:'Bearer '+key}});
+ if(photoOrderPreview&&parsed.pathname.endsWith('/run_photos')&&response.ok)return Response.json(photoBackfill(await response.json()));return response;
+}
+
 const server=createServer(async(req,res)=>{try{
  const u=new URL(req.url,'http://127.0.0.1:'+port);
  if(u.pathname==='/sunday-review.html'||u.pathname.startsWith('/review-assets/')){
@@ -18,13 +27,13 @@ const server=createServer(async(req,res)=>{try{
   return res.end(await readFile(file));
  }
  if(u.pathname==='/api/og'&&req.method==='GET'){
-  const publicFetch=(request,options={})=>{const parsed=new URL(request);return fetch(url+parsed.pathname+parsed.search,{...options,method:'GET',headers:{...options.headers,apikey:key,authorization:'Bearer '+key}})};
+  const publicFetch=publicRequest;
   const run=await readPublic('90a16040-8ad5-4096-978c-8b1f78f3dd2f',publicFetch).catch(()=>null);
   const {ImageResponse}=await import('@vercel/og');const image=new ImageResponse(homeCard(run),{width:1200,height:630});res.setHeader('Content-Type','image/png');res.setHeader('Cache-Control','private, no-store');return res.end(Buffer.from(await image.arrayBuffer()));
  }
  if(u.pathname.startsWith('/r/')&&req.method==='GET'){
   const id=u.pathname.slice(3);if(!validId(id)){res.writeHead(404);return res.end('No run');}
-  const publicFetch=(request,options={})=>{const parsed=new URL(request);return fetch(url+parsed.pathname+parsed.search,{...options,method:'GET',headers:{...options.headers,apikey:key,authorization:'Bearer '+key}})};
+  const publicFetch=publicRequest;
   const run=await readPublic(id,publicFetch);res.setHeader('Content-Type','text/html');if(!run)return res.end(neutralHtml(id));
   const [photos,kudos]=await Promise.all([readPublicPhotos(run,publicFetch),readKudos(id,publicFetch)]);return res.end(publicHtml(run,{photos,kudos}));
  }
@@ -38,7 +47,7 @@ const server=createServer(async(req,res)=>{try{
  if(u.pathname==='/api/run-photos'){
   if(req.method!=='GET'){res.writeHead(403);return res.end('Read-only preview');}
   const photoUrl=new URL(origin+u.pathname+u.search),tiny=photoUrl.searchParams.get('w')==='64';if(tiny)photoUrl.searchParams.set('w','320');
-  const out=await fetch(photoUrl,{headers:req.headers['if-none-match']?{'If-None-Match':req.headers['if-none-match']}:{}});const photoHeaders={'Content-Type':out.headers.get('content-type')||'application/json'};for(const name of ['cache-control','etag','vary']){const value=out.headers.get(name);if(value)photoHeaders[name]=value}let photoBytes=Buffer.from(await out.arrayBuffer());if(tiny&&out.status===200)photoBytes=await sharp(photoBytes).resize({width:64,withoutEnlargement:true}).jpeg({quality:78}).toBuffer();res.writeHead(out.status,photoHeaders);return res.end(photoBytes);
+  const out=await fetch(photoUrl,{headers:req.headers['if-none-match']?{'If-None-Match':req.headers['if-none-match']}:{}});const photoHeaders={'Content-Type':out.headers.get('content-type')||'application/json'};for(const name of ['cache-control','etag','vary']){const value=out.headers.get(name);if(value)photoHeaders[name]=value}let photoBytes=Buffer.from(await out.arrayBuffer());if(photoOrderPreview&&!u.searchParams.has('id')&&out.ok){const data=JSON.parse(photoBytes);data.photos=photoBackfill(data.photos||[]);photoBytes=Buffer.from(JSON.stringify(data));}if(tiny&&out.status===200)photoBytes=await sharp(photoBytes).resize({width:64,withoutEnlargement:true}).jpeg({quality:78}).toBuffer();res.writeHead(out.status,photoHeaders);return res.end(photoBytes);
  }
  if(req.method!=='GET'){res.writeHead(403);return res.end('Read-only preview');}
  if(u.pathname==='/local-supabase.js'){res.setHeader('Content-Type','text/javascript');return res.end(await readFile(process.env.STRIVE_SUPABASE_SDK));}

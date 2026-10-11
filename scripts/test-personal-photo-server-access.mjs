@@ -10,8 +10,8 @@ const another='11111111-1111-4111-8111-111111111111';
 const config={SB_URL:'https://db.test',SB_KEY:'public-test',STORAGE_KEY:'storage-test'};
 const requests=[];
 const all=[
- {id:cover,run_id:run,width:800,role:'personal',is_cover:true},
- {id:unchosen,run_id:run,width:800,role:'personal',is_cover:false},
+ {id:cover,run_id:run,width:800,role:'personal',personal_public_selected:true,is_cover:true},
+ {id:unchosen,run_id:run,width:800,role:'personal',personal_public_selected:false,is_cover:false},
  {id:resultPhoto,run_id:run,width:800,role:'result',is_cover:false}
 ];
 const fetcher=async(url,options)=>{

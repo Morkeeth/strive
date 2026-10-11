@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import {JSDOM} from 'jsdom';
 import {html} from '../server/public-run.mjs';import {full} from '../tests/fixtures/estimate-capture.mjs';
 const runId='11111111-1111-4111-a111-111111111111';
-const photo=(n,role,is_cover=false)=>({id:`22222222-2222-4222-a222-${String(n).padStart(12,'0')}`,run_id:runId,role,is_cover,width:390,height:800,url:`/api/run-photos?run_id=${runId}&id=22222222-2222-4222-a222-${String(n).padStart(12,'0')}`});
+const photo=(n,role,is_cover=false)=>({id:`22222222-2222-4222-a222-${String(n).padStart(12,'0')}`,run_id:runId,role,is_cover,personal_public_selected:role==='personal'&&is_cover,width:390,height:800,url:`/api/run-photos?run_id=${runId}&id=22222222-2222-4222-a222-${String(n).padStart(12,'0')}`});
 const hiddenProject={...photo(7,'result'),is_selected:false};
 const personal=photo(1,'personal',true),hidden=photo(2,'personal'),result=photo(3,'result'),support=photo(4,'photo');
 for(const hasProject of [true,false]){
@@ -65,3 +65,15 @@ console.log('PASS five authorized images become three visible project-first tile
  w.StriveRunPhotos.disposeAll();
 }
 console.log('PASS native detail: full-image control opens authorized source; unselected personal stays private.');
+
+// A public run with no readable image gets the same authored fallback in native detail and share.
+{
+ const d=new JSDOM('<div id="detail"></div>',{url:'https://striverun.app',runScripts:'outside-only'}),w=d.window;
+ w.fetch=async()=>({ok:true,json:async()=>({photos:[]})});
+ for(const file of ['run-contract.js','run-estimates.js','run-context.js','story-tile.js','run-placeholders.js','run-photos.js'])w.eval(fs.readFileSync('site/'+file,'utf8'));
+ const noImage={...current,harness:'Codex',caption:'Author describes the measured comparison.',capture_metadata:{...full,models:['test-model']}};
+ await w.StriveRunPhotos.mount({client:null,run:noImage,slot:w.document.querySelector('#detail'),owner:false,status(){}});
+ const native=w.document.querySelector('.run-detail-story');assert.ok(native.querySelector('.harness-mark'));assert.match(native.textContent,/test-model/);assert.ok(!native.textContent.includes('Project image not added'));assert.equal(native.querySelectorAll('.empty-source').length,0);
+ const shared=new JSDOM(html(noImage,{photos:[]})).window.document.querySelector('.run-detail-story');assert.ok(shared.querySelector('.harness-mark'));assert.match(shared.textContent,/test-model/);assert.ok(!shared.textContent.includes('Project image not added'));w.StriveRunPhotos.disposeAll();
+}
+console.log('PASS no-image native detail and share use authored seeded kit tile with harness/model and no owner request.');

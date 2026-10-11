@@ -108,6 +108,8 @@
     if (opts.privateFirst) {
       try {
         const bytes = new Uint8Array(await file.arrayBuffer());
+        const rawHash=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),v=>v.toString(16).padStart(2,"0")).join("");
+        run.capture_metadata=root.StriveCaptureEstimates?.bind(run,rawHash)||run.capture_metadata;
         const prefix = new TextEncoder().encode("strive-browser-file-v1\0");
         const source = new Uint8Array(prefix.length + bytes.length);source.set(prefix);source.set(bytes,prefix.length);
         const digest = await crypto.subtle.digest("SHA-256",source);
