@@ -27,6 +27,8 @@
 .run-photos .run-photo-grid figure>img{width:100%;height:100%;aspect-ratio:1;object-fit:cover}
 .run-photos .run-photo-grid figure button{position:absolute;display:grid;place-items:center;width:34px;height:34px;min-height:34px;margin:0;padding:0;border:1px solid #dce3ee;border-radius:50%;background:#fff;color:#273956;font-size:18px;box-shadow:0 2px 8px #1b2c4d22}
 .run-photos .run-photo-grid figure .photo-remove{top:8px;right:8px}
+.run-photos .run-photo-grid figure .photo-drag-handle{top:8px;left:8px;touch-action:none;cursor:grab;font-size:20px;line-height:1}
+.run-photos .run-photo-grid figure .photo-drag-handle:active{cursor:grabbing}
 .run-photos .run-photo-grid figure .photo-lock{bottom:8px;right:8px;display:block;width:auto;height:30px;min-height:30px;padding:0 9px;border-radius:999px;font-size:11px;font-weight:700}
 .run-photos .run-photo-grid figure .photo-lock[aria-pressed="true"]{background:#24364e;color:#fff;border-color:#24364e}
 .run-photos .photo-cover-tag{position:absolute;left:8px;bottom:8px;border-radius:999px;background:#fff;color:#1258f4;padding:4px 10px;font-size:11px;font-weight:700;box-shadow:0 2px 8px #1b2c4d22}
