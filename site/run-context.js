@@ -49,12 +49,13 @@ function headlineFacts(r){
  const facts=cardFacts(r),known=label=>facts.find(row=>row[0]===label&&row[1]!=='Not recorded');
  const numeric=(label,value)=>count(value)?[label,value.toLocaleString('en-US'),meanings[label]]:null;
  const missing=label=>[label,'Not captured',meanings[label]+' This source did not record it.','missing'];
- const seconds=[r.ridge_basis==='wall-time'?r.ridge_wall_seconds:null,r.wall_time_s,r.duration_s].find(v=>Number.isFinite(v)&&v>=0);
- const elapsed=seconds==null?null:['Elapsed',root.GrinderFeed?.durationLabel?.(seconds)||Math.round(seconds/60)+' min',meanings.Elapsed];
+ let sourceSeconds=null;try{const source=validate(r.capture_metadata)?.estimates?.source;if(source)sourceSeconds=(Date.parse(source.ended_at)-Date.parse(source.started_at))/1000}catch{}
+ const seconds=[sourceSeconds,r.ridge_basis==='wall-time'?r.ridge_wall_seconds:null,r.wall_time_s,r.duration_s].find(v=>Number.isFinite(v)&&v>=0);
+ const elapsed=seconds==null?null:['Elapsed',seconds<60?Math.floor(seconds)+' sec':root.GrinderFeed?.durationLabel?.(seconds)||Math.round(seconds/60)+' min',meanings.Elapsed];
  return [
   known('Recorded tokens')||numeric('Typed turns',r.prompts??r.turns_typed)||missing('Typed turns'),
   known('Est. dollars')||numeric('Tool calls',r.tool_calls??r.ridge_tool_calls)||missing('Tool calls'),
-  known('Tool-active time · proxy')||elapsed||numeric('Files touched',r.files_touched)||numeric('Commits',r.commits)||missing('Files touched')
+  elapsed||numeric('Files touched',r.files_touched)||numeric('Commits',r.commits)||missing('Files touched')
  ];
 }
 
@@ -94,8 +95,6 @@ function profileFacts(runs){
  return `<section class="profile-capture-stats" aria-label="Recorded capture measurements"><h2>Recorded activity</h2><dl>
  <div><dt>Recorded tokens</dt><dd>${usageRuns?tokens.toLocaleString('en-US'):'Not recorded'}</dd><small>${scope(usageRuns)} have usage</small></div>
  <div><dt>You typed</dt><dd>${typedRuns?typed.toLocaleString('en-US'):'Not recorded'}</dd><small>${scope(typedRuns)} have human message counts</small></div>
- <div><dt>Dollars</dt><dd>Not recorded</dd><small>No bill in these captures</small></div>
- <div><dt>Active time</dt><dd>Not recorded</dd><small>Elapsed spans include waiting</small></div>
  </dl><p class="profile-models">Recorded models: ${models.size?[...models].map(esc).join(', '):'Not recorded'}</p><p class="profile-stats-scope">Recorded usage only; missing captures are not counted as zero. Cached input is already included.</p></section>`;
 }
 const api={context,setup,metrics,validate,cardFacts,headlineFacts,headlineHtml,profileFacts,cardSecondary,factLabel,measurementNotes,measurementDetails,prepareForStorage};root.StriveContext=api;if(typeof module!=='undefined')module.exports=api;

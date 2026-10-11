@@ -609,7 +609,8 @@ window.GrinderSocial = function ({
       block.type = "button";
       block.className = "ghost";
       block.textContent = blocked ? "Unblock" : "Block";
-      slot.append(block);
+      const menu=document.createElement("details");menu.className="profile-more";
+      const menuToggle=document.createElement("summary");menuToggle.textContent="···";menuToggle.setAttribute("aria-label","More profile actions");menu.append(menuToggle,block);slot.append(menu);
       block.onclick = async () => {
         block.disabled = true;
         try {

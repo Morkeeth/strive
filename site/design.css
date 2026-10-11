@@ -526,7 +526,7 @@ button,summary{touch-action:manipulation}
 #run-edit .run-photo-grid:not(.run-photo-grid--reader){display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 #run-edit .run-photo-grid:not(.run-photo-grid--reader) figure{display:flex;flex-direction:column;position:relative;min-width:0;padding:0;gap:0;align-items:stretch}
 #run-edit .photo-thumb-cover{padding:0;width:100%;height:auto;min-height:0;display:block;position:relative;border:2px solid transparent;background:#f2f5ff;border-radius:8px;overflow:hidden}
-#run-edit .photo-thumb-cover[aria-pressed=true]{border-color:#0047ff}
+#run-edit .photo-thumb-cover[aria-checked=true]{border-color:#0047ff}
 #run-edit .run-photo-grid .photo-thumb-cover img{display:block;width:100%;height:auto;aspect-ratio:1;object-fit:cover}
 #run-edit .photo-thumb-cover span{position:absolute;bottom:0;left:0;right:0;background:#fffE;color:#0047ff;font-size:11px;padding:3px}
 #run-edit .photo-hide{position:absolute;top:2px;right:2px;padding:0;width:36px;min-height:36px;border-radius:50%;background:#fffE;color:#111;font-size:24px;z-index:1}
@@ -548,3 +548,24 @@ button,summary{touch-action:manipulation}
 @media(max-width:600px){.post-start{padding:10px 0}.post-start .post-flow-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.post-start .post-flow-steps li{white-space:normal;align-items:flex-start;line-height:1.35;font-size:11px}.post-start .post-flow-steps li>span{flex-shrink:0}}
 
 #app>.post-page-head{margin-bottom:8px}.post-start{padding:0}.post-start .post-start-intro{margin-bottom:16px;max-width:48ch}
+
+#run-edit .photo-thumb-cover .photo-lead-indicator{top:7px;right:7px;bottom:auto;left:auto;width:25px;height:25px;display:grid;place-items:center;border:1px solid #0047ff;border-radius:50%;font-size:20px;padding:0;background:#fff}
+#run-edit .photo-thumb-cover:focus-visible{outline:3px solid #0047ff;outline-offset:3px}
+
+.profile-header{padding:16px;border:1px solid var(--rule);background:var(--paper);margin-bottom:16px}
+.profile-header .phero{padding:0;border:0;margin:0 0 12px;display:flex;align-items:center;gap:12px}
+.profile-name{min-width:0;flex:1}.profile-name h1{overflow-wrap:anywhere}
+.profile-header .profile-follow{display:flex;align-items:center;gap:6px;margin:0;padding:0;flex:none}
+.profile-follow button,.profile-follow .act{padding:6px 12px;min-height:32px;font-size:12px;width:auto}
+.profile-more{position:relative}.profile-more>summary{list-style:none;cursor:pointer;font-size:22px;padding:0 8px;line-height:32px}.profile-more>summary::-webkit-details-marker{display:none}
+.profile-more>button{position:absolute;right:0;top:100%;z-index:5;background:var(--paper);border:1px solid var(--rule);box-shadow:0 4px 12px #0001}
+.profile-header .profile-activity-stats{display:flex;gap:24px;border:0;padding:0;margin:0;background:none}
+.profile-header .profile-activity-stats>div{padding:0;border:0;display:flex;align-items:baseline;gap:6px}
+.profile-header .profile-activity-stats strong{font-size:18px}.profile-header .profile-activity-stats span{font-size:11px}
+.profile-header .profile-stats-scope{margin:8px 0;font-size:11px}.profile-recorded-details>summary{font-size:12px;cursor:pointer}
+.profile-recorded-details .profile-capture-stats{border:0;padding:12px 0 0;margin:0}.profile-recorded-details h2{display:none}
+@media(max-width:600px){.profile-header{padding:12px}.profile-header .phero{gap:8px}.profile-header .profile-name h1{font-size:19px}.profile-header .profile-activity-stats{gap:14px}.profile-header .profile-activity-stats>div{flex-direction:column;gap:2px}.profile-header .profile-follow{gap:0}}
+#run-edit .photo-thumb-cover .photo-lead-indicator{left:7px;right:auto}
+.profile-header{background:#fff;border-radius:12px}.profile-header .phero{background:transparent;box-shadow:none;border-radius:0}
+.profile-header .social-follow.profile-follow{border:0;border-radius:0;box-shadow:none;background:transparent;flex-wrap:nowrap}
+.profile-header .profile-follow button{min-height:32px;flex:none}
