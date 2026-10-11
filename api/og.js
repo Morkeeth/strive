@@ -5,13 +5,33 @@ module.exports=async function handler(req,res){
  res.setHeader('X-Content-Type-Options','nosniff');
  res.setHeader('Cache-Control','private, no-store, max-age=0');
  try{
-  const {homeCard,readPublic,privateCard,linkPreviewCard,profileCard}=await import('../server/public-run.mjs');
+  const {homeCard,readPublic,readPublicPhotos,readAvatar,privateCard,linkPreviewCard,photoCard,profileCard}=await import('../server/public-run.mjs');
   const {readProfile}=await import('../server/share-routes.mjs');
   let tree;
   if(req.query.run){
    const run=await readPublic(String(req.query.run));
    if(!run)tree=privateCard();
-   else tree=linkPreviewCard(run);
+   else {
+    const [photos,avatar]=await Promise.all([readPublicPhotos(run),readAvatar(run)]);
+    const chosen=photos.find(photo=>photo.is_cover)||photos.find(photo=>photo.role==='personal')||photos.find(photo=>photo.role==='result')||photos[0];
+    let photoUrl=null;
+    if(chosen&&process.env.STRIVE_STORAGE_SERVICE_ROLE_KEY)try{
+     const {runPhotos}=await import('../server/run-photos.mjs');
+     const {runtimeConfig}=await import('../server/runtime-config.mjs');
+     const image=await runPhotos({method:'GET',query:{run_id:run.id,id:chosen.id,w:'960'}},
+      {...runtimeConfig(),STORAGE_KEY:process.env.STRIVE_STORAGE_SERVICE_ROLE_KEY});
+     if(image.status===200&&Buffer.isBuffer(image.body)&&image.body.length<=3_000_000){
+      const sharp=(await import('sharp')).default;
+      let bytes=image.body;
+      if(chosen.role!=='personal'&&chosen.width>1000){
+       const meta=await sharp(bytes).metadata();
+       if(meta.width>700&&meta.height>450)bytes=await sharp(bytes).extract({left:0,top:0,width:Math.round(meta.width*.58),height:Math.round(meta.height*.58)}).jpeg({quality:82}).toBuffer();
+      }
+      photoUrl='data:image/jpeg;base64,'+bytes.toString('base64');
+     }
+    }catch(_){photoUrl=null;}
+    tree=photoUrl?photoCard(run,photoUrl,{avatar}):linkPreviewCard(run,{avatar});
+   }
   }else if(req.query.profile){
    const profile=await readProfile(String(req.query.profile));
    tree=profile?profileCard(profile):privateCard();

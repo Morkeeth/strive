@@ -199,7 +199,7 @@ const shareMore=run=>{
  const rows=(Array.isArray(run)?run:[]).filter(item=>item?.visibility==='public'&&validId(item.id)&&runPath(item)).slice(0,3);
  return rows.length?`<aside class="share-side"><h2>More from this builder</h2><ul>${rows.map(item=>`<li><a href="${esc(runPath(item))}">${esc(Feed.titleOf(item))}</a><small>${esc(item.project||'Public run')}</small></li>`).join('')}</ul></aside>`:'';
 };
-export function html(run,opts={}){const title=esc(Feed.titleOf(run)),insight=Checkpoints.claimed(run)?'':routeInsight(run&&run.code_route),summary=String(run.caption||'').split(/\r?\n/).find(Boolean)||Feed.cardSummary(run)||insight||'See the work and its recorded activity.',description=esc(wholeWords(summary.match(/^[^.!?]+[.!?]/)?.[0]||summary,105)),shareTitle=title,id=encodeURIComponent(run.id),image=shareOrigin+'/api/og?run='+id,url=shareOrigin+(runPath(run)||'/r/'+id);
+export function html(run,opts={}){const title=esc(Feed.titleOf(run)),insight=Checkpoints.claimed(run)?'':routeInsight(run&&run.code_route),summary=String(run.caption||'').split(/\r?\n/).find(Boolean)||Feed.cardSummary(run)||insight||'See the work and its recorded activity.',description=esc(wholeWords(summary.match(/^[^.!?]+[.!?]/)?.[0]||summary,105)),shareTitle=esc(wholeWords(Feed.titleOf(run),70)),id=encodeURIComponent(run.id),image=shareOrigin+'/api/og?run='+id,url=shareOrigin+(runPath(run)||'/r/'+id);
  const handle=run.profiles?.handle||run.profiles?.github_handle;
  const profileHref=profilePath(handle)||'';
  // opts.kudos is the count readKudos returned: a number, or null when it could not be read.
@@ -450,36 +450,54 @@ export function homeCard(run=null){
    el('div',{style:{display:'flex',fontSize:25,color:'#666',marginTop:'auto'}},bins?'Recorded activity · one public run on STRIVE':'Real sessions. The work behind them. The people building next.')));
 }
 
-export function photoCard(run,photoUrl){
- const who=Feed.profileOf(run),lead=Feed.headline(run),stats=Feed.stats(run,lead);
- return el('div',{style:{display:'flex',width:1200,height:630,background:'#fff',fontFamily:'sans-serif',color:'#111'}},
-  el('div',{style:{display:'flex',width:620,height:630,background:'#edf2ff',overflow:'hidden'}},el('img',{src:photoUrl,width:620,height:630,style:{width:620,height:630,objectFit:'cover'}})),
-  el('div',{style:{display:'flex',flexDirection:'column',width:580,padding:'36px 40px'}},
-   el('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',color:'#0047ff',fontSize:22,fontWeight:700}},BRAND),
-   el('div',{style:{display:'flex',fontSize:25,marginTop:34}},String(who.name).slice(0,45)),
-   el('div',{style:{display:'flex',fontSize:42,fontWeight:700,lineHeight:1.1,marginTop:22,maxHeight:150,overflow:'hidden'}},String(Feed.titleOf(run)).slice(0,100)),
-   el('div',{style:{display:'flex',fontSize:21,color:'#555',lineHeight:1.3,marginTop:20,maxHeight:106,overflow:'hidden'}},String(run.caption||'').split(/\r?\n/)[0].slice(0,145)),
-   el('div',{style:{display:'flex',marginTop:'auto',borderTop:'2px solid #0047ff',paddingTop:16,gap:22}},
-    ...([lead?[lead.unit,lead.n]:null,...stats].filter(Boolean).slice(0,3).map(([label,value])=>el('div',{style:{display:'flex',flexDirection:'column',minWidth:120}},el('div',{style:{display:'flex',fontSize:14,color:'#666'}},String(label)),el('div',{style:{display:'flex',fontSize:25,fontWeight:700}},String(value))))))));
-}
+const previewMetrics=run=>{
+ const candidates=[['Commits',run.commits],['Files',run.files_touched],['Elapsed',shareDuration(run.wall_time_s??run.duration_s)],['Turns',run.prompts],['Tool calls',toolCallCount(run)]];
+ return candidates.filter(([,value])=>value!==null&&value!==undefined&&value!==''&&(typeof value==='string'||Number.isFinite(value)&&value>0)).slice(0,3)
+  .map(([label,value])=>[label,typeof value==='number'?value.toLocaleString('en-US'):String(value)]);
+};
+const previewBars=(run,color)=>{
+ const trace=series(run);if(!trace||trace.values.length<8)return null;
+ const peak=Math.max(...trace.values,1),values=trace.values.length>60?trace.values.filter((_,i)=>i%Math.ceil(trace.values.length/60)===0):trace.values;
+ return el('div',{style:{display:'flex',alignItems:'flex-end',width:'100%',height:84,gap:3}},
+  ...values.map(value=>el('div',{style:{display:'flex',flex:1,height:Math.max(5,Math.round(value/peak*78)),background:color,borderRadius:5}})));
+};
+const previewFact=run=>Number.isInteger(run.commits)&&run.commits>0?`${run.commits} recorded ${run.commits===1?'commit':'commits'}${Number.isInteger(run.files_touched)&&run.files_touched>0?` across ${run.files_touched} ${run.files_touched===1?'file':'files'}`:''}.`:null;
+const previewStats=(metrics,dark=false)=>el('div',{style:{display:'flex',width:'100%',gap:10,justifyContent:'space-between'}},
+ ...metrics.map(([label,value])=>el('div',{style:{display:'flex',flexDirection:'column',width:metrics.length===3?145:metrics.length===2?218:440,minWidth:0}},
+  el('div',{style:{display:'flex',fontSize:value.length>5?49:64,fontWeight:800,lineHeight:1,letterSpacing:-2,color:dark?'#fff':'#15254a'}},value),
+  el('div',{style:{display:'flex',fontSize:22,fontWeight:650,color:dark?'#cbd8ff':'#596784',marginTop:8}},label))));
+export function photoCard(run,photoUrl,opts={}){return linkPreviewCard(run,{...opts,photoUrl});}
 
-// Social apps render this image much smaller than its 1200 x 630 source. Keep the default
-// free of embedded UI screenshots and tiny explanatory copy; the page itself holds the detail.
-export function linkPreviewCard(run){
- const who=Feed.profileOf(run),lead=Feed.headline(run),facts=Feed.stats(run,lead);
- const metrics=[lead?[lead.unit,lead.n]:null,...facts].filter(Boolean).slice(0,3);
- const title=wholeWords(Feed.titleOf(run),68);
- return el('div',{style:{display:'flex',width:1200,height:630,background:'#fff',fontFamily:'sans-serif',color:INK,padding:'48px 62px',flexDirection:'column'}},
-  el('div',{style:{display:'flex',alignItems:'center',gap:20}},
-   el('div',{style:{display:'flex',width:44,height:44,background:BLUE,borderRadius:12}}),
-   el('div',{style:{display:'flex',fontSize:32,fontWeight:700,color:BLUE}},BRAND),
-   el('div',{style:{display:'flex',fontSize:29,color:INK,marginLeft:'auto'}},wholeWords(who.name,35))),
-  el('div',{style:{display:'flex',fontSize:71,fontWeight:750,lineHeight:1.1,letterSpacing:-2,marginTop:54,maxHeight:160,overflow:'hidden'}},title),
-  el('div',{style:{display:'flex',height:4,background:BLUE,marginTop:'auto',marginBottom:32}}),
-  el('div',{style:{display:'flex',gap:24,justifyContent:'space-between'}},
-   ...metrics.map(([label,value])=>el('div',{style:{display:'flex',flexDirection:'column',width:340,minWidth:0}},
-    el('div',{style:{display:'flex',fontSize:25,color:SOFT}},wholeWords(label,24)),
-    el('div',{style:{display:'flex',fontSize:75,fontWeight:700,lineHeight:1.15,letterSpacing:-2}},String(value))))));
+// Built for the 300px-wide card people actually see in a message, from public run data only.
+export function linkPreviewCard(run,opts={}){
+ const who=Feed.profileOf(run),metrics=previewMetrics(run),title=wholeWords(Feed.titleOf(run),49),fact=previewFact(run);
+ const avatar=typeof opts.avatar==='string'&&/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(opts.avatar)?opts.avatar:null;
+ const image=typeof opts.photoUrl==='string'&&/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(opts.photoUrl)?opts.photoUrl:null;
+ const name=wholeWords(who.name,28);
+ const face=avatar?el('img',{src:avatar,width:52,height:52,style:{width:52,height:52,borderRadius:26,objectFit:'cover'}}):
+  el('div',{style:{display:'flex',width:52,height:52,borderRadius:26,alignItems:'center',justifyContent:'center',background:image?'#e3eaff':'#fff',color:BLUE,fontSize:29,fontWeight:800}},String(name).trim().charAt(0).toUpperCase()||'S');
+ const header=el('div',{style:{display:'flex',alignItems:'center',width:'100%'}},
+  el('div',{style:{display:'flex',fontSize:35,fontWeight:800,letterSpacing:-1,color:image?BLUE:'#fff'}},BRAND),
+  el('div',{style:{display:'flex',alignItems:'center',marginLeft:'auto',gap:12}},face,
+   el('div',{style:{display:'flex',fontSize:23,fontWeight:700,color:image?INK:'#fff'}},name)));
+ const route=previewBars(run,image?BLUE:'#fff');
+ const routeBlock=route?el('div',{style:{display:'flex',flexDirection:'column',width:'100%',marginTop:'auto'}},route,
+  fact?el('div',{style:{display:'flex',fontSize:22,fontWeight:600,color:image?'#46577b':'#e0e9ff',marginTop:10}},fact):null):null;
+ if(!image){
+  const quote=wholeWords(String(run.caption||run.story_result||'').split(/\r?\n/)[0],106);
+  return el('div',{style:{display:'flex',width:1200,height:630,background:BLUE,color:'#fff',fontFamily:'sans-serif',padding:'40px 54px',flexDirection:'column'}},
+   header,el('div',{style:{display:'flex',fontSize:67,fontWeight:800,lineHeight:1.08,letterSpacing:-2,marginTop:70,maxHeight:150,overflow:'hidden'}},title),
+   quote?el('div',{style:{display:'flex',fontSize:32,lineHeight:1.2,marginTop:18,maxHeight:83,overflow:'hidden',color:'#eaf0ff'}},quote):null,
+   routeBlock,
+   el('div',{style:{display:'flex',width:'100%',marginTop:'auto',paddingTop:16}},previewStats(metrics,true)));
+ }
+ return el('div',{style:{display:'flex',width:1200,height:630,background:'#fff',fontFamily:'sans-serif',color:INK}},
+  el('div',{style:{display:'flex',width:660,height:630,overflow:'hidden',background:'#dce7ff'}},el('img',{src:image,width:660,height:630,style:{width:660,height:630,objectFit:'cover',objectPosition:'left top'}})),
+  el('div',{style:{display:'flex',flexDirection:'column',width:540,height:630,padding:'30px 32px 24px'}},
+   header,
+   el('div',{style:{display:'flex',fontSize:51,fontWeight:800,lineHeight:1.08,letterSpacing:-1.5,marginTop:36,maxHeight:120,overflow:'hidden'}},title),
+   el('div',{style:{display:'flex',width:'100%',marginTop:26}},previewStats(metrics)),
+   routeBlock));
 }
 
 export function profileCard(profile){
