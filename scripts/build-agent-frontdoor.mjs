@@ -43,7 +43,7 @@ Installation: ${origin}/plugins/install.md
 The native plugin selects real sessions across named projects and opens a blue local post-session editor. It can export a social image without posting. Use the native plugin for repeated capture; one-time capture routes remain below.
 
 - Grok Bot: use the Grok route below. Its standalone Python helpers need no pip install, CLI installation or saved skill.
-- Cursor: use the Cursor route below, in the person's own workspace with an explicitly selected session.
+- Claude Code, Codex and Cursor: use the local picker below, in the person's own workspace with an explicitly selected session.
 - Another environment: inspect the documented supported source before choosing a parser. Never pass a source through a different harness just to make it work.
 
 ## Same-release tools
@@ -80,27 +80,23 @@ Preview does not upload or save. It prints allowlisted metrics and writes the co
 
 One-time use is complete without persistence. If the owner wants a reusable companion, follow ${origin}/capture/grok/INSTALL.md. Use only the client's observed supported skill-save action with the canonical skill's name and description. Do not guess an import button, API or installation requirement. This does not grant browser or account access.
 
-## Cursor
+## Claude Code, Codex and Cursor
 
-Use the person's own workspace, not a clone of STRIVE as the project to measure. Python 3.9 or newer is required. With uv already available, these commands run the pinned capture CLI; dependency installation may occur. Confirm this tool execution is permitted. First list supported transcript candidates across workspaces. This reads filesystem metadata only, not transcript bodies or Cursor databases. Modified time is not session start; the latest file is not necessarily the intended workspace:
+Run one local picker on the computer where the work happened. Python 3.10+ and uv are required; this downloads the pinned STRIVE package but does not upload sessions:
 
-    uvx --from '${packageURL}' agentgrinder grind --harness cursor --list --show-paths
+    uvx --from '${packageURL}' strive sessions --all --open --site '${origin}'
 
-No-path --list returns a candidates object with total, offset, limit and next_offset, not a list of sittings. The default page contains at most 20 candidates. If next_offset is not null, request that offset; for example, the next default page is:
+The browser opens a loopback page on 127.0.0.1. Choose a session, name the project, then choose a sitting. First prompts and source paths stay in that local page. The resulting private preview uses a URL fragment; the fragment is decoded by your browser and is not part of the page request. Nothing is saved until the owner chooses Save. Keep Only me for the first private run.
 
-    uvx --from '${packageURL}' agentgrinder grind --harness cursor --list --show-paths --list-offset 20
+If uv is unavailable but Python and pipx are installed, use:
 
-Repeat using the returned next_offset until the intended source appears. Optional --list-limit accepts 1 through 100. File names without --show-paths are not selectable full paths. Capture requires an explicit exact path, including when auto detection finds Cursor; no-path --push is refused.
+    pipx run --spec '${packageURL}' strive sessions --all --open --site '${origin}'
 
-Confirm the intended project and exact transcript path from that local list. Then inspect only that transcript's sittings:
+For a local-only MCP server, use the same pinned package with strive mcp. It exposes only list_sessions and preview_session. Select an opaque session choice, inspect its sittings, then provide its sitting number and the owner's project name. It cannot publish or send. The native editor plugins use the same capture core and remain first-class options for repeated capture.
 
-    uvx --from '${packageURL}' agentgrinder grind /exact/selected-session.jsonl --harness cursor --list --show-paths
+Sources up to 2 GiB are read as bounded records. The chosen sitting is limited to 64 MiB; oversized, malformed or changing sources fail clearly and are never silently truncated. The hash covers the unchanged original. The website's native-file fallback has a 64 MiB limit; larger sources should use the local picker. A prepared preview too large for a 64 KiB link is offered as an allowlisted .strive.json file instead.
 
-This second command parses the selected transcript locally and prints sitting metadata, not raw messages. Confirm the sitting, then replace the example path and sitting:
-
-    uvx --from '${packageURL}' agentgrinder grind /exact/selected-session.jsonl --harness cursor --pick 1 --push --push-url '${origin}'
-
---push prints a metrics-only private preview URL; it does not upload or save. Do not add --open without permission to open a browser. Missing counts remain unknown. Local card files may contain private context and must stay local. If uv is unavailable, inspect the verified extracted package and, with installation permission, create a separate virtual environment and run python -m pip install . there. Optional MCP setup after CLI installation: agentgrinder connect cursor --project /exact/own-project --install. Reload Cursor, then call a2a_onboard. Neither MCP nor background sync is required for one session.
+Mac desktop flow is verified. Windows and Linux desktop flows are not yet verified. Other harnesses are not supported by this picker; Grok uses its explicit route above.
 
 ## Owner identity and saving
 

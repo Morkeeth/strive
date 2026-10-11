@@ -47,4 +47,20 @@ class PickerTests(unittest.TestCase):
             self.assertEqual(db.execute('select count(*) from saves').fetchone()[0],0);db.close()
         finally:server.shutdown();server.server_close();thread.join()
 
+    def test_local_mcp_has_no_outward_tools_and_shares_capture(self):
+        from unittest.mock import patch
+        from agentgrinder import mcp_server as mcp
+        tools=mcp.capture_handle({'id':1,'method':'tools/list'})['result']['tools']
+        self.assertEqual([t['name'] for t in tools],['list_sessions','preview_session'])
+        rows=discover('codex',candidates=[('codex',self.source)])
+        with patch('agentgrinder.session_picker.discover',return_value=rows):listed=mcp.capture_tool('list_sessions',{})
+        self.assertNotIn('PRIVATE FIRST PROMPT',json.dumps(listed));self.assertNotIn(str(self.root),json.dumps(listed))
+        choice=listed['sessions'][0]['session']
+        sittings=mcp.capture_tool('preview_session',{'session':choice})
+        self.assertEqual(len(sittings['sittings']),1)
+        preview=mcp.capture_tool('preview_session',{'session':choice,'sitting':1,'project':'My project'},self.root/'mcp')
+        self.assertEqual(preview['uploaded'],0);self.assertIn('#import=gz.',preview['preview_url'])
+        denied=mcp.capture_handle({'id':2,'method':'tools/call','params':{'name':'agent_action','arguments':{'action':'publish'}}})
+        self.assertTrue(denied['result']['isError'])
+
 if __name__=='__main__':unittest.main()

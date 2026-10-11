@@ -89,6 +89,26 @@
     setError("");
     const zone = $("drop-zone"), progress = $("drop-progress");
     if (!file) return;
+    // Make feedback visible when the file was dropped beside the collapsed fallback.
+    const fallback=zone?.closest('details');if(fallback)fallback.open=true;
+    if (file.size > 64*1024*1024) {
+      setError("This session is larger than 64 MiB. Choose your agent above and open the local session picker, then choose a sitting. It reads up to 2 GiB locally; nothing is truncated or uploaded.");
+      zone?.scrollIntoView?.({block:'center'});return;
+    }
+    if (/\.strive\.json$/i.test(file.name||'')) {
+      try {
+        if(file.size>1024*1024)throw Error('This prepared preview exceeds 1 MiB. Choose a smaller sitting in the local picker.');
+        const prepared=JSON.parse(await file.text());
+        const allowed=new Set(['schema_version','measurement_revision','harness','title','project','visibility','turns_typed','tool_calls','shell_calls','files_touched','commits','started','duration_s','rhythm','trace_basis','capture_metadata','route','ridge','ridge_basis','ridge_wall_seconds','worker_bins','commit_bins','ridge_tool_calls','code_route','claims','claims_verified','artifacts_produced']);
+        if(!prepared||Array.isArray(prepared)||Object.keys(prepared).some(key=>!allowed.has(key)))throw Error('This is not a bounded STRIVE preview. Choose the .strive.json file from the local picker.');
+        if(prepared.schema_version!==1||!/^[a-f0-9]{64}$/.test(prepared.measurement_revision||''))throw Error('This preview is missing its source reference. Prepare it again in the local picker.');
+        prepared.visibility='private';GrinderContract.validate(prepared);
+        const bytes=new TextEncoder().encode(JSON.stringify(prepared));let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);
+        const token=encodeURIComponent(btoa(binary));
+        if(opts.post)opts.post(token);else location.href='/#import='+token;
+      }catch(error){setError(error?.message||'This preview file could not be read.');}
+      return;
+    }
     if (/^image\//.test(file.type||"") || /\.(jpe?g|png|webp|gif|heic)$/i.test(file.name||"")) { setError("This picker reads a session file. Add photos after saving a run, or open an existing run in My runs."); return; }
     zone.classList.add("reading");
     const started = performance.now();

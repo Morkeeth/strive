@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {webcrypto} from 'node:crypto';
+import {JSDOM} from 'jsdom';
+const w=new JSDOM('<details><div id="drop-stage"><div id="drop-zone"><input type="file" id="drop-file"></div><p id="drop-error" hidden></p><p id="drop-progress"></p></div></details>',{runScripts:'outside-only',url:'https://striverun.app/?post'}).window;
+w.HTMLElement.prototype.scrollIntoView=function(){};w.TextEncoder=TextEncoder;w.TextDecoder=TextDecoder;Object.defineProperty(w,'crypto',{value:webcrypto});
+let posted=null,network=0;w.fetch=()=>{network++;throw Error('No network before Save')};
+for(const file of ['run-estimates.js','run-context.js','run-contract.js','capture-estimates.js','dropin-parse.js','dropin.js'])w.eval(readFileSync('site/'+file,'utf8'));
+w.GrinderDropinUI.mount({privateFirst:true,post:token=>{posted=JSON.parse(Buffer.from(decodeURIComponent(token),'base64').toString())}});
+const bytes=readFileSync('samples/dropin/codex-desktop.jsonl');const blob=new Blob([bytes]);blob.name='native.jsonl';
+await w.GrinderDropinUI.read(blob);assert.ok(posted?.measurement_revision,w.document.querySelector('#drop-error').textContent);assert.equal(w.document.querySelector('details').open,true);assert.equal(network,0);
+const payload={...posted,title:'Unicode café',visibility:'public'};posted=null;
+const prepared=new Blob([JSON.stringify(payload)]);prepared.name='run.strive.json';await w.GrinderDropinUI.read(prepared);
+assert.equal(posted.title,'Unicode café');assert.equal(posted.visibility,'private');assert.equal(network,0);
+posted=null;await w.GrinderDropinUI.read({name:'large.jsonl',size:76*1024*1024,arrayBuffer(){throw Error('must not load whole source')}});
+assert.match(w.document.querySelector('#drop-error').textContent,/local session picker/);assert.equal(posted,null);
+const unsafe=new Blob([JSON.stringify({...payload,raw_prompt:'PRIVATE SOURCE'})]);unsafe.name='run.strive.json';await w.GrinderDropinUI.read(unsafe);assert.equal(posted,null);assert.match(w.document.querySelector('#drop-error').textContent,/not a bounded/);
+assert.equal(network,0);console.log('PASS actual drop handler: native private preview, Unicode prepared envelope, large-source route, unknown-field rejection; zero network');
