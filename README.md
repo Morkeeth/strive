@@ -2,7 +2,7 @@
 
 STRIVE turns a recorded coding-agent session into a visual run you can save privately and share when you choose. Capture needs no model API key.
 
-**[Open STRIVE](https://striverun.app)** · [Contribute](CONTRIBUTING.md)
+**[Open STRIVE](https://striverun.app)** · [Install the editor plugin](https://striverun.app/plugins/install.md) · [Contribute](CONTRIBUTING.md)
 
 ![Live STRIVE card for a FAVOUR review-request run, with recorded activity and project screenshots.](docs/strive-live-favour-card-20261011.png)
 
