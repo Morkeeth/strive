@@ -263,7 +263,7 @@
           group.append(empty);
         }
         const personal=selected.find(p=>p.role==='personal');
-        const visible=selected.length>3?(personal?[...selected.filter(p=>p!==personal).slice(0,2),personal]:selected.slice(0,3)):selected;
+        const visible=ordered?selected.slice(0,3):selected.length>3?(personal?[...selected.filter(p=>p!==personal).slice(0,2),personal]:selected.slice(0,3)):selected;
         for(const photo of visible){
           const path=photoPath(photo);if(!path)continue;
           const imageHeaders=await headers(client);if(!current())return;

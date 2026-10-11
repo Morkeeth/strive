@@ -77,3 +77,25 @@ console.log('PASS native detail: full-image control opens authorized source; uns
  const shared=new JSDOM(html(noImage,{photos:[]})).window.document.querySelector('.run-detail-story');assert.ok(shared.querySelector('.harness-mark'));assert.match(shared.textContent,/test-model/);assert.ok(!shared.textContent.includes('Project image not added'));w.StriveRunPhotos.disposeAll();
 }
 console.log('PASS no-image native detail and share use authored seeded kit tile with harness/model and no owner request.');
+
+// Persisted order overrides legacy personal-last composition, including a personal lead.
+// Exercise the actual client gallery mount and public HTML, not only cardPhotos().
+for(const chosenIndex of [0,1,3]){
+ const shared=[result,support,photo(5,'before')];shared.splice(chosenIndex,0,personal);
+ const photos=[...shared.map((p,i)=>({...p,sort_position:i,is_cover:i===0})),{...hidden,sort_position:4},{...hiddenProject,sort_position:5}].reverse();
+ const expected=shared.slice(0,3).map(p=>p.id),reads=[];
+ const d=new JSDOM(`<article class="activity-post" data-photo-gallery data-project-gallery data-gallery-supporting data-run-id="${runId}" data-run-visibility="public" data-photo-layout="result"><div class="run-media-slot"></div></article>`,{url:'https://striverun.app'});
+ const scope={document:d.window.document,location:d.window.location,URL,AbortController,fetch:async path=>{reads.push(path);return {ok:true,json:async()=>({photos})}}};vm.createContext(scope);vm.runInContext(fs.readFileSync('site/run-photos.js','utf8'),scope);
+ await scope.StriveRunPhotos.mountCovers({client:null,root:scope.document});
+ const visibleIds=doc=>[...doc.querySelectorAll('.run-media-gallery>figure .run-photo-cover, .public-run-photo-grid>figure img')].map(img=>new URL(img.src,'https://striverun.app').searchParams.get('id'));
+ assert.deepEqual(visibleIds(d.window.document),expected,`client keeps first three saved positions with personal at ${chosenIndex}`);
+ assert.equal(d.window.document.querySelector('.media-more-count').textContent,'+1');
+ assert.equal(d.window.document.querySelector('.run-media-gallery').dataset.totalMedia,'4');
+ const page=new JSDOM(html({...current,capture_metadata:full},{photos}));
+ assert.deepEqual(visibleIds(page.window.document),expected,`public page keeps first three saved positions with personal at ${chosenIndex}`);
+ assert.equal(page.window.document.querySelector('.media-more-count').textContent,'+1');
+ assert.deepEqual([...page.window.document.querySelectorAll('.public-image-lightbox')].map(e=>e.id.slice('image-'.length)),shared.map(p=>p.id));
+ for(const blocked of [hidden,hiddenProject]){assert.ok(!d.window.document.body.innerHTML.includes(blocked.id));assert.ok(!page.window.document.body.innerHTML.includes(blocked.id));assert.ok(!reads.some(path=>path.includes(blocked.id)));}
+ scope.StriveRunPhotos.disposeAll();
+}
+console.log('PASS actual four-image feed + public render: personal lead/second/fourth respect first-three saved order; +1 and full viewer agree; private personal and hidden project excluded.');

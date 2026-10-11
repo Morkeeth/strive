@@ -9,6 +9,7 @@ The profile uses one header with compact Runs / Projects / XUDOS totals, Follow 
 ## Verification
 
 - `npm run test:sunday` and `npm run test:cards` passed on Node 22.
+- Four readable images plus unconsented personal/hidden-project inputs: actual client mount and public HTML both keep the first three saved positions, including a personal lead; +1 and the full viewer preserve the remaining image. Both regressions failed on the previous renderer before the fix.
 - Actual thumbnail → Save → API → disposable PostgreSQL → reload: exactly one lead persists; an unconsented personal image remains denied by known id. Keyboard arrow selection retains focus and stays staged until Save.
 - Real Chrome, 390×900 and 1440×900 at 2×: real public FAVOUR image bytes, one selected thumbnail, zero old layout radios, no browser errors or horizontal overflow.
 - Profile: real signed-out public reads; a separate controlled other-viewer case exercises the actual Follow/Block component. The latter uses local read fixtures, not an authenticated production session.

@@ -4,7 +4,7 @@ import {JSDOM} from 'jsdom';
 import Context from '../site/run-context.js';
 import Estimates from '../site/run-estimates.js';
 import {full} from '../tests/fixtures/estimate-capture.mjs';
-// Real ODAWG native-session shape (01a12828): 40.472 seconds crossing two clock minutes.
+// Real ODAWG native-session shape: 40.472 seconds crossing two clock minutes.
 // Price/usage fixture stays explicitly synthetic; this regression tests time, not its bill.
 const capture=structuredClone(full);capture.estimates.source.started_at='2026-10-10T23:31:30.741Z';capture.estimates.source.ended_at='2026-10-10T23:32:11.213Z';capture.estimates.tool_activity.origin_utc='2026-10-10T23:31:00Z';capture.estimates.tool_activity.occupied_bins=[0,1];
 const run={capture_metadata:capture,duration_s:40.472};
