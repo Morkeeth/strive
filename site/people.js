@@ -124,7 +124,7 @@ window.GrinderPeople = function ({
     const followSlot = opts?.followSlot
       ? `<div class="people-follow" data-profile-id="${esc(p.id || "")}"></div>`
       : "";
-    return `<article class="card people-card" data-profile-id="${esc(p.id || "")}">
+    return `<article class="card people-card strive-person" data-profile-id="${esc(p.id || "")}">
       <div class="people-card-main">
         ${tile}
         <div class="people-card-copy">
@@ -133,8 +133,7 @@ window.GrinderPeople = function ({
           ${meta.length ? `<p class="meta">${esc(meta.join(" · "))}</p>` : ""}
         </div>
       </div>
-      ${followSlot}
-      ${p.href ? `<div class="people-card-actions"><a class="act" href="${p.href}">Open profile</a></div>` : ""}
+      <div class="people-card-actions">${followSlot}${p.href ? `<a class="act" href="${p.href}">Open profile</a>` : ""}</div>
     </article>`;
   }
 

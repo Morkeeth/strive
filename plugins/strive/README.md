@@ -1,4 +1,8 @@
-# STRIVE for Cursor and Claude Code
+# STRIVE for Claude Code, Cursor and Codex
+
+The session-end hook records nothing until you register a project. Nothing
+leaves this machine until you press **Save run** in STRIVE or explicitly approve
+a direct private save.
 
 Capture selected real coding sessions from named projects, see the cards together, and save them privately. Sharing stays a separate choice in STRIVE. Python 3.9+ is the only runtime requirement; capture needs no model API key.
 
@@ -10,14 +14,32 @@ Capture selected real coding sessions from named projects, see the cards togethe
 
 The card preview is local until you save it. Check the selected source and measurements before the final step.
 
-From the repository checkout or the extracted portable bundle:
+Install from the public repository. Claude Code takes two lines:
+
+```sh
+claude plugin marketplace add Morkeeth/strive
+claude plugin install strive@strive
+```
+
+For Cursor, use its documented local plugin import:
+
+```sh
+git clone --depth 1 https://github.com/Morkeeth/strive.git strive-plugin-source
+python3 strive-plugin-source/scripts/strive-plugin.py install cursor
+```
+
+For Codex, run `codex plugin marketplace add Morkeeth/strive` then
+`codex plugin add strive@strive`. The Codex package loads the skill and local
+runtime without automatic hooks.
+
+The ZIP remains a fallback. From its extracted `strive` folder:
 
 ```sh
 python3 scripts/strive-plugin.py install cursor
 python3 scripts/strive-plugin.py install claude
 ```
 
-The Cursor installer copies a self-contained native plugin to `~/.cursor/plugins/local/strive`. Reload Cursor and check Customize → Plugins. Local imports must be allowed; a marketplace install with the same name takes precedence. Claude installation uses the actual `claude plugin marketplace add` and `claude plugin install` commands against a private local marketplace. Restart Claude Code, then invoke `/strive:strive`. For a disposable installation, add `--config-dir /temporary/config` to either installer command.
+The Cursor installer copies a self-contained native plugin to `~/.cursor/plugins/local/strive`. Reload Cursor and check Customize → Plugins. Local imports must be allowed; a marketplace install with the same name takes precedence. Restart Claude Code after its marketplace install, then invoke `/strive:strive`. For a disposable ZIP installation, add `--config-dir /temporary/config` to either installer command.
 
 Cursor can also import Claude plugins automatically. The Claude-installed copy therefore has an explicit empty Cursor component map. Its imported entry is labelled “STRIVE for Claude Code (inactive in Cursor)” and contributes no second skill or hook; use the native STRIVE local entry in Cursor. The installer does not change your third-party import setting or disable other plugins.
 

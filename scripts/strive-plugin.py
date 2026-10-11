@@ -25,9 +25,10 @@ def build(target, vendor=None):
             shutil.copytree(REPO,staged,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
         else:
             shutil.copytree(REPO/'plugins/strive',staged,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
-            shutil.copytree(REPO/'agentgrinder',staged/'runtime/agentgrinder',ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
-            shutil.copy2(REPO/'LICENSE',staged/'LICENSE')
-            shutil.copy2(__file__,staged/'scripts/strive-plugin.py')
+            if not (staged/'runtime/agentgrinder').is_dir():
+                shutil.copytree(REPO/'agentgrinder',staged/'runtime/agentgrinder',ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
+            if not (staged/'LICENSE').exists(): shutil.copy2(REPO/'LICENSE',staged/'LICENSE')
+            if not (staged/'scripts/strive-plugin.py').exists(): shutil.copy2(__file__,staged/'scripts/strive-plugin.py')
         if vendor=='claude':
             # Cursor automatically imports Claude packages. Its own manifest takes
             # precedence there, while Claude still reads .claude-plugin/plugin.json.

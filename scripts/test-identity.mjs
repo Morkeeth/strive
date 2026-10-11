@@ -62,6 +62,11 @@ assert.equal(pa.handle, 'alice_builder'); assert.equal(pa.display_name, 'Alice')
 await as(b);
 const pb = (await db.query("insert into profiles(auth_uid,github_handle,name) values($1,'bob_legacy','Bob') returning *", [b])).rows[0];
 assert.equal(pb.handle, null);
+// Two different profiles may not shadow either alias column, regardless of case.
+await as(b);
+await denied("update profiles set handle='ALICEGH' where id=$1", [pb.id], ['23505']);
+await as(a);
+await denied("update profiles set handle='BOB_LEGACY' where id=$1", [pa.id], ['23505']);
 // Duplicate handle: exact, different case, and squatting a legacy github_handle all fail with 23505.
 await as(c);
 for (const h of ['alice_builder', 'ALICE_BUILDER', 'bob_legacy', 'Bob_Legacy', 'aliceGH']) {
@@ -175,8 +180,12 @@ await db.exec('reset role');
 // old github_handle UNIQUE constraint). Migration must refuse, not choose a URL owner.
 await db.exec(`drop trigger strava_profile_handle_guard on strava.profiles;
 drop trigger strava_profile_handle_claim on strava.profiles;
+drop trigger strava_share_alias_guard on strava.profiles;
+drop index strava.profiles_github_handle_ci_unique;
 insert into strava.profiles(id,auth_uid,github_handle) values('${c}','${c}','alicegh');`);
 await assert.rejects(db.exec(identity), (e) => e.code === '23505');
+await db.exec('rollback');
+await assert.rejects(db.exec(read('supabase/strava/038_share_handle_reservations.sql')), (e) => e.code === '23505');
 await db.exec('rollback');
 assert.equal((await db.query("select count(*)::int n from strava.profiles where lower(github_handle)='alicegh'")).rows[0].n, 2, 'ambiguous legacy profiles survive refusal');
 assert.deepEqual(await grinder(), before, 'failed migration leaves Grinder and Auth unchanged');

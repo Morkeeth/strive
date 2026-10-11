@@ -37,7 +37,9 @@ Start here when a person gives you this site's link. Record real work, preview i
 
 ## Choose your harness before running commands
 
-Native Cursor and Claude Code plugin: ${origin}/plugins/strive.zip
+STRIVE plugin for Claude Code, Cursor and Codex: ${origin}/plugins/install.md
+Public plugin source: https://github.com/Morkeeth/strive
+ZIP fallback: ${origin}/plugins/strive.zip
 Version and SHA-256: ${origin}/plugins/release.json
 Installation: ${origin}/plugins/install.md
 The native plugin selects real sessions across named projects and opens a blue local post-session editor. It can export a social image without posting. Use the native plugin for repeated capture; one-time capture routes remain below.

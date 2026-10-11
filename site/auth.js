@@ -24,6 +24,7 @@
   ]);
   const OAUTH = new Set(["github", "x", "twitter"]);
   const HANDLE_RE = /^[a-z0-9]([a-z0-9_-]{0,38}[a-z0-9])?$/;
+  const RESERVED_HANDLES = new Set(['api','capture','about','privacy','terms','feed','people','add','r','l','d','proof','agents','account','connect','favicon','robots','sitemap','login','sign-in','post','projects','project','boards','inbox','following','mine','share']);
   const HANDLE_KEYS = ["user_name", "preferred_username", "screen_name", "username", "login"];
   const NAME_KEYS = ["full_name", "name", "display_name"];
   const AVATAR_KEYS = ["avatar_url", "picture", "profile_image_url"];
@@ -46,7 +47,7 @@
       .slice(0, 40)
       .replace(/[-_]+$/g, "");
     if (!h && fallbackSeed) h = "builder-" + String(fallbackSeed).replace(/[^a-z0-9]/gi, "").slice(0, 8).toLowerCase();
-    return HANDLE_RE.test(h) ? h : "";
+    return HANDLE_RE.test(h) && !RESERVED_HANDLES.has(h) ? h : "";
   }
   function normalizeDisplayName(input, fallback) {
     let n = str(input).replace(/\s+/g, " ").slice(0, 60).trim();
@@ -63,6 +64,7 @@
     if (!h) return { ok: false, code: "handle_required", message: "Choose a handle." };
     if (h.length > 40) return { ok: false, code: "handle_too_long", message: "Handles are at most 40 characters." };
     if (!HANDLE_RE.test(h)) return { ok: false, code: "handle_format", message: "Use letters, numbers, - or _, starting and ending with a letter or number." };
+    if (RESERVED_HANDLES.has(h)) return { ok: false, code: "handle_reserved", message: "That handle is reserved for STRIVE. Choose another." };
     return { ok: true, handle: h };
   }
 

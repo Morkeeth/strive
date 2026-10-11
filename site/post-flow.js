@@ -25,9 +25,9 @@
       <div class="post-setup-body"><div class="post-setup-tabs" role="tablist" aria-label="Import method">${tabs.map(([id,title],i)=>`<button type="button" role="tab" id="setup-tab-${id}" data-setup-tab="${id}" aria-controls="setup-${id}" aria-selected="${i===0}" tabindex="${i===0?'0':'-1'}">${title}</button>`).join('')}</div>
       <section id="setup-editor" role="tabpanel" aria-labelledby="setup-tab-editor"><h3>Keep STRIVE in your editor</h3><p>Install once, then ask for a private preview across the projects you choose.</p>
         <label class="post-editor-label">Your editor<select id="post-editor"><option value="cursor">Cursor</option><option value="claude">Claude Code</option></select></label>
-        <p>Download and unzip the <a href="/plugins/strive.zip" download>STRIVE plugin</a>. In the extracted <code>strive</code> folder, run:</p>
-        <div class="cmd"><code class="c" id="post-plugin-command">python3 scripts/strive-plugin.py install cursor</code><button type="button" class="act" id="post-plugin-copy" data-copy="python3 scripts/strive-plugin.py install cursor">Copy</button></div>
-        <p id="post-plugin-next">Restart Cursor. Open STRIVE in the plugin list and select its strive skill.</p><p class="hint"><a href="/plugins/install.md">Install or update</a> · <a href="/plugins/release.json">Version and checksum</a></p>
+        <p>Install STRIVE from its <a href="https://github.com/Morkeeth/strive">public source</a>:</p>
+        <div class="cmd"><code class="c" id="post-plugin-command">git clone --depth 1 https://github.com/Morkeeth/strive.git strive-plugin-source<br>python3 strive-plugin-source/scripts/strive-plugin.py install cursor</code><button type="button" class="act" id="post-plugin-copy" data-copy="git clone --depth 1 https://github.com/Morkeeth/strive.git strive-plugin-source&#10;python3 strive-plugin-source/scripts/strive-plugin.py install cursor">Copy</button></div>
+        <p id="post-plugin-next">Reload Cursor. Open Customize → Plugins and select STRIVE's strive skill.</p><p class="hint"><a href="/plugins/install.md">All editor routes and ZIP fallback</a> · <a href="/plugins/release.json">Version and checksum</a></p>
       </section>
       <section id="setup-terminal" role="tabpanel" aria-labelledby="setup-tab-terminal" hidden><h3>Preview from a terminal</h3><p>Run this where you build. Check the project and session, then open the private preview link.</p><div class="cmd"><code class="c">${esc(capture)}</code><button type="button" class="act" data-copy="${esc(capture)}">Copy</button></div><p class="hint">Uses uv and Python. Supports Cursor, Claude Code and Codex. <a href="/agents.md">Choose an exact session</a>.</p></section>
       <section id="setup-automatic" role="tabpanel" aria-labelledby="setup-tab-automatic" hidden>${syncHtml}</section>
@@ -59,10 +59,10 @@
     });
     setup.querySelector('#post-editor').addEventListener('change',event=>{
       const editor=event.target.value==='claude'?'claude':'cursor';
-      const command='python3 scripts/strive-plugin.py install '+editor;
-      setup.querySelector('#post-plugin-command').textContent=command;
+      const command=editor==='claude'?'claude plugin marketplace add Morkeeth/strive\nclaude plugin install strive@strive':'git clone --depth 1 https://github.com/Morkeeth/strive.git strive-plugin-source\npython3 strive-plugin-source/scripts/strive-plugin.py install cursor';
+      setup.querySelector('#post-plugin-command').innerHTML=command.replace(/\n/g,'<br>');
       setup.querySelector('#post-plugin-copy').dataset.copy=command;
-      setup.querySelector('#post-plugin-next').textContent=editor==='claude'?'Restart Claude Code and use /strive:strive.':'Restart Cursor. Open STRIVE in the plugin list and select its strive skill.';
+      setup.querySelector('#post-plugin-next').textContent=editor==='claude'?'Restart Claude Code and use /strive:strive.':'Reload Cursor. Open Customize → Plugins and select STRIVE’s strive skill.';
     });
     scope.querySelectorAll('[data-post-source]').forEach(button=>button.addEventListener('click',()=>{
       const source=button.dataset.postSource;
