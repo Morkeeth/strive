@@ -13,9 +13,10 @@ module.exports=async function handler(req,res){
    if(!run)tree=privateCard();
    else {
     const [photos,avatar]=await Promise.all([readPublicPhotos(run),readAvatar(run)]);
-    const chosen=photos.find(photo=>photo.is_cover)||photos.find(photo=>photo.role==='personal')||photos.find(photo=>photo.role==='result')||photos[0];
-    let photoUrl=null;
-    if(chosen)try{
+    const screenshots=photos.filter(photo=>photo.role!=='personal');
+    const selected=(screenshots.length?screenshots:photos).slice(0,3);
+    const tileWidth=Math.floor((1112-12*(selected.length-1))/Math.max(1,selected.length));
+    const photoUrls=await Promise.all(selected.map(async chosen=>{try{
      let bytes=null;
      if(process.env.STRIVE_STORAGE_SERVICE_ROLE_KEY){
       const {runPhotos}=await import('../server/run-photos.mjs');
@@ -34,16 +35,14 @@ module.exports=async function handler(req,res){
       if(response.ok&&response.headers.get('content-type')?.startsWith('image/')&&size<=3_000_000)
        bytes=Buffer.from(await response.arrayBuffer());
      }
-     if(bytes&&bytes.length<=3_000_000){
-      const sharp=(await import('sharp')).default;
-      if(chosen.role!=='personal'&&chosen.width>1000){
-       const meta=await sharp(bytes).metadata();
-       if(meta.width>700&&meta.height>450)bytes=await sharp(bytes).extract({left:0,top:0,width:Math.round(meta.width*.58),height:Math.round(meta.height*.58)}).jpeg({quality:82}).toBuffer();
-      }
-      photoUrl='data:image/jpeg;base64,'+bytes.toString('base64');
+      if(bytes&&bytes.length<=3_000_000){
+       const sharp=(await import('sharp')).default;
+       bytes=await sharp(bytes).resize(tileWidth,248,{fit:'cover',position:chosen.role==='personal'?'attention':'north'}).jpeg({quality:82}).toBuffer();
+       return 'data:image/jpeg;base64,'+bytes.toString('base64');
      }
-    }catch(_){photoUrl=null;}
-    tree=photoUrl?photoCard(run,photoUrl,{avatar}):linkPreviewCard(run,{avatar});
+    }catch(_){/* A missing public image leaves the card truthful. */}
+    return null;}));
+    tree=photoCard(run,photoUrls.filter(Boolean),{avatar});
    }
   }else if(req.query.profile){
    const profile=await readProfile(String(req.query.profile));
