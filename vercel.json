@@ -18,6 +18,10 @@
   ],
   "rewrites": [
     {
+      "source": "/install",
+      "destination": "/install.html"
+    },
+    {
       "source": "/proof/:id",
       "destination": "/api/proof?id=:id"
     },
