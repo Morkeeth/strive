@@ -1,22 +1,30 @@
 import assert from 'node:assert/strict';
 import {html,card,readPublicPhotos} from '../server/public-run.mjs';
 const id='11111111-1111-4111-8111-111111111111',first='22222222-2222-4222-8222-222222222222',cover='33333333-3333-4333-8333-333333333333';
-const run={id,visibility:'public',title:'TEST DATA work',caption:'TEST DATA caption',tool_calls:121,prompts:0,duration_s:600,profiles:{handle:'test-author',display_name:'TEST DATA'},rhythm:[1,2,1]};
+const run={id,visibility:'public',title:'TEST DATA work',caption:'TEST DATA caption',tool_calls:121,prompts:0,duration_s:600,profiles:{handle:'test-author',display_name:'TEST DATA'},rhythm:[1,2,1,3,0,2,1,1]};
 const photos=await readPublicPhotos(run,async()=>new Response(JSON.stringify([{id:first,run_id:id,is_cover:false,width:400,height:300},{id:cover,run_id:id,is_cover:true,width:400,height:300}])));
 assert.equal(photos[1].is_cover,true,'public reader keeps the author-selected cover flag');
 const page=html(run,{photos,kudos:0});
-assert.ok(page.indexOf('Open in STRIVE')<page.indexOf('class="card fc"'),'full app entry precedes the card and evidence');
+assert.ok(page.indexOf('class="share-author"')<page.indexOf('class="public-run-photos"'),'name precedes the run images');
+assert.ok(page.indexOf('class="public-run-photos"')<page.indexOf('<h1>'),'images precede the run title');
 assert.ok(page.includes('href="/?legacy=1&run='+id+'">Open in STRIVE'),'entry opens this exact run in the interactive app');
 assert.ok(page.includes('<link rel="canonical" href="https://striverun.app/test-author/11111111-test-data-work">'),'shared address stays clean');
-assert.ok(page.indexOf('aria-label="Recorded facts"')<page.indexOf('fc-route-secondary'),'measured stats precede the trace');
+assert.ok(page.indexOf('aria-label="Recorded facts"')<page.indexOf('class="share-route"'),'measured stats precede the activity bars');
 assert.doesNotMatch(page,/<dt>(?:Active time|Tool-active time · proxy)<\/dt>/,'elapsed duration must not become an active-time metric');
-assert.doesNotMatch(page,/<dt>(?:Dollars|Est. dollars)<\/dt>/,'missing price inputs omit the face metric');assert.match(page,/About these measurements/);
+assert.doesNotMatch(page,/<dt>(?:Dollars|Est. dollars)<\/dt>/,'missing price inputs omit the face metric');assert.match(page,/Recorded details and sources/);
 assert.match(page,/<dd[^>]*>0<\/dd>/,'recorded zero remains a recorded zero');
-for(const label of ['Typed turns'])assert.ok(page.includes('>'+label+'</summary>'));
-assert.ok(page.includes('>Tool calls</summary>'),'recorded tools fill the token-absent ladder');
+assert.ok(page.includes('Human messages'),'recorded turns remain available in details');
+assert.ok(page.includes('Tool requests'),'recorded tools remain available in details');
 assert.ok(page.indexOf('/api/run-photos?id='+cover)<page.indexOf('/api/run-photos?id='+first),'selected cover leads the public gallery even when metadata is unordered');
 assert.ok(!page.includes('<script'),'shared public page stays script-free');
 const extra='44444444-4444-4444-8444-444444444444';
+const noImage=html(run,{photos:[],moreRuns:[
+ {id:extra,visibility:'public',title:'Another build',profiles:{handle:'test-author'}},
+ {id:'55555555-5555-4555-8555-555555555555',visibility:'private',title:'Private note',profiles:{handle:'test-author'}}
+]});
+assert.ok(noImage.includes('class="share-quote"'),'runs without selected images lead with the blue quote hero');
+assert.ok(noImage.includes('Another build'),'another public run is linked below the activity');
+assert.ok(!noImage.includes('Private note'),'private related runs never appear');
 const candid=[{id:first,run_id:id,role:'personal',is_cover:false},{id:cover,run_id:id,role:'personal',personal_public_selected:true,is_cover:true},{id:extra,run_id:id,role:'result',is_cover:false}];
 const candidPage=html(run,{photos:candid});
 assert.ok(candidPage.includes('/api/run-photos?id='+cover),'the author-chosen candid remains visible');
