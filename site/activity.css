@@ -178,3 +178,20 @@ button.ghost,.act.ghost{background:transparent;color:var(--soft);border-color:va
 #run-edit .run-photo-grid>figure>.photo-share-choice{grid-column:2/4;grid-row:3;text-align:left;color:var(--blue);font-size:10px}#run-edit .photo-share-choice[aria-pressed=false]{background:var(--rule-2);color:var(--soft)}
 /* The quote kit owns its glyphs; placeholder icon strokes must not outline its text. */
 .run-media-slot .post-media-empty .story-tile-svg svg,.run-media-gallery .story-tile-svg svg{stroke:none}
+/* Metric meanings stay beside the same three equally weighted facts. */
+.metric-definition{position:relative;margin-top:4px;font-size:10px;line-height:1.3;font-weight:400;color:var(--muted,#666)}
+.metric-definition>summary{cursor:pointer;list-style:none;text-decoration:underline;text-underline-offset:2px}
+.metric-definition>p{position:absolute;top:18px;left:0;z-index:8;width:180px;max-width:60vw;padding:10px;background:#fff;border:1px solid #b8caff;box-shadow:0 3px 12px #0001;color:#222;font-size:12px;white-space:normal}
+.post-facts>div:last-child .metric-definition>p{left:auto;right:0}
+.run-agent-identity{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:#555;margin:6px 0}
+.harness-mark{display:inline-flex;width:76px;height:32px;flex:none;border:1px solid #e5e5e5;overflow:hidden}
+.harness-mark svg{width:100%;height:100%}.model-chip{border:1px solid #dfe4ef;border-radius:4px;padding:4px 6px;background:#f7f9ff;overflow-wrap:anywhere}
+.activity-bar{fill:#0047ff;transform-origin:bottom;animation:activity-appear .4s ease-out both}.activity-commit{stroke:#101010;stroke-width:2}.activity-basis{font-size:11px;color:#666;margin-top:5px}.activity-basis p{font-size:12px;max-width:60ch}.post-no-trace{padding:12px 0;margin:0;font-size:13px;color:#555}
+@keyframes activity-appear{from{opacity:0;transform:scaleY(.2)}to{opacity:1;transform:scaleY(1)}}
+@media(prefers-reduced-motion:reduce){.activity-bar{animation:none}}
+.harness-mark{width:24px;height:24px;padding:2px;border-radius:4px;color:#0047ff;background:#f2f5ff}.harness-name{font-weight:600;color:#333}.run-detail-card>.run-agent-identity{padding:0 var(--detail-pad);margin:8px 0 12px}
+.run-detail-card>.post-no-trace,.run-detail-card>.post-trail{margin:12px var(--detail-pad);padding:0}.run-detail-card>.post-measurement-note{margin:8px var(--detail-pad)}
+.metric-definition{margin:0;font:inherit;color:inherit}.metric-definition>summary{text-decoration:underline dotted;text-underline-offset:3px;line-height:inherit}.metric-definition>p{font-size:12px;line-height:1.4;font-weight:400;color:#333;margin:0}.post-facts>div:last-child .metric-definition>p,.fc-activity-stats>div:last-child .metric-definition>p{left:auto;right:0}.activity-post .post-workline{align-items:center;gap:4px 8px}.activity-post .post-workline .run-agent-identity{margin:0}.activity-post .post-workline .post-work{align-self:center}
+.story-tile-identity{position:absolute;top:8px;left:12px;right:8px;z-index:1}.story-tile-identity .run-agent-identity{margin:0;gap:4px;font-size:10px}.story-tile-identity .harness-mark{width:20px;height:20px}.story-tile-identity .model-chip{background:#ffffffde;padding:2px 4px;font-size:9px}.story-tile:has(.story-tile-identity) .story-tile-svg{top:34px;bottom:0}.story-tile:not(:has(.empty-source)) .story-tile-svg{bottom:0}
+
+.run-detail-story{margin:16px 0;min-width:0}.run-detail-story>.strive-empty{width:100%;height:280px;min-height:0}.run-detail-story .story-tile-svg svg{stroke:none}

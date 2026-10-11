@@ -44,36 +44,35 @@ function cardFacts(r){
  ];
 }
 // Three headline facts from the same run; elapsed span is never active time.
+const meanings={'Recorded tokens':'Text the model read and wrote.','Typed turns':'Messages you wrote.','Tool calls':'Actions the agent took.','Files touched':'Files the capture says it changed.','Commits':'Git commits recorded in this capture.','Est. dollars':'List-price cost of the recorded model usage.','Tool-active time · proxy':'Minutes with at least one recorded agent tool action.','Elapsed':'Time between the first and last captured event, including waiting.'};
 function headlineFacts(r){
  const facts=cardFacts(r),known=label=>facts.find(row=>row[0]===label&&row[1]!=='Not recorded');
- const tokens=known('Recorded tokens'),cost=known('Est. dollars'),active=known('Tool-active time · proxy');
- if(tokens&&cost)return [tokens,cost,active||['Tool-active time · proxy','Not captured','No stored tool-call bin provenance. This is missing data, not zero activity.','missing']];
- if(!tokens&&r.capture_metadata?.basis==='cursor-model-info'){
-  const typed=r.prompts??r.turns_typed,tools=r.tool_calls??r.ridge_tool_calls;
-  return [['Typed turns',typed,'Recorded human messages, not words or keystrokes.'],['Tool calls',tools,'Captured tool requests; a request does not prove a successful action.'],count(r.files_touched)?['Files touched',r.files_touched,'Files touched in this capture.']:['Commits',r.commits,'Commits recorded in this capture.']].map(([label,value,why])=>count(value)?[label,value.toLocaleString('en-US'),why]:[label,'Not captured',why+' No count was captured.','missing']);
- }
- const rows=tokens?[tokens]:[];
- if(!tokens){const typed=r.prompts??r.turns_typed,tools=r.tool_calls??r.ridge_tool_calls;const fallback=[['Typed turns',typed,'Recorded human messages.'],['Tool calls',tools,'Captured tool requests.'],count(r.files_touched)?['Files touched',r.files_touched,'Files touched in this capture.']:['Commits',r.commits,'Commits recorded in this capture.']];if(fallback.every(row=>count(row[1])))return fallback.map(([label,value,why])=>[label,value.toLocaleString('en-US'),why]);}
- const seconds=[r.ridge_basis==='wall-time'?r.ridge_wall_seconds:null,r.wall_time_s,r.duration_s].find(v=>Number.isFinite(v)&&v>0);
- if(seconds!==undefined){const minutes=Math.round(seconds/60);rows.push(['Elapsed',seconds<60?Math.round(seconds)+'s':minutes<60?minutes+' min':Math.floor(minutes/60)+'h '+minutes%60+'m','Recorded session span; includes idle time and is not human active time.']);}
- if(count(r.commits))rows.push(['Commits',String(r.commits),'Commits recorded in this capture; not a claim of deployment.']);
- if(count(r.files_touched))rows.push(['Files touched',String(r.files_touched),'Files touched in this capture.']);
- const typed=known('You typed');if(typed)rows.push(typed);
- return rows.slice(0,3);
+ const numeric=(label,value)=>count(value)?[label,value.toLocaleString('en-US'),meanings[label]]:null;
+ const missing=label=>[label,'Not captured',meanings[label]+' This source did not record it.','missing'];
+ const seconds=[r.ridge_basis==='wall-time'?r.ridge_wall_seconds:null,r.wall_time_s,r.duration_s].find(v=>Number.isFinite(v)&&v>=0);
+ const elapsed=seconds==null?null:['Elapsed',root.GrinderFeed?.durationLabel?.(seconds)||Math.round(seconds/60)+' min',meanings.Elapsed];
+ return [
+  known('Recorded tokens')||numeric('Typed turns',r.prompts??r.turns_typed)||missing('Typed turns'),
+  known('Est. dollars')||numeric('Tool calls',r.tool_calls??r.ridge_tool_calls)||missing('Tool calls'),
+  known('Tool-active time · proxy')||elapsed||numeric('Files touched',r.files_touched)||numeric('Commits',r.commits)||missing('Files touched')
+ ];
 }
+
 function headlineHtml(r,className='post-facts'){
  const rows=headlineFacts(r);
  const tokenNote=rows[0]?.[0]==='Typed turns'?`<p class="post-token-note">${r.capture_metadata?.basis==='cursor-model-info'?'Cursor does not record tokens':'This capture does not include tokens'}</p>`:'';
- if(rows.length===3)return `<dl class="${esc(className)}" aria-label="Recorded activity">${rows.map(([label,value,detail,state])=>`<div${state==='missing'?' class="post-fact-placeholder"':''}><dt>${factLabel(label)}</dt><dd title="${esc(detail)}">${esc(value)}</dd></div>`).join('')}</dl>${tokenNote}`;
+ if(rows.length===3)return `<dl class="${esc(className)}" aria-label="Recorded activity">${rows.map(([label,value,detail,state])=>`<div${state==='missing'?' class="post-fact-placeholder"':''}><dt><details class="metric-definition"><summary aria-label="What ${esc(label.replace(' · proxy',''))} means">${factLabel(label)}</summary><p>${esc(meanings[label]||detail)}</p></details></dt><dd title="${esc(meanings[label]||detail)}">${esc(value)}</dd></div>`).join('')}</dl>${tokenNote}`;
  let inconsistent=false;try{validate(r.capture_metadata)}catch{inconsistent=true}
  const placeholders=root.StrivePlaceholders||(typeof require==='function'?require('./run-placeholders.js'):null);
  return placeholders?.render('numbers',{compact:true,inconsistent,facts:rows,story:r.caption||r.title})||'';
 }
-function factLabel(label){return esc(label)+(label==='Est. dollars'?'<sup aria-label="See measurement basis">*</sup>':'');}
+function factLabel(label){return esc(label.replace(' · proxy',''))+(label==='Est. dollars'?'<sup aria-label="See measurement basis">*</sup>':'');}
 function cardSecondary(r,{commits=false}={}){
- const facts=cardFacts(r),model=facts.find(row=>row[0]==='Model'),typed=facts.find(row=>row[0]==='You typed');
- const bits=[];if(model&&model[1]!=='Not recorded')bits.push(model[1]);if(commits&&count(r.commits))bits.push(r.commits+' '+(r.commits===1?'commit':'commits'));if(typed&&typed[1]!=='Not recorded')bits.push('You typed '+typed[1]);
- return bits.length?`<p class="post-measurement-meta">${bits.map(esc).join(' · ')}</p>`:'';
+ const facts=cardFacts(r),model=facts.find(row=>row[0]==='Model');
+ const harness=({codex:'Codex',claude:'Claude Code','claude code':'Claude Code',cursor:'Cursor','grok bot':'Grok Bot'})[String(r.harness||'').toLowerCase()]||r.harness||'Agent';
+ const glyph=({Codex:'M5 8l5 4-5 4m8 0h6',Cursor:'M6 4l13 9-7 1-3 6z','Claude Code':'M12 3v18M3 12h18M5 5l14 14M5 19L19 5'})[harness]||'M5 5h14v14H5z';
+ const mark=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${glyph}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
+ return `<div class="run-agent-identity"><span class="harness-mark" aria-label="${esc(harness)}">${mark}</span><span class="harness-name">${esc(harness)}</span><span class="model-chip">${esc(model&&model[1]!=='Not recorded'?model[1]:'Model not captured')}</span>${commits&&count(r.commits)?`<span>${r.commits} ${r.commits===1?'commit':'commits'}</span>`:''}</div>`;
 }
 function measurementNotes(r){
  let m=null;try{m=validate(r.capture_metadata)}catch{}

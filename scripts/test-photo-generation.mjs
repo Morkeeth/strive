@@ -9,7 +9,7 @@ const card=ctx.document.querySelector('.fc');const old=ctx.StriveRunPhotos.mount
 const favour='599095f1-3b49-4c0e-b50c-13afd4ae369e';
 const reviewDom=new JSDOM(`<article class="fc" data-run-id="${favour}" data-run-visibility="public"><a class="fc-body"><p class="fc-open">Open</p></a></article><article class="fc" data-run-id="${favour}" data-run-visibility="private"><a class="fc-body"></a></article>`,{url:'https://striverun.app'});
 let reviewReads=0;const imageReads=[];const review={document:reviewDom.window.document,location:reviewDom.window.location,AbortController,URL:Object.assign(class extends URL{},{createObjectURL:()=> 'blob:chosen-cover',revokeObjectURL(){}}),fetch:async path=>{
- if(path.includes('?run_id=')){reviewReads++;return {ok:reviewReads===1,status:reviewReads===1?200:404,json:async()=>({photos:[{id:'chosen',url:'/api/run-photos?id=chosen&run_id='+favour,role:'personal',is_cover:true},{id:'not-chosen',url:'/api/run-photos?id=not-chosen&run_id='+favour,role:'personal',is_cover:false}]})}}
+ if(path.includes('?run_id=')){reviewReads++;return {ok:reviewReads===1,status:reviewReads===1?200:404,json:async()=>({photos:[{id:'chosen',url:'/api/run-photos?id=chosen&run_id='+favour,role:'personal',personal_public_selected:true,is_cover:true},{id:'not-chosen',url:'/api/run-photos?id=not-chosen&run_id='+favour,role:'personal',personal_public_selected:false,is_cover:false}]})}}
  imageReads.push(path);return {ok:true,blob:async()=>({})};
 }};
 vm.createContext(review);vm.runInContext(fs.readFileSync('site/run-photos.js','utf8'),review);
@@ -38,7 +38,7 @@ console.log('PASS absent image placeholder is withheld on failed or denied photo
 for(const signedIn of [false,true]){
  const d=new JSDOM('<article class="activity-post" data-photo-gallery data-run-id="r" data-run-visibility="public"></article>',{url:'https://striverun.app'}),calls=[];
  d.window.document.querySelector('article').getBoundingClientRect=()=>({width:680});
- const scope={document:d.window.document,location:d.window.location,devicePixelRatio:1,AbortController,URL:Object.assign(class extends URL{},{createObjectURL:()=> 'blob:private-reader',revokeObjectURL(){}}),fetch:async(path,opts)=>{calls.push({path,authorization:opts.headers.Authorization});return path.includes('?run_id=')?{ok:true,json:async()=>({photos:[{id:'cover',role:'personal',is_cover:true,width:1600,height:900,url:'/api/run-photos?id=cover&run_id=r'}]})}:{ok:true,blob:async()=>({})}}};
+ const scope={document:d.window.document,location:d.window.location,devicePixelRatio:1,AbortController,URL:Object.assign(class extends URL{},{createObjectURL:()=> 'blob:private-reader',revokeObjectURL(){}}),fetch:async(path,opts)=>{calls.push({path,authorization:opts.headers.Authorization});return path.includes('?run_id=')?{ok:true,json:async()=>({photos:[{id:'cover',role:'personal',personal_public_selected:true,is_cover:true,width:1600,height:900,url:'/api/run-photos?id=cover&run_id=r'}]})}:{ok:true,blob:async()=>({})}}};
  vm.createContext(scope);vm.runInContext(fs.readFileSync('site/run-photos.js','utf8'),scope);
  await scope.StriveRunPhotos.mountCovers({client:signedIn?{auth:{getSession:async()=>({data:{session:{access_token:'test-account-token'}}})}}:null,root:scope.document});
  const img=scope.document.querySelector('img');assert.equal(img.getAttribute('src'),signedIn?'blob:private-reader':'/api/run-photos?id=cover&run_id=r&w=320');assert.equal(img.width,1600);assert.equal(img.height,900);assert.equal(img.loading,'eager');

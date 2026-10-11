@@ -454,14 +454,14 @@
     ${page||checkpoints||r.capture_metadata?`${context?.headlineHtml?.(r,'fc-activity-stats')||''}${context?.cardSecondary?.(r,{commits:true})||''}`:''}
     ${story?story.visual(r):''}
     ${r.feedback_question?`<p class="fc-question"><span>Feedback welcome</span>${esc(r.feedback_question)}</p>`:''}
-    ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Typed by the author. No capture.</p>' : ''}${evidence?evidence.summary(r):''}
+    ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Typed by the author. No capture.</p>' : ''}${evidence&&!page?evidence.summary(r):''}
     ${page&&context?`<details class="public-receipts"><summary>Receipts and scope</summary>${context.context(r,{shownText:cardSummary(r)})}</details>`:''}
-    <div class="fc-route-secondary">${checkpoints?"":heroVisual(r)}</div>
+    <div class="fc-route-secondary">${checkpoints?"":(page?(typeof module!=="undefined"&&module.exports?require("./activity-post.js"):root.StrivePost)?.trail(r)||"":heroVisual(r))}</div>
     ${checkpoints?'':`<p class="fc-open">${preview?'Preview your story':'Open the story →'}</p>`}
   `;
     return `<article class="card fc"${preview ? "" : ` id="card-${id}" data-run-id="${id}" data-run-visibility="${esc(r.visibility||'')}" data-photo-layout="${esc(r.photo_layout||'cover')}"${r.photo_layout==='result'&&r.capture_metadata?.estimates?.v===1?' data-project-gallery':''}`}>
   <header class="fc-top">${faceHtml}<div class="fc-who">${who}<small>${meta}</small></div>${shipped}</header>
-  ${preview ? `<div class="fc-body">${body}</div>` : `<a class="fc-body" href="/?run=${id}">${body}</a>`}
+  ${preview||page ? `<div class="fc-body">${body}</div>` : `<a class="fc-body" href="/?run=${id}">${body}</a>`}
   ${page||checkpoints||r.capture_metadata?context?.measurementDetails?.(r)||'':''}
   ${checkpoints}
   ${!preview&&typeof r.output_url==='string'&&/^https:\/\/[^\s<>"'\\]+$/i.test(r.output_url)?`<p class="fc-output-link"><a href="${esc(r.output_url)}" target="_blank" rel="noopener noreferrer">Open the work ↗</a></p>`:''}

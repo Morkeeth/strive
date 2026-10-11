@@ -597,7 +597,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/day-share.js"></script>
 <script src="/day-card.js"></script>
 <script src="/project-follow.js"></script>
-<script src="/dropin-parse.js"></script>
+<script src="/capture-prices.js"></script><script src="/capture-estimates.js"></script><script src="/dropin-parse.js"></script>
 <script src="/fair.js"></script>
 <script src="/home.js"></script>
 <script src="/dropin.js"></script>
@@ -1250,7 +1250,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
   };
   const metricStrip=()=>{
     // The signed-out detail must show the same estimate-backed headline and basis as Feed/share.
-    if(opts.detail&&(r.capture_metadata?.estimates?.v===1||r.capture_metadata?.basis==='cursor-model-info'))
+    if(opts.detail)
       return StriveContext.headlineHtml(r,'run-metrics post-facts')+StriveContext.measurementDetails(r);
     const cells=typeof GrinderContract==='object'&&GrinderContract.heroStats?GrinderContract.heroStats(r):[];
     if(!cells.length) return '';
@@ -1289,6 +1289,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     opts.detail?StriveContext.context(r,{shownText:r.caption||r.note||''}):'',
     opts.detail?'<section id="run-journey"></section>':'',
     story,
+    StriveEvidence.summary(r),
     runUploadIdentity(r),
     StriveContext.setup(r),
     `<div class="sub run-effort-context"><span class="card-harness">${esc(r.harness||'Coding agent')}</span>${r.harness==='Grok Bot'?' · bot activity':''} · ${esc(started)}</div>`,
@@ -1321,11 +1322,12 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     ${agentChip}
     ${r.segment_id?`<div class="sub"><a href="/?segment=${encodeURIComponent(r.segment_id)}">Open segment leaderboard</a></div>`:''}
     ${metricStrip()}
+    ${opts.detail?StriveContext.cardSecondary(r):''}
     ${StriveStory.visual(r)}
     ${visual}
     ${output?`<p class="run-output"><a href="${esc(output)}" target="_blank" rel="noopener noreferrer">See the work ↗</a></p>`:''}
     ${opts.detail?StriveStory.detail({...r,story_result:null}):''}
-    ${StriveEvidence.summary(r)}
+    ${opts.detail?'':StriveEvidence.summary(r)}
     ${xudosTip}
     ${opts.preview?'<div class="foot"><span class="meta">Preview · not saved</span></div>':`${followSlot||detailLink?`<div class="foot run-social-actions"><span class="acts">${followSlot}${detailLink}</span></div>`:''}
       <footer class="fc-foot run-actions">${GrinderFeed.actions({id:r.id,to:r.profile_id,count:count===null?null:count||0,acked,mode:selfAck?'mine':'',commentHref:'#grind-thread'})}</footer>`}

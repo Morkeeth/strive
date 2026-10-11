@@ -58,13 +58,13 @@ export async function readKudos(id,fetcher=fetch){
 export async function readPublicPhotos(run,fetcher=fetch){
  if(!run||run.visibility!=='public'||!validId(run.id))return [];
  try{
-  const query=new URLSearchParams({run_id:'eq.'+run.id,select:'id,run_id,width,height,byte_size,created_at,is_cover,role,is_selected',order:'is_cover.desc,created_at.asc,id.asc',limit:'6'});
+  const query=new URLSearchParams({run_id:'eq.'+run.id,select:'id,run_id,width,height,byte_size,created_at,is_cover,role,is_selected,sort_position,personal_public_selected',order:'sort_position.asc,created_at.asc,id.asc',limit:'6'});
   const response=await fetcher(config.SB_URL+'/rest/v1/run_photos?'+query,{headers:{apikey:config.SB_KEY,"Accept-Profile":config.SB_SCHEMA},cache:'no-store',signal:AbortSignal.timeout(4000)});
   if(!response.ok)return [];
   const rows=await response.json();
   if(!Array.isArray(rows))return [];
-  return rows.filter(photo=>validId(photo?.id)&&photo?.run_id===run.id&&photo.is_selected!==false&&(photo.role!=='personal'||photo.is_cover)).slice(0,6).map(photo=>({
-   id:photo.id,run_id:photo.run_id,role:photo.role,is_cover:photo.is_cover===true,is_selected:photo.is_selected!==false,
+  return rows.filter(photo=>validId(photo?.id)&&photo?.run_id===run.id&&photo.is_selected!==false&&(photo.role!=='personal'||photo.personal_public_selected===true)).slice(0,6).map(photo=>({
+   id:photo.id,run_id:photo.run_id,role:photo.role,is_cover:photo.is_cover===true,is_selected:photo.is_selected!==false,sort_position:photo.sort_position,personal_public_selected:photo.personal_public_selected===true,
    width:Number.isInteger(photo.width)&&photo.width>0?photo.width:null,
    height:Number.isInteger(photo.height)&&photo.height>0?photo.height:null
   }));
@@ -98,19 +98,20 @@ const pagePhotos=(run,photos)=>{
   ['/media/favour-public-page-20261010.webp','Public FAVOUR page · 10 Oct'],
   ['/media/favour-campaign-builder-20261010.webp','FAVOUR campaign builder · 10 Oct']
  ].map(([src,label])=>`<figure><a href="https://world-relay.vercel.app/" rel="noopener noreferrer"><img src="${src}" alt="${esc(label)}" loading="lazy"></a><figcaption>${esc(label)} · project context, not proof of this session</figcaption></figure>`).join(''):'';
- const all=(Array.isArray(photos)?photos:[]).filter(photo=>validId(photo?.id)&&photo?.run_id===run.id&&photo.is_selected!==false&&(photo.role!=='personal'||photo.is_cover)).slice(0,6);
+ const all=(Array.isArray(photos)?photos:[]).filter(photo=>validId(photo?.id)&&photo?.run_id===run.id&&photo.is_selected!==false&&(photo.role!=='personal'||photo.personal_public_selected===true)).slice(0,6);
  const before=all.find(p=>p.role==='before'),after=all.find(p=>p.role==='after');
  const cover=all.find(p=>p.is_cover)||(all.length===1?all[0]:null);
  const chosen=run.photo_layout==='before_after'&&before&&after?[before,after]:[run.photo_layout==='result'?(all.find(p=>p.role==='result')||cover):cover].filter(Boolean);
  // A candid photo is an author's deliberate cover choice. Keep supporting images,
  // but do not turn older multi-photo uploads into a gallery of personal photos.
- const personal=all.find(p=>p.role==='personal'&&p.is_cover);
+ const personal=all.find(p=>p.role==='personal'&&p.personal_public_selected===true);
  const projectFirst=run.photo_layout==='result'&&run.capture_metadata?.estimates?.v===1;
  const allowed=[...chosen,...all.filter(p=>!chosen.includes(p))].filter(p=>p.role!=='personal'||p===personal);
- const safe=projectFirst?[...allowed.filter(p=>p.role!=='personal'),...allowed.filter(p=>p.role==='personal')]:allowed;
+ const ordered=all.every(p=>Number.isInteger(p.sort_position));
+ const safe=ordered?[...all].sort((a,b)=>a.sort_position-b.sort_position):projectFirst?[...allowed.filter(p=>p.role!=='personal'),...allowed.filter(p=>p.role==='personal')]:allowed;
  const visible=safe.length>3?(personal?[...safe.filter(p=>p!==personal).slice(0,2),personal]:safe.slice(0,3)):safe;
- const missingProject=projectFirst&&!safe.some(p=>p.role!=='personal')?`<figure class="run-project-missing">${Placeholders.render('screenshot',{story:run.caption||run.title})}</figure>`:'';
- if(!safe.length&&!projectFigures)return '';
+ const missingProject=!ordered&&projectFirst&&!safe.some(p=>p.role!=='personal')?`<figure class="run-project-missing">${Placeholders.render('screenshot',{story:run.caption||run.title})}</figure>`:'';
+ if(!safe.length&&!projectFigures)return `<div class="run-detail-story">${Placeholders.render('image',{story:run.caption||run.title,harness:run.harness,model:run.model||(run.capture_metadata?.models||[]).join(', '),seed:run.id,width:640,height:280})}</div>`;
  return `<section class="public-run-photos${projectFigures?' public-project-shots':''}" aria-labelledby="public-run-photos-title"><h2 id="public-run-photos-title">Images from this run</h2><div class="public-run-photo-grid" data-media-count="${Math.min(3,visible.length+(missingProject?1:0)+(projectFigures?2:0))}">${missingProject}${visible.map((photo,index)=>{const src=`/api/run-photos?id=${encodeURIComponent(photo.id)}&run_id=${encodeURIComponent(run.id)}&w=960`;const size=Number.isInteger(photo.width)&&photo.width>0&&Number.isInteger(photo.height)&&photo.height>0?` width="${photo.width}" height="${photo.height}"`:'';return `<figure data-photo-role="${esc(photo.role)}"><a href="#image-${esc(photo.id)}" aria-label="Open full image"><img src="${esc(src)}" alt="${esc(({result:'Result',before:'Before',after:'After',personal:'Personal photo'})[photo.role]||'Run photo')}"${size} loading="${index===0?'eager':'lazy'}" fetchpriority="${index===0?'high':'low'}">${index===2&&safe.length>3?`<span class="media-more-count">+${safe.length-3}</span>`:''}</a><figcaption>${esc(({result:'Result',before:'Before',after:'After',personal:'Personal photo'})[photo.role]||'Photo')}</figcaption></figure>`;}).join('')}${projectFigures}</div></section>${safe.map((p,i)=>`<aside class="public-image-lightbox" id="image-${esc(p.id)}" aria-label="Full image"><nav><a href="#image-${esc(safe[(i-1+safe.length)%safe.length].id)}">← Previous</a><a href="#public-run-photos-title">Close ×</a><a href="#image-${esc(safe[(i+1)%safe.length].id)}">Next →</a></nav><img src="/api/run-photos?id=${encodeURIComponent(p.id)}&run_id=${encodeURIComponent(run.id)}" alt="${esc(p.role==='personal'?'Selected personal photo':'Project image')}" loading="lazy"></aside>`).join('')}`;
 };
 
