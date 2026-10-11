@@ -37,7 +37,11 @@ module.exports=async function handler(req,res){
      }
       if(bytes&&bytes.length<=3_000_000){
        const sharp=(await import('sharp')).default;
-       bytes=await sharp(bytes).resize(tileWidth,248,{fit:'cover',position:chosen.role==='personal'?'attention':'north'}).jpeg({quality:82}).toBuffer();
+       const image=sharp(bytes),meta=await image.metadata();
+       const cropHeight=Math.min(meta.height,Math.round(meta.width*248/tileWidth));
+       const tallScreenshot=chosen.role!=='personal'&&meta.height/meta.width>1.5&&cropHeight<meta.height;
+       const framed=tallScreenshot?image.extract({left:0,top:Math.round((meta.height-cropHeight)*0.28),width:meta.width,height:cropHeight}):image;
+       bytes=await framed.resize(tileWidth,248,{fit:'cover',position:chosen.role==='personal'?'attention':'north'}).jpeg({quality:82}).toBuffer();
        return 'data:image/jpeg;base64,'+bytes.toString('base64');
      }
     }catch(_){/* A missing public image leaves the card truthful. */}
