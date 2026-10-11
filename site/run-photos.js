@@ -56,12 +56,14 @@
   // marked Result when the layout asks for it. With a single picture on the run there is nothing to
   // guess. Otherwise no picture: the first upload is never assumed to be the right one.
   function lead(photos,mode){
+    photos=photos.filter(p=>p.is_selected!==false);
     const shown=photos.filter(p=>p.role!=='personal'||p.is_cover),cover=photos.find(p=>p.is_cover),result=photos.find(p=>p.role==='result');
     return (mode==='result'?result||cover:cover)||(shown.length===1?shown[0]:null);
   }
   // A feed card can show the selected cover and the work beside it. Keep at most one
   // personal picture, and never turn the other personal uploads into a public gallery.
   function cardPhotos(photos,mode,projectFirst=false){
+    photos=photos.filter(p=>p.is_selected!==false);
     if(projectFirst){
       const work=photos.filter(p=>p.role!=='personal');
       const result=work.find(p=>p.role==='result');
@@ -154,13 +156,13 @@
       const selectedPersonal=photos.find(p=>p.role==='personal'&&p.is_cover);
       // Readers see the chosen candid photo only. Owners retain every saved image for reselection.
       const projectFirst=run.photo_layout==='result'&&run.capture_metadata?.estimates?.v===1;
-      const displayed=owner?photos:projectFirst?cardPhotos(photos,'result',true):photos.filter(p=>p.role!=='personal'||p.id===selectedPersonal?.id);
+      const displayed=owner?photos:projectFirst?cardPhotos(photos,'result',true):photos.filter(p=>p.is_selected!==false&&(p.role!=='personal'||p.id===selectedPersonal?.id));
       if(!owner&&!displayed.length){slot.innerHTML='';return;}
       const canAdd=owner&&photos.length<6;
       slot.innerHTML=`<section class="run-photos" aria-labelledby="run-photos-title"><div class="head"><h2 id="run-photos-title">Images from this run</h2><span class="meta">${owner?photos.length+' of 6':displayed.length+' image'+(displayed.length===1?'':'s')}</span></div><div class="run-photo-grid"></div>${canAdd?'<label class="photo-add">Add an image<input data-photo-file type="file" accept="image/jpeg,image/png,image/webp"></label><p class="hint">Add JPG, PNG or WebP. Crop, then choose its role. Public cards can show project images and one personal photo you select as cover.</p><div data-photo-editor></div>':owner?'<p class="hint">Six photos added. Remove one before adding another.</p>':''}</section>`;
       const grid=slot.querySelector('.run-photo-grid');if(!owner)grid.classList.add('run-photo-grid--reader');
       for(const photo of displayed){
-        try{const path=photoPath(photo);if(!path&&!photo.draftBlob)continue;const cached=photo.draftBlob||imageBlobs.get(path);const imageRes=cached?{ok:true,blob:async()=>cached}:await get(path,{headers:await headers(client),signal:controller.signal},480);if(!current())return;if(!imageRes?.ok)continue;const blob=await imageRes.blob();if(!current())return;if(path)imageBlobs.set(path,blob);const url=URL.createObjectURL(blob);objectUrls.push(url);const item=document.createElement('figure');item.innerHTML=`<img src="${url}" alt="${esc(roles[photo.role]||'Photo')}" loading="lazy"><figcaption>${esc(roles[photo.role]||'Photo')}</figcaption>${owner?`<div class="photo-role-controls" role="group" aria-label="Image role">${Object.entries(roles).map(([key,label])=>`<button type="button" class="ghost" data-photo-role="${esc(photo.id)}" data-role="${key}" aria-pressed="${key===(photo.role||'photo')}">${label}</button>`).join('')}</div>`:''}${owner?`<figcaption>${photo.is_cover?'<strong>Current cover</strong>':'Gallery photo'}</figcaption><button type="button" class="ghost" data-photo-cover="${esc(photo.id)}" ${photo.is_cover?'disabled':''}>${photo.is_cover?'Cover selected':'Use as cover'}</button>`:''}${owner?`<button type="button" class="ghost" data-photo-delete="${esc(path||photo.id)}">Remove</button>`:''}`;if(!owner){
+        try{const path=photoPath(photo);if(!path&&!photo.draftBlob)continue;const cached=photo.draftBlob||imageBlobs.get(path);const imageRes=cached?{ok:true,blob:async()=>cached}:await get(path,{headers:await headers(client),signal:controller.signal},480);if(!current())return;if(!imageRes?.ok)continue;const blob=await imageRes.blob();if(!current())return;if(path)imageBlobs.set(path,blob);const url=URL.createObjectURL(blob);objectUrls.push(url);const item=document.createElement('figure');item.innerHTML=`<img src="${url}" alt="${esc(roles[photo.role]||'Photo')}" loading="lazy"><figcaption>${esc(roles[photo.role]||'Photo')}</figcaption>${owner?`<div class="photo-role-controls" role="group" aria-label="Image role">${Object.entries(roles).map(([key,label])=>`<button type="button" class="ghost" data-photo-role="${esc(photo.id)}" data-role="${key}" aria-pressed="${key===(photo.role||'photo')}">${label}</button>`).join('')}</div>`:''}${owner?`<figcaption>${photo.is_cover?'<strong>Current cover</strong>':'Gallery photo'}</figcaption><button type="button" class="ghost" data-photo-cover="${esc(photo.id)}" ${photo.is_cover?'disabled':''}>${photo.is_cover?'Cover selected':'Use as cover'}</button>`:''}${owner?`<button type="button" class="ghost photo-share-choice" data-photo-selected="${esc(photo.id)}" aria-pressed="${photo.is_selected!==false}">${photo.is_selected===false?'Not selected · Show':'Selected · Hide'}</button><button type="button" class="ghost" data-photo-delete="${esc(path||photo.id)}">Remove</button>`:''}`;if(!owner){
           const image=item.querySelector('img'),button=document.createElement('button');button.type='button';button.className='photo-open ghost';button.setAttribute('aria-label','Open '+(roles[photo.role]||'image')+' at full size');button.append(image);const hint=document.createElement('span');hint.textContent='Open full image';button.append(hint);button.onclick=()=>void openImage({path,client,label:roles[photo.role]||'Run image',gallery:displayed});item.prepend(button);
         }grid.append(item);}catch(_){}
       }
@@ -168,6 +170,13 @@
       if(canAdd){
         slot.querySelector('[data-photo-file]').onchange=e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>12*1024*1024){status('Choose an image smaller than 12 MB.',true);return;}cropDispose=cropper(file,slot.querySelector('[data-photo-editor]'),async blob=>{try{if(!current())return;if(blob.size>3*1024*1024){status('The cropped image is still larger than 3 MB.',true);return;}if(staged){draftPhotos.push({id:'draft-'+Date.now(),role:'photo',is_cover:false,draftBlob:blob});status('Image added to your edit. Save changes to keep it.');await load();return;}const base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob)});const upload=await request('/api/run-photos',true,{method:'POST',body:JSON.stringify({run_id:run.id,image_base64:base64})});if(!current()||!upload)return;if(!upload.ok){const message=await responseMessage(upload);if(current())status(message,true);return;}const saved=await upload.json();if(!current())return;status(saved.duplicate?'This photo is already on this run. Choose Use as cover if you want it first.':'Photo added.');await load();await onChanged();}catch(_){if(current())status('Photo upload could not reach STRIVE. Try again.',true);}});};
       }
+      if(owner)slot.querySelectorAll('[data-photo-selected]').forEach(button=>button.onclick=async()=>{
+        const selected=button.getAttribute('aria-pressed')!=='true';button.disabled=true;
+        try{if(staged){draftPhotos.find(p=>p.id===button.dataset.photoSelected).is_selected=selected;await load();return;}
+          const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:button.dataset.photoSelected,is_selected:selected})});
+          if(!current()||!res)return;if(!res.ok){status(await responseMessage(res),true);await load();return;}status(selected?'Image shown with the run.':'Image hidden from readers. The saved image is kept.');await load();await onChanged();
+        }catch(_){if(current())status('Image selection could not be saved. Reload and try again.',true);}finally{if(button.isConnected)button.disabled=false;}
+      });
       if(owner)slot.querySelectorAll('[data-photo-role]').forEach(select=>select.onclick=async()=>{if(select.getAttribute('aria-pressed')==='true')return;select.disabled=true;try{if(staged){draftPhotos.find(p=>p.id===select.dataset.photoRole).role=select.dataset.role;await load();return;}const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:select.dataset.photoRole,role:select.dataset.role})});if(!current()||!res)return;if(!res.ok){status(await responseMessage(res),true);await load();return;}status('Image role saved.');await load();await onChanged();}catch(_){if(current())status('Image role could not be saved. Reload and try again.',true);}finally{if(select.isConnected)select.disabled=false;}});
       if(owner)slot.querySelectorAll('[data-photo-cover]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{if(staged){draftPhotos.forEach(p=>p.is_cover=p.id===button.dataset.photoCover);await load();return;}const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:button.dataset.photoCover})});if(!current()||!res)return;if(!res.ok){status(await responseMessage(res),true);return;}status('Cover selected. Your other photos stay in the gallery.');await load();await onChanged();}catch(_){if(current())status('Cover could not be saved. Try again.',true);}finally{if(button.isConnected)button.disabled=false;}});
       if(owner)slot.querySelectorAll('[data-photo-delete]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{if(staged){draftPhotos=draftPhotos.filter(p=>(photoPath(p)||p.id)!==button.dataset.photoDelete);await load();return;}const res=await request(button.dataset.photoDelete,false,{method:'DELETE'});if(!current()||!res)return;if(!res.ok){const message=await responseMessage(res);if(current())status(message,true);return;}status('Photo removed.');await load();await onChanged();}catch(_){if(current())status('Photo removal could not reach STRIVE. Try again.',true);}finally{if(button.isConnected)button.disabled=false;}});
@@ -179,7 +188,7 @@
       for(const old of [...originalPhotos])if(!draftPhotos.some(p=>p.id===old.id)){await send(photoPath(old),{method:'DELETE'});originalPhotos=originalPhotos.filter(p=>p.id!==old.id);}
       for(const photo of draftPhotos){
         if(photo.draftBlob){const image_base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(photo.draftBlob)});const uploaded=await send('/api/run-photos',{method:'POST',body:JSON.stringify({run_id:run.id,image_base64})});photo.id=uploaded.photo.id;photo.url=uploaded.photo.url;delete photo.draftBlob;}
-        const old=originalPhotos.find(p=>p.id===photo.id);if(!old||old.role!==photo.role)await send('/api/run-photos',{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:photo.id,role:photo.role})});
+        const old=originalPhotos.find(p=>p.id===photo.id);if((photo.is_selected!==false)!==(old?.is_selected!==false))await send('/api/run-photos',{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:photo.id,is_selected:photo.is_selected!==false})});if(!old||old.role!==photo.role)await send('/api/run-photos',{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:photo.id,role:photo.role})});
       }
       const cover=draftPhotos.find(p=>p.is_cover);if(cover&&!originalPhotos.some(p=>p.id===cover.id&&p.is_cover))await send('/api/run-photos',{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:cover.id})});
       originalPhotos=draftPhotos.map(p=>({...p}));await onChanged();
@@ -188,9 +197,10 @@
     return dispose;
   }
   async function mountCovers({client,root:host=document}){
-    let active=true;const controller=new AbortController(),urls=new Set(),images=new Set();
-    const dispose=()=>{active=false;controller.abort();for(const url of urls)URL.revokeObjectURL(url);urls.clear();for(const image of images)image.remove();disposers.delete(dispose)};
+    let active=true,stopTileFit=()=>{};const controller=new AbortController(),urls=new Set(),images=new Set();
+    const dispose=()=>{active=false;controller.abort();for(const url of urls)URL.revokeObjectURL(url);urls.clear();for(const image of images)image.remove();stopTileFit();disposers.delete(dispose)};
     disposers.add(dispose);
+    stopTileFit=root.StrivePlaceholders?.fit?.(host)||(()=>{});
     const cards=[...host.querySelectorAll('.activity-post[data-photo-gallery]:not([data-photo-checked]), .fc[data-run-id]:not([data-photo-checked]), .card[data-run-id]:not(.dc):not([data-photo-checked]), .history-run[data-run-id]:not([data-photo-checked])')];
     await Promise.all(cards.map(async (card,cardIndex)=>{
       card.dataset.photoChecked='true';
@@ -256,6 +266,7 @@
         images.add(group);
       }catch(_){}
     }));
+    if(active){stopTileFit();stopTileFit=root.StrivePlaceholders?.fit?.(host)||(()=>{});}
   }
   // First picture and latest picture of a project, side by side. runs is oldest first. A photo the
   // author marked Before or After wins; otherwise the earliest and the latest photo are used and are
@@ -269,7 +280,7 @@
       for(const run of (runs||[]).slice(-24)){
         const res=await get(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:await headers(client),signal:controller.signal});
         if(!active)return;if(!res.ok)continue;
-        for(const photo of ((await res.json())?.photos||[]))if(photo.role!=='personal')found.push({photo,run});
+        for(const photo of ((await res.json())?.photos||[]))if(photo.is_selected!==false&&photo.role!=='personal')found.push({photo,run});
       }
       if(!active||found.length<2)return;
       const marked=role=>found.filter(f=>f.photo.role===role);
@@ -297,7 +308,7 @@
       slot.dataset.thumbAsked='1';
       try{
         const list=await get(`/api/run-photos?run_id=${encodeURIComponent(slot.dataset.thumbRun)}`,{headers:await headers(client),signal:controller.signal});
-        if(!active||!list.ok)return;const photos=((await list.json())?.photos||[]).filter(p=>p.role!=='personal');
+        if(!active||!list.ok)return;const photos=((await list.json())?.photos||[]).filter(p=>p.is_selected!==false&&p.role!=='personal');
         // A strict slot takes only a picture the author marked as the result or the after state, never just the first one.
         // A slot that names one picture shows that picture or nothing: the author chose it.
         const photo=slot.dataset.thumbPhoto?photos.find(p=>p.id===slot.dataset.thumbPhoto):photos.find(p=>p.role==='result')||photos.find(p=>p.role==='after')||(slot.dataset.thumbStrict===undefined?photos[0]:null),path=photo&&photoPath(photo);if(!path)return;
@@ -327,7 +338,7 @@
         const requestHeaders=await headers(client);
         const list=await get(`/api/run-photos?run_id=${encodeURIComponent(figure.dataset.visualRun)}`,{headers:requestHeaders,signal:controller.signal});
         if(!active)return;if(!list.ok)return fall();
-        const photos=(await list.json())?.photos||[],photo=own?lead(photos,'cover'):photos.find(p=>p.id===figure.dataset.visualPhoto),path=photo&&photoPath(photo);if(!path)return fall();
+        const photos=((await list.json())?.photos||[]).filter(p=>p.is_selected!==false),photo=own?lead(photos,'cover'):photos.find(p=>p.id===figure.dataset.visualPhoto),path=photo&&photoPath(photo);if(!path)return fall();
         let url=publicImage(path,figure,requestHeaders);
         if(!url){const res=await get(path,{headers:requestHeaders,signal:controller.signal},960);if(!active)return;if(!res.ok)return fall();url=URL.createObjectURL(await res.blob());urls.add(url)}
         const image=document.createElement('img');image.loading='lazy';image.alt=figure.dataset.alt||'Picture chosen by the author';image.decoding='async';

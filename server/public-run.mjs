@@ -58,13 +58,13 @@ export async function readKudos(id,fetcher=fetch){
 export async function readPublicPhotos(run,fetcher=fetch){
  if(!run||run.visibility!=='public'||!validId(run.id))return [];
  try{
-  const query=new URLSearchParams({run_id:'eq.'+run.id,select:'id,run_id,width,height,byte_size,created_at,is_cover,role',order:'is_cover.desc,created_at.asc,id.asc',limit:'6'});
+  const query=new URLSearchParams({run_id:'eq.'+run.id,select:'id,run_id,width,height,byte_size,created_at,is_cover,role,is_selected',order:'is_cover.desc,created_at.asc,id.asc',limit:'6'});
   const response=await fetcher(config.SB_URL+'/rest/v1/run_photos?'+query,{headers:{apikey:config.SB_KEY,"Accept-Profile":config.SB_SCHEMA},cache:'no-store',signal:AbortSignal.timeout(4000)});
   if(!response.ok)return [];
   const rows=await response.json();
   if(!Array.isArray(rows))return [];
-  return rows.filter(photo=>validId(photo?.id)&&photo?.run_id===run.id).slice(0,6).map(photo=>({
-   id:photo.id,run_id:photo.run_id,role:photo.role,is_cover:photo.is_cover===true,
+  return rows.filter(photo=>validId(photo?.id)&&photo?.run_id===run.id&&photo.is_selected!==false&&(photo.role!=='personal'||photo.is_cover)).slice(0,6).map(photo=>({
+   id:photo.id,run_id:photo.run_id,role:photo.role,is_cover:photo.is_cover===true,is_selected:photo.is_selected!==false,
    width:Number.isInteger(photo.width)&&photo.width>0?photo.width:null,
    height:Number.isInteger(photo.height)&&photo.height>0?photo.height:null
   }));
@@ -98,7 +98,7 @@ const pagePhotos=(run,photos)=>{
   ['/media/favour-public-page-20261010.webp','Public FAVOUR page · 10 Oct'],
   ['/media/favour-campaign-builder-20261010.webp','FAVOUR campaign builder · 10 Oct']
  ].map(([src,label])=>`<figure><a href="https://world-relay.vercel.app/" rel="noopener noreferrer"><img src="${src}" alt="${esc(label)}" loading="lazy"></a><figcaption>${esc(label)} · project context, not proof of this session</figcaption></figure>`).join(''):'';
- const all=(Array.isArray(photos)?photos:[]).filter(photo=>validId(photo?.id)&&photo?.run_id===run.id).slice(0,6);
+ const all=(Array.isArray(photos)?photos:[]).filter(photo=>validId(photo?.id)&&photo?.run_id===run.id&&photo.is_selected!==false&&(photo.role!=='personal'||photo.is_cover)).slice(0,6);
  const before=all.find(p=>p.role==='before'),after=all.find(p=>p.role==='after');
  const cover=all.find(p=>p.is_cover)||(all.length===1?all[0]:null);
  const chosen=run.photo_layout==='before_after'&&before&&after?[before,after]:[run.photo_layout==='result'?(all.find(p=>p.role==='result')||cover):cover].filter(Boolean);

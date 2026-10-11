@@ -5,7 +5,7 @@
     "node": "22.x"
   },
   "scripts": {
-    "test:launch": "node scripts/test-launch-backend.mjs && node scripts/test-github-friends.mjs && node scripts/test-x-identity-guard.mjs && node scripts/test-readiness.mjs && node scripts/test-photo-cleanup-auth.mjs && node scripts/test-personal-photo-server-access.mjs",
+    "test:launch": "node scripts/test-launch-backend.mjs && node scripts/test-github-friends.mjs && node scripts/test-x-identity-guard.mjs && node scripts/test-readiness.mjs && node scripts/test-photo-cleanup-auth.mjs && node scripts/test-personal-photo-server-access.mjs && node scripts/test-photo-selection.mjs",
     "test:database": "node scripts/test-database.mjs",
     "test:code-route-storage": "node scripts/test-code-route-storage.mjs",
     "test:journey": "node scripts/check-persisted-journey.mjs",

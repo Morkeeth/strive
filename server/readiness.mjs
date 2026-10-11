@@ -8,7 +8,7 @@ export async function readiness(config,{fetcher=fetch,storageKey=process.env.STR
  const tables={
   profiles:'profiles?select=id,handle,github_handle,display_name&limit=0',
   runs:'runs?select=id,title,visibility,measurement_revision,rhythm,ridge,code_route,hero_visual,history_evidence&limit=0',
-  photos:'run_photos?select=id,run_id,width,height,byte_size,is_cover,content_sha256&limit=0'
+  photos:'run_photos?select=id,run_id,width,height,byte_size,is_cover,is_selected,content_sha256&limit=0'
  };
  const checks=Object.fromEntries(await Promise.all(Object.entries(tables).map(async([name,path])=>[name,(await read('/rest/v1/'+path))?.ok?'ready':'unavailable'])));
  // An anonymous caller must reach the RPC but be denied, not receive a missing-function error.
@@ -18,6 +18,9 @@ export async function readiness(config,{fetcher=fetch,storageKey=process.env.STR
  const cover=await read('/rest/v1/rpc/choose_run_cover',{method:'POST',headers:{...headers,'Content-Profile':'strava','Content-Type':'application/json'},body:JSON.stringify({target_run:'00000000-0000-0000-0000-000000000000',target_photo:'00000000-0000-0000-0000-000000000000'})});
  let coverDenied=false;try{coverDenied=[401,403].includes(cover?.status)&&(await cover.json()).code==='42501';}catch{}
  checks.photo_cover=coverDenied?'ready':'unavailable';
+ const selection=await read('/rest/v1/rpc/set_run_photo_selected',{method:'POST',headers:{...headers,'Content-Profile':'strava','Content-Type':'application/json'},body:JSON.stringify({target_run:'00000000-0000-0000-0000-000000000000',target_photo:'00000000-0000-0000-0000-000000000000',selected:false})});
+ let selectionDenied=false;try{selectionDenied=[401,403].includes(selection?.status)&&(await selection.json()).code==='42501';}catch{}
+ checks.photo_selection=selectionDenied?'ready':'unavailable';
  checks.photo_storage='unavailable';
  checks.photo_cleanup='unavailable';
  if(storageKey){

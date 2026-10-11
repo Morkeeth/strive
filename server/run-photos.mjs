@@ -5,7 +5,7 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const MAX_PHOTO_BYTES=3*1024*1024;
 const BUCKET='strive-run-photos';
 export const WIDTHS=[64,320,480,960];
-const fields='id,run_id,width,height,byte_size,created_at,is_cover,role';
+const fields='id,run_id,width,height,byte_size,created_at,is_cover,role,is_selected';
 export const PHOTO_HEADERS={'Cache-Control':'private, no-store, max-age=0',Vary:'Authorization','X-Content-Type-Options':'nosniff'};
 function result(status,body,headers={}) {return {status,body,headers:{...PHOTO_HEADERS,...headers}};}
 function present(p){return {...p,url:`/api/run-photos?id=${p.id}&run_id=${p.run_id}`};}
@@ -77,6 +77,11 @@ export async function runPhotos({method,headers={},query={},body},config,fetchIm
   if(method==='PATCH') {
    if(!runId||!UUID.test(String(body?.photo_id))) return result(400,{error:'Choose a saved photo for this run.'});
    if(!await ownsRun(runId)) return result(404,{error:'Run not found.'});
+   if(Object.hasOwn(body,'is_selected')) {
+    if(typeof body.is_selected!=='boolean')return result(400,{error:'Choose whether to show this image.'});
+    try{await rows('rpc/set_run_photo_selected',{method:'POST',body:JSON.stringify({target_run:runId,target_photo:body.photo_id,selected:body.is_selected})});return result(200,{photo_id:body.photo_id,is_selected:body.is_selected});}
+    catch{return result(404,{error:'This photo is not available on your run.'});}
+   }
    if(Object.hasOwn(body,'role')) {
     if(!['photo','result','before','after','personal'].includes(body.role))return result(400,{error:'Choose an image role.'});
     try{await rows('rpc/set_run_photo_role',{method:'POST',body:JSON.stringify({target_run:runId,target_photo:body.photo_id,chosen_role:body.role})});return result(200,{photo_id:body.photo_id,role:body.role});}
@@ -133,8 +138,8 @@ export async function runPhotos({method,headers={},query={},body},config,fetchIm
    if(!accessible.length) return result(404,{error:'Run not found.'});
    const photos=await rows('run_photos?select='+fields+'&run_id=eq.'+runId+'&order=is_cover.desc,created_at.asc,id.asc');
    // A public run may have one chosen candid. Other personal photos remain the owner's.
-   const owner=bearer&&photos.some(p=>p.role==='personal'&&!p.is_cover)?await ownsRun(runId):false;
-   return result(200,{photos:photos.filter(p=>owner||p.role!=='personal'||p.is_cover).map(present)});
+   const owner=bearer&&photos.some(p=>p.is_selected===false||(p.role==='personal'&&!p.is_cover))?await ownsRun(runId):false;
+   return result(200,{photos:photos.filter(p=>owner||(p.is_selected!==false&&(p.role!=='personal'||p.is_cover))).map(present)});
   }
   const found=await rows('run_photos?select='+fields+'&id=eq.'+query.id+(runId?'&run_id=eq.'+runId:''));
   if(!found.length) return result(404,{error:'Photo not found.'});
@@ -147,7 +152,7 @@ export async function runPhotos({method,headers={},query={},body},config,fetchIm
    await rows('run_photos?id=eq.'+p.id,{method:'DELETE'});
    return result(200,{removed:true});
   }
-  if(p.role==='personal'&&!p.is_cover&&(!bearer||!await ownsRun(p.run_id)))
+  if((p.is_selected===false||(p.role==='personal'&&!p.is_cover))&&(!bearer||!await ownsRun(p.run_id)))
    return result(404,{error:'Photo not found.'});
   // Metadata RLS was checked above, under the caller's own sign-in, and is checked on every request.
   // No signed URL survives a revoke or delete. A photo's bytes never change under its id, so a browser
