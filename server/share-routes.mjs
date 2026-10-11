@@ -1,7 +1,8 @@
 import {runtimeConfig} from './runtime-config.mjs';
-import {origin,readPublic,validId} from './public-run.mjs';
+import {readPublic,validId} from './public-run.mjs';
 
 const config=runtimeConfig();
+export const shareOrigin='https://striverun.app';
 const reserved=new Set(['api','capture','about','privacy','terms','feed','people','add','r','l','d','proof','agents','account','connect','favicon','robots','sitemap','login','sign-in','post','projects','project','boards','inbox','following','mine','share']);
 export const validHandle=value=>typeof value==='string'&&/^[a-z0-9](?:[a-z0-9_-]{0,38}[a-z0-9])?$/i.test(value)&&!reserved.has(value.toLowerCase());
 export const slug=value=>String(value||'run').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,64).replace(/-$/,'')||'run';
@@ -47,4 +48,4 @@ export async function readShortRun(handle,short,fetcher=fetch){
  const matches=Array.isArray(rows)?rows.filter(row=>row?.visibility==='public'&&row.id?.slice(0,8).toLowerCase()===lower&&row.profiles?.id===profile.id):[];
  return matches.length===1?readPublic(matches[0].id,fetcher):null;
 }
-export const canonicalProfile=handle=>origin+profilePath(handle);
+export const canonicalProfile=handle=>shareOrigin+profilePath(handle);

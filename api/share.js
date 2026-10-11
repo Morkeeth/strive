@@ -2,8 +2,8 @@ module.exports=async function handler(req,res){
  res.setHeader('Cache-Control','private, no-store, max-age=0');
  res.setHeader('X-Content-Type-Options','nosniff');
  try{
-  const {readProfile,readProfileActivities,readShortRun,canonicalProfile,profilePath,runPath,validHandle}=await import('../server/share-routes.mjs');
-  const {readKudos,readPublicPhotos,html,origin}=await import('../server/public-run.mjs');
+  const {readProfile,readProfileActivities,readShortRun,canonicalProfile,profilePath,runPath,validHandle,shareOrigin}=await import('../server/share-routes.mjs');
+  const {readKudos,readPublicPhotos,html}=await import('../server/public-run.mjs');
   const handle=String(req.query.handle||'');
   if(!validHandle(handle))return res.status(404).send('Page unavailable.');
   const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -24,7 +24,7 @@ module.exports=async function handler(req,res){
   if(!preferred||!validHandle(preferred))return res.status(404).send('Profile unavailable.');
   const path=profilePath(preferred);
   if(handle!==path.slice(1)){res.writeHead(301,{Location:path});return res.end()}
-  const title=escape(profile.display_name||preferred),url=canonicalProfile(preferred),image=origin+'/api/og?profile='+encodeURIComponent(preferred);
+  const title=escape(profile.display_name||preferred),url=canonicalProfile(preferred),image=shareOrigin+'/api/og?profile='+encodeURIComponent(preferred);
   const description=escape(`Public runs by ${profile.display_name||'@'+preferred} on STRIVE.`);
   const activities=await readProfileActivities(profile);
   const activityHtml=activities.length?`<ol style="list-style:none;padding:0;margin:0">${activities.map(run=>`<li style="border-top:1px solid #ddd;padding:16px 0"><a href="${escape(runPath(run)||'/r/'+run.id)}" style="color:#111;font-weight:600;text-decoration:none">${escape(run.title||'Run')}</a><p style="color:#555;margin:6px 0">${escape(String(run.caption||'').split(/\r?\n/)[0].slice(0,180))}</p></li>`).join('')}</ol>`:'<p>No public activities yet.</p>';

@@ -1,6 +1,6 @@
 import {runtimeConfig} from './runtime-config.mjs';
 import {BRAND,TAGLINE} from './brand.mjs';
-import {runPath,profilePath} from './share-routes.mjs';
+import {runPath,profilePath,shareOrigin} from './share-routes.mjs';
 // The feed's card. A CommonJS module (site/feed-card.js), so its default import is its exports.
 import Feed from '../site/feed-card.js';
 import Evidence from '../site/run-evidence.js';
@@ -178,7 +178,7 @@ const pageCodeRoute=run=>{
  return `<section class="code-route" aria-label="${esc(aria)}"><h2>Code Route</h2><svg viewBox="0 0 ${width} ${height}" role="img" aria-hidden="true"><path class="code-route-line" pathLength="1" d="${line}" fill="none" stroke="#123cff" stroke-width="2.5"/>${dots}${lanes}</svg><ol class="code-route-projects">${projectList}</ol>${insight?`<p class="code-route-insight">${esc(insight)}</p>`:''}<div class="code-route-stops">${stopList}</div>${harness}</section>`;
 };
 
-export function html(run,opts={}){const title=esc(Feed.titleOf(run)),insight=Checkpoints.claimed(run)?'':routeInsight(run&&run.code_route),description=esc((String(run.caption||'').split(/\r?\n/).find(Boolean)||Feed.cardSummary(run)||insight||'See the work, its recorded activity and the conversation.').slice(0,180)),id=encodeURIComponent(run.id),image=origin+'/api/og?run='+id,url=origin+(runPath(run)||'/r/'+id);
+export function html(run,opts={}){const title=esc(Feed.titleOf(run)),insight=Checkpoints.claimed(run)?'':routeInsight(run&&run.code_route),description=esc((String(run.caption||'').split(/\r?\n/).find(Boolean)||Feed.cardSummary(run)||insight||'See the work, its recorded activity and the conversation.').slice(0,180)),id=encodeURIComponent(run.id),image=shareOrigin+'/api/og?run='+id,url=shareOrigin+(runPath(run)||'/r/'+id);
  const handle=run.profiles?.handle||run.profiles?.github_handle;
  const profileHref=profilePath(handle)||'';
  // opts.kudos is the count readKudos returned: a number, or null when it could not be read.

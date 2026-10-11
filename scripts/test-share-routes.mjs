@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import {validHandle,profilePath,runPath,readShortRun,readProfile} from '../server/share-routes.mjs';
-import {html,neutralHtml,readPublicPhotos,origin} from '../server/public-run.mjs';
+import {validHandle,profilePath,runPath,readShortRun,readProfile,shareOrigin} from '../server/share-routes.mjs';
+import {html,neutralHtml,readPublicPhotos} from '../server/public-run.mjs';
 
 const id='90a16040-8ad5-4096-978c-8b1f78f3dd2f';
 const profileId='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
@@ -14,8 +14,8 @@ assert.equal(runPath(run),'/morkeeth/90a16040-a-useful-run-before-after');
 const page=html(run);
 assert.match(page,/<meta property="og:title" content="A useful run: before &amp; after">/);
 assert.match(page,/<meta property="og:description" content="The first line.">/);
-assert.ok(page.includes(`<meta property="og:url" content="${origin}/morkeeth/90a16040-a-useful-run-before-after">`));
-assert.ok(page.includes(`<meta property="og:image" content="${origin}/api/og?run=90a16040`));
+assert.ok(page.includes(`<meta property="og:url" content="${shareOrigin}/morkeeth/90a16040-a-useful-run-before-after">`));
+assert.ok(page.includes(`<meta property="og:image" content="${shareOrigin}/api/og?run=90a16040`));
 const neutral=neutralHtml(id);
 assert.doesNotMatch(neutral,/A useful run|The first line|morkeeth/);
 const fetcher=async url=>{
