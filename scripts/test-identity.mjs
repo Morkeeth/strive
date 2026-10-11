@@ -62,6 +62,11 @@ assert.equal(pa.handle, 'alice_builder'); assert.equal(pa.display_name, 'Alice')
 await as(b);
 const pb = (await db.query("insert into profiles(auth_uid,github_handle,name) values($1,'bob_legacy','Bob') returning *", [b])).rows[0];
 assert.equal(pb.handle, null);
+// Two different profiles may not shadow either alias column, regardless of case.
+await as(b);
+await denied("update profiles set handle='ALICEGH' where id=$1", [pb.id], ['23505']);
+await as(a);
+await denied("update profiles set handle='BOB_LEGACY' where id=$1", [pa.id], ['23505']);
 // Duplicate handle: exact, different case, and squatting a legacy github_handle all fail with 23505.
 await as(c);
 for (const h of ['alice_builder', 'ALICE_BUILDER', 'bob_legacy', 'Bob_Legacy', 'aliceGH']) {

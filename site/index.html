@@ -2413,7 +2413,7 @@ async function viewProfile(handle){
   if(!current())return;
   if(prof)handle=profileHandle(prof);
   if(!prof){ app.innerHTML='<div class="card"><div class="empty">Profile not found.</div></div>'; return; }
-  if(/^[a-z][a-z0-9_-]{1,38}$/i.test(handle)){let link=document.querySelector('link[rel="canonical"]');if(!link){link=document.createElement('link');link.rel='canonical';document.head.append(link)}link.href=location.origin+'/'+encodeURIComponent(handle);}
+  const canonicalProfile=GrinderSharing.cleanProfilePath(handle);if(canonicalProfile){let link=document.querySelector('link[rel="canonical"]');if(!link){link=document.createElement('link');link.rel='canonical';document.head.append(link)}link.href=location.origin+canonicalProfile;}
   const isOwner=ME&&ME.id===prof.id,preview=isOwner&&new URLSearchParams(location.search).get('preview')==='public',mine=isOwner&&!preview;
   const {data:runs,error:profileRunsError}=await sb.from('runs').select('*, profiles!runs_profile_id_fkey(github_handle,name,rig,handle,display_name,avatar_url)')
     .eq('profile_id',prof.id)[mine||(!preview&&ME)?'in':'eq']('visibility',mine?['public','link','private','close_friends','anonymous']:!preview&&ME?['public','close_friends']:'public').order('started_at',{ascending:false,nullsFirst:false}).order('id',{ascending:false}).limit(50);
@@ -2823,7 +2823,7 @@ async function viewShareProfile(handle){
   });
   fitShareCard(); window.addEventListener('resize',fitShareCard);
   const copy=$('share-copy'); if(copy) copy.addEventListener('click',()=>{
-    navigator.clipboard.writeText(location.origin+'/'+encodeURIComponent(handle)).then(()=>status('Link copied.'));
+    navigator.clipboard.writeText(location.origin+(GrinderSharing.cleanProfilePath(handle)||'/?u='+encodeURIComponent(handle))).then(()=>status('Link copied.'));
   });
 }
 function viewClaim(){

@@ -3,6 +3,7 @@
 // same size. One currently-public recorded trail is read through the public visibility guard.
 module.exports=async function handler(req,res){
  res.setHeader('X-Content-Type-Options','nosniff');
+ res.setHeader('Cache-Control','private, no-store, max-age=0');
  try{
   const {homeCard,readPublic,readPublicPhotos,card,privateCard,photoCard,profileCard,origin}=await import('../server/public-run.mjs');
   const {readProfile}=await import('../server/share-routes.mjs');
@@ -38,8 +39,6 @@ module.exports=async function handler(req,res){
   const image=new ImageResponse(tree,{width:1200,height:630});
   res.statusCode=200;
   res.setHeader('Content-Type','image/png');
-  // The recorded trail disappears as soon as the featured run stops being public.
-  res.setHeader('Cache-Control','private, no-store, max-age=0');
   res.end(Buffer.from(await image.arrayBuffer()));
  }catch(_){res.statusCode=503;res.setHeader('Content-Type','text/plain; charset=utf-8');res.end('Share image temporarily unavailable.');}
 };

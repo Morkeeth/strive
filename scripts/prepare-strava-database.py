@@ -30,9 +30,12 @@ grant insert,delete on acks to authenticated;
         parts.append('-- ' + name + '\n' + namespaced((ROOT / 'supabase/migrations' / name).read_text()))
     # Strava-only migrations: already strava-qualified, never translated, applied after the inherited list.
     for path in sorted((ROOT / 'supabase/strava').glob('*.sql')):
-        if path.name in ('base.sql', 'preflight.sql'):
+        if path.name in ('base.sql', 'preflight.sql', '038_share_handle_reservations.sql'):
             continue
         parts.append('-- strava/' + path.name + '\n' + re.sub(r'^\s*(begin|commit);\s*$', '', path.read_text(), flags=re.M | re.I))
+    # Share-handle rules depend on the identity.sql columns and claim trigger.
+    path = ROOT / 'supabase/strava/038_share_handle_reservations.sql'
+    parts.append('-- strava/' + path.name + '\n' + path.read_text())
     parts.append("notify pgrst, 'reload schema';\ncommit;\n")
     return '\n'.join(parts)
 

@@ -2,6 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
   "outputDirectory": "dist",
+  "redirects": [
+    {"source":"/","has":[{"type":"query","key":"run","value":"(?<run>[0-9a-fA-F-]{36})"}],"missing":[{"type":"query","key":"legacy"}],"destination":"/api/legacy?run=:run","permanent":false},
+    {"source":"/","has":[{"type":"query","key":"u","value":"(?<handle>[A-Za-z0-9_-]{1,40})"}],"missing":[{"type":"query","key":"legacy"}],"destination":"/api/legacy?u=:handle","permanent":false}
+  ],
   "crons": [
     {
       "path": "/api/photo-cleanup",
@@ -33,16 +37,13 @@
       "source": "/l/:id",
       "destination": "/api/link?id=:id"
     },
-    {"source":"/about","destination":"/about.html"},
-    {"source":"/privacy","destination":"/privacy.html"},
-    {"source":"/terms","destination":"/terms.html"},
     {
-      "source": "/:handle([a-zA-Z0-9][a-zA-Z0-9_-]{0,39})/:run([0-9a-fA-F]{8}-[a-zA-Z0-9-]+)",
-      "destination": "/api/share?handle=:handle&run=:run"
+      "source": "^/(?<handle>[a-zA-Z0-9][a-zA-Z0-9_-]{0,39})/(?<run>[0-9a-fA-F]{8}-[a-zA-Z0-9-]+)$",
+      "destination": "/api/share?handle=$handle&run=$run"
     },
     {
-      "source": "/:handle([a-zA-Z0-9][a-zA-Z0-9_-]{0,39})",
-      "destination": "/api/share?handle=:handle"
+      "source": "^/(?<handle>[a-zA-Z0-9][a-zA-Z0-9_-]{0,39})$",
+      "destination": "/api/share?handle=$handle"
     },
     {
       "source": "/api/:path*",

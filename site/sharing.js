@@ -2,11 +2,14 @@
 (function(root){
 'use strict';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const reservedHandles=new Set(['api','capture','about','privacy','terms','feed','people','add','r','l','d','proof','agents','account','connect','favicon','robots','sitemap','login','sign-in','post','projects','project','boards','inbox','following','mine','share']);
+function cleanProfilePath(handle){return typeof handle==='string'&&/^[a-z0-9](?:[a-z0-9_-]{0,38}[a-z0-9])?$/i.test(handle)&&!reservedHandles.has(handle.toLowerCase())?'/'+encodeURIComponent(handle.toLowerCase()):null;}
 function cleanRunPath(run){
  const handle=run?.profiles?.handle||run?.profiles?.github_handle;
- if(run?.visibility!=='public'||!handle||!/^[a-z][a-z0-9_-]{1,38}$/i.test(handle)||!/^[0-9a-f]{8}-/i.test(run.id||''))return null;
+ const profile=cleanProfilePath(handle);
+ if(run?.visibility!=='public'||!profile||!/^[0-9a-f]{8}-/i.test(run.id||''))return null;
  const slug=String(run.title||'run').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,64).replace(/-$/,'')||'run';
- return '/'+encodeURIComponent(handle)+'/'+run.id.slice(0,8).toLowerCase()+'-'+slug;
+ return profile+'/'+run.id.slice(0,8).toLowerCase()+'-'+slug;
 }
 function sessionSeconds(run){
  const values=[run.ridge_basis==='wall-time'?run.ridge_wall_seconds:null,run.wall_time_s,run.duration_s];
@@ -219,5 +222,5 @@ function mountReview({attempt,viewerId,slot,status}){
  if(!value){slot.textContent='Only your own saved review can be exported.';return;}
  return mount({...value,slot,status});
 }
-root.GrinderSharing={mount,reviewExport,mountReview,metricStrip,storyFacts,traceSeries,cleanRunPath};
+root.GrinderSharing={mount,reviewExport,mountReview,metricStrip,storyFacts,traceSeries,cleanRunPath,cleanProfilePath};
 })(window);
