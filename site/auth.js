@@ -220,6 +220,11 @@
     }
 
     // Start sign-in. OAuth providers redirect; email sends a link. Returns the provider used.
+    let lastEmailLink=null;
+    function emailCooldown(email) {
+      try { lastEmailLink=JSON.parse(memo()?.getItem('ag_email_link_cooldown')||'null')||lastEmailLink; } catch (_) {}
+      return lastEmailLink?.email===str(email).toLowerCase()?Math.max(0,Math.ceil((lastEmailLink.until-Date.now())/1000)):0;
+    }
     async function signIn(provider, opts = {}) {
       if (OAUTH.has(provider)) {
         if (opts.returnTo) remember(opts.returnTo);
@@ -232,9 +237,12 @@
         if (opts.returnTo) remember(opts.returnTo);
         const email = str(opts.email);
         if (!email) throw fail({ code: "validation_failed", message: "email required" });
+        if(emailCooldown(email))throw Object.assign(new Error('We just sent you a link. Check your inbox.'),{detail:{message:'We just sent you a link. Check your inbox.'}});
         markPending("signin", "email", opts.returnTo);
         const { error } = await client.auth.signInWithOtp({ email, options: { emailRedirectTo: where() } });
         if (error) throw fail(error);
+        lastEmailLink={email:email.toLowerCase(),until:Date.now()+60000};
+        try { memo()?.setItem('ag_email_link_cooldown',JSON.stringify(lastEmailLink)); } catch (_) {}
         return { provider, started: true, sent: true };
       }
       throw fail({ code: "validation_failed", message: "unsupported provider " + provider });
@@ -423,12 +431,33 @@
       return () => data?.subscription?.unsubscribe?.();
     }
 
-    return { providers: PROVIDERS, session, user, signIn, profile, current, onboard, updateProfile, byHandle,
+    return { providers: PROVIDERS, session, user, signIn, emailCooldown, profile, current, onboard, updateProfile, byHandle,
       identities, link, unlink, syncProviderHandles, syncGithubHandle: syncProviderHandles, signOutLocal, deleteProfile, returnTo, onChange,
       pending, clearPending, recoverFromUrl, parseAuthError,
       present, explain, suggest, normalizeHandle, normalizeDisplayName, normalizeAvatarUrl, validateHandle };
   }
 
-  return { create, providers: PROVIDERS, present, explain, suggest, identitiesOf, githubHandleOf, xHandleOf, linksOf, parseAuthError,
+  function mountEmailForm(form, state, auth, returnTo) {
+    if(!form)return;
+    const button=form.querySelector('button'),email=form.elements.email;let sending=false,timer=null;
+    const paint=()=>{
+      if(!form.isConnected){clearInterval(timer);return;}
+      const seconds=auth.emailCooldown(email.value);button.disabled=sending||seconds>0;
+      button.textContent=seconds>0?'Send again in '+seconds+'s':'Send a sign-in link';
+      if(seconds>0)state.textContent='We just sent you a link. Check your inbox.';
+    };
+    email.addEventListener('input',paint);
+    form.onsubmit=async event=>{
+      event.preventDefault();if(sending||auth.emailCooldown(email.value)){paint();return;}
+      sending=true;paint();
+      try{await auth.signIn('email',{email:email.value,returnTo});state.textContent='We just sent you a link. Check your inbox.';}
+      catch(error){state.textContent=error.detail?.message||'Sign-in could not connect. Try again.';}
+      finally{sending=false;paint();}
+    };
+    timer=setInterval(paint,1000);paint();
+    return ()=>clearInterval(timer);
+  }
+
+  return { create, mountEmailForm, providers: PROVIDERS, present, explain, suggest, identitiesOf, githubHandleOf, xHandleOf, linksOf, parseAuthError,
     normalizeHandle, normalizeDisplayName, normalizeAvatarUrl, validateHandle };
 });

@@ -166,7 +166,7 @@ def _render(run: dict, out: Path, open_it: bool) -> None:
 
 
 def main(argv=None) -> int:
-    p = argparse.ArgumentParser(prog="agentgrinder")
+    p = argparse.ArgumentParser(prog="strive" if Path(sys.argv[0]).name == "strive" else "agentgrinder")
     sub = p.add_subparsers(dest="cmd", required=True)
     from .connect import add_parser as add_connect_parser
     add_connect_parser(sub)
@@ -361,15 +361,22 @@ def main(argv=None) -> int:
     pr.add_argument("username"); pr.add_argument("--runs", default="samples")
     pr.add_argument("-o", "--out", default="profile.html"); pr.add_argument("--no-open", action="store_true"); pr.add_argument("--open", action="store_true", help="open the result in a browser (default: print the path or link, open nothing)")
     pick = sub.add_parser("sessions", help="choose a recent local session and prepare a private preview")
-    pick.add_argument("--harness", choices=["claude", "cursor", "codex"], required=True)
+    selection = pick.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--harness", choices=["claude", "cursor", "codex"])
+    selection.add_argument("--all", action="store_true", help="show Claude Code, Codex and Cursor sessions together")
     pick.add_argument("--site", default="https://striverun.app")
     pick.add_argument("--open", action="store_true")
+    sub.add_parser("mcp", help="local-only MCP: list sessions and prepare private previews")
     args = p.parse_args(argv)
     _BROWSER.allowed = _browser_allowed(args)
 
+    if args.cmd == "mcp":
+        from .mcp_server import main as mcp
+        mcp(capture_only=True)
+        return 0
     if args.cmd == "sessions":
         from .session_picker import main as picker
-        return picker(args.harness, site=args.site, open_browser=args.open)
+        return picker("all" if args.all else args.harness, site=args.site, open_browser=args.open)
     if args.cmd == "code-route":
         from .route_capture import run_cli
         return run_cli(args)

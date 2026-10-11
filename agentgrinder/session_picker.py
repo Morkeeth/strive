@@ -15,11 +15,15 @@ def text(value):
 
 def discover(harness, limit=30, candidates=None):
     from .capture import sources
-    from .plugin import source_identity, MAX_SOURCE
-    paths=[p for h,p in (sources() if candidates is None else candidates) if h==harness]
+    from .plugin import source_identity
+    from .stream_capture import MAX_SOURCE
+    source_pairs=list(sources() if candidates is None else candidates)
+    by_path={str(p):h for h,p in source_pairs}
+    paths=[p for h,p in source_pairs if harness in (None, 'all') and h in ('claude','codex','cursor') or h==harness]
     found=[]
     for path in sorted(paths,key=lambda p:p.stat().st_mtime,reverse=True)[:200]:
         try:
+            kind=by_path[str(path)]
             if path.stat().st_size>MAX_SOURCE: continue
             with path.open('rb') as f: head=f.read(256*1024)
             rows=[]
@@ -27,7 +31,7 @@ def discover(harness, limit=30, candidates=None):
                 try: row=json.loads(line)
                 except (ValueError,UnicodeDecodeError): continue
                 if isinstance(row,dict): rows.append(row)
-            sid=source_identity(rows,harness,path)
+            sid=source_identity(rows,kind,path)
             cwd=None;first='';at=None
             for row in rows:
                 p=row.get('payload') if isinstance(row.get('payload'),dict) else {}
@@ -44,7 +48,7 @@ def discover(harness, limit=30, candidates=None):
                     if content.lstrip().startswith(('# AGENTS.md','<environment_context>','<INSTRUCTIONS>')): continue
                     first=' '.join(content.split())[:180]
             project=Path(cwd).name if isinstance(cwd,str) and cwd else ''
-            found.append(dict(source=str(path),session=sid,project=project,started=at or datetime.fromtimestamp(path.stat().st_mtime,timezone.utc).isoformat(),time_basis='recorded' if at else 'file modified',prompt=first or 'First prompt not available in the session header'))
+            found.append(dict(harness=kind,source=str(path),session=sid,project=project,started=at or datetime.fromtimestamp(path.stat().st_mtime,timezone.utc).isoformat(),time_basis='recorded' if at else 'file modified',prompt=first or 'First prompt not available in the session header'))
             if len(found)>=limit: break
         except (OSError,ValueError,TypeError): continue
     return found
@@ -58,18 +62,22 @@ def page(body):
 
 def make_server(harness, root, site, candidates=None):
     from . import plugin
+    from .stream_capture import inspect_source
     site=plugin.origin(site);root=plugin.root_path(root)
-    rows=discover(harness,candidates=candidates);nonce=secrets.token_urlsafe(24)
+    rows=discover(harness,candidates=candidates);nonce=secrets.token_urlsafe(24);downloads={}
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args): pass
         def respond(self,body,status=200):
-            self.send_response(status);self.send_header('Content-Type','text/html; charset=utf-8');self.send_header('Cache-Control','no-store');self.send_header('Referrer-Policy','same-origin');self.send_header('X-Frame-Options','DENY');self.send_header('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");self.end_headers();self.wfile.write(page(body).encode())
+            self.send_response(status);self.send_header('Content-Type','text/html; charset=utf-8');self.send_header('Cache-Control','no-store');self.send_header('Referrer-Policy','no-referrer');self.send_header('X-Frame-Options','DENY');self.send_header('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");self.end_headers();self.wfile.write(page(body).encode())
         def valid_host(self):return self.headers.get('Host')==f'127.0.0.1:{self.server.server_port}'
         def do_GET(self):
-            if not self.valid_host() or self.path!='/'+nonce:self.respond('This local picker link has expired.',404);return
+            if not self.valid_host():self.respond('This local picker link has expired.',404);return
+            if self.path in downloads:
+                self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Cache-Control','no-store');self.send_header('Content-Disposition','attachment; filename="run.strive.json"');self.end_headers();self.wfile.write(downloads[self.path]);return
+            if self.path!='/'+nonce:self.respond('This local picker link has expired.',404);return
             e=html.escape
-            cards=''.join(f'<label class="pick"><input type="radio" name="session" value="{i}" required> <strong>{e(r["project"] or "Project not recorded")}</strong><small>{e(r["started"])} · {e(r["time_basis"])} · {e(harness)}</small><p>{e(r["prompt"])}</p></label>' for i,r in enumerate(rows))
-            self.respond('<h1>Which session did you work on?</h1><p>These recent sessions are on this computer. Prompts stay here and are never included in the preview upload.</p>'+(f'<form method="post"><input type="hidden" name="token" value="{nonce}">{cards}<label>Project name for this run<input type="text" name="project" maxlength="80" placeholder="Your project" required></label><label>Capture<select name="sitting"><option value="-1">Latest sitting in the selected session</option></select></label><p><small>A sitting is a continuous part of the session. The preview names its captured time window. Nothing is saved online.</small></p><div class="actions"><button>Prepare private preview</button></div></form>' if rows else '<article>No supported sessions found. Open your agent on this computer and work on a project, or use the session-file fallback on Add run.</article>'))
+            cards=''.join(f'<label class="pick"><input type="radio" name="session" value="{i}" required> <strong>{e(r["project"] or "Project not recorded")}</strong><small>{e(r["started"])} · {e(r["time_basis"])} · {e(r["harness"])}</small><p>{e(r["prompt"])}</p></label>' for i,r in enumerate(rows))
+            self.respond('<h1>Which session did you work on?</h1><p>These sessions are on this computer. First prompts stay in this local picker.</p>'+(f'<form method="post"><input type="hidden" name="token" value="{nonce}"><input type="hidden" name="phase" value="sittings">{cards}<label>Project name for this run<input type="text" name="project" maxlength="80" placeholder="Your project" required></label><button>Choose a sitting</button></form>' if rows else '<article>No supported sessions found. Work in Claude Code, Codex or Cursor on this computer, or use the session-file fallback on Add run. Other agents: not yet supported.</article>'))
         def do_POST(self):
             expected=f'http://127.0.0.1:{self.server.server_port}'
             if not self.valid_host() or self.path!='/'+nonce or self.headers.get('Origin')!=expected:self.respond('Use the local picker to select a session.',403);return
@@ -78,17 +86,24 @@ def make_server(harness, root, site, candidates=None):
                 if not 0<size<=4096:raise ValueError('Invalid selection')
                 form=parse_qs(self.rfile.read(size).decode());index=int(form['session'][0])
                 if form['token'][0]!=nonce or not 0<=index<len(rows):raise ValueError('Invalid selection')
-                name=plugin.label(form['project'][0]);selected=rows[index]
-                # Registration is local only. Exact source validation remains in capture().
+                name=plugin.label(form['project'][0]);selected=rows[index];kind=selected['harness']
+                if form.get('phase',['preview'])[0]=='sittings':
+                    info=inspect_source(selected['source'],kind);groups=info['sittings'];e=html.escape
+                    choices=''.join(f'<label class="pick"><input type="radio" name="sitting" value="{g["sitting"]}" required> <strong>Sitting {g["sitting"]}</strong><small>{e(g["start"] or "Time not recorded")} → {e(g["end"] or "Time not recorded")}</small><small>{g["typed"]} typed turns · {g["records"]} records</small><p>{e(g["prompt"] or "First prompt not captured")}</p></label>' for g in reversed(groups))
+                    if not groups:raise ValueError('No recorded human sitting found in this session.')
+                    self.respond(f'<h1>Choose the part you worked on</h1><p>A sitting starts with a human turn and splits after a recorded gap of 30 minutes. Times include their UTC offset. Only your choice becomes a preview.</p><form method="post"><input type="hidden" name="token" value="{nonce}"><input type="hidden" name="session" value="{index}"><input type="hidden" name="project" value="{e(name,quote=True)}">{choices}<button>Prepare private preview</button></form>');return
+                sitting=int(form.get('sitting',['-1'])[0])
                 with plugin.connect(root) as db:
                     with db: db.execute('insert or ignore into projects values(?,?,0)',(name,str(Path(selected['source']).parent)))
-                    captured=plugin.capture(db,root,name,harness,selected['source'])
-                    plugin.review(db,root,[captured['draft']],site)
-                # Use the single-run preview route: it renders before sign-in and keeps the
-                # canonical measured payload intact (including source reference and estimates).
+                    captured=plugin.capture(db,root,name,kind,selected['source'],sitting)
                 packed=base64.urlsafe_b64encode(gzip.compress(plugin.encoded(captured['payload']).encode(),mtime=0)).decode().rstrip('=')
                 preview_url=site+'/#import=gz.'+packed
-                self.respond('<h1>Your private preview is ready</h1><p>Only the measured facts from the selected sitting travel to STRIVE. Your first prompt and source file stay on this computer.</p><a class="primary" href="'+html.escape(preview_url,quote=True)+'">Open private preview</a><p>Review your run, add your story, then save with Only me. Sharing is a separate choice.</p>')
+                if len(preview_url)>65536:
+                    route='/'+nonce+'/download/'+secrets.token_urlsafe(18);downloads[route]=plugin.encoded(captured['payload']).encode()
+                    action='<a class="primary" href="'+route+'">Download private preview file</a><p>Open Add run on STRIVE and choose this .strive.json file. The preview is too large for a link; no run was truncated.</p>'
+                else:action='<a class="primary" href="'+html.escape(preview_url,quote=True)+'">Open private preview</a>'
+                selection=captured.get('selection');scope=(f'<p>Selected sitting {selection["selected"]["sitting"]}; skipped {selection["skipped_sittings"]} other sittings. The source hash covers the unchanged original file.</p>' if selection else '')
+                self.respond('<h1>Your private preview is ready</h1><p>Only measured facts travel in the URL fragment, which is decoded on your device. Your first prompt and source path stay here. No run is saved online yet.</p>'+scope+action+'<p>Review your run, add your story, then save with Only me. Sharing is a separate choice.</p>')
             except (ValueError,KeyError,IndexError,OSError) as exc:
                 self.respond('<h1>Could not prepare this session</h1><p>'+html.escape(str(exc))+'</p><a href="/'+nonce+'">Back to sessions</a>',400)
     server=HTTPServer(('127.0.0.1',0),Handler)

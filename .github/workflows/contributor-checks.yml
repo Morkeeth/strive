@@ -24,6 +24,7 @@ jobs:
       - run: npm run test:identity
       - run: npm run test:people
       - run: npm run test:sunday
+      - run: npm run test:capture-phase1
       - run: node scripts/test-runtime-config.mjs
       - run: npm run build
       - run: .venv/bin/python -m pytest -q tests/test_plugin.py

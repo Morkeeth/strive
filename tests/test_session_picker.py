@@ -1,7 +1,7 @@
 """Local picker privacy and real capture pipeline; no production connection."""
 import base64, gzip, re, html, json, tempfile, threading, unittest, urllib.request, urllib.error
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from agentgrinder.session_picker import discover, make_server
 
 class PickerTests(unittest.TestCase):
@@ -14,6 +14,23 @@ class PickerTests(unittest.TestCase):
                    {'type':'response_item','timestamp':'2026-10-11T07:00:10Z','payload':{'type':'function_call','name':'exec_command','arguments':'{"cmd":"pwd"}'}}]
         self.source.write_text('\n'.join(map(json.dumps,self.rows)))
     def tearDown(self):self.tmp.cleanup()
+    def assert_private_handoff(self, payload):
+        def check(value, trail=()):
+            if isinstance(value, dict):
+                for key, child in value.items():
+                    self.assertNotIn(key.lower(), ('prompt', 'path', 'cwd'), trail)
+                    if key.lower() == 'source':
+                        self.assertEqual(trail, ('capture_metadata', 'estimates'))
+                        self.assertEqual(set(child), {'sha256', 'started_at', 'ended_at'})
+                    check(child, trail+(key,))
+            elif isinstance(value, list):
+                for child in value: check(child, trail)
+            elif isinstance(value, str):
+                self.assertNotRegex(value, r'(?:/Users/|/home/|~/|[A-Za-z]:[\\/]Users[\\/])')
+                self.assertNotIn(str(self.root), value)
+                self.assertNotIn('PRIVATE FIRST PROMPT', value)
+        check(payload)
+
     def test_discovery_and_child_exclusion(self):
         rows=discover('codex',candidates=[('codex',self.source)])
         self.assertEqual(rows[0]['project'],'My project');self.assertIn('PRIVATE FIRST PROMPT',rows[0]['prompt'])
@@ -21,8 +38,13 @@ class PickerTests(unittest.TestCase):
         self.assertEqual(discover('codex',candidates=[('codex',self.source)]),[])
     def test_picker_selects_one_and_keeps_prompt_local(self):
         server,url=make_server('codex',self.root/'state','https://striverun.app',[('codex',self.source)])
+        self.assertEqual(server.socket.getsockname()[0], '127.0.0.1', 'Inspect actual listening socket, not returned URL')
+        self.assertEqual(urlparse(url).hostname, '127.0.0.1')
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         try:
+            hostile=urllib.request.Request(url,headers={'Host':'evil.example'})
+            with self.assertRaises(urllib.error.HTTPError) as caught:urllib.request.urlopen(hostile)
+            self.assertEqual(caught.exception.code,404)
             body=urllib.request.urlopen(url).read().decode()
             self.assertIn('&lt;script&gt;',body);self.assertNotIn('<script>alert',body)
             token=url.rsplit('/',1)[1];data=urlencode({'session':'0','project':'My project','token':token}).encode()
@@ -44,7 +66,26 @@ class PickerTests(unittest.TestCase):
             imported=json.loads(gzip.decompress(base64.urlsafe_b64decode(packed+'='*(-len(packed)%4))))
             self.assertEqual(imported,json.loads(payload),'Single-run preview must preserve the canonical capture byte-for-byte in meaning')
             self.assertTrue(imported['measurement_revision'])
+            self.assert_private_handoff(imported)
             self.assertEqual(db.execute('select count(*) from saves').fetchone()[0],0);db.close()
         finally:server.shutdown();server.server_close();thread.join()
+
+    def test_local_mcp_has_no_outward_tools_and_shares_capture(self):
+        from unittest.mock import patch
+        from agentgrinder import mcp_server as mcp
+        tools=mcp.capture_handle({'id':1,'method':'tools/list'})['result']['tools']
+        self.assertEqual([t['name'] for t in tools],['list_sessions','preview_session'])
+        rows=discover('codex',candidates=[('codex',self.source)])
+        with patch('agentgrinder.session_picker.discover',return_value=rows):listed=mcp.capture_tool('list_sessions',{})
+        self.assertNotIn('PRIVATE FIRST PROMPT',json.dumps(listed));self.assertNotIn(str(self.root),json.dumps(listed))
+        choice=listed['sessions'][0]['session']
+        sittings=mcp.capture_tool('preview_session',{'session':choice})
+        self.assertEqual(len(sittings['sittings']),1)
+        preview=mcp.capture_tool('preview_session',{'session':choice,'sitting':1,'project':'My project'},self.root/'mcp')
+        self.assertEqual(preview['uploaded'],0);self.assertIn('#import=gz.',preview['preview_url'])
+        packed=preview['preview_url'].split('#import=gz.')[1]
+        self.assert_private_handoff(json.loads(gzip.decompress(base64.urlsafe_b64decode(packed+'='*(-len(packed)%4)))))
+        denied=mcp.capture_handle({'id':2,'method':'tools/call','params':{'name':'agent_action','arguments':{'action':'publish'}}})
+        self.assertTrue(denied['result']['isError'])
 
 if __name__=='__main__':unittest.main()

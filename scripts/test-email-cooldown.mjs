@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {JSDOM} from 'jsdom';
+const w=new JSDOM('<form><input name="email" type="email"><button>Send a sign-in link</button></form><p role="status"></p>',{url:'https://striverun.app/',runScripts:'outside-only'}).window;
+let clock=100000,tick,calls=0;w.Date.now=()=>clock;w.setInterval=f=>(tick=f,1);w.clearInterval=()=>{};
+w.eval(readFileSync('site/auth.js','utf8'));
+const client={from(){},auth:{async signInWithOtp(){calls++;return {error:null}}}};
+let auth=w.GrinderAuth.create({client});const form=w.document.querySelector('form'),state=w.document.querySelector('p');form.elements.email.value='test@example.test';w.GrinderAuth.mountEmailForm(form,state,auth,'?post');
+await form.onsubmit({preventDefault(){}});assert.equal(calls,1);assert.equal(form.querySelector('button').disabled,true);assert.match(form.querySelector('button').textContent,/60s/);assert.equal(state.textContent,'We just sent you a link. Check your inbox.');
+await form.onsubmit({preventDefault(){}});assert.equal(calls,1,'Second click cannot send another request');
+clock+=20000;tick();assert.match(form.querySelector('button').textContent,/40s/);
+auth=w.GrinderAuth.create({client});assert.equal(auth.emailCooldown('TEST@example.test'),40,'Reopening/recreating client keeps cooldown');await assert.rejects(auth.signIn('email',{email:'test@example.test'}),/Check your inbox/);assert.equal(calls,1);
+clock+=40000;tick();assert.equal(form.querySelector('button').disabled,false);await form.onsubmit({preventDefault(){}});assert.equal(calls,2);
+assert.match(readFileSync('site/index.html','utf8'),/const EMAIL_SIGNIN_READY=false;/);console.log('PASS 60-second email cooldown: visible countdown, blocked duplicate requests, persisted across dialog/client, re-enabled at expiry; release flag stays off');

@@ -15,6 +15,7 @@ dev = ["pytest>=7.0"]
 
 [project.scripts]
 agentgrinder = "agentgrinder.cli:main"
+strive = "agentgrinder.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]
