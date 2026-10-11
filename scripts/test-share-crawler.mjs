@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import handler from '../api/share.js';
 import legacyHandler from '../api/legacy.js';
 import ogHandler from '../api/og.js';
+import {profileCard} from '../server/public-run.mjs';
 
 const publicId='90a16040-8ad5-4096-978c-8b1f78f3dd2f';
 const privateId='11111111-1111-1111-1111-111111111111';
@@ -43,6 +44,13 @@ assert.equal(profilePage.statusCode,200);
 assert.match(profilePage.body,/<meta property="og:title" content="Oscar · STRIVE">/);
 assert.match(profilePage.body,/<h2>Activities<\/h2>/);
 assert.match(profilePage.body,/Public title/);
+assert.match(profilePage.body,/og\?profile=morkeeth&amp;v=2|og\?profile=morkeeth&v=2/);
+const profileTree=JSON.stringify(profileCard({id:profileId,display_name:'Oscar',handle:'morkeeth'},
+ {activities:[{id:publicId,profile_id:profileId,visibility:'public',title:'Public title',project:'STRIVE',commits:2},
+  {id:privateId,profile_id:profileId,visibility:'private',title:'Secret title',project:'Secret',commits:99}],
+  tiles:[{title:'Public title',url:null}]}));
+assert.match(profileTree,/Public work|Public runs|Projects|Commits|Public title/);
+assert.doesNotMatch(profileTree,/Secret title|Secret project|99/);
 const humanProfile=response();await handler({query:{handle:'morkeeth'},headers:{'user-agent':'Mozilla/5.0'}},humanProfile);
 assert.equal(humanProfile.statusCode,307);
 assert.equal(humanProfile.headers.Location,'/?u=morkeeth&legacy=1');

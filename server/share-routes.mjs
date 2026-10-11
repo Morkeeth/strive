@@ -28,7 +28,7 @@ export async function readProfile(handle,fetcher=fetch){
 }
 export async function readProfileActivities(profile,fetcher=fetch){
  if(!profile?.id||!validId(profile.id))return [];
- const query=new URLSearchParams({profile_id:'eq.'+profile.id,visibility:'eq.public',select:'id,profile_id,title,caption,created_at,visibility,profiles!runs_profile_id_fkey(handle,github_handle)',order:'created_at.desc',limit:'50'});
+ const query=new URLSearchParams({profile_id:'eq.'+profile.id,visibility:'eq.public',select:'id,profile_id,title,caption,project,commits,created_at,visibility,profiles!runs_profile_id_fkey(handle,github_handle)',order:'created_at.desc',limit:'50'});
  const response=await fetcher(config.SB_URL+'/rest/v1/runs?'+query,{headers,cache:'no-store',signal:AbortSignal.timeout(8000)});
  if(!response.ok)throw new Error('Activities unavailable');
  const rows=await response.json();
