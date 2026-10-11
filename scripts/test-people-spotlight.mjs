@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import {JSDOM} from 'jsdom';
 async function preview(rows){
  const dom=new JSDOM('<main id="app"></main>',{url:'https://striverun.app/?people'}),calls=[];
- const ctx={window:{},document:dom.window.document,location:dom.window.location,history:dom.window.history,URLSearchParams,Math};vm.createContext(ctx);vm.runInContext(fs.readFileSync('site/people.js','utf8'),ctx);
+ const ctx={window:{},document:dom.window.document,location:dom.window.location,history:dom.window.history,URLSearchParams,Math};vm.createContext(ctx);vm.runInContext(fs.readFileSync('site/run-links.js','utf8'),ctx);vm.runInContext(fs.readFileSync('site/people.js','utf8'),ctx);
  const ui=ctx.window.GrinderPeople({client:{rpc:async(name)=>{calls.push(name);return {data:rows}}},me:()=>null,app:()=>ctx.document.getElementById('app'),frame(){},status(){}});await ui.discover('');return {document:ctx.document,calls};
 }
 // Explicit test fixtures, never stored or shown in the product preview.

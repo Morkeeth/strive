@@ -178,16 +178,18 @@ const pageCodeRoute=run=>{
  return `<section class="code-route" aria-label="${esc(aria)}"><h2>Code Route</h2><svg viewBox="0 0 ${width} ${height}" role="img" aria-hidden="true"><path class="code-route-line" pathLength="1" d="${line}" fill="none" stroke="#123cff" stroke-width="2.5"/>${dots}${lanes}</svg><ol class="code-route-projects">${projectList}</ol>${insight?`<p class="code-route-insight">${esc(insight)}</p>`:''}<div class="code-route-stops">${stopList}</div>${harness}</section>`;
 };
 
-export function html(run,opts={}){const title=esc(Feed.titleOf(run)),insight=Checkpoints.claimed(run)?'':routeInsight(run&&run.code_route),description=esc((String(run.caption||'').split(/\r?\n/).find(Boolean)||Feed.cardSummary(run)||insight||'See the work, its recorded activity and the conversation.').slice(0,180)),id=encodeURIComponent(run.id),image=shareOrigin+'/api/og?run='+id,url=shareOrigin+(runPath(run)||'/r/'+id);
+const wholeWords=(value,limit)=>{const text=String(value||'').replace(/\s+/g,' ').trim();if(text.length<=limit)return text;const cut=text.slice(0,limit+1);const end=cut.lastIndexOf(' ');return end>0?cut.slice(0,end).trimEnd()+'…':'Run…';};
+export function html(run,opts={}){const title=esc(Feed.titleOf(run)),insight=Checkpoints.claimed(run)?'':routeInsight(run&&run.code_route),summary=String(run.caption||'').split(/\r?\n/).find(Boolean)||Feed.cardSummary(run)||insight||'See the work and its recorded activity.',description=esc(wholeWords(summary.match(/^[^.!?]+[.!?]/)?.[0]||summary,105)),shareTitle=esc(wholeWords((run.profiles?.display_name||run.profiles?.handle||'A builder')+' on '+BRAND,52)),id=encodeURIComponent(run.id),image=shareOrigin+'/api/og?run='+id,url=shareOrigin+(runPath(run)||'/r/'+id);
  const handle=run.profiles?.handle||run.profiles?.github_handle;
  const profileHref=profilePath(handle)||'';
  // opts.kudos is the count readKudos returned: a number, or null when it could not be read.
- // The stride line is on the card with its address; the page carries no script (the probe in
- // tests/fixtures/public_outcome_probe.mjs holds it to that), so it is text to select, not a button.
- const shared=Feed.card(run,{page:true,count:opts.kudos===undefined?null:opts.kudos,url});
+ // The stride line is selectable text. The shared page stays script-free; its action links
+ // use the explicit app route, while its canonical URL and sharing address stay clean.
+ const appRun='/?legacy=1&run='+id;
+ const shared=Feed.card(run,{page:true,count:opts.kudos===undefined?null:opts.kudos,url,appRunHref:appRun});
  const output=outputKind(run)&&safeUrl(run.output_url)?`<a class="output" href="${esc(run.output_url)}" rel="noopener noreferrer">View linked output</a>`:'';
  const profileAct=profileHref?`<a class="open-profile" href="${esc(profileHref)}">Open builder profile</a>`:'';
- return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · ${BRAND}</title><meta property="og:type" content="article"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="${url}"><meta property="og:image" content="${image}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${image}"><link rel="canonical" href="${url}">${pageHead}</head><body><main><nav class="public-nav" aria-label="STRIVE"><a class="home" href="/" aria-label="${BRAND} home">${BRAND}</a><a class="open" href="/?run=${id}">Open in STRIVE →</a></nav>${shared}${pagePhotos(run,opts.photos)}${pageCodeRoute(run)}${pageOutcome(run)}${Story.detail({...run,story_result:null}).replace('href="#grind-thread"','href="/?run='+id+'#grind-thread"')}${Context.setup(run)}${Context.metrics(run)}${Evidence.detail(run)}<p class="share-open"><a class="open" href="/?run=${id}">Open run and discussion</a>${profileAct}${output}</p><p class="note">Counts describe activity, not result quality.</p></main>${siteFoot}</body></html>`;
+ return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · ${BRAND}</title><meta property="og:type" content="article"><meta property="og:title" content="${shareTitle}"><meta property="og:description" content="${description}"><meta property="og:url" content="${url}"><meta property="og:image" content="${image}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${shareTitle}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${image}"><link rel="canonical" href="${url}">${pageHead}</head><body><main><nav class="public-nav" aria-label="STRIVE"><a class="home" href="/" aria-label="${BRAND} home">${BRAND}</a><a class="open" href="${appRun}">Open in STRIVE →</a></nav>${shared}${pagePhotos(run,opts.photos)}${pageCodeRoute(run)}${pageOutcome(run)}${Story.detail({...run,story_result:null}).replace('href="#grind-thread"','href="'+appRun+'#grind-thread"')}${Context.setup(run)}${Context.metrics(run)}${Evidence.detail(run)}<p class="share-open"><a class="open" href="${appRun}">Open run and discussion</a>${profileAct}${output}</p><p class="note">Counts describe activity, not result quality.</p></main>${siteFoot}</body></html>`;
 }
 // The page for a run that is missing or not public. Same words as privateCard, same neutral
 // image, and nothing from a row, because there is no row: the public-only query returns
@@ -424,6 +426,25 @@ export function photoCard(run,photoUrl){
    el('div',{style:{display:'flex',fontSize:21,color:'#555',lineHeight:1.3,marginTop:20,maxHeight:106,overflow:'hidden'}},String(run.caption||'').split(/\r?\n/)[0].slice(0,145)),
    el('div',{style:{display:'flex',marginTop:'auto',borderTop:'2px solid #0047ff',paddingTop:16,gap:22}},
     ...([lead?[lead.unit,lead.n]:null,...stats].filter(Boolean).slice(0,3).map(([label,value])=>el('div',{style:{display:'flex',flexDirection:'column',minWidth:120}},el('div',{style:{display:'flex',fontSize:14,color:'#666'}},String(label)),el('div',{style:{display:'flex',fontSize:25,fontWeight:700}},String(value))))))));
+}
+
+// Social apps render this image much smaller than its 1200 x 630 source. Keep the default
+// free of embedded UI screenshots and tiny explanatory copy; the page itself holds the detail.
+export function linkPreviewCard(run){
+ const who=Feed.profileOf(run),lead=Feed.headline(run),facts=Feed.stats(run,lead);
+ const metrics=[lead?[lead.unit,lead.n]:null,...facts].filter(Boolean).slice(0,3);
+ const title=wholeWords(Feed.titleOf(run),68);
+ return el('div',{style:{display:'flex',width:1200,height:630,background:'#fff',fontFamily:'sans-serif',color:INK,padding:'48px 62px',flexDirection:'column'}},
+  el('div',{style:{display:'flex',alignItems:'center',gap:20}},
+   el('div',{style:{display:'flex',width:44,height:44,background:BLUE,borderRadius:12}}),
+   el('div',{style:{display:'flex',fontSize:32,fontWeight:700,color:BLUE}},BRAND),
+   el('div',{style:{display:'flex',fontSize:29,color:INK,marginLeft:'auto'}},wholeWords(who.name,35))),
+  el('div',{style:{display:'flex',fontSize:71,fontWeight:750,lineHeight:1.1,letterSpacing:-2,marginTop:54,maxHeight:160,overflow:'hidden'}},title),
+  el('div',{style:{display:'flex',height:4,background:BLUE,marginTop:'auto',marginBottom:32}}),
+  el('div',{style:{display:'flex',gap:24,justifyContent:'space-between'}},
+   ...metrics.map(([label,value])=>el('div',{style:{display:'flex',flexDirection:'column',width:340,minWidth:0}},
+    el('div',{style:{display:'flex',fontSize:25,color:SOFT}},wholeWords(label,24)),
+    el('div',{style:{display:'flex',fontSize:75,fontWeight:700,lineHeight:1.15,letterSpacing:-2}},String(value))))));
 }
 
 export function profileCard(profile){

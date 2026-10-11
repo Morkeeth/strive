@@ -12,7 +12,7 @@ assert.equal(runPath({...run,profiles:{handle:'api'}}),null);
 assert.equal(profilePath('MORKEETH'),'/morkeeth');
 assert.equal(runPath(run),'/morkeeth/90a16040-a-useful-run-before-after');
 const page=html(run);
-assert.match(page,/<meta property="og:title" content="A useful run: before &amp; after">/);
+assert.match(page,/<meta property="og:title" content="Oscar on STRIVE">/);
 assert.match(page,/<meta property="og:description" content="The first line.">/);
 assert.ok(page.includes(`<meta property="og:url" content="${shareOrigin}/morkeeth/90a16040-a-useful-run-before-after">`));
 assert.ok(page.includes(`<meta property="og:image" content="${shareOrigin}/api/og?run=90a16040`));

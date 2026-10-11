@@ -41,7 +41,7 @@ window.GrinderSocial = function ({
               : "A builder"),
           href:
             p?.handle || p?.github_handle
-              ? "/?u=" + encodeURIComponent(p.handle || p.github_handle)
+              ? window.StriveLinks.profileHref(p.handle || p.github_handle)
               : null,
         };
   const link = (p) => {
@@ -170,10 +170,11 @@ window.GrinderSocial = function ({
       return shown.href || "/?people";
     }
     if (!n.run_id) return null;
+    const base=window.StriveLinks.runHref(n.run||{id:n.run_id});
     if (n.kind === "reply" && uuid(n.source_id)) {
-      return `/?run=${encodeURIComponent(n.run_id)}&reply=${encodeURIComponent(n.source_id)}#reply-${n.source_id}`;
+      return `${base}#reply-${n.source_id}`;
     }
-    return `/?run=${encodeURIComponent(n.run_id)}${n.kind === "reply" ? "#grind-thread" : ""}`;
+    return `${base}${n.kind === "reply" ? "#grind-thread" : ""}`;
   }
 
   async function markNotificationsRead(ids) {
@@ -291,11 +292,13 @@ window.GrinderSocial = function ({
         slot.innerHTML = '<p class="notice-empty">No notifications yet. Replies, XUDOS and follows will appear here.</p>';
         return;
       }
+      const {runs}=await resolveNotificationTargets(rows);
       slot.innerHTML = rows.map((n) => {
         const actor = present(n.actor);
         const kind = n.kind === "reply" ? "replied to your run" : n.kind === "ack" ? "sent XUDOS on your run" : "followed you";
         // XUDOS and a follow open the person. Only a comment opens its discussion.
-        const href = n.kind === "reply" ? notificationHref(n) : notificationPrimary(n), who = actor.href ? `<a href="${actor.href}" data-notification-open="1"><b>${esc(actor.label)}</b></a>` : `<b>${esc(actor.label)}</b>`;
+        const withRun={...n,run:runs.get(n.run_id)};
+        const href = n.kind === "reply" ? notificationHref(withRun) : notificationPrimary(withRun), who = actor.href ? `<a href="${actor.href}" data-notification-open="1"><b>${esc(actor.label)}</b></a>` : `<b>${esc(actor.label)}</b>`;
         return `<article class="notice-item ${n.read_at ? "read" : "unread"}" data-notification-id="${esc(n.id)}">
           <span class="notice-dot" aria-hidden="true"></span><div><p class="notice-copy">${who} ${kind}</p>
           <p class="notice-meta">${esc(new Date(n.created_at).toLocaleString())}</p><div class="notice-links">
@@ -348,7 +351,7 @@ window.GrinderSocial = function ({
     if (runIds.length) {
       try {
         const data = await result(
-          db.from("runs").select("id,visibility,title").in("id", runIds),
+          db.from("runs").select("id,visibility,title,profiles!runs_profile_id_fkey(handle,github_handle)").in("id", runIds),
         );
         for (const run of data) runs.set(run.id, run);
       } catch (_) {}
@@ -1227,6 +1230,7 @@ window.GrinderSocial = function ({
                 : notificationHref({
                     ...n,
                     actor: n.actor,
+                    run,
                   });
             let stateNote = "";
             if (runGone) {
@@ -1254,7 +1258,7 @@ window.GrinderSocial = function ({
                 : runGone
                   ? null
                   : replyGone && n.run_id
-                    ? `<a href="/?run=${encodeURIComponent(n.run_id)}#grind-thread" data-response-nav="1" data-notification-id="${esc(n.id)}">Open the run</a>`
+                    ? `<a href="${esc(window.StriveLinks.runHref(run))}#grind-thread" data-response-nav="1" data-notification-id="${esc(n.id)}">Open the run</a>`
                     : null,
               n.kind === "follow" && !runGone
                 ? `<a href="/?following" data-response-nav="1">Open Following</a>`

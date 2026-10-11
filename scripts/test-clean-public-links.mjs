@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import Links from '../site/run-links.js';
+import Feed from '../site/feed-card.js';
+import {runPath,shareOrigin} from '../server/share-routes.mjs';
+import {html,linkPreviewCard} from '../server/public-run.mjs';
+
+const run={id:'90a16040-8ad5-4096-978c-8b1f78f3dd2f',visibility:'public',title:'The project belongs on the run card.',caption:'Built galleries that put the product beside the person who made it, with real screenshots and a way into the full run.',profile_id:'11111111-1111-1111-1111-111111111111',profiles:{handle:'morkeeth',display_name:'Oscar Morkeeth'},commits:6,wall_time_s:7020,tool_calls:473};
+const clean=runPath(run);
+assert.equal(Links.runPath(run),clean);
+assert.equal(Links.profilePath('MORKEETH'),'/morkeeth');
+assert.equal(Links.runHref({...run,visibility:'private'}),'/?run='+run.id);
+assert.equal(Links.runPath({...run,profiles:{handle:'api'}}),null);
+const card=Feed.card(run),page=html(run);
+assert.ok(card.includes(`href="${clean}`));
+assert.doesNotMatch(card,/<a\b[^>]*href="[^"]*\?(?:run|u)=/);
+assert.ok(page.includes(`rel="canonical" href="${shareOrigin}${clean}`));
+assert.ok(page.includes(`href="/?legacy=1&run=${run.id}">Open in STRIVE`));
+assert.doesNotMatch(page,/<script\b/i,'public share page stays script-free');
+assert.ok(Feed.builderRow(run).includes(`href="${clean}"`));
+assert.ok(Feed.builderRow(run).includes('href="/morkeeth"'));
+const preview=linkPreviewCard(run);
+assert.equal(preview.props.children.length,4);
+assert.ok(JSON.stringify(preview).includes('473'));
+assert.doesNotMatch(JSON.stringify(preview),/data:image|Built galleries/);
+console.log('PASS: public feed, profile, share page and preview use clean readable links; private URL stays private');

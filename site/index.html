@@ -588,6 +588,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/code-route-view.js"></script>
 <script src="/historical-import.js"></script>
 <script src="/run-evidence.js"></script>
+<script src="/run-links.js"></script>
 <script src="/run-story.js"></script>
 <script src="/run-estimates.js"></script><script src="/run-context.js"></script>
 <script src="/feed-card.js"></script>
@@ -671,7 +672,7 @@ function menuLinks(kind){
   if(!ME) return AUTH_USER
     ? `<a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" data-signout role="menuitem">Sign out</button>`
     : `<a href="/?connect" role="menuitem">Connect your agent</a><div class="menu-sep"></div><button type="button" class="menu-signin" data-signin role="menuitem">${signInLabel()}</button>`;
-  return `<a href="/?u=${encodeURIComponent(profileHandle(ME))}" role="menuitem">Profile</a><a href="/?account" role="menuitem">Settings</a><a href="/?inbox" role="menuitem">Responses</a><a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" data-signout role="menuitem">Sign out</button>`;
+  return `<a href="${esc(StriveLinks.profileHref(profileHandle(ME)))}" role="menuitem">Profile</a><a href="/?account" role="menuitem">Settings</a><a href="/?inbox" role="menuitem">Responses</a><a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" data-signout role="menuitem">Sign out</button>`;
 }
 function syncAuthNav(){
   document.querySelectorAll('[data-auth="1"]').forEach(el=>{el.hidden=!ME});
@@ -891,7 +892,7 @@ const esc=s=>String(s??'').replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&a
 function runAttribution(r){
   if(r.visibility==='anonymous') return {handle:'anonymous',name:'Anonymous builder',ghost:true,link:null};
   const p=r.profiles||{}, h=profileHandle(p)||'someone';
-  return {handle:h,name:p.display_name||p.name||h,ghost:false,link:`/?u=${encodeURIComponent(h)}`};
+  return {handle:h,name:p.display_name||p.name||h,ghost:false,link:StriveLinks.profileHref(h)};
 }
 function roastShapeLines(r){
   const p=r.prompts||0,t=r.tool_calls||0,c=r.commits??null,regs=r.route?new Set(r.route).size:0;
@@ -1315,9 +1316,9 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
   const ownerActions=opts.ownerActions&&!opts.preview?`<span class="run-owner-actions"><a href="#run-edit">Edit run</a><a href="#run-photos">Add photos</a></span>`:'';
   return `<div class="card run-detail-card" id="card-${r.id}" data-run-id="${esc(r.id)}" data-run-visibility="${esc(r.visibility||'')}" data-media-story="${esc(r.caption||r.title)}" data-photo-layout="${esc(r.photo_layout||'cover')}"${r.photo_layout==='result'&&r.capture_metadata?.estimates?.v===1?' data-project-gallery':''}>
     <div class="runtop">${!att.ghost&&GrinderFeed.face?GrinderFeed.face(r,40):avatar(h,{rhythm:r.rhythm,ghost:att.ghost})}
-      <div class="who">${whoLink}${anonTag}<small>${att.ghost?'metrics only ·':`@${esc(h)} ·`} ${opts.preview?esc(date):`<a href="/?run=${r.id}">${esc(date)}</a>`}</small></div></div>
+      <div class="who">${whoLink}${anonTag}<small>${att.ghost?'metrics only ·':`@${esc(h)} ·`} ${opts.preview?esc(date):`<a href="${esc(StriveLinks.runHref(r))}">${esc(date)}</a>`}</small></div></div>
 
-    <div class="run-title-row"><div class="title">${opts.preview?esc(r.title):`<a href="/?run=${r.id}">${esc(r.title)}</a>`}</div>${ownerActions}</div>
+    <div class="run-title-row"><div class="title">${opts.preview?esc(r.title):`<a href="${esc(StriveLinks.runHref(r))}">${esc(r.title)}</a>`}</div>${ownerActions}</div>
     ${r.caption?`<div class="note">${esc(r.caption)}</div>`:r.note?`<div class="note">${esc(r.note)}</div>`:''}
     ${audienceNote}
     ${eventChip}
@@ -1655,8 +1656,8 @@ function featuredCard(r){
       <div class="stat"><div class="v">${dm==null?'-':fmtDur(dm)}</div><div class="k">Session time</div></div>
       <div class="stat"><div class="v">${r.commits??'-'}</div><div class="k">Commits</div></div></div>
     <details><summary class="pad">${r.tool_calls!=null?r.tool_calls+' tool calls · recorded measurements':'Recorded measurements'}</summary>${fiveRow(r)}</details>
-    <div class="foot">${r.output_url&&safeOutputUrl(r.output_url)?`<a class="primary-output" href="${esc(r.output_url)}" target="_blank" rel="noopener noreferrer" style="color:var(--blue);font-weight:500">Open what was built →</a>`:`<a href="/?run=${r.id}" style="color:var(--blue);font-weight:500">Open run →</a>`}
-      <span class="acts"><a class="act" href="/?run=${r.id}#grind-thread">Reply</a><a class="act" href="/?share=1&run=${r.id}">Share</a></span></div></div>`;
+    <div class="foot">${r.output_url&&safeOutputUrl(r.output_url)?`<a class="primary-output" href="${esc(r.output_url)}" target="_blank" rel="noopener noreferrer" style="color:var(--blue);font-weight:500">Open what was built →</a>`:`<a href="${esc(StriveLinks.runHref(r))}" style="color:var(--blue);font-weight:500">Open run →</a>`}
+      <span class="acts"><a class="act" href="${esc(StriveLinks.runHref(r))}#grind-thread">Reply</a><a class="act" href="${esc(StriveLinks.runHref(r))}"${StriveLinks.runPath(r)?' data-share-public="1"':''}>Share</a></span></div></div>`;
 }
 
 
@@ -1778,7 +1779,7 @@ function bindCompactCard(card,deck,ad,{onChange=()=>{},shareHref=null}={}){
     thread.setAttribute('aria-label','Comments on '+(slide?.name||'this run'));old?.replaceWith(thread);
     const foot=card.querySelector('.fc-foot');if(!run||!foot)return;
     card.dataset.runId=run.id;card.dataset.projectId=slide.key;
-    foot.innerHTML=GrinderFeed.actions({id:run.id,to:run.profile_id,count:ad.countsKnown===false?null:ad.counts[run.id]||0,acked:ad.mine.has(run.id),mode:ME?.id===run.profile_id?'mine':'',commentHref:'#'+card.id+'-comments',shareHref});
+    foot.innerHTML=GrinderFeed.actions({id:run.id,runHref:StriveLinks.runHref(run),publicShare:!!StriveLinks.runPath(run)&&!shareHref,to:run.profile_id,count:ad.countsKnown===false?null:ad.counts[run.id]||0,acked:ad.mine.has(run.id),mode:ME?.id===run.profile_id?'mine':'',commentHref:'#'+card.id+'-comments',shareHref});
     thread.id=card.id+'-comments';thread.dataset.runId=run.id;
     const comments=foot.querySelector('[data-comment]');comments.setAttribute('aria-label','Comments on '+slide.name);comments.setAttribute('aria-expanded','false');comments.setAttribute('aria-controls',thread.id);
     comments.onclick=e=>{e.preventDefault();e.stopPropagation();thread.hidden=!thread.hidden;comments.setAttribute('aria-expanded',String(!thread.hidden));if(!thread.hidden&&!thread.dataset.loaded){thread.dataset.loaded='1';void social.thread(run.id,thread,{compact:true})}};
@@ -1924,7 +1925,7 @@ async function viewRun(id){
     return;
   }
   if(r.visibility==='public'){
-    const path=GrinderSharing.cleanRunPath(r);if(path){let link=document.querySelector('link[rel="canonical"]');if(!link){link=document.createElement('link');link.rel='canonical';document.head.append(link)}link.href=location.origin+path;}
+    const path=StriveLinks.runPath(r);if(path){let link=document.querySelector('link[rel="canonical"]');if(!link){link=document.createElement('link');link.rel='canonical';document.head.append(link)}link.href=location.origin+path;if(q.get('run')===r.id&&!q.has('share')&&!q.has('moment'))history.replaceState(null,'',path+location.hash);}
   }
   noteTraces([r]);
   const ad=await ackData([r]);
@@ -1936,7 +1937,7 @@ async function viewRun(id){
   const openAck=q.get('ack')==='1'&&ME&&!ad.mine.has(r.id)&&ME.id!==r.profile_id;
   const owner=ME?.id===r.profile_id;
   const shareable=r.visibility==='public'||r.visibility==='link'||r.visibility==='close_friends';
-  const profileUrl='/?u='+encodeURIComponent(profileHandle(r.profiles)||'');
+  const profileUrl=StriveLinks.profileHref(profileHandle(r.profiles)||'');
   const nextAction=owner
     ? `<section class="run-primary-actions"><p><b>${r.visibility==='public'?'Saved to Public feed and profile':r.visibility==='link'?'Saved for Followers':r.visibility==='close_friends'?'Saved for Close friends':'Saved for Only me'}</b></p>
         <div class="cta">${shareable?`<button id="run-copy-link" class="act blue">${r.visibility==='public'?'Copy public link':'Copy link'}</button>`:`<a class="act blue" href="#run-audience">Choose who can see this</a>`}${shareable?`<a class="act" href="/?share=1&run=${r.id}">Open shared post</a>`:''}</div>
@@ -1978,7 +1979,7 @@ async function viewRun(id){
     $('run-delete').onclick=async()=>{if(!confirm('Delete this run and its discussion?'))return;const {error}=await sb.from('runs').delete().eq('id',r.id);if(error){status(error.message,true);return}history.replaceState(null,'','/?mine');viewMe()};
   }
   wireKudos(); if(openAck){ const card=$('card-'+id); if(card) wireAckPicker(card,r,preselect); }
-  if(q.get('ack')) history.replaceState(null,'',`/?run=${id}`);
+  if(q.get('ack')) history.replaceState(null,'',StriveLinks.runPath(r)||`/?run=${id}`);
   // Where this run sits in its project (site/journey.js). The owner sees every run of theirs on the
   // project; anyone else sees the public ones. One other run is needed before there is a journey.
   if(r.project&&$('run-journey')){
@@ -2194,7 +2195,7 @@ function weekStart(now=new Date()){const d=new Date(now);d.setHours(0,0,0,0);d.s
 
 // Public activity rankings. Every row links to its measured source run.
 const MARATHON_SECS=3*3600;
-function boardRow(r,i,value){const h=profileHandle(r.profiles||{});return `<div class="board-row"><span class="board-rank num">${i+1}</span><span class="board-what"><a href="/?run=${r.id}">${esc(GrinderFeed.titleOf(r))}</a><small>${h?`<a href="/?u=${encodeURIComponent(h)}">@${esc(h)}</a>`:'metrics only'} · ${esc(r.harness||'agent')}</small></span><span class="board-value num">${esc(value)}</span></div>`}
+function boardRow(r,i,value){const h=profileHandle(r.profiles||{});return `<div class="board-row"><span class="board-rank num">${i+1}</span><span class="board-what"><a href="${esc(StriveLinks.runHref(r))}">${esc(GrinderFeed.titleOf(r))}</a><small>${h?`<a href="${esc(StriveLinks.profileHref(h))}">@${esc(h)}</a>`:'metrics only'} · ${esc(r.harness||'agent')}</small></span><span class="board-value num">${esc(value)}</span></div>`}
 function boardHtml(title,note,rows,empty){return `<section class="card board"><div class="board-head"><h3>${esc(title)}</h3><small>${esc(note)}</small></div>${rows.length?rows.map(([r,v],i)=>boardRow(r,i,v)).join(''):`<p class="board-empty">${esc(empty)}</p>`}</section>`}
 async function viewBoards(){
   const app=$('app'); frame(railHtml('boards'),null); setPrimarySection('discover'); app.innerHTML=feedTabs('boards')+skeletonCard()+skeletonCard();
@@ -2327,7 +2328,8 @@ async function viewDay(day){
   const author=ownerProfile?(ownerProfile.display_name||ownerProfile.name||ownerProfile.handle||ownerProfile.github_handle||''):'';
   const here=`/?day=${day}${extra}${other?'&p='+encodeURIComponent(other):''}${head}&lead=${leadWith}`;
   const brief=(a,b,c,yr)=>new Date(a,b-1,c).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short',...(yr?{year:'numeric'}:{})});
-  const cardOpts={esc,mine,author,windowLabel:through?`${brief(y,m,d)} to ${brief(ty,tm,td,ty!==new Date().getFullYear())}`:brief(y,m,d,y!==new Date().getFullYear()),runHref:id=>`/?run=${encodeURIComponent(id)}`};
+  const dayRunById=new Map((data||[]).map(run=>[run.id,run]));
+  const cardOpts={esc,mine,author,windowLabel:through?`${brief(y,m,d)} to ${brief(ty,tm,td,ty!==new Date().getFullYear())}`:brief(y,m,d,y!==new Date().getFullYear()),runHref:id=>StriveLinks.runHref(dayRunById.get(id)||{id})};
   if(mine&&params.has('setup')){app.innerHTML=nav+`<p class="hint"><a href="/?day=${day}${extra}">← Back to the card</a></p><section id="card-setup"></section>`;
     StriveDayCard.mountSetup({slot:$('card-setup'),model,tokens,saved:savedCard,esc,renderOpts:cardOpts,readerHref:ownerLinks.reader,menu:ownerLinks,focusOn:params.get('setup')==='visual'?'visual':'',
       onPreview:host=>void window.StriveRunPhotos?.mountVisuals?.({client:sb,root:host}),
@@ -2337,7 +2339,7 @@ async function viewDay(day){
   // The card's action row is the lead run's own: its XUDOS count, its thread, its share page.
   const leadRun=model.lead&&model.lead.run,ad=await ackData(data||[]);
   if(ME?.id!==profileId)return viewDay(day);
-  const actions=leadRun?GrinderFeed.actions({id:leadRun.id,to:leadRun.profile_id,count:ad.countsKnown===false?null:ad.counts[leadRun.id]||0,acked:ad.mine.has(leadRun.id),mode:ME&&ME.id===leadRun.profile_id?'mine':'',commentHref:'#day-thread',
+  const actions=leadRun?GrinderFeed.actions({id:leadRun.id,runHref:StriveLinks.runHref(leadRun),publicShare:!!StriveLinks.runPath(leadRun)&&!mine,to:leadRun.profile_id,count:ad.countsKnown===false?null:ad.counts[leadRun.id]||0,acked:ad.mine.has(leadRun.id),mode:ME&&ME.id===leadRun.profile_id?'mine':'',commentHref:'#day-thread',
     // The owner's Share opens Sharing, where the reader's numbers sit beside the owner's. A reader's Share is the lead run's share page.
     shareHref:mine?ownerLinks.sharing:null}):'';
   // The page in view rides in the address as &page=<project token>, so the same link opens the same project for the
@@ -2417,7 +2419,7 @@ async function viewProfile(handle){
   if(!current())return;
   if(prof)handle=profileHandle(prof);
   if(!prof){ app.innerHTML='<div class="card"><div class="empty">Profile not found.</div></div>'; return; }
-  const canonicalProfile=GrinderSharing.cleanProfilePath(handle);if(canonicalProfile){let link=document.querySelector('link[rel="canonical"]');if(!link){link=document.createElement('link');link.rel='canonical';document.head.append(link)}link.href=location.origin+canonicalProfile;}
+  const canonicalProfile=StriveLinks.profilePath(handle);if(canonicalProfile){let link=document.querySelector('link[rel="canonical"]');if(!link){link=document.createElement('link');link.rel='canonical';document.head.append(link)}link.href=location.origin+canonicalProfile;if(new URLSearchParams(location.search).get('u')===handle&&!new URLSearchParams(location.search).has('preview')&&!new URLSearchParams(location.search).has('share'))history.replaceState(null,'',canonicalProfile+location.hash);}
   const isOwner=ME&&ME.id===prof.id,preview=isOwner&&new URLSearchParams(location.search).get('preview')==='public',mine=isOwner&&!preview;
   const {data:runs,error:profileRunsError}=await sb.from('runs').select('*, profiles!runs_profile_id_fkey(github_handle,name,rig,handle,display_name,avatar_url)')
     .eq('profile_id',prof.id)[mine||(!preview&&ME)?'in':'eq']('visibility',mine?['public','link','private','close_friends','anonymous']:!preview&&ME?['public','close_friends']:'public').order('started_at',{ascending:false,nullsFirst:false}).order('id',{ascending:false}).limit(50);
@@ -2780,7 +2782,7 @@ async function viewShareRun(id){
   let moment=null;const mid=q.get('moment');
   if(/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(mid||'')){
     const result=await sb.from('grinder_run_moments').select('*').eq('id',mid).eq('run_id',r.id).single();
-    if(result.error||!result.data){app.innerHTML='<p>This moment is private, removed or unavailable. <a href="/?run='+encodeURIComponent(r.id)+'">Return to the grind</a>.</p>';return;}
+    if(result.error||!result.data){app.innerHTML='<p>This moment is private, removed or unavailable. <a href="'+esc(StriveLinks.runHref(r))+'">Return to the run</a>.</p>';return;}
     moment=result.data;
   }
   GrinderSharing.mount({run:r,slot:app,status,moment});
@@ -2978,9 +2980,23 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('notifications-close')?.addEventListener('click',closeNotifications);scrim?.addEventListener('click',closeNotifications);
   $('notifications-read-all')?.addEventListener('click',async()=>{await social.markAllNotificationsRead?.();await social.notificationsPanel?.($('notifications-body'))});
   document.addEventListener('click',e=>{
+    const publicShare=e.target.closest('a[data-share-public]');
+    if(publicShare){e.preventDefault();const url=new URL(publicShare.getAttribute('href'),location.origin).href;void (async()=>{try{if(navigator.share){await navigator.share({url});return;}await navigator.clipboard.writeText(url);status('Public link copied.');}catch(error){if(error?.name!=='AbortError')location.href=url;}})();return;}
+    // Public hrefs stay canonical for copy, open-in-new-tab and crawlers. A normal click from
+    // inside the app opens the interactive run; the short public page is the external entry.
+    const runLink=e.target.closest('a[href]');
+    if(runLink&&!e.defaultPrevented&&e.button===0&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey&&runLink.target!=='_blank'){
+      const url=new URL(runLink.href,location.origin),id=url.origin===location.origin?StriveLinks.knownRunId(url.pathname):null;
+      if(id){e.preventDefault();history.pushState({striveRunId:id},'',url.pathname+url.hash);void viewRun(id);return;}
+    }
     if(e.target.closest('[data-signin]')){ e.preventDefault(); menus.forEach(m=>m.open=false); showSignIn(); return; }
     if(e.target.closest('[data-signout]')){ e.preventDefault(); auth.signOutLocal().then(()=>location.href='/').catch(err=>status(err.detail?.message||'Sign-out failed. Try again.',true)); }
     if(drawer?.classList.contains('open')&&e.target.closest('[data-notification-open]')) closeNotifications();
+  });
+  window.addEventListener('popstate',event=>{
+    if(event.state?.striveRunId){void viewRun(event.state.striveRunId);return;}
+    if(location.pathname==='/')void route();
+    else location.reload();
   });
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drawer?.classList.contains('open')){closeNotifications();noticeToggle?.focus()}});
   $('auth').addEventListener('click',async()=>{ if(!sb){status('Refresh.',true);return;}

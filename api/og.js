@@ -5,28 +5,13 @@ module.exports=async function handler(req,res){
  res.setHeader('X-Content-Type-Options','nosniff');
  res.setHeader('Cache-Control','private, no-store, max-age=0');
  try{
-  const {homeCard,readPublic,readPublicPhotos,card,privateCard,photoCard,profileCard,origin}=await import('../server/public-run.mjs');
+  const {homeCard,readPublic,privateCard,linkPreviewCard,profileCard}=await import('../server/public-run.mjs');
   const {readProfile}=await import('../server/share-routes.mjs');
   let tree;
   if(req.query.run){
    const run=await readPublic(String(req.query.run));
    if(!run)tree=privateCard();
-   else{
-    const photos=await readPublicPhotos(run);
-    const photo=photos.find(p=>p.is_cover)||photos[0];
-    let data=null;
-    if(photo){
-     try{
-      const url=origin+'/api/run-photos?id='+encodeURIComponent(photo.id)+'&run_id='+encodeURIComponent(run.id)+'&w=960';
-      const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(5000)});
-      if(response.ok&&response.headers.get('content-type')?.startsWith('image/jpeg')){
-       const bytes=Buffer.from(await response.arrayBuffer());
-       if(bytes.length>0&&bytes.length<3_000_000)data='data:image/jpeg;base64,'+bytes.toString('base64');
-      }
-     }catch(_){}
-    }
-    tree=data?photoCard(run,data):card(run);
-   }
+   else tree=linkPreviewCard(run);
   }else if(req.query.profile){
    const profile=await readProfile(String(req.query.profile));
    tree=profile?profileCard(profile):privateCard();
