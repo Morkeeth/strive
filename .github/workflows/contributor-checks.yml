@@ -26,6 +26,6 @@ jobs:
       - run: npm run test:sunday
       - run: node scripts/test-runtime-config.mjs
       - run: npm run build
-      - run: python3 -m pytest -q tests/test_plugin.py
+      - run: .venv/bin/python -m pytest -q tests/test_plugin.py
       - run: node scripts/test-people-identity.mjs
       - run: npm run test:launch
