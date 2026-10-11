@@ -71,6 +71,7 @@ button,summary{touch-action:manipulation}
 /* Share studio: the exact exported image is the preview. */
 .share-studio{display:grid;grid-template-columns:minmax(240px,1fr) minmax(0,1.2fr);gap:28px;align-items:start}
 .share-studio .panel{padding:22px}.post-preview canvas{display:block;width:100%;height:auto;border:1px solid var(--rule)}
+.share-image-preview{display:block;width:100%;height:auto;border-radius:14px;border:1px solid var(--rule)}
 .post-preview label{display:block;margin-top:20px}.post-preview textarea{width:100%;box-sizing:border-box}
 @media(max-width:720px){.share-studio{grid-template-columns:minmax(0,1fr)}.share-studio .panel{padding:16px}}
 

@@ -124,6 +124,16 @@ function mount({run,slot,status,moment=null,review=null}){
  }
  const publicShare=run.visibility==='public', handle=run.profiles?.github_handle;
  const url=moment?location.origin+'/?run='+encodeURIComponent(run.id)+'&moment='+encodeURIComponent(moment.id):location.origin+(cleanRunPath(run)||(publicShare?'/r/':'/?run=')+encodeURIComponent(run.id));
+ if(publicShare&&!moment&&!review){
+  const imageUrl='/api/og?run='+encodeURIComponent(run.id)+'&v=3';
+  const caption=[run.title,run.caption,url].filter(Boolean).join('\n\n');
+  slot.innerHTML=`<div class="head"><h2>Share your run</h2><a href="${esc(links.runHref(run))}">Back to run</a></div><p class="hint">This is the same card people see in a message and at the top of your public run.</p><div class="share-studio"><div class="panel"><img class="share-image-preview" src="${esc(imageUrl)}" alt="Share card for ${esc(run.title)}" width="1200" height="630"><label><input type="checkbox" id="share-image-reviewed"> I have reviewed this image and caption for sharing.</label><div class="cta"><button type="button" id="post-download" disabled>Download PNG</button><button type="button" class="ghost" id="post-copy" disabled>Copy caption</button></div></div><div class="post-preview"><label>Caption<textarea id="post-caption" readonly rows="8">${esc(caption)}</textarea></label><p class="hint" id="post-message" role="status"></p></div></div>`;
+  const approved=slot.querySelector('#share-image-reviewed'),download=slot.querySelector('#post-download'),copy=slot.querySelector('#post-copy');
+  approved.onchange=()=>{download.disabled=copy.disabled=!approved.checked};
+  copy.onclick=async()=>{try{await navigator.clipboard.writeText(caption);status('Caption copied.')}catch(_){status('Select and copy the caption beside the image.')}};
+  download.onclick=async()=>{try{const response=await fetch(imageUrl,{cache:'no-store'});if(!response.ok||!response.headers.get('content-type')?.startsWith('image/'))throw new Error('Image unavailable');const object=URL.createObjectURL(await response.blob()),link=document.createElement('a');link.href=object;link.download='strive-run-'+run.id+'.png';link.click();setTimeout(()=>URL.revokeObjectURL(object),1000)}catch(_){status('Image export failed. Try again.')}};
+  return;
+ }
  slot.innerHTML=`<div class="head"><h2>${review?"Share my outcome":"Share your run"}</h2>${review?"":`<a href="${esc(links.runHref(run))}">Back to run</a>`}</div>
  <p class="hint">${publicShare?'Public run · anyone can read it at /r/.':run.visibility==='link'?'Followers · signed-in followers and close friends can open it.':'Private run · exporting an image does not change who can read the run.'}</p>
  <div class="share-studio"><form id="post-editor" class="panel reply-form">

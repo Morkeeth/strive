@@ -5,8 +5,9 @@ const run={id,visibility:'public',title:'TEST DATA work',caption:'TEST DATA capt
 const photos=await readPublicPhotos(run,async()=>new Response(JSON.stringify([{id:first,run_id:id,is_cover:false,width:400,height:300},{id:cover,run_id:id,is_cover:true,width:400,height:300}])));
 assert.equal(photos[1].is_cover,true,'public reader keeps the author-selected cover flag');
 const page=html(run,{photos,kudos:0});
-assert.ok(page.indexOf('class="share-author"')<page.indexOf('class="public-run-photos"'),'name precedes the run images');
-assert.ok(page.indexOf('class="public-run-photos"')<page.indexOf('<h1>'),'images precede the run title');
+assert.ok(page.indexOf('class="share-card-image"')<page.indexOf('class="share-actions"'),'the exact link-preview card leads the public page');
+assert.ok(page.includes(`/api/og?run=${id}&v=3`),'the public page requests the current share-card image');
+assert.ok(page.indexOf('class="share-extra"')<page.indexOf('class="public-run-photos"'),'full-size selected photos remain under recorded details');
 assert.ok(page.includes('href="/?legacy=1&run='+id+'">Open in STRIVE'),'entry opens this exact run in the interactive app');
 assert.ok(page.includes('<link rel="canonical" href="https://striverun.app/test-author/11111111-test-data-work">'),'shared address stays clean');
 assert.ok(page.indexOf('aria-label="Recorded facts"')<page.indexOf('class="share-route"'),'measured stats precede the activity bars');
@@ -22,7 +23,7 @@ const noImage=html(run,{photos:[],moreRuns:[
  {id:extra,visibility:'public',title:'Another build',profiles:{handle:'test-author'}},
  {id:'55555555-5555-4555-8555-555555555555',visibility:'private',title:'Private note',profiles:{handle:'test-author'}}
 ]});
-assert.ok(noImage.includes('class="share-quote"'),'runs without selected images lead with the blue quote hero');
+assert.ok(noImage.includes('class="share-card-image"'),'runs without selected images use the same preview-card slot');
 assert.ok(noImage.includes('Another build'),'another public run is linked below the activity');
 assert.ok(!noImage.includes('Private note'),'private related runs never appear');
 const candid=[{id:first,run_id:id,role:'personal',is_cover:false},{id:cover,run_id:id,role:'personal',personal_public_selected:true,is_cover:true},{id:extra,run_id:id,role:'result',is_cover:false}];
