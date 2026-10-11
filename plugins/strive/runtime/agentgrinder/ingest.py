@@ -1041,15 +1041,8 @@ def coach_lines(this_run: dict) -> list[str]:
     return (graded + described)[:4]
 
 def detect_rig() -> dict:
-    """Your setup, from local config. Non-sensitive: counts of MCPs + skills. Names stay local."""
-    import json as _j
+    """Count visible skills without opening editor configuration or credential files."""
     mcps = skills = 0; mcp_names = []
-    for cfg in (os.path.expanduser("~/.claude.json"), os.path.expanduser("~/.claude/settings.json")):
-        try:
-            d = _j.load(open(cfg))
-            m = d.get("mcpServers") or {}
-            if m: mcp_names = list(m.keys()); mcps = len(m); break
-        except (OSError, ValueError): pass
     sk = os.path.expanduser("~/.claude/skills")
     if os.path.isdir(sk):
         skills = sum(1 for e in os.listdir(sk) if os.path.isdir(os.path.join(sk, e)))

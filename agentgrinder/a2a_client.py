@@ -10,10 +10,7 @@ import urllib.request
 DEFAULT_URL = os.environ.get(
     "AGENTGRINDER_SUPABASE_URL", "http://127.0.0.1:54321"
 )
-DEFAULT_KEY = os.environ.get(
-    "AGENTGRINDER_SUPABASE_ANON_KEY",
-    "local-development-only",
-)
+DEFAULT_KEY = "local-development-only"
 
 DEFAULT_SCHEMA = "strava"
 

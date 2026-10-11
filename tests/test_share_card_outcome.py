@@ -171,7 +171,7 @@ def test_a_named_athlete_is_a_display_name_and_never_fetches_an_avatar(tmp_path,
         assert identity.resolve(placeholder).display == identity.NEUTRAL_LABEL
 
 
-def test_a_signed_in_machine_is_read_locally_and_never_over_the_network(tmp_path, monkeypatch):
+def test_github_cli_credential_file_is_ignored(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
     monkeypatch.delenv(identity.ENV_HANDLE, raising=False)
     monkeypatch.setattr(identity, "_git_github_user", lambda root=None: None)
@@ -180,9 +180,8 @@ def test_a_signed_in_machine_is_read_locally_and_never_over_the_network(tmp_path
     (hosts / "hosts.yml").write_text("github.com:\n    user: morkeeth\n    git_protocol: https\n")
 
     who = identity.resolve()
-    assert who.handle == "morkeeth" and who.signed_in
-    assert who.source == "signed in with the GitHub CLI on this machine"
-    assert who.avatar_url == "https://github.com/morkeeth.png?size=96"
+    assert who.handle is None and not who.signed_in
+    assert who.avatar_url == ""
 
 
 def test_the_title_comes_from_the_repository_and_never_from_a_filesystem_path(tmp_path):

@@ -6,8 +6,7 @@ answer it. Every subprocess the reader spawns runs with an empty global git conf
 (`GIT_CONFIG_GLOBAL` + `GIT_CONFIG_NOSYSTEM`) and a temp `XDG_CONFIG_HOME`, so the author's own
 identity and any `insteadOf` rewrite on this machine cannot leak into the answer under test.
 
-`AGENTGRINDER_NO_GH=1` is set everywhere here: `gh` is consulted only in the ambiguous case, and
-a test that reaches the network is a test that fails on an aeroplane.
+The capture path never invokes `gh`; ambiguous ownership remains unknown.
 """
 import os
 import subprocess
@@ -27,13 +26,11 @@ WINDOW = (NOW - timedelta(hours=1), NOW + timedelta(minutes=1))
 
 @pytest.fixture(autouse=True)
 def _hermetic(tmp_path, monkeypatch):
-    reach._ORGS.clear()          # the org lookup is cached per process; each test asks fresh
     empty = tmp_path / "gitconfig-empty"
     empty.write_text("")
     monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(empty))
     monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))   # no gh hosts.yml in here
-    monkeypatch.setenv(reach.NO_GH, "1")
 
 
 def _git(root, *args, **env):
@@ -108,10 +105,9 @@ def test_an_organisation_the_author_belongs_to_is_not_another_person(tmp_path, m
 
 
 def test_without_gh_a_foreign_looking_owner_is_a_dash_not_a_yes(tmp_path):
-    """`AGENTGRINDER_NO_GH=1` is set for every test here, so this is the offline case: the owner
+    """This is the offline case: the owner
     is not the author's login, and nothing offline separates a stranger's account from an
-    organisation the author is in. That is a dash naming the fact you can supply (a signed-in
-    gh), never a yes."""
+    organisation the author is in. That is an unknown answer, never a yes."""
     bare = tmp_path / "alice-off.git"
     subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True,
                    env=dict(os.environ, GIT_CONFIG_NOSYSTEM="1"))
