@@ -8,7 +8,7 @@ Where did you get stuck? Include the command or step from the guide.
 
 What happened, and what did you expect?
 
-OS and relevant tool versions (Python, Node, Cursor or Grok Bot):
+OS and relevant tool versions (Python, Node or agent app):
 
 What have you already tried?
 

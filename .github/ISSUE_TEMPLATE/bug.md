@@ -8,6 +8,6 @@ Steps to reproduce:
 
 Expected / actual result:
 
-Browser or Cursor version, OS, and a safe screenshot if useful:
+Browser or agent app version, OS, and a safe screenshot if useful:
 
 Do not attach raw session transcripts or credentials.
