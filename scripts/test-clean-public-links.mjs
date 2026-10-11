@@ -30,7 +30,9 @@ assert.equal(publicAnchors.filter(a=>/[?&](?:run|u)=/.test(a.getAttribute('href'
 const app=readFileSync(new URL('../site/index.html',import.meta.url),'utf8');
 assert.ok(app.indexOf('<script src="/run-links.js">')<app.indexOf('<script src="/activity-post.js">'),'link helpers load before feed cards');
 const preview=linkPreviewCard(run);
-assert.equal(preview.props.children.length,4);
+assert.equal(preview.props.style.background,'#0047ff','a run without a selected image gets the blue quote card');
 assert.ok(JSON.stringify(preview).includes('473'));
-assert.doesNotMatch(JSON.stringify(preview),/data:image|Built galleries/);
+const photoPreview=linkPreviewCard(run,{photoUrl:'data:image/jpeg;base64,/9j/',avatar:'data:image/jpeg;base64,/9j/'});
+assert.ok(JSON.stringify(photoPreview).includes('data:image/jpeg;base64,/9j/'),'selected public image reaches the visual preview');
+assert.equal(photoPreview.props.children[0].props.style.width,660,'photo receives the full-bleed image side');
 console.log('PASS: public feed, profile, share page and preview use clean readable links; private URL stays private');
