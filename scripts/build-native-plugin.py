@@ -10,7 +10,7 @@ import tempfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-MCP_CONFIG = {'strive': {'command': 'uvx', 'args': ['--from', 'striverun', 'strive-mcp']}}
+MCP_CONFIG = {'command': 'uvx', 'args': ['--from', 'striverun', 'strive-mcp']}
 MCP_ENCODED = base64.b64encode(json.dumps(MCP_CONFIG, separators=(',', ':')).encode()).decode()
 MCP_INSTALL_LINK = 'cursor://anysphere.cursor-deeplink/mcp/install?name=strive&config=' + MCP_ENCODED
 spec = importlib.util.spec_from_file_location('installer', ROOT/'scripts/strive-plugin.py')
