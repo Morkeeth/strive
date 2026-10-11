@@ -27,6 +27,6 @@ jobs:
       - run: npm run test:capture-phase1
       - run: node scripts/test-runtime-config.mjs
       - run: npm run build
-      - run: .venv/bin/python -m pytest -q tests/test_plugin.py
+      - run: .venv/bin/python -m pytest -q tests/test_plugin.py tests/test_no_vendor_credential_reads.py
       - run: node scripts/test-people-identity.mjs
       - run: npm run test:launch
