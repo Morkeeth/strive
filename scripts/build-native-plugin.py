@@ -10,9 +10,9 @@ import tempfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-MCP_CONFIG = {'strive': {'command': 'uvx', 'args': ['--from', 'striverun==0.1.0', 'strive-mcp']}}
+MCP_CONFIG = {'strive': {'command': 'uvx', 'args': ['--from', 'striverun', 'strive-mcp']}}
 MCP_ENCODED = base64.b64encode(json.dumps(MCP_CONFIG, separators=(',', ':')).encode()).decode()
-MCP_WEB_LINK = 'https://cursor.com/link/mcp/install?name=strive&config=' + MCP_ENCODED
+MCP_INSTALL_LINK = 'cursor://anysphere.cursor-deeplink/mcp/install?name=strive&config=' + MCP_ENCODED
 spec = importlib.util.spec_from_file_location('installer', ROOT/'scripts/strive-plugin.py')
 installer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(installer)
@@ -51,7 +51,14 @@ Python 3.9+ is required to capture. No model API key is needed.
 
 ## Claude Code
 
-Run these two lines in a terminal, then restart Claude Code:
+For the two local preview tools, add the MCP server with one command:
+
+```sh
+claude mcp add strive -- uvx --from striverun strive-mcp
+```
+
+For the `strive` skill and optional capture hook, install the plugin, then
+restart Claude Code:
 
 ```sh
 claude plugin marketplace add Morkeeth/strive
@@ -62,10 +69,18 @@ Run `/strive:strive` and name the project and session you want to review.
 
 ## Cursor
 
-After `striverun` is published on PyPI, [Add STRIVE's private preview tools to Cursor](%s).
+[Add STRIVE's private preview tools to Cursor](%s) (new one-click link).
 This installs a local MCP server with `list_sessions` and `preview_session` only.
 It does not install the `strive` skill or completion hook. Cursor will ask you to
-review the server before adding it. Python 3.9+ and `uvx` are required.
+review the server before adding it. If the link does not open the install
+dialog, add the same server to `~/.cursor/mcp.json`:
+
+```json
+{"mcpServers":{"strive":{"command":"uvx","args":["--from","striverun","strive-mcp"]}}}
+```
+
+The local plugin and `strive` skill were verified in Cursor's Customize screen
+and used to make a private preview. Python 3.9+ and `uvx` are required.
 
 For the full STRIVE skill and optional local hook, use the local plugin route below.
 
@@ -84,7 +99,13 @@ already installed, Cursor gives that one precedence.
 
 ## Codex
 
-Run these two lines, then start a new Codex session:
+For the two local preview tools, add the MCP server with one command:
+
+```sh
+codex mcp add strive -- uvx --from striverun strive-mcp
+```
+
+For the `strive` skill, install the plugin, then start a new Codex session:
 
 ```sh
 codex plugin marketplace add Morkeeth/strive
@@ -112,5 +133,5 @@ Review and save in STRIVE starts as Only me. Choose your audience separately.
 
 Tell us what happened at https://striverun.app/?feedback: your editor, the action,
 what you expected and what happened. Do not include tokens or raw transcripts.
-''' % MCP_WEB_LINK)
+''' % MCP_INSTALL_LINK)
 print('Built STRIVE native plugin '+manifest['version']+' '+sha)
