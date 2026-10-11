@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import importlib.util
 import os
-from pathlib import Path
 
 
 class LiveConfigError(RuntimeError):
@@ -37,19 +36,10 @@ def missing_live_config() -> list[dict[str, str]]:
             "id": "aws-region",
             "need": "Set AWS_REGION or AWS_DEFAULT_REGION to a Bedrock-enabled region (for example us-east-1).",
         })
-    has_key = bool(os.environ.get("AWS_ACCESS_KEY_ID"))
-    has_profile = bool(os.environ.get("AWS_PROFILE"))
-    cred_file = Path.home() / ".aws" / "credentials"
-    has_file = cred_file.is_file()
-    if not (has_key or has_profile or has_file):
-        missing.append({
-            "id": "aws-credentials",
-            "need": (
-                "Provide AWS credentials for Bedrock via AWS_ACCESS_KEY_ID and "
-                "AWS_SECRET_ACCESS_KEY, or AWS_PROFILE, or ~/.aws/credentials. "
-                "This product never stores those values and never prints them."
-            ),
-        })
+    missing.append({
+        "id": "aws-credentials",
+        "need": "The public STRIVE plugin does not inspect or use Bedrock credentials.",
+    })
     return missing
 
 

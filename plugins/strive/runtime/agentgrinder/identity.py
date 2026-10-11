@@ -9,10 +9,9 @@ Two states, and the card says which one it is in:
   signed in   the GitHub handle this machine already holds, and that account's avatar
   otherwise   a neutral label, no initial, no invented name
 
-`resolve` reads the same LOCAL evidence `reach.author_identities` trusts as a strong identity —
-the GitHub CLI's stored login and `git config github.user` — plus an explicit handle from the
+`resolve` reads `git config github.user` plus an explicit handle from the
 command line or the environment. It makes no network call, registers no application and changes
-no sign-in: it reads a login this machine is already holding.
+no sign-in. It never opens a GitHub CLI credential file.
 
 `of_run` is the pure half. It reads the run dict only, so a card rendered from the same run JSON
 on two machines is the same card.
@@ -36,7 +35,6 @@ NOT_SIGNED_IN = "not signed in"
 PLACEHOLDERS = frozenset({"you", "me", "athlete", "anon", "anonymous", "unknown", "someone"})
 
 _HANDLE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
-_GH_USER = re.compile(r"^\s{4,}user:\s*([A-Za-z0-9-]+)\s*$", re.M)
 
 
 @dataclass(frozen=True)
@@ -82,22 +80,6 @@ def clean_handle(value) -> str | None:
     return text
 
 
-def _gh_cli_login() -> str | None:
-    """The login the GitHub CLI has stored on this machine. Read from its config file: no
-    network, and `gh` does not need to be installed for the read to be safe."""
-    base = os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
-    try:
-        with open(os.path.join(base, "gh", "hosts.yml"), encoding="utf-8", errors="ignore") as fh:
-            found = _GH_USER.findall(fh.read())
-    except OSError:
-        return None
-    for name in found:
-        handle = clean_handle(name)
-        if handle:
-            return handle
-    return None
-
-
 def _git_github_user(root: str | None = None) -> str | None:
     try:
         out = subprocess.run(["git", "-C", root or ".", "config", "--get", "github.user"],
@@ -124,9 +106,6 @@ def resolve(explicit=None, root: str | None = None) -> Identity:
     handle = clean_handle(os.environ.get(ENV_HANDLE))
     if handle:
         return Identity(handle, f"handle from {ENV_HANDLE}")
-    handle = _gh_cli_login()
-    if handle:
-        return Identity(handle, "signed in with the GitHub CLI on this machine")
     handle = _git_github_user(root)
     if handle:
         return Identity(handle, "github.user in this repository's git config")

@@ -22,24 +22,21 @@ Three traps this module is built around.
     directory is not a crossing, so those remotes count toward FALSE, never toward TRUE.
   * AN ORGANISATION THE AUTHOR BELONGS TO IS NOT ANOTHER PERSON. The first real run of this
     module returned True for a push to `MorkeethHQ/…` because the owner was not the author's
-    login — correct about the string and false about the world. The owner is therefore compared
-    to the author's login AND to the organisations `gh` says they are a member of; with no
-    signed-in `gh` the answer is None, because offline nothing separates an organisation you
+    login — correct about the string and false about the world. Without verified organisation
+    membership the answer is None, because offline nothing separates an organisation you
     belong to from a stranger's account.
   * an email local part is not a GitHub login. `oscar@gmail.com` pushing to `github.com/Oscar-M`
     would read as "a repository the author does not own" and that sentence would be false. TRUE
-    therefore requires a STRONG identity (the gh CLI's stored login, `git config github.user`,
-    or a `<login>@users.noreply.github.com` address). With only a weak one the answer is None.
+    therefore requires a STRONG identity (`git config github.user` or a
+    `<login>@users.noreply.github.com` address). With only a weak one the answer is None.
 
-No network call is needed for the negative case, and none is made at all unless `gh` is
-installed, authenticated, and the local evidence is genuinely ambiguous. `AGENTGRINDER_NO_GH=1`
-turns the `gh` probe off entirely.
+No network call is made. This public plugin never opens or invokes a GitHub
+credential store; ambiguous ownership stays unknown.
 """
 from __future__ import annotations
 
 import os
 import re
-import shutil
 import subprocess
 from datetime import datetime, timedelta
 
@@ -47,7 +44,6 @@ from datetime import datetime, timedelta
 # Five minutes of grace on the closing edge keeps that push inside the window it belongs to.
 PUSH_GRACE_S = 300
 MAX_COMMITS_PROBED = 20      # a window with 200 commits does not need 200 `--contains` calls
-NO_GH = "AGENTGRINDER_NO_GH"
 
 # every sentence a reach cell can print on hover. No paths, no owner names, no repository names:
 # these strings travel to the web app with the run.
@@ -86,29 +82,14 @@ def _aware(t: datetime) -> datetime:
 
 # ---- who is the author -------------------------------------------------------
 _NOREPLY = re.compile(r"^(?:\d+\+)?([A-Za-z0-9-]+)@users\.noreply\.github\.com$")
-_GH_USER = re.compile(r"^\s{4,}user:\s*([A-Za-z0-9-]+)\s*$", re.M)
-
-
-def _gh_hosts_logins() -> set[str]:
-    """The logins the gh CLI has stored, read from its config file. No network, no `gh` needed."""
-    base = os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
-    path = os.path.join(base, "gh", "hosts.yml")
-    try:
-        with open(path, encoding="utf-8", errors="ignore") as fh:
-            return {m.lower() for m in _GH_USER.findall(fh.read())}
-    except OSError:
-        return set()
-
-
 def author_identities(root: str) -> tuple[set[str], bool]:
     """(every name this machine says the author answers to, whether any of them is STRONG).
 
-    Strong = an account name, not a guess: the gh CLI's stored login, `git config github.user`,
-    or the login inside a GitHub noreply address. Weak = the local part of an ordinary email,
+    Strong = an account name, not a guess: `git config github.user` or the login
+    inside a GitHub noreply address. Weak = the local part of an ordinary email,
     which is only ever used to WIDEN the set, never to justify a `True`.
     """
     strong, weak = set(), set()
-    strong |= _gh_hosts_logins()
     gu = _run(["git", "-C", root, "config", "--get", "github.user"])
     if gu and gu.returncode == 0 and gu.stdout.strip():
         strong.add(gu.stdout.strip().lower())
@@ -210,48 +191,14 @@ def _refs_containing(root: str, sha: str) -> list[str]:
     return refs
 
 
-_ORGS: dict[str, tuple[set[str], bool]] = {}
-
-
-def _gh_ready(root: str) -> bool:
-    if os.environ.get(NO_GH) or not shutil.which("gh"):
-        return False
-    auth = _run(["gh", "auth", "status"], cwd=root, timeout=10)
-    return bool(auth and auth.returncode == 0)
-
-
 def _gh_orgs(root: str) -> tuple[set[str], bool]:
-    """(the organisations the author belongs to, whether `gh` could be asked at all).
-
-    One call per process. `False` in the second slot means the question was never put, which is a
-    different fact from "the author is in no organisations" and the caller must not conflate them.
-    """
-    if "orgs" in _ORGS:
-        return _ORGS["orgs"]
-    if not _gh_ready(root):
-        hit = (set(), False)
-    else:
-        out = _run(["gh", "api", "user/orgs", "--jq", ".[].login"], cwd=root, timeout=20)
-        hit = (({o.strip().lower() for o in out.stdout.split() if o.strip()}, True)
-               if out and out.returncode == 0 else (set(), False))
-    _ORGS["orgs"] = hit
-    return hit
+    """Organisation membership is unknown without accessing vendor credentials."""
+    return set(), False
 
 
 def _pr_owners(root: str, branches: set[str]) -> set[str]:
-    """Owners of any open pull request whose head is one of these branches. `gh` only, never fatal."""
-    if not _gh_ready(root):
-        return set()
-    owners = set()
-    for br in sorted(branches)[:4]:
-        out = _run(["gh", "pr", "list", "--head", br, "--json", "url"], cwd=root, timeout=20)
-        if not out or out.returncode != 0:
-            continue
-        for url in re.findall(r'"url"\s*:\s*"([^"]+)"', out.stdout):
-            o = owner_of(url.rsplit("/pull/", 1)[0])
-            if o:
-                owners.add(o)
-    return owners
+    """A PR owner cannot be proved from local repository data alone."""
+    return set()
 
 
 # ---- the answer --------------------------------------------------------------
