@@ -27,7 +27,7 @@ module.exports=async function handler(req,res){
   const path=profilePath(preferred);
   if(handle!==path.slice(1)){res.writeHead(301,{Location:path});return res.end()}
   if(!crawler){res.writeHead(307,{Location:'/?u='+encodeURIComponent(preferred)+'&legacy=1'});return res.end()}
-  const title=escape(profile.display_name||preferred),url=canonicalProfile(preferred),image=shareOrigin+'/api/og?profile='+encodeURIComponent(preferred);
+  const title=escape(profile.display_name||preferred),url=canonicalProfile(preferred),image=shareOrigin+'/api/og?profile='+encodeURIComponent(preferred)+'&v=2';
   const description=escape(`Public runs by ${profile.display_name||'@'+preferred} on STRIVE.`);
   const activities=await readProfileActivities(profile);
   const activityHtml=activities.length?`<ol style="list-style:none;padding:0;margin:0">${activities.map(run=>`<li style="border-top:1px solid #ddd;padding:16px 0"><a href="${escape(runPath(run)||'/r/'+run.id)}" style="color:#111;font-weight:600;text-decoration:none">${escape(run.title||'Run')}</a><p style="color:#555;margin:6px 0">${escape(String(run.caption||'').split(/\r?\n/)[0].slice(0,180))}</p></li>`).join('')}</ol>`:'<p>No public activities yet.</p>';
