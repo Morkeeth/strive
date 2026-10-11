@@ -9,7 +9,7 @@
    const final=cell.textContent,match=final.match(/^(\$?)(\d+(?:\.\d+)?)([KM]| min|s)?$/);
    if(!match)continue;
    const value=Number(match[2]),digits=match[2].includes('.')?match[2].split('.')[1].length:0;
-   const span=document.createElement('span');span.setAttribute('aria-hidden','true');cell.setAttribute('aria-label',final);cell.replaceChildren(span);
+   const span=document.createElement('span');span.setAttribute('aria-hidden','true');span.textContent=final;cell.setAttribute('aria-label',final);cell.replaceChildren(span);
    const started=performance.now();
    function frame(now){
     if(!cell.isConnected)return;

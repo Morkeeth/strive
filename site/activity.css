@@ -195,3 +195,16 @@ button.ghost,.act.ghost{background:transparent;color:var(--soft);border-color:va
 .story-tile-identity{position:absolute;top:8px;left:12px;right:8px;z-index:1}.story-tile-identity .run-agent-identity{margin:0;gap:4px;font-size:10px}.story-tile-identity .harness-mark{width:20px;height:20px}.story-tile-identity .model-chip{background:#ffffffde;padding:2px 4px;font-size:9px}.story-tile:has(.story-tile-identity) .story-tile-svg{top:34px;bottom:0}.story-tile:not(:has(.empty-source)) .story-tile-svg{bottom:0}
 
 .run-detail-story{margin:16px 0;min-width:0}.run-detail-story>.strive-empty{width:100%;height:280px;min-height:0}.run-detail-story .story-tile-svg svg{stroke:none}
+
+/* Stable first paint: identity controls have one footprint; auth hints never grant access. */
+#auth-pending{display:none;width:76px;height:44px;align-items:center;justify-content:flex-end}
+html[data-auth-boot="pending"] #auth,html[data-auth-boot="pending"] #account-menu{display:none!important}
+html[data-auth-boot="pending"] #auth-pending{display:flex}
+html[data-auth-hint="member"] #auth-pending>span{width:30px;height:30px;border-radius:50%;background:#e8edf5}
+.bar .right>#auth,.bar .right>#account-menu,.bar .right>#auth-pending{flex:0 0 76px;width:76px;min-width:76px}
+.bar .right>#account-menu>summary{margin-left:auto}
+#app{min-height:calc(100vh - 180px)}
+#home-builders{min-height:62px}.home-around .fc-builder{display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px 12px}.home-around .fc-builder .card-follow{grid-column:2;margin:0;display:flex;flex-wrap:wrap;gap:8px}.home-around .fc-builder .fc-name{white-space:normal;overflow-wrap:anywhere}
+.media-loading{height:100%;background:#f4f6fa;border:0}
+html[data-auth-boot="pending"] #app{min-height:100vh}
+#home-builders{min-height:80px}
