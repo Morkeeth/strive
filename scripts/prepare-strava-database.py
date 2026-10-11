@@ -35,7 +35,7 @@ grant insert,delete on acks to authenticated;
         parts.append('-- strava/' + path.name + '\n' + re.sub(r'^\s*(begin|commit);\s*$', '', path.read_text(), flags=re.M | re.I))
     # Share-handle rules depend on the identity.sql columns and claim trigger.
     path = ROOT / 'supabase/strava/038_share_handle_reservations.sql'
-    parts.append('-- strava/' + path.name + '\n' + path.read_text())
+    parts.append('-- strava/' + path.name + '\n' + re.sub(r'^\s*(begin|commit);\s*$', '', path.read_text(), flags=re.M | re.I))
     parts.append("notify pgrst, 'reload schema';\ncommit;\n")
     return '\n'.join(parts)
 
