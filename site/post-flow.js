@@ -7,20 +7,20 @@
 
   function setupHtml({agentPrompt,capture,syncHtml,dropHtml,agentFiles=[],agentCommands={}}){
     const tabs=[['editor','Editor plugin'],['terminal','Terminal'],['automatic','Automatic imports'],['files','Find a session']];
-    return `<section class="post-start" aria-labelledby="post-start-title"><h2 id="post-start-title">Share what you made</h2>
-      <p class="post-start-intro">Choose where you worked. STRIVE opens a private preview before you save a run.</p>${steps()}
+    return `<section class="post-start" aria-labelledby="post-start-title"><h2 id="post-start-title">Choose your agent</h2>
+      <p class="post-start-intro">Choose your agent, run one command on your computer, then pick a session. Nothing is saved online yet.</p><ol class="post-flow-steps" aria-label="Import steps"><li aria-current="step"><span>1</span>Choose your agent</li><li><span>2</span>Pick a session</li><li><span>3</span>Private preview</li></ol>
       <div class="post-source-grid" aria-label="Choose your agent">
-        <button class="ghost" type="button" data-post-source="cursor"><img src="/media/cursor-mark.svg" alt=""><strong>Cursor</strong><span>Choose a session file</span></button>
-        <button class="ghost" type="button" data-post-source="claude" data-command="${esc(agentCommands.claude||capture)}"><img src="/media/claude-mark.svg" alt=""><strong>Claude Code</strong><span>Find my latest session</span></button>
-        <button class="ghost" type="button" data-post-source="codex" data-command="${esc(agentCommands.codex||capture)}"><img src="/media/openai-mark.svg" alt=""><strong>Codex</strong><span>Find my latest session</span></button>
+        <button class="ghost" type="button" data-post-source="cursor" data-command="${esc(agentCommands.cursor||capture)}"><img src="/media/cursor-mark.svg" alt=""><strong>Cursor</strong><span>Open the local picker</span></button>
+        <button class="ghost" type="button" data-post-source="claude" data-command="${esc(agentCommands.claude||capture)}"><img src="/media/claude-mark.svg" alt=""><strong>Claude Code</strong><span>Open the local picker</span></button>
+        <button class="ghost" type="button" data-post-source="codex" data-command="${esc(agentCommands.codex||capture)}"><img src="/media/openai-mark.svg" alt=""><strong>Codex</strong><span>Open the local picker</span></button>
         <button class="ghost" type="button" data-post-source="grok"><span class="post-grok-mark" aria-hidden="true">𝕏</span><strong>Grok Bot</strong><span>Ask your companion</span></button>
       </div>
-      <section class="post-quick-start" id="post-quick-start" hidden aria-live="polite"><h3 id="post-quick-title">Find your latest session</h3><p>Run this command in Terminal on the computer where you used your agent. It checks sessions across your projects and opens the latest supported session as a private preview. Check the project and session before saving.</p><div class="cmd"><code class="c" id="post-quick-command"></code><button class="act" type="button" id="post-quick-copy" data-copy="">Copy command</button></div><p class="hint">Needs <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a>. Your transcript stays on this computer. Check the session and numbers before saving. To pick a different session, use Find my sessions below.</p></section>
-      <div class="post-agent-entry"><div><strong>Working with your agent?</strong><span>Ask it to collect a private preview.</span></div><button class="act" type="button" data-copy="${esc(agentPrompt)}">Copy request</button></div>
+      <section class="post-quick-start" id="post-quick-start" hidden aria-live="polite"><h3 id="post-quick-title">Pick a recent session</h3><p>Copy this command into Terminal on the computer where you worked. It opens a local list with time, project and first prompt. Pick your session to prepare its private preview.</p><div class="cmd"><button class="act blue" type="button" id="post-quick-copy" data-copy="">Copy command</button><details class="post-command-details"><summary>View command</summary><code class="c" id="post-quick-command"></code></details></div><p class="hint">Needs <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a>. This website cannot read your disk. The command reads locally; prompts and session files stay on your computer. Already installed the STRIVE plugin? Ask it to show recent sessions.</p></section>
+      <div class="post-agent-entry" hidden><div><strong>Working with your agent?</strong><span>Ask it to collect a private preview.</span></div><button class="act" type="button" data-copy="${esc(agentPrompt)}">Copy request</button></div>
       <p class="hint">You can preview without signing in. Nothing is saved until you choose to save it.</p>
     </section>
-    <section class="post-file-entry" aria-label="Find a session"><h2>Find my sessions</h2><p>Choose a file from the agent you used. On macOS, click <strong>Choose session file</strong>, press <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>G</kbd> in the file picker, and paste the folder below.</p><dl class="post-source-folders">${agentFiles.map(([name,path,help])=>`<div data-agent-folder="${esc(name)}"><dt>${esc(name)}</dt><dd><code>${esc(path)}</code><button class="ghost" type="button" data-copy="${esc(path)}" aria-label="Copy ${esc(name)} session folder">Copy folder</button><span>${esc(help)}</span></dd></div>`).join('')}</dl>${dropHtml}<p class="hint">JSON or JSONL from Cursor, Claude Code or Codex. For Grok, use an export your companion can actually read.</p></section>
-    <p class="post-sample"><a href="/r/90a16040-8ad5-4096-978c-8b1f78f3dd2f">See a real sample run →</a><span class="hint"> A public FAVOUR run. Your preview will use your own session.</span></p>
+    <details class="post-file-entry" aria-label="Find a session"><summary>Or drop a session file</summary><h3>Find your session file</h3><p>Choose a file from the agent you used. On macOS, click <strong>Choose session file</strong>, press <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>G</kbd> in the file picker, and paste the folder below.</p><dl class="post-source-folders">${agentFiles.map(([name,path,help])=>`<div data-agent-folder="${esc(name)}"><dt>${esc(name)}</dt><dd><code>${esc(path)}</code><button class="ghost" type="button" data-copy="${esc(path)}" aria-label="Copy ${esc(name)} session folder">Copy folder</button><span>${esc(help)}</span></dd></div>`).join('')}</dl>${dropHtml}<p class="hint">JSON or JSONL from Cursor, Claude Code or Codex. For Grok, use an export your companion can actually read.</p></details>
+    <p class="post-sample"><a href="/r/90a16040-8ad5-4096-978c-8b1f78f3dd2f">See a real sample run →</a><span class="hint"> A public STRIVE run. Your preview will use your own session.</span></p>
     <details class="post-setup" id="post-setup"><summary><span>Import setup</span><span class="post-setup-summary">Editor plugins, terminal and other sources</span></summary>
       <div class="post-setup-body"><div class="post-setup-tabs" role="tablist" aria-label="Import method">${tabs.map(([id,title],i)=>`<button type="button" role="tab" id="setup-tab-${id}" data-setup-tab="${id}" aria-controls="setup-${id}" aria-selected="${i===0}" tabindex="${i===0?'0':'-1'}">${title}</button>`).join('')}</div>
       <section id="setup-editor" role="tabpanel" aria-labelledby="setup-tab-editor"><h3>Keep STRIVE in your editor</h3><p>Install once, then ask for a private preview across the projects you choose.</p>
@@ -67,19 +67,19 @@
     scope.querySelectorAll('[data-post-source]').forEach(button=>button.addEventListener('click',()=>{
       const source=button.dataset.postSource;
       if(source==='grok'){
+        scope.querySelector('.post-agent-entry').hidden=false;
+        scope.querySelector('#post-quick-start').hidden=true;
         scope.querySelector('.post-agent-entry')?.scrollIntoView({block:'center',behavior:'smooth'});
         scope.querySelector('.post-agent-entry button')?.focus({preventScroll:true});return;
       }
-      if(source==='cursor'){
-        const row=scope.querySelector('.post-file-entry [data-agent-folder="Cursor"]');
-        scope.querySelector('.post-file-entry')?.scrollIntoView({block:'start',behavior:'smooth'});
-        row?.classList.add('post-folder-selected');row?.querySelector('button')?.focus({preventScroll:true});return;
-      }
+      scope.querySelector('.post-agent-entry').hidden=true;
       const quick=scope.querySelector('#post-quick-start');quick.hidden=false;
-      scope.querySelector('#post-quick-title').textContent='Find your latest '+({claude:'Claude Code',cursor:'Cursor',codex:'Codex'}[source]||'agent')+' session';
+      scope.querySelector('#post-quick-title').textContent='Copy to Terminal to open your '+({claude:'Claude Code',cursor:'Cursor',codex:'Codex'}[source]||'agent')+' session picker';
       scope.querySelector('#post-quick-command').textContent=button.dataset.command;
       scope.querySelector('#post-quick-copy').dataset.copy=button.dataset.command;
       scope.querySelectorAll('[data-post-source]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+      const selectedName={claude:'Claude Code',cursor:'Cursor',codex:'Codex'}[source];
+      scope.querySelectorAll('.post-file-entry [data-agent-folder]').forEach(row=>row.hidden=row.dataset.agentFolder!==selectedName);
       quick.scrollIntoView({block:'nearest',behavior:'smooth'});
     }));
   }
