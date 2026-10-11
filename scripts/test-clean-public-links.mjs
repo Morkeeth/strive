@@ -16,6 +16,7 @@ const card=Feed.card(run),page=html(run);
 assert.ok(card.includes(`href="${clean}`));
 assert.doesNotMatch(card,/<a\b[^>]*href="[^"]*\?(?:run|u)=/);
 assert.ok(page.includes(`rel="canonical" href="${shareOrigin}${clean}`));
+assert.ok(page.includes(`property="og:image" content="${shareOrigin}/api/og?run=${run.id}&v=2"`),'share page points crawlers at the revised card');
 assert.ok(page.includes(`href="/?legacy=1&run=${run.id}">Open in STRIVE`));
 assert.doesNotMatch(page,/<script\b/i,'public share page stays script-free');
 assert.ok(Feed.builderRow(run).includes(`href="${clean}"`));
