@@ -38,12 +38,12 @@
       "destination": "/api/link?id=:id"
     },
     {
-      "source": "^/(?<handle>[a-zA-Z0-9][a-zA-Z0-9_-]{0,39})/(?<run>[0-9a-fA-F]{8}-[a-zA-Z0-9-]+)$",
-      "destination": "/api/share?handle=$handle&run=$run"
+      "source": "/:handle/:run",
+      "destination": "/api/share?handle=:handle&run=:run"
     },
     {
-      "source": "^/(?<handle>[a-zA-Z0-9][a-zA-Z0-9_-]{0,39})$",
-      "destination": "/api/share?handle=$handle"
+      "source": "/:handle",
+      "destination": "/api/share?handle=:handle"
     },
     {
       "source": "/api/:path*",
