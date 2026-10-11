@@ -443,5 +443,10 @@ def main(capture_only=False):
             sys.stdout.flush()
 
 
+def capture_main():
+    """Run only the local session-list and private-preview MCP tools."""
+    return main(capture_only=True)
+
+
 if __name__ == "__main__":
     main()

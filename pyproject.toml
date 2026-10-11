@@ -1,7 +1,7 @@
 [project]
-name = "agentgrinder"
+name = "striverun"
 version = "0.1.0"
-description = "Agent Grinder — free social run cards for people building with coding agents."
+description = "STRIVE local coding-session capture and private preview tools."
 readme = "README.md"
 requires-python = ">=3.9"      # measured, not assumed: every command runs under macOS system python 3.9.6
 license = {text = "MIT"}
@@ -16,6 +16,7 @@ dev = ["pytest>=7.0"]
 [project.scripts]
 agentgrinder = "agentgrinder.cli:main"
 strive = "agentgrinder.cli:main"
+strive-mcp = "agentgrinder.mcp_server:capture_main"
 
 [build-system]
 requires = ["setuptools>=68"]
