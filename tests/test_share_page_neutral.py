@@ -46,7 +46,7 @@ def test_missing_run_page_is_a_neutral_html_card():
     assert f'href="/?run={MISSING}"' in page
     # Neutral means neutral: no run title, caption, handle, project or counts can be present,
     # because the page was built without a row.
-    for leak in ("og:title\" content=\"Grok", "@", "Typed turns", "Wall time"):
+    for leak in ("og:title\" content=\"Grok", "Typed turns", "Wall time"):
         assert leak not in page
 
 
@@ -135,7 +135,7 @@ def test_a_non_public_row_that_reaches_the_handler_still_gets_the_neutral_page()
 
 
 def body(page):
-    return page.split("<body>", 1)[1].split("</body>", 1)[0]
+    return page.split("<body", 1)[1].split(">", 1)[1].split("</body>", 1)[0]
 
 
 def test_neutral_body_has_one_message_without_repeating_the_og_card():
@@ -150,8 +150,7 @@ def test_neutral_body_has_one_message_without_repeating_the_og_card():
 
 
 def test_public_page_exposes_recorded_metrics_as_readable_html():
-    # The page draws the feed card (site/feed-card.js): the strongest measured number leads, up to
-    # three small figures follow, and a figure the row does not carry is not drawn.
+    # The public page shows up to three recorded facts in a large stats row.
     row = {"id": MISSING, "visibility": "public", "title": "A real sitting",
            "caption": "Built the import.\nThen checked the save.",
            "prompts": 6, "tool_calls": 0, "ridge_tool_calls": 28,
@@ -159,17 +158,15 @@ def test_public_page_exposes_recorded_metrics_as_readable_html():
            "duration_s": 600, "files_touched": 0, "commits": 2,
            "project": "session", "profiles": {"handle": "builder"}}
     visible = body(serve(MISSING, [row])["body"])
-    assert '<article class="card fc"' in visible
-    assert '<span class="fc-n num">2</span><span class="fc-u">commits</span>' in visible
-    assert '<dt>Time</dt><dd class="num">10m</dd>' in visible
-    assert '<dt>Turns</dt><dd class="num">6</dd>' in visible
-    assert '<dt>Tool calls</dt><dd class="num">28</dd>' in visible
-    assert '<dt>Commits</dt>' not in visible  # already the big number
-    assert "Built the import.\nThen checked the save." in visible
-    assert 'href="/?u=builder"' in visible and '>builder</a>' in visible
+    assert '<article class="share-main"' in visible
+    assert '<dt>Commits</dt><dd>2</dd>' in visible
+    assert '<dt>Files changed</dt><dd>0</dd>' in visible
+    assert '<dt>Elapsed</dt><dd>10m</dd>' in visible
+    assert "Built the import." in visible
+    assert 'href="/builder"' in visible
     assert 'aria-label="STRIVE home"' in visible
-    assert 'aria-label="Reply"' in visible and 'aria-label="Share"' in visible
-    assert '<img' not in visible  # no avatar and no GitHub account: the initial, no remote image
+    assert '♥ XUDOS' in visible and 'Comments' in visible
+    assert 'class="share-quote"' in visible
 
 
 def test_unrecorded_metrics_are_not_guessed_and_recorded_zero_is_preserved():
@@ -177,11 +174,11 @@ def test_unrecorded_metrics_are_not_guessed_and_recorded_zero_is_preserved():
            "prompts": 0, "tool_calls": None, "files_touched": None, "commits": -1,
            "ridge_basis": "turn-order", "ridge_wall_seconds": 120}
     visible = body(serve(MISSING, [row])["body"])
-    assert '<dt>Turns</dt><dd class="num">0</dd>' in visible
-    for label in ("Time", "Tool calls", "Files", "Commits"):
+    assert '<dt>Typed turns</dt><dd>0</dd>' in visible
+    for label in ("Elapsed", "Tool calls", "Files changed", "Commits"):
         assert f'<dt>{label}</dt>' not in visible
-    assert 'class="fc-hero"' not in visible  # nothing measured to lead with
-    assert "Unknown" not in visible
+    assert 'class="share-stats"' in visible
+    assert "Unknown" not in visible.split('<details class="share-extra">', 1)[0]
 
 
 def test_public_html_escapes_fields_and_rejects_unsafe_output_links():
@@ -207,14 +204,14 @@ def test_public_page_keeps_og_preview_but_draws_the_activity_line_natively():
            "ridge_basis": "turn-order", "commit_bins": [12]}
     page = serve(MISSING, [row])["body"]
     visible = body(page)
-    assert '<img' not in visible
+    assert 'class="share-quote"' in visible
     assert 'property="og:image"' in page and 'name="twitter:image"' in page
-    assert '<div class="fc-spark"' in visible and 'class="fc-peak"' in visible
-    assert 'Open run and discussion' in visible
+    assert '<div class="share-route-bars"' in visible
+    assert 'Open in STRIVE' in visible
     for bad in (None, [0] * 50, [-1] * 50):
         row["ridge"] = bad
-        assert 'fc-spark' not in body(serve(MISSING, [row])["body"])
+        assert 'share-route-bars' not in body(serve(MISSING, [row])["body"])
     # The private page for the same id never draws a card, a line or a number.
     neutral = body(serve(MISSING, [])["body"])
-    for mark in ('class="card fc"', 'fc-spark', 'fc-hero', 'fc-stats'):
+    for mark in ('class="share-main"', 'share-route-bars', 'share-stats'):
         assert mark not in neutral

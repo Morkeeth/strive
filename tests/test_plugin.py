@@ -157,10 +157,12 @@ def test_public_marketplace_package_matches_capture_source():
         assert (source/relative).read_bytes()==(bundled/'runtime/agentgrinder'/relative).read_bytes()
     assert (root/'LICENSE').read_bytes()==(bundled/'LICENSE').read_bytes()
     assert (root/'scripts/strive-plugin.py').read_bytes()==(bundled/'scripts/strive-plugin.py').read_bytes()
-    for market in (root/'.claude-plugin/marketplace.json',root/'.agents/plugins/marketplace.json'):
+    for market in (root/'.claude-plugin/marketplace.json',root/'.agents/plugins/marketplace.json',root/'.cursor-plugin/marketplace.json'):
         data=json.loads(market.read_text())
         assert data['plugins'][0]['name']=='strive'
         assert (root/'plugins/strive').is_dir()
+    cursor=json.loads((bundled/'.cursor-plugin/plugin.json').read_text())
+    assert (bundled/cursor['logo']).is_file()
 
 
 def test_public_zip_runtime_and_version_match_marketplace_package():
