@@ -14,5 +14,6 @@ assert.deepEqual((await providers(true,{email:true})).providers,['github','email
 assert.match((await providers(true,{email:true})).label,/email/);
 assert.deepEqual((await providers(true,{email:false})).providers,['github']);
 assert.deepEqual((await providers(true,{email:true},true)).providers,['github']);
-assert.deepEqual((await providers(true,{email:true,twitter:true})).providers,['github','x','email']);
+assert.deepEqual((await providers(true,{email:true,twitter:true})).providers,['github','twitter','email']);
+assert.deepEqual((await providers(true,{email:true,x:true})).providers,['github','x','email']);
 console.log('PASS: email requires explicit delivery readiness and live provider enablement; failures do not advertise it');
