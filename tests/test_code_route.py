@@ -30,17 +30,7 @@ def render_card(run: dict) -> str:
     script = r"""
 const fs=require('fs'),vm=require('vm');
 const root=process.argv[1];
-const html=fs.readFileSync(root+'/site/index.html','utf8');
-const start=html.indexOf('function connectWrapperName(');
-const end=html.indexOf('function wireKudos(');
-const fn=html.slice(start,end);
-const GrinderContract=require(root+'/site/run-contract.js');
-const context={GrinderContract,ME:null,
- esc:s=>String(s??'').replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])),
- fmtDur:m=>!m?'-':(m>=60?`${Math.floor(m/60)}h ${m%60}m`:`${m}m`),
- runAttribution:()=>({handle:'sample',name:'Sample',link:null}),avatar:()=>'',safeOutputUrl:v=>v||null,
- ackPickerHtml:()=>'',suggestAckReasons:()=>[],fiveRow:()=>'',coachBlock:()=>''};
-vm.createContext(context);vm.runInContext(fn,context);
+const {ctx:context}=require(root+'/tests/site-card-context.cjs')(root);
 const run=JSON.parse(process.argv[2]);
 process.stdout.write(vm.runInContext('runCard('+JSON.stringify(run)+',false,0)',context));
 """
@@ -101,7 +91,9 @@ def test_fixture_card_renders_lanes_checkpoints_and_basis_in_accessible_text():
     assert "densest stretch" in text
     assert "handoffs carried the work" in text
     assert "code-route-insight" in text
-    assert "token" not in text.lower()
+    # Usage disclosure may name tokens, but this fixture supplies no token measurement.
+    assert "Unknown — not recorded" in text
+    assert "Recorded tokens" in text
     assert "cursor" in text and "claude-cli" in text and "codex" in text
     assert "grok-bot" in text
     assert "observed" in text.lower() and "absent" in text.lower()
@@ -110,7 +102,7 @@ def test_fixture_card_renders_lanes_checkpoints_and_basis_in_accessible_text():
     assert 'data-run-detail="1"' in html
     assert 'id="run-detail-r-code-route"' in html
     assert "code-route-stops" in html
-    assert html.index("Explore this run") < html.index("code-route-stops")
+    assert html.index("Receipts and measurements") < html.index("code-route-stops")
     assert "Receipts" in html
 
 
@@ -131,10 +123,12 @@ process.stdout.write(JSON.stringify({prefer,gap}));
         text=True,
     ).stdout
     data = json.loads(out)
-    assert data["prefer"] == [["Projects", "3"], ["Commits", "4"], ["Files", "41"]]
-    # Without a run row, fall back to measured stops from the drawn route, not a vanity total.
+    assert data["prefer"] == [["Commits", "4"], ["Projects", "3"], ["Files touched", "41"]]
+    # Without a run row, use recorded route facts, not an invented stop total.
     assert data["gap"][0] == ["Projects", "3"]
-    assert ["Measured stops", "6"] in data["gap"]
+    assert ["Commits", "1"] in data["gap"]
+    assert ["Files changed", "10"] in data["gap"]
+    assert not any(label=="Measured stops" for label, _ in data["gap"])
 
 
 def test_work_route_shapes_day_fix_and_agent():
@@ -490,7 +484,9 @@ def test_legacy_rhythm_and_ridge_cards_still_render():
             "trace_basis": "elapsed",
         }
     )
-    assert "run-signature" in rhythm and "Trace unavailable" not in rhythm
+    assert "Legacy rhythm" in rhythm
+    assert "Activity timing was not captured." in rhythm
+    assert "Tool calls / min" not in rhythm  # Unknown old basis cannot acquire a clock.
     ridge = [i % 5 for i in range(50)]
     workers = [0] * 50
     shaped = render_card(
@@ -506,4 +502,8 @@ def test_legacy_rhythm_and_ridge_cards_still_render():
             "ridge_wall_seconds": 600,
         }
     )
-    assert "ridge-wrap" in shaped
+    assert "post-trail" in shaped
+    assert "Tool calls / min" in shaped
+    assert shaped.count('class="activity-bar"') == 40
+    assert "12 seconds each" in shaped
+    assert "idle gaps compressed" in shaped
