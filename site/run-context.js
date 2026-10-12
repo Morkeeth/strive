@@ -45,7 +45,7 @@ function cardFacts(r){
 }
 // Three headline facts from the same run; elapsed span is never active time.
 const meanings={'Recorded tokens':'Text the model read and wrote.','Typed turns':'Messages you wrote.','Tool calls':'Actions the agent took.','Files touched':'Files the capture says it changed.','Commits':'Git commits recorded in this capture.','Est. dollars':'List-price cost of the recorded model usage.','Tool-active time · proxy':'Minutes with at least one recorded agent tool action.','Elapsed':'Time between the first and last captured event, including waiting.'};
-function headlineFacts(r){
+function headlineFacts(r,{preview=false}={}){
  const facts=cardFacts(r),known=label=>facts.find(row=>row[0]===label&&row[1]!=='Not recorded');
  const numeric=(label,value)=>count(value)?[label,value.toLocaleString('en-US'),meanings[label]]:null;
  const missing=label=>[label,'Not captured',meanings[label]+' This source did not record it.','missing'];
@@ -55,25 +55,25 @@ function headlineFacts(r){
  return [
   known('Recorded tokens')||numeric('Typed turns',r.prompts??r.turns_typed)||missing('Typed turns'),
   known('Est. dollars')||numeric('Tool calls',r.tool_calls??r.ridge_tool_calls)||missing('Tool calls'),
-  elapsed||numeric('Files touched',r.files_touched)||numeric('Commits',r.commits)||missing('Files touched')
+  elapsed||numeric('Files touched',r.files_touched)||((!preview||r.commits>0||r.repo_url)?numeric('Commits',r.commits):null)||missing('Files touched')
  ];
 }
 
-function headlineHtml(r,className='post-facts'){
- const rows=headlineFacts(r);
- const tokenNote=rows[0]?.[0]==='Typed turns'?`<p class="post-token-note">${r.capture_metadata?.basis==='cursor-model-info'?'Cursor does not record tokens':'This capture does not include tokens'}</p>`:'';
- if(rows.length===3)return `<dl class="${esc(className)}" aria-label="Recorded activity">${rows.map(([label,value,detail,state])=>`<div${state==='missing'?' class="post-fact-placeholder"':''}><dt><details class="metric-definition"><summary aria-label="What ${esc(label.replace(' · proxy',''))} means">${factLabel(label)}</summary><p>${esc(meanings[label]||detail)}</p></details></dt><dd title="${esc(meanings[label]||detail)}">${esc(value)}</dd></div>`).join('')}</dl>${tokenNote}`;
+function headlineHtml(r,className='post-facts',{preview=false}={}){
+ const rows=headlineFacts(r,{preview});
+ const tokenNote=!preview&&rows[0]?.[0]==='Typed turns'?`<p class="post-token-note">${r.capture_metadata?.basis==='cursor-model-info'?(preview?'This source does not record tokens':'Cursor does not record tokens'):'This capture does not include tokens'}</p>`:'';
+ if(rows.length===3)return `<dl class="${esc(className)}" aria-label="Recorded activity">${rows.map(([label,value,detail,state])=>`<div${state==='missing'?' class="post-fact-placeholder"':''}><dt>${preview?factLabel(label):`<details class="metric-definition"><summary aria-label="What ${esc(label.replace(' · proxy',''))} means">${factLabel(label)}</summary><p>${esc(meanings[label]||detail)}</p></details>`}</dt><dd title="${esc(meanings[label]||detail)}">${esc(value)}</dd></div>`).join('')}</dl>${tokenNote}`;
  let inconsistent=false;try{validate(r.capture_metadata)}catch{inconsistent=true}
  const placeholders=root.StrivePlaceholders||(typeof require==='function'?require('./run-placeholders.js'):null);
  return placeholders?.render('numbers',{compact:true,inconsistent,facts:rows,story:r.caption||r.title})||'';
 }
 function factLabel(label){return esc(label.replace(' · proxy',''))+(label==='Est. dollars'?'<sup aria-label="See measurement basis">*</sup>':'');}
-function cardSecondary(r,{commits=false}={}){
+function cardSecondary(r,{commits=false,preview=false}={}){
  const facts=cardFacts(r),model=facts.find(row=>row[0]==='Model');
  const harness=({codex:'Codex',claude:'Claude Code','claude code':'Claude Code',cursor:'Cursor','grok bot':'Grok Bot'})[String(r.harness||'').toLowerCase()]||r.harness||'Agent';
  const glyph=({Codex:'M5 8l5 4-5 4m8 0h6',Cursor:'M6 4l13 9-7 1-3 6z','Claude Code':'M12 3v18M3 12h18M5 5l14 14M5 19L19 5'})[harness]||'M5 5h14v14H5z';
  const mark=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${glyph}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
- return `<div class="run-agent-identity"><span class="harness-mark" aria-label="${esc(harness)}">${mark}</span><span class="harness-name">${esc(harness)}</span><span class="model-chip">${esc(model&&model[1]!=='Not recorded'?model[1]:'Model not captured')}</span>${commits&&count(r.commits)?`<span>${r.commits} ${r.commits===1?'commit':'commits'}</span>`:''}</div>`;
+ return `<div class="run-agent-identity"><span class="harness-mark" ${preview?'aria-hidden="true"':`aria-label="${esc(harness)}"`}>${mark}</span><span class="harness-name">${esc(harness)}</span><span class="${preview?'agent-fact':'model-chip'}">${esc(model&&model[1]!=='Not recorded'?model[1]:'Model not captured')}</span>${preview&&facts[0]?.[1]==='Not recorded'?'<span class="agent-fact preview-token-note">Tokens not recorded</span>':''}${commits&&count(r.commits)&&(!preview||r.commits>0||r.repo_url)?`<span${preview?' class="agent-fact"':''}>${r.commits} ${r.commits===1?'commit':'commits'}</span>`:''}</div>`;
 }
 function measurementNotes(r){
  let m=null;try{m=validate(r.capture_metadata)}catch{}
@@ -81,7 +81,7 @@ function measurementNotes(r){
  const facts=[...new Map([...cardFacts(r),...headlineFacts(r)].map(row=>[row[0],row])).values()];
  return [...facts.filter(row=>row[2]).map(([label,,detail])=>[label,detail]),...missing];
 }
-function measurementDetails(r){return `<details class="post-measurement-note"><summary>About these measurements</summary>${measurementNotes(r).map(([label,detail])=>`<p><strong>${esc(label)}.</strong> ${esc(detail)}</p>`).join('')}</details>`;}
+function measurementDetails(r,{preview=false}={}){const evidence=preview?(root.StriveEvidence||(typeof require==='function'?require('./run-evidence.js'):null)):null;return `<details class="post-measurement-note"><summary>About these measurements</summary>${evidence?`<p>${esc(evidence.basis(r).explanation)}</p>`:''}${measurementNotes(r).map(([label,detail])=>`<p><strong>${esc(label)}.</strong> ${esc(detail)}</p>`).join('')}</details>`;}
 function prepareForStorage(m){return estimates()?.prepare(m)||m;}
 function profileFacts(runs){
  const rows=[...new Map((runs||[]).map((r,i)=>[r.id||'row-'+i,r])).values()];

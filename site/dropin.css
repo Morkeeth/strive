@@ -208,3 +208,11 @@ html:has(.post-composer),body:has(.post-composer){overflow-x:clip}
 .post-flow-pane{padding-bottom:12px}
 .post-composer input,.post-composer textarea,.post-composer select{scroll-margin:140px 0}
 @media(max-width:700px){.post-composer{scroll-margin-top:66px}.post-flow-nav{top:56px;gap:6px}.post-flow-nav button{padding:7px 4px;gap:5px;font-size:12px}.post-flow-actions{bottom:calc(66px + env(safe-area-inset-bottom));padding:10px}.post-flow-actions .act{padding:10px 8px}}
+
+/* Preview has one clear next action, without an empty panel around it. */
+#post-pane-0>.post-flow-actions{background:transparent;border:0;box-shadow:none;padding:0;justify-content:stretch;margin-top:16px}
+#post-pane-0>.post-flow-actions .act{width:100%;justify-content:center}
+.post-composer .post-flow-nav{top:var(--post-bar-height,64px)}
+.fc-preview{overflow:clip}
+.fc-preview .fc-top{position:sticky;top:var(--import-header-offset,132px);z-index:11;background:var(--box);padding-bottom:8px;border-radius:12px 12px 0 0}
+.fc-preview .fc-who small{white-space:normal;overflow:visible}
