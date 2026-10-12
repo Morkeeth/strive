@@ -43,9 +43,9 @@ def test_migration_changes_no_policy_or_grant():
 
 
 def test_save_path_sends_the_ridge():
-    saved = INDEX[INDEX.index("003_ridge_persistence.sql") : INDEX.index("if(error&&error.code==='23505')")]
-    for field in FIELDS:
-        assert field + ":" in saved
+    # Exercise the same row builder used by preview and Save, including deselection.
+    script = "const R=require('./site/import-row.js');const source={ridge:Array(50).fill(2),worker_bins:Array(50).fill(1),commit_bins:[3,17],ridge_basis:'wall-time',ridge_wall_seconds:600,ridge_tool_calls:100};const opts={profileId:'owner',title:'Run',project:'project'};const row=R.build(source,opts);for(const field of "+repr(list(FIELDS))+" )if(JSON.stringify(row[field])!==JSON.stringify(source[field]))throw Error(field);const omitted=R.build(source,{...opts,metricChoices:{tool_calls:false}});for(const field of ['ridge','worker_bins','ridge_basis','ridge_wall_seconds','ridge_tool_calls'])if(field in omitted)throw Error('deselected '+field);"
+    subprocess.run(['node','-e',script],cwd=ROOT,check=True)
 
 
 def test_run_view_and_feed_read_every_column_back():
@@ -60,8 +60,5 @@ def test_public_preview_select_carries_the_ridge():
 
 
 def test_share_image_prefers_the_persisted_ridge():
-    assert "const ridgeSeries=run=>" in PREVIEW
-    assert "'Agent ridge'" in PREVIEW
-    assert "el('polygon'" in PREVIEW
-    # A run with no bins keeps the old polyline and its own label.
-    assert "'Session trace'" in PREVIEW
+    script = "const L=require('./site/link-preview-card.js');const ridge=Array(50).fill(2);if(JSON.stringify(L.series({ridge,rhythm:[1,4,2]}).values)!==JSON.stringify(ridge))throw Error('ridge lost');const old=L.series({rhythm:[1,4,2]});if(old.filled||old.values.length!==3)throw Error('legacy rhythm lost');if(L.series({ridge:null,rhythm:[0,0,0]}))throw Error('invented flat trace');"
+    subprocess.run(['node','-e',script],cwd=ROOT,check=True)

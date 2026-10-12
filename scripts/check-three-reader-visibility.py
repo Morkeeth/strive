@@ -98,7 +98,7 @@ def page_surface(context, base: str, run_id: str) -> dict:
     try:
         page.goto(base + "/?run=" + run_id, wait_until="networkidle")
         return page.evaluate(
-            "() => ({ridge: !!document.querySelector('svg.ridge'),"
+            "() => ({ridge: !!document.querySelector('.post-trail svg .activity-bar'),"
             " title: document.body.innerText.includes('TEST DATA close friends ridge')"
             "        || document.body.innerText.includes('TEST DATA public ridge'),"
             " caption: document.body.innerText.includes('TEST DATA private caption')})")
