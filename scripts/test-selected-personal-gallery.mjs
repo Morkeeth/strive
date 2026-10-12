@@ -12,11 +12,15 @@ for(const hasProject of [true,false]){
  await scope.StriveRunPhotos.mountCovers({client:null,root:scope.document});
  const figures=[...dom.window.document.querySelectorAll('.run-media-gallery > figure')];
  assert.equal(figures.length,hasProject?3:2);assert.equal(figures.at(-1).querySelector('img').alt,'Personal photo');
+ assert.equal(figures.at(-1).querySelector('figcaption'),null,'the selected candid has no invented visible caption');
+ if(hasProject)assert.equal(figures[1].querySelector('figcaption'),null,'an unlabelled project image has no generic Photo chip');
  if(hasProject)assert.equal(figures[0].querySelector('img').alt,'Result');else assert.match(figures[0].textContent,/TEST DATA authored project description/);
  assert.ok(!dom.window.document.body.innerHTML.includes(hidden.id));assert.ok(!dom.window.document.body.innerHTML.includes(hiddenProject.id),'feed excludes hidden project image');
  const page=new JSDOM(html({id:runId,title:'TEST DATA gallery',visibility:'public',photo_layout:'result',capture_metadata:full},{photos}));
  const publicFigures=[...page.window.document.querySelectorAll('.public-run-photo-grid>figure')];
  assert.equal(publicFigures.length,hasProject?3:2);assert.equal(publicFigures.at(-1).querySelector('img').alt,'Personal photo');
+ assert.equal(publicFigures.at(-1).querySelector('figcaption'),null,'the public candid has no generic Photo chip');
+ if(hasProject)assert.equal(publicFigures[1].querySelector('figcaption'),null,'the public project image has no generic Photo chip');
  if(hasProject)assert.equal(publicFigures[0].querySelector('img').alt,'Result');else assert.match(publicFigures[0].textContent,/TEST DATA\s*gallery/);
  assert.ok(!page.window.document.body.innerHTML.includes(hidden.id));
  // Existing saved cover/result behavior remains unchanged unless explicitly opting in with estimates.
