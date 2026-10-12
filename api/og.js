@@ -5,7 +5,7 @@ module.exports=async function handler(req,res){
  res.setHeader('X-Content-Type-Options','nosniff');
  res.setHeader('Cache-Control','private, no-store, max-age=0');
  try{
-  const {homeCard,readPublic,readPublicPhotos,readAvatar,privateCard,linkPreviewCard,photoCard,profileCard}=await import('../server/public-run.mjs');
+  const {homeCard,readPublic,readPublicPhotos,readAvatar,privateCard,linkPreviewCard,photoCard,profileCard,SHARE_IMAGE_CACHE}=await import('../server/public-run.mjs');
   const {readProfile,readProfileActivities,shareOrigin}=await import('../server/share-routes.mjs');
   const photoData=async(run,chosen,tileWidth)=>{try{
    let bytes=null;
@@ -78,8 +78,10 @@ module.exports=async function handler(req,res){
   }
   const {ImageResponse}=await import('@vercel/og');
   const image=new ImageResponse(tree,{width:1200,height:630});
+  const png=Buffer.from(await image.arrayBuffer());
   res.statusCode=200;
   res.setHeader('Content-Type','image/png');
-  res.end(Buffer.from(await image.arrayBuffer()));
+  res.setHeader('Cache-Control',SHARE_IMAGE_CACHE);
+  res.end(png);
  }catch(_){res.statusCode=503;res.setHeader('Content-Type','text/plain; charset=utf-8');res.end('Share image temporarily unavailable.');}
 };

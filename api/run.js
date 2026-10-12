@@ -1,13 +1,13 @@
 module.exports=async function handler(req,res){
  res.setHeader('Cache-Control','private, no-store, max-age=0');res.setHeader('X-Content-Type-Options','nosniff');
  try{
-  const {readPublic,readKudos,readPublicPhotos,readAvatar,html,card,privateCard,neutralHtml,validId}=await import('../server/public-run.mjs');
+  const {readPublic,readKudos,readPublicPhotos,readAvatar,html,card,privateCard,neutralHtml,validId,SHARE_IMAGE_CACHE}=await import('../server/public-run.mjs');
   const {readProfileActivities}=await import('../server/share-routes.mjs');
   const run=await readPublic(req.query.id);
   if(req.query.image==='1'){
    const {ImageResponse}=await import('@vercel/og');const avatar=run?await readAvatar(run):null;const image=new ImageResponse(run?card(run,{avatar}):privateCard(),{width:1200,height:630});
-   res.statusCode=200;
-   res.setHeader('Content-Type','image/png');res.end(Buffer.from(await image.arrayBuffer()));
+   const png=Buffer.from(await image.arrayBuffer());
+   res.statusCode=200;res.setHeader('Content-Type','image/png');res.setHeader('Cache-Control',SHARE_IMAGE_CACHE);res.end(png);
   }else if(!run&&validId(req.query.id)){
    // Missing and not public look the same on purpose: 200 and the neutral card, so a link in a
    // message unfurls a neutral image instead of nothing, and a tap lands on a way in.

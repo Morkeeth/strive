@@ -16,6 +16,10 @@ import Checkpoints from '../site/code-route-view.js';
 const config=runtimeConfig();
 const FAVOUR_SHOWCASE='599095f1-3b49-4c0e-b50c-13afd4ae369e';
 export const origin=config.ORIGIN;
+// Link previews fetch the image seconds after the page, and every fetch used to re-render it.
+// Five minutes at the CDN bounds how long a run made private can keep its old image there;
+// platforms that already unfurled it keep their own copy regardless.
+export const SHARE_IMAGE_CACHE='public, max-age=0, s-maxage=300, stale-while-revalidate=600';
 export const validId=id=>typeof id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const PUBLIC_RUN_FIELDS='id,profile_id,created_at,title,caption,photo_layout,story_result,story_next,feedback_question,output_url,repo_url,receipts,shipped,artifact_url,image_url,hero_visual,project,harness,model,capture_metadata,started_at,duration_s,wall_time_s,prompts,tool_calls,shell_calls,files_touched,artifacts_produced,commits,rhythm,route,trace_basis,measurement_revision,history_evidence,ridge,worker_bins,commit_bins,ridge_basis,ridge_wall_seconds,ridge_tool_calls,code_route,visibility,profiles!runs_profile_id_fkey(github_handle,handle,display_name,avatar_url)';
