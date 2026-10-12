@@ -94,7 +94,7 @@ def make_server(harness, root, site, candidates=None):
                     self.respond(f'<h1>Choose the part you worked on</h1><p>A sitting starts with a human turn and splits after a recorded gap of 30 minutes. Times include their UTC offset. Only your choice becomes a preview.</p><form method="post"><input type="hidden" name="token" value="{nonce}"><input type="hidden" name="session" value="{index}"><input type="hidden" name="project" value="{e(name,quote=True)}">{choices}<button>Prepare private preview</button></form>');return
                 sitting=int(form.get('sitting',['-1'])[0])
                 with plugin.connect(root) as db:
-                    with db: db.execute('insert or ignore into projects values(?,?,0)',(name,str(Path(selected['source']).parent)))
+                    plugin.register_capture_project(db,name,selected['source'])
                     captured=plugin.capture(db,root,name,kind,selected['source'],sitting)
                 packed=base64.urlsafe_b64encode(gzip.compress(plugin.encoded(captured['payload']).encode(),mtime=0)).decode().rstrip('=')
                 preview_url=site+'/#import=gz.'+packed

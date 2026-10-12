@@ -318,7 +318,7 @@ def capture_tool(name,args,root=None):
     project=plugin.label(args.get('project',''));root=plugin.root_path(root)
     from pathlib import Path
     with plugin.connect(root) as db:
-        with db:db.execute('insert or ignore into projects values(?,?,0)',(project,str(Path(row['source']).parent)))
+        plugin.register_capture_project(db,project,row['source'])
         result=plugin.capture(db,root,project,row['harness'],row['source'],sitting)
     payload=result['payload'];packed=base64.urlsafe_b64encode(gzip.compress(plugin.encoded(payload).encode(),mtime=0)).decode().rstrip('=')
     url='https://striverun.app/#import=gz.'+packed
