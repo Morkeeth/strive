@@ -182,6 +182,9 @@ def test_cursor_capture_joins_transcript_counts_to_database_clock(store, tmp_pat
         ]}}),
     ]))
     monkeypatch.setenv(cursor_tree.ENV_DB, str(store))
+    def no_copy(*args, **kwargs):
+        raise OSError('no free space: a capture must not copy the global store')
+    monkeypatch.setattr(cursor_tree.shutil, 'copyfile', no_copy)
     run = parse_cursor_session(str(transcript))
     assert run['ridge_basis'] == 'wall-time'
     assert run['ridge_wall_seconds'] == run['duration_s'] == 1800.0
@@ -195,3 +198,58 @@ def test_cursor_capture_joins_transcript_counts_to_database_clock(store, tmp_pat
     assert run['ridge_source'] == 'cursor-global-store'
     assert 'PRIVATE MESSAGE' not in json.dumps({
         key: value for key, value in run.items() if not key.startswith('private_')})
+
+
+def test_readonly_snapshot_sees_wal_and_rejects_writes(tmp_path):
+    store = tmp_path / 'space # unicode ü.vscdb'
+    writer = sqlite3.connect(store)
+    writer.execute('pragma journal_mode=wal')
+    writer.execute('create table cursorDiskKV (key text primary key, value blob)')
+    writer.execute("insert into cursorDiskKV values ('one','committed in WAL')")
+    writer.commit()
+    try:
+        assert Path(str(store) + '-wal').stat().st_size > 0
+        with cursor_tree.ReadOnlyDb(store) as reader:
+            assert reader.execute('select value from cursorDiskKV').fetchone()[0] == 'committed in WAL'
+            with pytest.raises(sqlite3.OperationalError):
+                reader.execute("insert into cursorDiskKV values ('forbidden','write')")
+            writer.execute("update cursorDiskKV set value='new commit'")
+            writer.commit()
+            assert reader.execute('select value from cursorDiskKV').fetchone()[0] == 'committed in WAL'
+        with cursor_tree.ReadOnlyDb(store) as reader:
+            assert reader.execute('select value from cursorDiskKV').fetchone()[0] == 'new commit'
+            assert reader.execute('select count(*) from cursorDiskKV').fetchone()[0] == 1
+    finally:
+        writer.close()
+
+
+def test_readonly_missing_store_is_not_created(tmp_path):
+    store = tmp_path / 'missing.vscdb'
+    with pytest.raises(FileNotFoundError):
+        with cursor_tree.ReadOnlyDb(store):
+            pass
+    assert not store.exists()
+
+
+def test_locked_global_store_keeps_jsonl_counts_and_names_fallback(store, tmp_path, monkeypatch):
+    from agentgrinder.ingest import parse_cursor_session
+    from agentgrinder import cursor_chats
+    folder = tmp_path / PARENT
+    folder.mkdir()
+    transcript = folder / 'session.jsonl'
+    transcript.write_text(json.dumps({'role':'user','message':{'content':'<user_query>test</user_query>'}})+'\n'+json.dumps({'role':'assistant','message':{'content':[
+        {'type':'tool_use','name':'Read','input':{'path':'private.txt'}},
+        {'type':'tool_use','name':'Shell','input':{'command':'echo test'}}]}})+'\n')
+    monkeypatch.setattr(cursor_chats, 'build_ridge', lambda *args: None)
+    writer = sqlite3.connect(store)
+    writer.execute('BEGIN EXCLUSIVE')
+    try:
+        run = parse_cursor_session(str(transcript), cursor_db=store)
+        assert run['tool_calls'] == 2
+        assert run['ridge_source'] == 'call-index'
+        assert run['ridge_basis'] == 'call-index'
+        assert run['ridge_tool_calls'] is None
+        assert run['cursor_store_status'] == 'busy-jsonl-fallback'
+    finally:
+        writer.rollback()
+        writer.close()

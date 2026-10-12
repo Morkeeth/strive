@@ -226,7 +226,9 @@ def capture(db, root, name, harness, source, sitting=-1, code_route=None, progre
         db.execute('insert into drafts values(?,?,?,?,?,?,?,?) on conflict(id) do update set source_hash=excluded.source_hash,payload=excluded.payload',
                    (key, name, harness, session, str(path), source_hash, run['started'], encoded(payload)))
     return {'draft': key, 'project': name, 'status': 'unchanged' if prior and prior['payload'] == encoded(payload) else 'captured',
-            'payload': payload, 'selection': selection, 'uploaded': 0}
+            'payload': payload, 'selection': selection, 'uploaded': 0,
+            'capture_note': ('Cursor store is busy. Preview uses transcript counts and call order; store timing is unavailable.'
+                             if run.get('cursor_store_status') == 'busy-jsonl-fallback' else None)}
 
 
 

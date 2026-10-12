@@ -68,6 +68,36 @@ def workspace_storage() -> Path:
     return Path(os.environ.get(ENV_WORKSPACE_STORAGE) or DEFAULT_WORKSPACE_STORAGE).expanduser()
 
 
+class ReadOnlyDb:
+    """Short read transaction on the live store, including committed WAL rows.
+
+    Do not use immutable: Cursor may still append to this database. mode=ro and
+    query_only prevent SQL writes; BEGIN keeps ridge and tree on one snapshot.
+    SQLite may use its normal WAL shared-memory sidecar. No full copy is made.
+    """
+
+    def __init__(self, source: Path):
+        self.source = Path(source)
+        self.conn: sqlite3.Connection | None = None
+
+    def __enter__(self) -> sqlite3.Connection:
+        if not self.source.is_file():
+            raise FileNotFoundError(ABSENT_MESSAGE.format(path=self.source))
+        self.conn = sqlite3.connect(self.source.resolve().as_uri() + '?mode=ro',
+                                    uri=True, timeout=0.25)
+        try:
+            self.conn.execute('PRAGMA query_only=ON')
+            self.conn.execute('BEGIN')
+        except BaseException:
+            self.conn.close()
+            raise
+        return self.conn
+
+    def __exit__(self, *exc) -> None:
+        if self.conn is not None:
+            self.conn.close()
+
+
 class CopiedDb:
     """Copy the store, then open the copy read-only. Cursor holds a lock on the live file."""
 
