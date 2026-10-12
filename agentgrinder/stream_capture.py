@@ -125,12 +125,12 @@ def prompt(row, harness, codex_events=False):
     return value if row.get('role') == 'user' and '<user_query>' in value else None
 
 
-def inspect_source(source, harness, gap=1800, _frozen=False):
+def inspect_source(source, harness, gap=1800, _frozen=False, progress=None):
     if harness not in ('claude', 'codex', 'cursor'): raise ValueError('This harness is not supported yet.')
     path = Path(source).expanduser().resolve(strict=True)
     if not _frozen:
         with frozen_source(path) as frozen:
-            info = inspect_source(frozen['path'], harness, gap, _frozen=True)
+            info = inspect_source(frozen['path'], harness, gap, _frozen=True, progress=progress)
             from .plugin import source_identity
             info.update({k:frozen[k] for k in ('source','sha256','bytes','signature')})
             info['session'] = source_identity((row for _, row, _ in records(frozen['path'])), harness, path)
@@ -145,9 +145,13 @@ def inspect_source(source, harness, gap=1800, _frozen=False):
     session = source_identity((row for _, row, _ in records(path)), harness, path)
     codex_events = harness == 'codex' and any(row.get('type') == 'event_msg' and isinstance(row.get('payload'), dict) and row['payload'].get('type') == 'user_message' for _, row, _ in records(path))
     groups = []
+    seen = 0
+    if progress: progress('reading', 0, 'records read')
     if harness == 'claude':
         events = []
         for _, row, _ in records(path):
+            seen += 1
+            if progress and seen % 256 == 0: progress('reading', seen, 'records read')
             at = stamp(row)
             if at is None: continue
             human = prompt(row, harness)
@@ -168,6 +172,8 @@ def inspect_source(source, harness, gap=1800, _frozen=False):
         from .ingest import _cursor_text
         current = None; last = None; idle = False
         for index, row, _ in records(path):
+            seen += 1
+            if progress and seen % 256 == 0: progress('reading', seen, 'records read')
             if harness == 'codex' and row.get('type') == 'session_meta': continue
             human = prompt(row,harness,codex_events)
             at = stamp(row) if harness == 'codex' else cursor_time(_cursor_text(row.get('message') or {}))
@@ -182,18 +188,19 @@ def inspect_source(source, harness, gap=1800, _frozen=False):
                 if at: current['end']=at.isoformat()
             if len(groups)>10000: raise ValueError('More than 10,000 sittings; select a smaller native export.')
         if current: groups.append(current)
+    if progress: progress('reading', seen, 'records read')
     if signature(path) != before: raise ValueError('The session changed while reading. Retry when its writer is idle.')
     for i, group in enumerate(groups): group['sitting']=i+1
     return dict(source=str(path),session=session,sha256=digest.hexdigest(),bytes=before[2],signature=before,sittings=groups)
 
 
 @contextmanager
-def selected_source(source, harness, sitting=-1, root=None):
+def selected_source(source, harness, sitting=-1, root=None, progress=None):
     original=Path(source).expanduser().resolve(strict=True)
     with frozen_source(original,root) as frozen:
         snapshot=frozen['path']; selected=snapshot.parent/original.name
         if selected==snapshot: selected=snapshot.parent/'selected.jsonl'
-        info=inspect_source(snapshot,harness,_frozen=True)
+        info=inspect_source(snapshot,harness,_frozen=True,progress=progress)
         info.update({k:frozen[k] for k in ('source','sha256','bytes','signature')})
         # Validate identity against the real path too, so subagent directories stay excluded.
         from .plugin import source_identity

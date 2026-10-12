@@ -107,6 +107,43 @@ class PickerTests(unittest.TestCase):
             self.assertEqual(again.status,200);self.assertIn('Open private preview',again.read().decode());self.assertEqual(len(calls),1)
         finally:plugin.capture=real;server.shutdown();server.server_close()
 
+    def test_loader_reports_real_progress_under_no_script_csp(self):
+        from agentgrinder import plugin
+        from unittest.mock import patch
+        release=threading.Event();seen=threading.Event();real=plugin.capture
+        def controlled(*args,**kwargs):
+            report=kwargs['progress']
+            def progress(stage,count=None,unit=None):
+                report(stage,count,unit)
+                if stage=='reading' and count is not None:
+                    seen.set();release.wait(10)
+            kwargs['progress']=progress
+            return real(*args,**kwargs)
+        server,url=make_server('codex',self.root/'state','https://striverun.app',[('codex',self.source)])
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        try:
+            with patch.object(plugin,'capture',controlled):
+                token=url.rsplit('/',1)[1];origin=url.rsplit('/',1)[0]
+                data=urlencode({'session':'0','project':'My project','token':token,'sitting':'1'}).encode()
+                response=urllib.request.urlopen(urllib.request.Request(url,data=data,headers={'Origin':origin}))
+                self.assertTrue(seen.is_set());self.assertEqual(response.status,202)
+                body=response.read().decode()
+                self.assertIn("default-src 'none'",response.headers['Content-Security-Policy'])
+                self.assertNotIn('script-src',response.headers['Content-Security-Policy'])
+                self.assertNotIn('<script',body)
+                for label in ('Finding the session','Reading turns','Counting tools','Building the preview','records read','seconds elapsed'):self.assertIn(label,body)
+                self.assertIn('Reading turns · In progress',body)
+                route=body.split('url=',1)[1].split('"',1)[0]
+                release.set()
+                import time
+                deadline=time.time()+10
+                while time.time()<deadline:
+                    finished=urllib.request.urlopen(origin+route).read().decode()
+                    if 'Open private preview' in finished:break
+                    time.sleep(.1)
+                self.assertIn('Open private preview',finished)
+        finally:release.set();server.shutdown();server.server_close();thread.join()
+
     def test_picker_names_existing_folder_instead_of_opaque_capture_error(self):
         server,url=make_server('codex',self.root/'state','https://striverun.app',[('codex',self.source)])
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
@@ -120,8 +157,13 @@ class PickerTests(unittest.TestCase):
             self.assertEqual(caught.exception.code,400)
             body=caught.exception.read().decode()
             self.assertIn('already registered as Night run',body)
-            self.assertIn('Use that project name in the picker',body)
+            self.assertIn('Continue with this name for the same session and sitting',body)
+            self.assertIn('<button>Continue as Night run</button>',body)
+            self.assertIn('name="project" value="Night run"',body)
             self.assertIn('Nothing was uploaded',body)
+            fields=dict((key,html.unescape(value)) for key,value in re.findall(r'name="([^" ]+)" value="([^"]*)"',body))
+            continued=urllib.request.urlopen(urllib.request.Request(url,data=urlencode(fields).encode(),headers={'Origin':origin})).read().decode()
+            self.assertIn('Open private preview',continued)
             self.assertIn('Open private preview',submit('Night run').read().decode())
         finally:server.shutdown();server.server_close();thread.join()
 

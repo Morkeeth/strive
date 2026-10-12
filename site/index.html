@@ -2535,7 +2535,10 @@ function restoreImport(){
   try{ sessionStorage.removeItem(IMPORT_STASH); }catch(_){}
 }
 
-async function decodeImportPayload(payload){
+async function decodeImportPayload(payload,onProgress=()=>{}){
+  onProgress('Reading preview data');
+  // Yield before base64/JSON work so the loader can paint for large previews.
+  await new Promise(resolve=>window.setTimeout(resolve,0));
   if(payload.startsWith('gz.')){
     if(typeof DecompressionStream!=='function'){
       const error=new Error('This compressed import needs a browser with built-in gzip support. Update the browser, or use the local card while keeping the selected session available.');
@@ -2544,8 +2547,12 @@ async function decodeImportPayload(payload){
     const encoded=payload.slice(3).replace(/-/g,'+').replace(/_/g,'/');
     const padded=encoded+'='.repeat((4-encoded.length%4)%4);
     const bytes=Uint8Array.from(atob(padded),character=>character.charCodeAt(0));
+    onProgress('Unpacking preview');
     const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-    return JSON.parse(await new Response(stream).text());
+    const decoded=await new Response(stream).text();
+    onProgress('Reading run fields');
+    await new Promise(resolve=>window.setTimeout(resolve,0));
+    return JSON.parse(decoded);
   }
   return JSON.parse(atob(decodeURIComponent(payload)));
 }
@@ -2555,9 +2562,12 @@ async function importRun(){
   const m=location.hash.match(/import=([^&]+)/); if(!m) return false;
   const current=()=>generation===RUN_VIEW_GENERATION&&authGeneration===AUTH_GENERATION&&location.hash.match(/import=([^&]+)/)?.[1]===m[1];
   const draftKey='ag_import_edits:'+m[1];
-  $('app').innerHTML=skeletonCard();
+  $('app').innerHTML='<section class="card import-loader" role="status" aria-live="polite"><span class="import-spinner" aria-hidden="true"></span><h2>Preparing your preview</h2><p data-import-stage>Reading preview data</p><p data-import-elapsed>0 seconds elapsed</p><p>Nothing is saved online yet.</p></section>';
+  const loader=$('app').querySelector('.import-loader'),began=Date.now();
+  const timer=window.setInterval(()=>{if(!current()||!loader.isConnected){window.clearInterval(timer);return;}loader.querySelector('[data-import-elapsed]').textContent=Math.floor((Date.now()-began)/1000)+' seconds elapsed';},1000);
+  const progress=stage=>{if(current()&&loader.isConnected)loader.querySelector('[data-import-stage]').textContent=stage;};
   try{document.title='Preview a run · __BRAND__'}catch(_){}
-  let run; try{ run=await decodeImportPayload(m[1]); }catch(error){ if(!current())return true; frame(typeof railHtml==='function'?railHtml(null):null,null); $('app').innerHTML='<div class="card"><h2>This import link could not be read</h2><p>'+esc(error.importCompatibility?error.message:'The session data on this link could not be read, usually because the address was cut when it was copied. Nothing was posted. Import the session again to open a fresh preview.')+'</p><p><a href="/?post">How to import a session</a></p></div>'; return true; }
+  let run; try{ run=await decodeImportPayload(m[1],progress); }catch(error){ if(!current())return true; frame(typeof railHtml==='function'?railHtml(null):null,null); $('app').innerHTML='<div class="card"><h2>This import link could not be read</h2><p>'+esc(error.importCompatibility?error.message:'The session data on this link could not be read, usually because the address was cut when it was copied. Nothing was posted. Import the session again to open a fresh preview.')+'</p><p><a href="/?post">How to import a session</a></p></div>'; return true; }finally{window.clearInterval(timer);}
   if(!current())return true;
   try{ GrinderContract.validate(run); }
   catch(error){ frame(typeof railHtml==='function'?railHtml(null):null,null); $('app').innerHTML='<div class="card"><h2>This session could not be imported</h2><p>'+esc(error.message)+'</p></div>'; return true; }

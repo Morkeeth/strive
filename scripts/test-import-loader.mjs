@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {JSDOM} from 'jsdom';
+const source=fs.readFileSync('site/index.html','utf8');
+const dom=new JSDOM('<main id="app"></main>',{url:'https://striverun.app/#import=test'}),w=dom.window;
+let resolve;const pending=new Promise(ok=>resolve=ok);
+const ctx={window:w,document:w.document,location:w.location,Date,RUN_VIEW_GENERATION:1,AUTH_GENERATION:1,
+ $:id=>w.document.getElementById(id),decodeImportPayload:()=>pending,esc:s=>String(s),frame(){},skeletonCard:()=>'<p>Loading</p>'};
+vm.createContext(ctx);
+const start=source.indexOf('async function importRun(){'),end=source.indexOf('  try{ GrinderContract.validate(run); }',start);
+vm.runInContext(source.slice(start,end)+'return run;}',ctx);
+const running=ctx.importRun();
+assert.match(w.document.body.textContent,/Preparing your preview/);
+assert.match(w.document.body.textContent,/Nothing is saved online yet/);
+await new Promise(r=>setTimeout(r,1100));
+assert.match(w.document.body.textContent,/1 seconds elapsed/);
+ctx.RUN_VIEW_GENERATION++;w.document.getElementById('app').innerHTML='<p>New page</p>';
+resolve({tool_calls:2});await running;
+await new Promise(r=>setTimeout(r,1100));assert.equal(w.document.body.textContent,'New page');
+vm.runInContext(source.slice(source.indexOf('async function decodeImportPayload('),source.indexOf('async function importRun(){')),ctx);
+ctx.atob=atob;let stages=[];
+const run=await ctx.decodeImportPayload(encodeURIComponent(btoa(JSON.stringify({tool_calls:2}))),x=>stages.push(x));
+assert.equal(run.tool_calls,2);assert.deepEqual(stages,['Reading preview data']);
+await assert.rejects(()=>ctx.decodeImportPayload('invalid!'));
+w.close();console.log('Real import loader shows elapsed time, preserves navigation and decodes/errors without a save');
