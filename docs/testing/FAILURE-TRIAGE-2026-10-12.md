@@ -40,7 +40,7 @@ These are real current behavior gaps, not evidence that one of the 103 old asser
 3. Repair capture/setup/version tests against the published command, selected session and actual package manifest.
 4. Replace brittle text/slice pins with current behavior checks; retain still-valid goals in mixed tests. A removed CSS selector is not permission to remove the privacy check in the same test.
 
-The existing tests still run unchanged. Follow-up fixes should show the relevant test fail for the intended behavior, then pass; a mass skip/xfail or blanket assertion rewrite is not a repair.
+At the inventory commit, the existing tests ran unchanged. Follow-up fixes should show the relevant test fail for the intended behavior, then pass; a mass skip/xfail or blanket assertion rewrite is not a repair.
 
 ## Each failure
 
@@ -149,3 +149,11 @@ The existing tests still run unchanged. Follow-up fixes should show the relevant
 | [tests/test_verified_per_turn.py::test_web_app_never_headlines_prompts](../../tests/test_verified_per_turn.py#L215) | fix | Old card hero/layout and legacy profile source fragments are pinned. Preserve authored work first and measured supporting figures; do not force the old one-count silhouette. |
 | [tests/test_x_signin.py::test_profile_shows_proved_links_only](../../tests/test_x_signin.py#L43) | fix | Provider loading/identity rendering moved or changed. Preserve effective provider gating and server-proved links using current auth/profile functions. |
 | [tests/test_x_signin.py::test_providers_are_read_from_auth_settings_at_load](../../tests/test_x_signin.py#L16) | fix | Provider loading/identity rendering moved or changed. Preserve effective provider gating and server-proved links using current auth/profile functions. |
+
+## Repair batch 1: shared card fixtures
+
+Ten `fix` failures now load the browser's current modules and real card composition through `tests/site-card-context.cjs`. The tree, Connect identity, continuation and Code Route checks still exercise recorded evidence and privacy. The fixture has no database client and cannot save. No test is skipped or marked expected to fail.
+
+The four affected files run 28 tests: baseline 10 failed / 18 passed; repaired 28 passed. A temporary mutation of the real tree renderer made the 14-worker check fail (0 workers), then the source was restored and the checks passed. Old rhythm rows without a recognized clock remain labelled unavailable; timed ridge rows retain 40 positive bars, 12-second bins and compressed idle-gap disclosure. Route headline assertions use recorded commits/files/projects and preserve run-row precedence.
+
+The original 103-row inventory above is a pinned baseline, not a current failure count. This batch repairs ten of its 99 `fix` rows; the full suite still needs the remaining batches.

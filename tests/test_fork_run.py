@@ -44,15 +44,8 @@ def test_run_card_renders_continue_only_when_harness_link_exists():
     run_node(
         r"""
 const fs=require('fs'),vm=require('vm');
-const root=process.argv[1],html=fs.readFileSync(root+'/site/index.html','utf8');
-const start=html.indexOf('function safeOutputUrl('),end=html.indexOf('function wireKudos(');
-const context={
-  StriveFork:require(root+'/site/fork-run.js'),ME:null,GrinderContract:require(root+'/site/run-contract.js'),
-  esc:s=>String(s??'').replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])),
-  runAttribution:()=>({handle:'builder',name:'Builder',link:null,ghost:false}),
-  avatar:()=>'',fmtDur:m=>m+'m',ackPickerHtml:()=>'',suggestAckReasons:()=>[],fiveRow:()=>'',coachBlock:()=>''
-};
-vm.createContext(context);vm.runInContext(html.slice(start,end),context);
+const root=process.argv[1];
+const {ctx:context}=require(root+'/tests/site-card-context.cjs')(root);
 const base={id:'run-1',profile_id:'other',created_at:'2026-09-15T00:00:00Z',
   started_at:'2026-09-15T00:00:00Z',title:'Repair the feed',project:'STRIVE',
   caption:'Kept the public card focused.',output_url:'https://example.com/output'};

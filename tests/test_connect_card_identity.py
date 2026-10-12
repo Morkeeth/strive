@@ -23,16 +23,7 @@ def test_rendered_card_leads_with_harness_not_connect_name():
     script = r"""
 const fs=require('fs'),vm=require('vm');
 const root=process.argv[1];
-const html=fs.readFileSync(root+'/site/index.html','utf8');
-const start=html.indexOf('function connectWrapperName');
-const end=html.indexOf('function wireKudos(');
-const fn=html.slice(start,end);
-const context={GrinderContract:require(root+'/site/run-contract.js'),ME:null,
- esc:s=>String(s??'').replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])),
- fmtDur:m=>!m?'-':(m>=60?`${Math.floor(m/60)}h ${m%60}m`:`${m}m`),
- runAttribution:()=>({handle:'sample',name:'Sample',link:null}),avatar:()=>'',safeOutputUrl:v=>v||null,
- ackPickerHtml:()=>'',suggestAckReasons:()=>[],fiveRow:()=>'',coachBlock:()=>''};
-vm.createContext(context);vm.runInContext(fn,context);
+const {ctx:context}=require(root+'/tests/site-card-context.cjs')(root);
 const base={id:'r1',profile_id:'p1',created_at:'2026-09-19T00:00:00Z',title:'Private Connect upload',
  started_at:'2026-09-19T00:00:00Z',duration_s:60,prompts:1,tool_calls:3,harness:'Grok Bot',
  agent_name:'Connect',source_actor_id:'11111111-1111-1111-1111-111111111111'};

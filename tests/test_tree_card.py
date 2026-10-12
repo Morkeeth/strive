@@ -12,14 +12,7 @@ SAMPLE = json.loads((ROOT / 'samples/tree-sample.json').read_text())
 RENDER = r'''
 const fs=require('fs'),vm=require('vm');
 const root=process.argv[1],sample=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
-const html=fs.readFileSync(root+'/site/index.html','utf8');
-const cardFn=html.slice(html.indexOf('function connectWrapperName('),html.indexOf('function wireKudos('));
-const context={GrinderContract:require(root+'/site/run-contract.js'),ME:null,
- esc:s=>String(s??'').replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])),
- fmtDur:m=>!m?'-':(m>=60?`${Math.floor(m/60)}h ${m%60}m`:`${m}m`),
- runAttribution:()=>({handle:'sample',name:'Sample',link:null}),avatar:()=>'',safeOutputUrl:()=>null,
- ackPickerHtml:()=>'',suggestAckReasons:()=>[],fiveRow:()=>'',coachBlock:()=>''};
-vm.createContext(context);vm.runInContext(cardFn,context);
+const {ctx:context}=require(root+'/tests/site-card-context.cjs')(root);
 const base={id:'r1',profile_id:'p1',created_at:'2026-09-14T00:00:00Z',title:'Plain run',started_at:'2026-09-14T00:00:00Z',duration_s:600,prompts:3};
 const plain=vm.runInContext('runCard('+JSON.stringify(base)+',false,0)',context);
 const withTree=vm.runInContext('runCard('+JSON.stringify({...base,tree:sample.tree})+',false,0)',context);
@@ -40,9 +33,11 @@ def test_card_without_tree_is_unchanged():
     out = render()
     assert 'class="tree"' not in out['plain']
     assert 'tree-' not in out['plain']
-    # the tree is the only difference between the two renders
-    assert out['withTree'].replace(out['withTree'][out['withTree'].index('<section class="tree"'):out['withTree'].index('</section>') + len('</section>')], '').replace('\n    \n', '\n') \
-        == out['plain'].replace('\n    \n', '\n')
+    # Remove the complete tree node, not the first unrelated closing section.
+    script = "const {JSDOM}=require('jsdom');const x=JSON.parse(process.argv[1]);const normal=s=>new JSDOM(s).window.document.body;const a=normal(x.withTree),b=normal(x.plain);a.querySelector('section.tree').remove();const compact=n=>n.outerHTML.replace(/>\\s+</g,'><');process.stdout.write(JSON.stringify({same:compact(a)===compact(b)}));"
+    compared = subprocess.check_output(['node', '-e', script, json.dumps(out)], cwd=ROOT, text=True)
+    assert json.loads(compared)['same'] is True
+
 
 
 def test_tree_renders_orchestrator_then_workers():
