@@ -15,13 +15,15 @@ export function contentSecurityPolicy(html,{supabaseOrigin}){
   return src;
  });
  const origin=new URL(supabaseOrigin).origin;
+ // The on-device link preview (sharing-link-image.js) compiles the resvg and yoga WebAssembly
+ // in dist/review-image-engine; yoga's bytes are fetched from a data: URL inside that bundle.
  return [
   "default-src 'self'",
-  ["script-src 'self'",...external,"'unsafe-hashes'",...ALLOWED_INLINE_HANDLERS.map(sha256),...inline].join(' '),
+  ["script-src 'self'",...external,"'wasm-unsafe-eval'","'unsafe-hashes'",...ALLOWED_INLINE_HANDLERS.map(sha256),...inline].join(' '),
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
-  `connect-src 'self' ${origin}`,
+  `connect-src 'self' data: ${origin}`,
   "frame-src 'none'",
   "worker-src 'none'",
   "object-src 'none'",

@@ -16,7 +16,9 @@ assert.ok(inline.length>=2,'the app keeps its inline scripts');
 for(const body of inline)assert.ok(scriptSrc.includes(sha(body)),'every inline script is hashed');
 assert.doesNotMatch(scriptSrc,/'unsafe-inline'|'unsafe-eval'|https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2(?:[ ;]|$)/);
 assert.match(scriptSrc,/ https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2\.\d+\.\d+\/dist\/umd\/supabase\.js /,'only the exact pinned SDK file');
-assert.match(policy,/connect-src 'self' https:\/\/example\.supabase\.co;/);
+// WebAssembly may compile for the on-device link preview; JavaScript eval stays refused.
+assert.ok(scriptSrc.split(' ').includes("'wasm-unsafe-eval'"),'the link preview engine can compile its WebAssembly');
+assert.match(policy,/connect-src 'self' data: https:\/\/example\.supabase\.co;/);
 for(const d of ["object-src 'none'","base-uri 'none'","frame-src 'none'","form-action 'self'"])assert.ok(policy.includes(d),d);
 
 // The meta tag is the first element after the charset, before any script runs.
@@ -46,4 +48,4 @@ const headers=JSON.parse(readFileSync(new URL('../vercel.json',import.meta.url))
 const header=key=>headers.find(h=>h.key===key)?.value;
 assert.equal(header('X-Frame-Options'),'DENY');
 assert.equal(header('Content-Security-Policy'),"frame-ancestors 'none'");
-console.log('PASS: hashed inline scripts, pinned SDK with integrity, no inline handlers, framing refused');
+console.log('PASS: hashed inline scripts, pinned SDK with integrity, WebAssembly without eval, no inline handlers, framing refused');
