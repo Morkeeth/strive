@@ -1,5 +1,6 @@
 """Friends / people lane contracts — presentation, empty states, no invented ownership."""
 from pathlib import Path
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 PEOPLE = (ROOT / "site" / "people.js").read_text()
@@ -26,8 +27,72 @@ def test_people_module_owns_lookup_and_shareable_profile():
     assert "Find friends on GitHub" in PEOPLE
     assert 'fetch("/api/github-friends"' in PEOPLE
     assert "Authorization: `Bearer ${token}`" in PEOPLE
-    assert "never follows anyone automatically" in PEOPLE
-    assert "X friend matching is unavailable" in PEOPLE
+    # b803b86 dropped the "never follows anyone automatically. X friend matching is unavailable."
+    # sentence for "You choose whom to follow." Run the real page and prove the boundary instead.
+    subprocess.run(["node", "-e", r"""
+const fs=require('fs'),assert=require('node:assert/strict'),{JSDOM}=require('jsdom');
+const w=new JSDOM('<main id="app"></main>',{url:'https://strive.test/?people',runScripts:'outside-only'}).window;
+for(const f of ['run-links','auth','people'])w.eval(fs.readFileSync('site/'+f+'.js','utf8'));
+const doc=w.document,OWNER='00000000-0000-4000-8000-0000000000a1';
+const friends=[{id:'00000000-0000-4000-8000-0000000000b2',handle:'bea',display_name:'TEST DATA Bea'},{id:'00000000-0000-4000-8000-0000000000c3',handle:'cy',display_name:'TEST DATA Cy'}];
+const tick=()=>new Promise(r=>setTimeout(r,30));
+async function page({me,token='TEST-DATA-token',payload={scope:'public_github_following',people:friends,scanned:7,truncated:false}}){
+ doc.getElementById('app').innerHTML='';
+ const db=[],fetches=[],offered=[];
+ const client={auth:{getSession:async()=>({data:{session:token?{access_token:token}:null},error:null})},
+  rpc(name,args){db.push(['rpc',name,JSON.stringify(args)]);return Promise.resolve({data:[],error:null})},
+  from(table){let id=null;const q=new Proxy({},{get(_,m){
+   if(m==='then')return(res,rej)=>Promise.resolve({data:table==='profiles'?friends.filter(f=>f.id===id):[],error:null}).then(res,rej);
+   return(...a)=>{db.push([table,m]);if(m==='eq'&&a[0]==='id')id=a[1];return q}}});return q}};
+ w.fetch=async(url,options)=>{fetches.push([url,JSON.stringify(options)]);return{ok:true,json:async()=>payload}};
+ const people=w.GrinderPeople({client,me:()=>me,app:()=>doc.getElementById('app'),frame(){},status(){},
+  social:{followControl:async(person,slot)=>{offered.push(person.handle);slot.innerHTML='<button class="probe-follow">Follow</button>'}}});
+ await people.discover('');
+ return{db,fetches,offered};
+}
+const writes=db=>db.filter(([table,method])=>['insert','upsert','update','delete'].includes(method)||table==='rpc'&&!/^grinder_(find_people|recent_builders)$/.test(method));
+(async()=>{
+ // Signed in with a linked GitHub account: nothing is looked up on GitHub until the button is pressed.
+ let got=await page({me:{id:OWNER,handle:'ada',github_handle:'ada-gh'}});
+ assert.equal(doc.querySelector('.head h2').textContent,'Find people');
+ assert.equal(doc.querySelector('.people-search-panel summary').textContent,'Search by STRIVE username');
+ assert.equal(doc.querySelector('.people-networks p').textContent,'Check for verified STRIVE accounts among your GitHub connections. You choose whom to follow.');
+ assert.equal(got.fetches.length,0);
+ assert.equal(got.db.filter(c=>c[0]==='rpc').map(c=>c[1]).join(),'grinder_recent_builders');
+ const button=doc.getElementById('people-github-friends');
+ assert.equal(button.textContent,'Find friends on GitHub');
+ button.click();await tick();
+ // The lookup is authenticated with this session's token and reads; it never writes a follow.
+ assert.deepEqual(got.fetches,[['/api/github-friends',JSON.stringify({headers:{Authorization:'Bearer TEST-DATA-token'}})]]);
+ const cards=[...doc.querySelectorAll('#people-network-result .people-card, #people-network-result article')];
+ assert.equal(doc.querySelector('#people-network-result .head .meta').textContent,'2');
+ assert.deepEqual(got.offered,['bea','cy']);  // each match gets a follow control to press
+ assert.equal(doc.querySelectorAll('#people-network-result .probe-follow').length,2);
+ assert.deepEqual(writes(got.db),[]);
+ assert.equal(got.db.filter(c=>c[0]==='grinder_follows').every(c=>['select','eq','order','limit'].includes(c[1])),true);
+ assert.ok(cards.length>=2);
+ // X friend matching is not offered at all, so nothing needs to call it unavailable.
+ assert.equal([...doc.querySelectorAll('button,a')].some(el=>/\bX\b|twitter/i.test(el.textContent)),false);
+ // An unexpected scope from the endpoint is refused, not rendered as friends.
+ got=await page({me:{id:OWNER,handle:'ada',github_handle:'ada-gh'},payload:{scope:'everyone',people:friends}});
+ doc.getElementById('people-github-friends').click();await tick();
+ assert.match(doc.getElementById('people-network-result').textContent,/GitHub friends could not load/);
+ assert.deepEqual(got.offered,[]);assert.deepEqual(writes(got.db),[]);
+ // No session token: no request leaves the page.
+ got=await page({me:{id:OWNER,handle:'ada',github_handle:'ada-gh'},token:null});
+ doc.getElementById('people-github-friends').click();await tick();
+ assert.equal(got.fetches.length,0);
+ assert.match(doc.getElementById('people-network-result').textContent,/Sign in again to check GitHub\./);
+ // No linked GitHub account, and signed out: there is no lookup button to press.
+ got=await page({me:{id:OWNER,handle:'ada'}});
+ assert.equal(doc.getElementById('people-github-friends'),null);
+ assert.equal(doc.querySelector('.people-networks .cta a').textContent,'Link GitHub to find friends');
+ got=await page({me:null});
+ assert.equal(doc.getElementById('people-github-friends'),null);
+ assert.equal(doc.getElementById('people-network-signin').textContent,'Sign in to find friends');
+ assert.equal(got.fetches.length,0);assert.deepEqual(writes(got.db),[]);
+})().catch(e=>{console.error(e);process.exitCode=1});
+"""], cwd=ROOT, check=True)
     assert "window.GrinderPeople" in PEOPLE
     assert "async function discover" in PEOPLE
     assert "async function profile" in PEOPLE

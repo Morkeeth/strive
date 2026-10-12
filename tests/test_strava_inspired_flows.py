@@ -1,4 +1,6 @@
 """The Strava-inspired pass stays inside STRIVE's response-led core loop."""
+import json
+import subprocess
 from pathlib import Path
 
 
@@ -6,6 +8,13 @@ ROOT = Path(__file__).resolve().parents[1]
 INDEX = (ROOT / "site" / "index.html").read_text()
 SOCIAL = (ROOT / "site" / "social.js").read_text()
 MAP = (ROOT / "docs" / "STRAVA-INSPIRED-FLOWS.md").read_text()
+
+
+def _profile_probe():
+    """Run the real profile view (site/index.html viewProfile) in jsdom for each kind of reader."""
+    out = subprocess.run(["node", "tests/fixtures/profile_view_probe.mjs"], cwd=ROOT, capture_output=True, text=True)
+    assert out.returncode == 0, (out.stdout + out.stderr)[-3000:]
+    return json.loads(out.stdout)
 
 
 def test_all_twelve_flows_are_mapped_with_lanes_and_boundaries():
@@ -55,9 +64,21 @@ def test_run_detail_promotes_audience_aware_next_action():
 
 def test_profile_and_response_return_are_people_first():
     profile = INDEX[INDEX.index("async function viewProfile(") : INDEX.index("function showSignIn(")]
-    assert profile.index("profileProjectsHtml(R)") < profile.index("Recent public runs")
+    # Projects are owner-aware (89fdb82) and the run list is headed Activities (f3b8d23).
+    assert profile.index("profileProjectsHtml(R,mine)") < profile.index("<h2>Activities</h2>")
+    seen = _profile_probe()
+    for reader in ("owner", "ownerPreview", "other", "anonymous"):
+        got = seen[reader]
+        # The person first, then their projects, then the runs.
+        assert got["name"] == "TEST DATA Ada", reader
+        assert got["headerBeforeProjects"] is True and got["projectsBeforeActivities"] is True, reader
+        # Editing is the owner's own view only; every other reader gets the follow control instead.
+        assert got["editButton"] is (reader == "owner") and got["editDialog"] is (reader == "owner"), reader
+        assert got["followSlot"] is (reader != "owner"), reader
     assert "Edit profile" in profile and "profile-edit-dialog" in profile
-    assert "Post a real run and share it with a friend" in SOCIAL
+    # eb4023e reworded the empty inbox and sends the owner to their runs instead of a new post.
+    assert "No responses yet. Share a public run with a friend to start a conversation." in SOCIAL
+    assert '<a class="act blue" href="/?mine">Open your runs</a><a class="act" href="/?people">Find people</a>' in SOCIAL
     assert "Open the exact conversation, then come back here" in SOCIAL
     assert "Post your next run" in SOCIAL
     assert "nobody is imported or followed automatically" in SOCIAL

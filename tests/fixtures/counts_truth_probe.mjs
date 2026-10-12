@@ -35,50 +35,74 @@ const fixture = {
   profiles: { handle: 'morkeeth' },
 };
 
+// Every surface that prints this run's tool-call total, read back as [surface, printed number].
+// The run recorded 0 on the transcript and 75 on its ridge: the contract (toolCallCount) says the
+// total is the ridge's count. A surface may leave the total out; it may not print another one.
+const total = GrinderContract.toolCallCount(fixture);
+assert.equal(total, ridgeSum);
+const printed = [];
+const read = (surface, markup, pattern) => {
+  const found = [...markup.matchAll(pattern)].map((m) => Number(m[1].replace(/,/g, '')));
+  for (const n of found) printed.push([surface, n]);
+  return found;
+};
+
 const page = html(fixture);
-// The page draws the feed card: tool calls lead as the one big number when nothing larger was
-// measured, else sit among the small figures. Either way it is the ridge's count, never 0 or 10.
-const toolCallsOnPage = n => new RegExp(`<span class="fc-n num">${n}</span><span class="fc-u">tool calls</span>|<dt>Tool calls</dt><dd class="num">${n}</dd>`);
-assert.match(page, toolCallsOnPage(ridgeSum));
+// The share page's own strip (server/public-run.mjs): the ridge's count, never 0 or the peak 10.
+assert.deepEqual(read('/r/ share-stats', page.slice(page.indexOf('<dl class="share-stats"'), page.indexOf('</dl>', page.indexOf('<dl class="share-stats"'))),
+  /<dt>Tool calls<\/dt><dd>([\d,]+)<\/dd>/g), [ridgeSum]);
+// "Recorded details and sources" on the same page (site/run-context.js headlineHtml).
+read('/r/ recorded details', page.slice(page.indexOf('<details class="share-extra"')),
+  /What Tool calls means">Tool calls<\/summary>.*?<\/dt><dd[^>]*>([\d,]+)<\/dd>/g);
 assert.doesNotMatch(page, /Code Route/);
-assert.doesNotMatch(page, toolCallsOnPage(0));
-assert.doesNotMatch(page, toolCallsOnPage(10));
 
+// The SPA strip is work facts since b803b86 (8 Oct 2026): it no longer carries a tool-call cell,
+// so it cannot disagree. Elapsed is the ridge's wall time.
 const strip = GrinderContract.heroStats(fixture);
-const toolCell = strip.find(([label]) => label === 'Tool calls');
-assert.ok(toolCell, 'SPA metric strip must show Tool calls');
-assert.equal(toolCell[1], String(ridgeSum));
-assert.equal(GrinderContract.toolCallCount(fixture), ridgeSum);
+assert.deepEqual(strip, [['Elapsed', '18m']]);
+read('heroStats', strip.filter(([label]) => /tool/i.test(label)).map(([, value]) => `<n>${value}</n>`).join(''), /<n>([\d,]+)<\/n>/g);
 
+// The real SPA run card (site/index.html runCard) over the real shared modules.
 const cardHtml = (() => {
   const source = fs.readFileSync(root + '/site/index.html', 'utf8');
-  const fn = source.slice(
-    source.indexOf('function connectWrapperName('),
-    source.indexOf('function wireKudos('),
-  );
+  const cut = (from, to) => source.slice(source.indexOf(from), source.indexOf(to, source.indexOf(from)));
   const context = {
-    GrinderContract,
-    ME: null,
+    URL, Date, GrinderContract, ME: null,
+    GrinderFeed: require('../../site/feed-card.js'),
+    StriveActivity: require('../../site/activity-order.js'),
+    StriveContext: require('../../site/run-context.js'),
+    StriveEvidence: require('../../site/run-evidence.js'),
+    StriveHistory: require('../../site/historical-import.js'),
+    StrivePost: require('../../site/activity-post.js'),
+    StriveLinks: require('../../site/run-links.js'),
+    StriveStory: require('../../site/run-story.js'),
     esc: (s) =>
       String(s ?? '').replace(
         /[<>&"']/g,
         (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]),
       ),
-    fmtDur: (m) => (!m ? '-' : m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`),
     runAttribution: () => ({ handle: 'morkeeth', name: 'morkeeth', link: null, ghost: false }),
     avatar: () => '',
-    safeOutputUrl: () => null,
-    ackPickerHtml: () => '',
-    suggestAckReasons: () => [],
-    fiveRow: () => '',
-    coachBlock: () => '',
+    coachModeBanner: () => '',
   };
   vm.createContext(context);
-  vm.runInContext(fn, context);
+  vm.runInContext(
+    cut('function fiveRow(r)', 'const pace=') +
+      cut('function coachBlock(r){', '// A repository link is an https address') +
+      cut('function connectWrapperName(', 'function wireKudos('),
+    context,
+  );
   return vm.runInContext('runCard(' + JSON.stringify(fixture) + ',false,0)', context);
 })();
-assert.match(cardHtml, new RegExp(`<strong class="num">${ridgeSum}</strong> Tool calls`));
-assert.doesNotMatch(cardHtml, /<strong class="num">0<\/strong> Tool calls/);
+const explore = cardHtml.slice(cardHtml.indexOf('<details class="ridge-more run-explore"'));
+const face = cardHtml.slice(0, cardHtml.indexOf('<details class="ridge-more run-explore"'));
+assert.ok(explore.startsWith('<details'), 'the run card keeps its receipts disclosure');
+// Explore, "Code activity": the ridge's count.
+assert.deepEqual(read('Explore code activity', explore, /<strong class="num">([\d,]+)<\/strong> Tool calls/g), [ridgeSum]);
+// Explore, "Recorded activity" (site/run-context.js metrics).
+read('Explore recorded activity', explore, /<summary>Tool requests: <strong>([\d,]+)<\/strong><\/summary>/g);
+// The card's face (site/activity-post.js trail).
+read('SPA card face', face, /([\d,]+) agent tool calls/g);
 assert.doesNotMatch(cardHtml, /Code Route/);
 
 const shareCtx = { window: { GrinderContract }, URL };
@@ -86,10 +110,9 @@ vm.runInNewContext(fs.readFileSync(root + '/site/sharing.js', 'utf8'), shareCtx)
 const facts = shareCtx.window.GrinderSharing.storyFacts(fixture);
 assert.equal(facts.code, `${ridgeSum} tool calls`);
 const shareStrip = shareCtx.window.GrinderSharing.metricStrip(fixture);
-assert.deepEqual(
-  shareStrip.find(([label]) => label === 'Tool calls'),
-  ['Tool calls', String(ridgeSum)],
-);
+// With the contract loaded, as it is in the browser, the share strip is the SPA strip: one source.
+assert.deepEqual(JSON.parse(JSON.stringify(shareStrip)), strip);
+read('share caption', `<n>${facts.code}</n>`, /<n>([\d,]+) tool calls<\/n>/g);
 
 const mapHtml = GrinderContract.ridge(fixture);
 assert.ok(mapHtml.includes('data-run-map'));
@@ -251,6 +274,10 @@ const withRoute = {
 };
 assert.match(html(withRoute), /Code Route/);
 assert.match(GrinderContract.codeRoute(withRoute), /Code Route/);
+
+// One source, one total. Nothing above may print the transcript's 0 or the peak slice's 10.
+const wrong = printed.filter(([, n]) => n !== ridgeSum);
+assert.deepEqual(wrong, [], `surfaces disagree with the run total ${ridgeSum}: ${JSON.stringify(wrong)}`);
 
 console.log(
   JSON.stringify({

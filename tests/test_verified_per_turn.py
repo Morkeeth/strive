@@ -71,14 +71,26 @@ def test_no_surface_points_a_stranger_at_a_project_only_the_author_can_run():
 
 
 def test_card_never_headlines_prompts():
-    """The local card is the feed card. Its one big number is the strongest count the run
-    measured (commits, files, tool calls, time), never the prompt count; prompts are a small figure.
-    Verified per turn stays the terminal's and the return view's headline (headline_of)."""
+    """The local card is the feed card. Since d442d80 (5 Oct 2026) it carries no metric hero: the
+    title leads and no count sits above it, so the prompt count cannot be the headline. The run's
+    leading figure is still the strongest count it measured (commits, files, tool calls, time),
+    read by the same rule from the same row, and printed first on the command line; prompts are
+    a small figure after it. Verified per turn stays the terminal's and the return view's headline
+    (headline_of)."""
+    from agentgrinder import feedcard
     run = json.load(open(os.path.join(os.path.dirname(__file__), "..", "samples", "sample_run.json")))
-    html = render_card(build_activity(run))
-    hero = re.search(r'<span class="fc-n num">([^<]*)</span><span class="fc-u">([^<]*)</span>', html)
-    assert hero and "prompt" not in hero.group(2)
-    assert '<dt>Turns</dt><dd class="num">47</dd>' in html
+    activity = build_activity(run)
+    html = render_card(activity)
+    article = html[html.index('<article class="card fc">'):html.index("</article>")]
+    assert not re.search(r'class="fc-(?:hero|numbers|n|u|stats)[ "]', article)
+    assert re.search(r'<h1 class="fc-title">(.*?)</h1>', article).group(1) == "sample-project: a two-hour probe"
+    assert "prompt" not in re.sub(r"<[^>]+>", " ", article).lower() and "47" not in re.sub(r"<[^>]+>", " ", article)
+    lead = feedcard.headline(activity.card_row)
+    assert lead == {"n": "3", "unit": "commits", "key": "commits"} and "prompt" not in lead["unit"]
+    assert feedcard.stats(activity.card_row, lead) == [("Time", "2h 20m"), ("Turns", 47), ("Tool calls", "213")]
+    assert feedcard.terminal_lines(activity.card_row)[2] == "\n  3 commits · Time 2h 20m · Turns 47 · Tool calls 213"
+    # A run that measured nothing but its prompts still gets no prompt headline.
+    assert feedcard.headline({"prompts": 47, "turns_typed": 47}) is None
     assert ">Distance<" not in html
 # ---- the claim rule (calibrated 3 Sep 2026, see tests/test_claim_rule.py) --------------
 
@@ -185,10 +197,22 @@ def test_grind_card_never_headlines_prompts(tmp_path):
     assert run["artifacts_produced"] == 1
     assert run["corrections"] is None and run["artifacts_promised"] is None and run["reach"] is None
 
+    from agentgrinder import feedcard
+    from agentgrinder.solocard import card_row
     html = render_solo_card(run)
-    hero = re.search(r'<span class="fc-n num">([^<]*)</span><span class="fc-u">([^<]*)</span>', html)
-    assert hero and "prompt" not in hero.group(2)
-    assert '<dt>Turns</dt><dd class="num">2</dd>' in html
+    # The grind card is the feed card: no metric hero since d442d80, so no prompt count on top.
+    article = html[html.index('<article class="card fc">'):html.index("</article>")]
+    assert not re.search(r'class="fc-(?:hero|numbers|n|u|stats)[ "]', article)
+    assert "prompt" not in re.sub(r"<[^>]+>", " ", article).lower()
+    # The same row on the command line: the measured count leads, typed turns are a small figure.
+    row = card_row(run)
+    lead = feedcard.headline(row)
+    assert lead == {"n": "1", "unit": "file changed", "key": "files"} and "prompt" not in lead["unit"]
+    assert feedcard.stats(row, lead) == [("Time", "5m"), ("Turns", 2), ("Tool calls", "2")]
+    assert feedcard.terminal_lines(row)[2] == "\n  1 file changed · Time 5m · Turns 2 · Tool calls 2"
+    # Under the card, the outcome is the lead line and the prompts follow it as its cost.
+    below = html[html.index("</article>"):]
+    assert below.index('<p class="lead">1 file changed in ') < below.index("<p>From <b>2</b> typed prompts in <b>5</b> minutes.</p>")
     # the h1 (the largest text on the card) does not open with the prompt count either
     h1 = re.search(r'<h1 class="fc-title">(.*?)<', html).group(1)
     assert not re.match(r"\d+ prompts?\b", h1), h1
@@ -212,20 +236,66 @@ def test_grind_card_with_no_claim_counts_prints_no_dash_and_no_zero(tmp_path):
     html = render_solo_card(run)
     card = re.sub(r"<[^>]+>", " ", html.split('<article class="card fc">')[1].split("</article>")[0])
     assert "—" not in card and "0.00" not in card and "Unknown" not in card
+WEB_CARD = r"""
+const fs=require('fs'),vm=require('vm'),{JSDOM}=require('jsdom');
+const s=fs.readFileSync('site/index.html','utf8');
+const cut=(from,to)=>s.slice(s.indexOf(from),s.indexOf(to,s.indexOf(from)));
+const ctx={URL,Date,ME:null,GrinderContract:require('./site/run-contract.js'),GrinderFeed:require('./site/feed-card.js'),
+ StriveActivity:require('./site/activity-order.js'),StriveContext:require('./site/run-context.js'),StriveEvidence:require('./site/run-evidence.js'),
+ StriveHistory:require('./site/historical-import.js'),StrivePost:require('./site/activity-post.js'),StriveLinks:require('./site/run-links.js'),
+ StriveStory:require('./site/run-story.js'),
+ esc:v=>String(v??'').replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])),
+ runAttribution:()=>({handle:'sample',name:'sample',link:null,ghost:false}),avatar:()=>'',coachModeBanner:()=>''};
+vm.createContext(ctx);
+// The real card, with the real ratio rule and the real measurement rows it draws in its details.
+vm.runInContext(cut('const VPT_TIP=','const pace=')+cut('function coachBlock(r){','// A repository link is an https address')+
+ cut('function connectWrapperName(','function wireKudos(')+';this.runCard=runCard;this.vpt=vpt;this.vptText=vptText;this.fiveRow=fiveRow;',ctx);
+const [full,partial]=JSON.parse(process.argv[1]);
+const facts=run=>{
+ const markup=ctx.runCard(run,false,0),at=markup.indexOf('<details class="ridge-more run-explore"');
+ const face=new JSDOM(markup.slice(0,at)).window.document,explore=new JSDOM(markup.slice(at)).window.document;
+ const text=n=>n?n.textContent.replace(/\s+/g,' ').trim():null;
+ return {markup,order:['<div class="title">','<dl class="run-metrics"','<p class="post-no-trace">','<details class="ridge-more run-explore"'].map(k=>markup.indexOf(k)),
+  title:text(face.querySelector('.title')),strip:[...face.querySelectorAll('dl.run-metrics .run-metric')].map(m=>[text(m.querySelector('dt')),text(m.querySelector('dd'))]),
+  faceText:text(face.body),summary:text(explore.querySelector('details.run-explore > summary')),
+  measured:[...explore.querySelectorAll('.run-measurements > details > summary')].map(text),
+  evidence:explore.querySelectorAll('details.run-explore details.run-evidence').length,five:ctx.fiveRow(run)};
+};
+process.stdout.write(JSON.stringify({full:facts(full),partial:facts(partial),
+ vpt:[ctx.vpt(full),ctx.vpt(partial),ctx.vpt({...full,claims_verified:null}),ctx.vpt({...full,artifacts_produced:null}),ctx.vpt({...full,prompts:0})],
+ vptText:[ctx.vptText(full),ctx.vptText(partial)]}));
+"""
+
+
 def test_web_app_never_headlines_prompts():
     src = open(os.path.join(REPO, "site", "index.html"), encoding="utf-8").read()
     # Posts lead with the builder's work. Counts remain supporting observations.
     assert "heroN:r.prompts" not in src
     assert "heroK:'prompts typed'" not in src and "heroK:'prompts'" not in src
-    card = src[src.index("function runCard("):src.index("function wireKudos(")]
-    assert card.index('<div class="title">') < card.index('${visual}')
-    assert 'metricStrip()' in card and '${metricStrip()}' in card
-    assert 'class="run-metrics"' in card
-    assert '<details class="run-evidence">' in card
-    assert 'class="run-metrics"' in card
-    assert 'run-rank' not in card
-    assert "Explore this run" in card and "fiveRow(r)" in card
-    assert "GrinderContract.heroStats" in card
+    full = {"id": "11111111-1111-1111-1111-111111111111", "title": "A two-hour probe", "visibility": "public",
+            "profile_id": "p1", "profiles": {"handle": "sample"}, "harness": "Claude Code", "prompts": 47,
+            "tool_calls": 213, "commits": 3, "files_touched": 9, "duration_s": 8400, "claims": 9,
+            "claims_verified": 6, "artifacts_produced": 4, "reach": 1, "reach_reason": "REACH SENTENCE"}
+    partial = {**full, "claims": None, "claims_verified": None, "artifacts_produced": None, "reach": None}
+    import subprocess
+    out = json.loads(subprocess.run(["node", "-e", WEB_CARD, json.dumps([full, partial])], cwd=REPO, check=True,
+                                    capture_output=True, text=True).stdout)
+    card = out["full"]
+    # The real run card: title, then the recorded-facts strip, then the small activity line, then
+    # the collapsed details. The strip is work (GrinderContract.heroStats); it has no prompt cell.
+    assert all(i >= 0 for i in card["order"]) and card["order"] == sorted(card["order"])
+    assert card["title"] == "A two-hour probe"
+    assert card["strip"] == [["Commits", "3"], ["Elapsed", "2h 20m"], ["Files touched", "9"]]
+    assert not re.search(r"prompt", card["faceText"], re.I) and "verified per turn" not in card["faceText"]
+    assert 'run-rank' not in card["markup"]
+    # Typed turns are a supporting observation, with the other measurements, behind the disclosure
+    # ("Explore this run" until 00bdaf8). Its source-and-limits block is there too.
+    assert card["summary"] == "Receipts and measurements" and card["evidence"] == 1
+    assert card["measured"] == ["Human messages: 47", "Tool requests: 213", "Files present after writes: 4",
+                                "Claims with matching evidence: 6 of 9"]
+    slice_ = src[src.index("function runCard("):src.index("function wireKudos(")]
+    assert slice_.index('<div class="title">') < slice_.index('${visual}')
+    assert "GrinderContract.heroStats" in slice_ and "fiveRow(r)," in slice_
     # Share export is exercised by check-moment-fixtures.py; its call signature
     # is not part of the card's headline contract.
     # Social profiles show public work and responses, not activity-as-quality rankings.
@@ -234,15 +304,21 @@ def test_web_app_never_headlines_prompts():
     assert "Followers-only runs stay off this profile" in prof
     assert "verified per turn" not in prof
     assert '<div class="k">prompts</div>' not in prof
-    # a missing part is a dash that names the missing fact, never a 0 and never a private project
-    assert "if(v==null||a==null||!p) return null;" in src
+    # a missing part is never a 0 and never a private project: the ratio is null (a dash), and the
+    # measurement rows (site/run-context.js metrics, ce9b610) draw only what the run recorded.
+    assert out["vpt"] == [(6 + 4) / 47, None, None, None, None] and out["vptText"] == ["0.21", "-"]
+    assert out["partial"]["measured"] == ["Human messages: 47", "Tool requests: 213"]
+    assert not re.search(r"<strong>(?:0|—|-)</strong>", out["partial"]["five"])
     assert "not measured yet: it needs every turn labelled as undoing the one before it" in src
     assert "Promised is not measured yet" in src
     five = src[src.index("const VPT_TIP="):src.index("const pace=")]   # the headline tip too
     for private in ("Transcripto", "repo E", "Helicon"):
-        assert private not in five, private
-    # the reach cell prints the sentence THIS run's probe wrote, when it carried one
-    assert "r.reach_reason||VPT_SRC.reach" in five
+        assert private not in five and private not in out["full"]["five"] and private not in card["markup"], private
+    # The reach cell left the web card with the five-row (ce9b610, 4 Oct 2026). Nothing stands in
+    # for it: no reach row and no invented sentence, whether or not the run carried one.
+    assert "r.reach_reason||VPT_SRC.reach" not in src
+    for run in (out["full"], out["partial"]):
+        assert not re.search(r"reach", run["five"], re.I) and "REACH SENTENCE" not in run["markup"]
 
 
 def test_profile_headlines_verified_per_turn_and_leaves_missing_runs_out():

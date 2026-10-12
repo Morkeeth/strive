@@ -79,15 +79,56 @@ def test_a_phone_is_sent_to_the_laptop_and_the_mac_paths_fold():
     # phone the one primary action sends this page there. Choose a file stays, as the secondary.
     phone = UI[UI.index("function isPhone()"):UI.index("function mount(options)")]
     assert '"(pointer: coarse)"' in phone and '"(hover: none)"' in phone and '!m("(any-pointer: fine)")' in phone
-    assert "Send this link to your laptop" in phone
-    assert "navigator.share" in phone and "navigator.clipboard.writeText(url)" in phone
-    assert 'choose.classList.remove("primary")' in phone
-    assert "where.open = false" in phone
-    # The paths are on Add a run / Connect, one per agent, since the home became the feed.
+    # The paths are on Add a run / Connect, one per agent, since the home became the feed. Since
+    # b803b86 the page hands them, and the drop zone, to the post flow (site/post-flow.js).
     html = (ROOT / "site/index.html").read_text()
-    connect = html[html.index("function connectBodyHtml(){"):]
-    assert "AGENT_FILES[0][1]" in connect and "${dropZoneHtml()}" in connect
+    connect = html[html.index("function connectBodyHtml(){"):html.index("function wireConnectCopies(")]
+    assert "dropHtml:dropZoneHtml()" in connect and "agentFiles:AGENT_FILES" in connect
+    # Draw that page with the shipped modules and mount the drop-in on a phone and on a laptop.
+    script = r"""
+const fs=require('fs'),vm=require('vm'),{JSDOM}=require('jsdom');
+const html=fs.readFileSync('site/index.html','utf8');
+const cut=(from,to)=>html.slice(html.indexOf(from),html.indexOf(to,html.indexOf(from)));
+const page=vm.runInNewContext(cut('function dropZoneHtml(){','// The newest public runs')+';({drop:dropZoneHtml(),files:AGENT_FILES})');
+const draw=async phone=>{
+ const w=new JSDOM('<title>Add a run</title><main id="app"></main>',{url:'https://strive.test/?post',runScripts:'outside-only'}).window;
+ w.matchMedia=q=>({matches:phone?(q==='(pointer: coarse)'||q==='(hover: none)'):q==='(any-pointer: fine)'});
+ const shared=[],copied=[];
+ Object.defineProperty(w.navigator,'share',{value:async data=>{shared.push(data)},configurable:true});
+ Object.defineProperty(w.navigator,'clipboard',{value:{writeText:async text=>{copied.push(text)}},configurable:true});
+ for(const file of ['post-flow','dropin-parse','dropin'])w.eval(fs.readFileSync('site/'+file+'.js','utf8'));
+ const d=w.document;
+ d.getElementById('app').innerHTML=w.StrivePostFlow.setupHtml({agentPrompt:'',capture:'',syncHtml:'',dropHtml:page.drop,agentFiles:page.files,agentCommands:{}});
+ w.GrinderDropinUI.mount({privateFirst:true});
+ const fold=d.querySelector('details.post-file-entry'),send=d.getElementById('drop-send'),choose=d.getElementById('select-export');
+ const seen={send:send&&{text:send.textContent,primary:send.classList.contains('primary'),afterZone:send.parentElement.previousElementSibling===d.getElementById('drop-zone')},
+  choosePrimary:choose.classList.contains('primary'),chooseText:choose.textContent,fileInput:!!d.getElementById('drop-file'),
+  foldOpen:fold.open,foldHoldsZone:fold.contains(d.getElementById('drop-zone')),
+  folders:[...fold.querySelectorAll('.post-source-folders code')].map(c=>c.textContent)};
+ if(send){send.click();await new Promise(r=>setTimeout(r,0));
+  // No share sheet (a desktop browser on a touch screen): the address is copied instead.
+  Object.defineProperty(w.navigator,'share',{value:undefined,configurable:true});
+  send.click();await new Promise(r=>setTimeout(r,0));seen.afterCopy=send.textContent;}
+ Object.assign(seen,{shared,copied});w.close();return seen;};
+(async()=>process.stdout.write(JSON.stringify({phone:await draw(true),laptop:await draw(false)})))().catch(e=>{console.error(e);process.exit(1)});
+"""
+    seen = json.loads(subprocess.check_output(["node", "-e", script], cwd=ROOT, text=True))
+    phone_page, laptop = seen["phone"], seen["laptop"]
+    # On a phone: one primary action, right after the zone, and Choose a file is demoted.
+    assert phone_page["send"] == {"text": "Send this link to your laptop", "primary": True, "afterZone": True}
+    assert phone_page["choosePrimary"] is False and phone_page["chooseText"] == "Choose session file"
+    assert phone_page["fileInput"] is True
     # The share sends the page address and nothing from any file.
+    assert phone_page["shared"] == [{"title": "Add a run", "url": "https://strive.test/?post"}]
+    assert phone_page["copied"] == ["https://strive.test/?post"] and phone_page["afterCopy"] == "Link copied"
+    # On a laptop nothing is sent anywhere and Choose a file is the primary action.
+    assert laptop["send"] is None and laptop["choosePrimary"] is True
+    assert laptop["shared"] == [] and laptop["copied"] == []
+    # The paths, one per agent, sit folded with the zone until asked for, on both. The landing's
+    # own fold (details.drop-where, which a phone closed) has not been drawn since d79fb3f.
+    for page in (phone_page, laptop):
+        assert page["foldOpen"] is False and page["foldHoldsZone"] is True
+        assert page["folders"] == ["~/.claude/projects/", "~/.cursor/projects/", "~/.codex/sessions/"]
     send = phone[phone.index("async function sendToLaptop"):phone.index("function phoneStage")]
     # The page the person is on, so Connect sends Connect and the landing sends the landing.
     assert 'const url = location.href;' in send and "run" not in send.replace("return", "")

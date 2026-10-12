@@ -30,9 +30,22 @@ assert.ok(page.includes('cursor') && page.includes('claude-cli') && page.include
 assert.ok(page.includes('absent') && page.includes('grok-bot'));
 assert.ok(page.includes('densest stretch'));
 assert.ok(page.includes('handoffs carried the work to mountain-of-helicon'));
-assert.ok(page.includes('Open builder profile') && page.includes('/?u=oscar'));
-assert.ok(page.includes('property="og:description"') && page.includes('densest stretch'));
-assert.ok(!/token/i.test(page));
+// The builder's name is the profile link, at the clean address (the "Open builder profile"
+// button and /?u= left with the share page redesign c7a0001 and clean links b401e46).
+assert.ok(page.includes('<div class="share-name"><a href="/oscar">oscar</a></div>'), 'page missing the builder profile link');
+assert.ok(!page.includes('/?u='), 'page still links a query-string profile');
+assert.equal(page.match(/<meta property="og:description" content="([^"]*)">/)[1], 'agentgrinder-public held the densest stretch (3 of 7 stops).');
+// A journey across projects, not a token total (5036a42). This run recorded no tokens: the face
+// of the page never mentions them, and the collapsed details say they are absent, with no number.
+const face = page.slice(page.indexOf('<body'), page.indexOf('<details class="share-extra">'));
+// Since the share page redesign (c7a0001) the route sits in "Recorded details and sources".
+const extra = page.slice(page.indexOf('<details class="share-extra">'));
+assert.ok(page.includes('<details class="share-extra">') && extra.includes('<section class="code-route"') && extra.includes('<h2>Code Route</h2>'), 'Code Route section missing from recorded details');
+assert.equal((extra.match(/<details class="code-route-point"/g) || []).length, 7, 'every checkpoint is inspectable');
+assert.ok(!/token/i.test(face), 'the face of the page mentions tokens');
+assert.ok(!/token/i.test(page.slice(0, page.indexOf('<style'))), 'the share tags mention tokens');
+assert.ok(page.includes('<p class="post-token-note">This capture does not include tokens</p>'));
+assert.ok(!/\d[\d,.]*\s*[kKmM]?\s*(?:recorded\s+)?tokens?\b/i.test(page.replace(/<style[\s\S]*?<\/style>/g, '')), 'page prints a token figure nobody recorded');
 
 const og = card(run);
 assert.equal(og.type, 'div');

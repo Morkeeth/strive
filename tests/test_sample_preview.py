@@ -2,6 +2,7 @@
 import base64
 import json
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -80,48 +81,61 @@ def test_unmarked_export_keeps_normal_save_flow(tmp_path):
     render_import(url, sample=False)
 
 
+PROBE = ROOT / 'tests/fixtures/import_flow_probe.mjs'
+
+
+def import_flow(url, **spec):
+    """Open the helper's URL in the shipped import preview (jsdom) and press Save once."""
+    out = subprocess.run(['node', str(PROBE), str(ROOT), url, json.dumps(spec)],
+                         cwd=ROOT, check=True, capture_output=True, text=True).stdout
+    return json.loads(out)
+
+
 def render_import(url, sample):
-    script = r'''
-const fs=require('fs'),vm=require('vm');
-const root=process.argv[1],url=new URL(process.argv[2]),sample=process.argv[3]==='true';
-const html=fs.readFileSync(root+'/site/index.html','utf8');
-const fn=html.slice(html.indexOf('async function decodeImportPayload('),html.indexOf('\nasync function viewShareRun('));
-const cardFn=html.slice(html.indexOf('function connectWrapperName('),html.indexOf('function wireKudos('));
-// runCard's ridge branch calls fiveRow and coachBlock. A Grok Bot payload now carries a
-// call-order ridge, so the vm needs those two helpers as the page defines them.
-const helper=name=>{const start=html.indexOf('function '+name+'(');return html.slice(start,html.indexOf('\n}\n',start)+3);};
-const constant=name=>{const start=html.indexOf('const '+name+'=');const line=html.indexOf('\n',start);const oneLine=html.slice(start,line);return oneLine.trimEnd().endsWith(';')?oneLine:html.slice(start,html.indexOf('\n};',start)+3);};
-const helpers=constant('cnt')+'\n'+constant('VPT_SRC')+'\n'+helper('fiveRow')+helper('coachBlock');
-const nodes={},events={};let signins=0;
-function $(id){return nodes[id]??=( {value:'',checked:false,disabled:false,innerHTML:'',addEventListener(type,fn){events[id+':'+type]=fn;}} );}
-const context={$: $,GrinderContract:require(root+'/site/run-contract.js'),GrinderFeed:require(root+'/site/feed-card.js'),location:url,ME:null,
- atob:s=>Buffer.from(s,'base64').toString('utf8'),frame:()=>{},esc:s=>String(s),
- sessionStorage:{getItem:()=>null,setItem:()=>{}},
- runAttribution:()=>({handle:'preview',name:'Preview',link:'/?u=preview'}),avatar:()=>'',safeOutputUrl:()=>null,
- status:()=>{},stashImport:()=>{},showSignIn:()=>{signins++}};
-vm.createContext(context);vm.runInContext(helpers+cardFn+fn,context);
-(async()=>{
-await vm.runInContext('importRun()',context);
-const preview=nodes['import-card-preview'].innerHTML;
-// The preview is the feed card in its unsaved form: nothing on it links anywhere.
-if(!preview.includes('<article class="card fc">')||preview.includes('href=')||preview.includes('<button')) throw Error('Preview has saved-run controls');
-if(preview.includes('Untitled run')||preview.includes('ACHIEVED')) throw Error('Preview shows a placeholder title');
-const saved=vm.runInContext("runCard({id:'real-run',profile_id:'real-author',created_at:'2026-09-14',title:'Real run'},false,0)",context);
-for(const text of ['XUDOS','Reply','Share','/?run=real-run'])if(!saved.includes(text))throw Error('Saved run lost '+text);
-// The rhythm trace carries the blue token inline. A ridge carries it through design.css
-// (.ridge-line stroke:var(--blue)), so a preview with a ridge is checked against that rule.
-const css=fs.readFileSync(root+'/site/feed.css','utf8');
-if(preview.includes('class="fc-line"')&&!/\.fc-line\{[^}]*stroke:var\(--blue\)/.test(css))throw Error('Preview trace lost blue token');
-const rendered=nodes.app.innerHTML;
-if(sample){
- if(!rendered.includes('Sample run preview')||!rendered.includes('not your activity')) throw Error('Sample provenance not visible');
- if(!/id="i_pub" disabled/.test(rendered)) throw Error('Sample save not disabled');
-}else if(/id="i_pub" disabled/.test(rendered)) throw Error('Real export save disabled');
- await events['i_pub:click']();
- if(signins!==(sample?0:1)) throw Error('Sample reached sign-in/save, or real path regressed');
-})().catch(error=>{console.error(error);process.exitCode=1;});
-'''
-    subprocess.run(['node', '-e', script, str(ROOT), url, str(sample).lower()], check=True)
+    seen = import_flow(url)
+    # The preview is the post card in its unsaved form: nothing on it links anywhere or acts.
+    preview = seen['previewHtml']
+    assert '<article class="card ' in preview and 'data-review-card="true"' in preview
+    assert seen['previewLinks'] == 0, 'Preview has saved-run controls'
+    assert 'Untitled run' not in seen['previewText'] and 'ACHIEVED' not in seen['previewText']
+    # Control: the same module gives a saved run its XUDOS button and its links.
+    saved = seen['savedActions']
+    for text in ('<button class="fc-act kudo"', 'XUDOS', 'Comment', 'Share', '/?run=real-run'):
+        assert text in saved, 'Saved run lost ' + text
+    assert '<button' not in seen['previewActions'] and 'href=' not in seen['previewActions']
+    # The rhythm trace carries the blue token through feed.css when the preview draws one.
+    css = (ROOT / 'site/feed.css').read_text()
+    if 'class="fc-line"' in preview:
+        assert re.search(r'\.fc-line\{[^}]*stroke:var\(--blue\)', css), 'Preview trace lost blue token'
+    assert seen['steps'] == ['1Preview', '2Your story', '3Audience']
+    if not sample:
+        assert seen['heading'] == 'Your imported session' and seen['meta'] == 'Not saved yet'
+        assert seen['note'] is None
+        assert seen['pubDisabled'] is False, 'Real export save disabled'
+        # Signed out, Save keeps the import and asks for sign-in. Nothing is written.
+        assert seen['signins'] == 1 and len(seen['stashed']) == 1
+        assert seen['inserts'] == [] and seen['updates'] == []
+        # Signed in, the same click writes exactly one private run carrying no sample mark.
+        owner = import_flow(url, me=True)
+        assert owner['signins'] == 0
+        assert [(i['table'], i['row']['visibility'], i['row']['profile_id']) for i in owner['inserts']] == [('runs', 'private', 'owner')]
+        assert 'is_sample' not in owner['inserts'][0]['row']
+        assert owner['viewed'] == ['saved-run'] and owner['location'] == '/?run=saved-run'
+        return
+    assert seen['heading'] == 'Sample preview', 'Sample provenance not visible'
+    assert seen['meta'] == 'Example data · not your activity'
+    assert 'cannot be saved or posted' in seen['note']
+    assert seen['pubDisabled'] is True and seen['pubLabel'] == 'Sample - preview only', 'Sample save not disabled'
+    # The denied save is denied twice: the button is disabled, and the handler refuses a sample
+    # on its own. unlock removes the disabled attribute, so the click reaches the handler.
+    # Signed out it must not ask for sign-in; signed in it must not read or write a run.
+    for spec in ({}, {'unlock': True}, {'me': True}, {'me': True, 'unlock': True}):
+        denied = import_flow(url, **spec)
+        assert denied['signins'] == 0 and denied['stashed'] == [], 'Sample reached sign-in'
+        assert denied['lookups'] == [] and denied['inserts'] == [] and denied['updates'] == [], 'Sample reached save'
+        assert denied['photoDraftSaves'] == 0 and denied['fairConfirms'] == [] and denied['viewed'] == []
+        assert denied['statuses'] == [{'text': 'Samples are preview-only. Capture your own session to save a run.', 'bad': True}]
+        assert denied['location'].startswith('/#import=')
 
 
 def test_captured_sample_draft_keeps_provenance_on_public_export(tmp_path):

@@ -54,8 +54,44 @@ def test_the_preview_offers_the_project_as_a_field_prefilled_from_capture():
     assert "'i_project'" in INDEX.split("const editFields=")[1].split("]")[0]
 
 
+def _import_flow(run, **spec) -> dict:
+    """Open this capture in the shipped import preview (jsdom), signed in, and press Save."""
+    import base64
+    from urllib.parse import quote
+    token = quote(base64.b64encode(json.dumps(run).encode()).decode(), safe="")
+    out = subprocess.check_output(
+        ["node", str(ROOT / "tests/fixtures/import_flow_probe.mjs"), str(ROOT),
+         "https://striverun.app/#import=" + token, json.dumps({"me": True, **spec})], text=True, cwd=str(ROOT))
+    return json.loads(out)
+
+
 def test_both_the_preview_and_the_save_publish_the_edited_project():
-    assert INDEX.count("project:editedProject(),") == 2
+    capture = {"schema_version": 1, "measurement_revision": "e" * 64, "harness": "Claude Code", "project": "the-fair",
+               "turns_typed": 1, "tool_calls": 2, "trace_basis": "timestamped native events", "rhythm": [1, 1]}
+    # The title is its own field (prefilled "<project> session"); give it a fixed value so the
+    # card text below can only name the project through the project field.
+    shown = lambda seen: seen["previewText"].lower().replace("-", " ")
+    # Untouched: the field is prefilled from the capture and both sides publish that.
+    kept = _import_flow(capture, edits={"i_title": "Shipped"})
+    assert kept["projectField"] == "the-fair"
+    assert kept["reviewedRow"]["project"] == "the-fair" and "the fair" in shown(kept)
+    assert [i["row"]["project"] for i in kept["inserts"]] == ["the-fair"]
+    # Renamed: the preview card, the "exactly what is saved" row and the inserted row all say
+    # the author's name, and the folder name is in none of them.
+    renamed = _import_flow(capture, edits={"i_title": "Shipped", "i_project": "Fair pricing page"})
+    assert renamed["reviewedRow"]["project"] == "Fair pricing page"
+    assert "fair pricing page" in shown(renamed) and "the fair" not in shown(renamed)
+    assert [i["row"]["project"] for i in renamed["inserts"]] == ["Fair pricing page"]
+    assert "the-fair" not in json.dumps(renamed["inserts"]) and "the-fair" not in json.dumps(renamed["reviewedRow"])
+    # Cleared: no project at all, in the preview and in the saved row.
+    cleared = _import_flow(capture, edits={"i_title": "Shipped", "i_project": "  "})
+    assert cleared["reviewedRow"]["project"] is None and "the fair" not in shown(cleared)
+    assert [i["row"]["project"] for i in cleared["inserts"]] == [None]
+    # Every row the import builds (the preview, the save, and the save with images) takes the
+    # edited value. The count was 2 before the save with images (site/photo-draft.js) existed.
+    import_run = INDEX[INDEX.index("async function importRun(){"):INDEX.index("async function viewShareRun(")]
+    assert import_run.count("StriveImportRow.build(run,{") == import_run.count("project:editedProject(),") == 3
+    assert INDEX.count("project:editedProject(),") == 3
     assert "const editedProject=()=>projectForSave(capturedProject,$('i_project')?.value ?? null)" in INDEX
     # the old behaviour: one value, computed from the capture, used by both and editable by none
     assert "project:importedProject,model:" not in INDEX

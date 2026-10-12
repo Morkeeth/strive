@@ -169,3 +169,60 @@ The initial broader red run included these ten failures (nine from the pinned in
 Ten `fix` rows and one paired obsolete capture-command pin now pass (33 tests in the five affected files). Account checks render the real provider offers with X enabled and disabled. Feedback checks execute the persistent dialog: signed-out submission makes no RPC, signed-in text is trimmed into `save_feedback`, and failed submission retains the draft. Changing the real RPC name fires the guard. Title rules execute with current labels and run/profile precedence; shared-post and private-page footers are both accounted for.
 
 The old Activity navigation assertion required a Discover dropdown removed deliberately by merged commit `a321b1b6758d8d3902093fbba30e36d1392264ea`. Its replacement retains the legacy route, shared frame, direct Feed/Add run navigation and canonical source-run links. It does not restore a removed menu. The paired obsolete command check now verifies the explicit Cursor/Claude Code/Codex sitting pickers and keeps legacy auto-import coverage separately. No product code changes or disabled tests.
+
+## Repair batches 4 to 7, 13 October 2026
+
+Sixty more `fix` rows pass. Each one is rebound to behaviour the product has today, mostly by running the real module in `node` with jsdom or `vm`. No product code changed. No test is skipped, deleted or marked expected to fail. Where an old assertion named something that was removed on purpose, the removing commit is named in the test and the surviving behaviour is still checked. Each batch was run red on main `210c182`, green on the branch, red again with one line of real product code broken, and green after the line was restored.
+
+| Batch | Files | Rows repaired | Red on main | On the branch | Real code broken to prove the tests can fail |
+| --- | --- | --- | --- | --- | --- |
+| 4: landing, navigation, shell, first journey | `test_landing_logged_out`, `test_nav_simplify`, `test_stride_ia_repair`, `test_first_user_journey` | 18 | 18 failed, 13 passed | 31 passed | `site/home.js`: the landing read filtered on `link` instead of `public`. 1 failed. |
+| 5: cards, metrics, share images | `test_run_card`, `test_verified_per_turn`, `test_feed_card_parity`, `test_share_metrics`, `test_return_view`, `test_honest_label`, `test_coach_card`, `test_counts_truth`, `test_home_unfurl`, `test_public_outcome` | 13 | 18 failed, 43 passed | 5 failed, 56 passed | `site/feed-card.js`: "Work linked" shown for any output link, not only `https`. 6 failed. |
+| 6: import, post, preview, connect | `test_sample_preview`, `test_post_recovery`, `test_post_session`, `test_editable_project`, `test_projects`, `test_connect_agent_ui`, `test_dropin`, `test_phone_onboard`, `test_fair_confirm`, `test_social_product_loop`, `test_run_map_ux` | 17 | 18 failed, 34 passed | 1 failed, 53 passed | `site/index.html`: the sample-save refusal switched off. 3 failed. |
+| 7: profile, people, identity, responses | `test_edit_run_profile`, `test_pin`, `test_profile_totals_visibility`, `test_people_lane`, `test_x_signin`, `test_social_flow_return`, `test_strava_inspired_flows`, `test_response_return`, `test_segments`, `test_stranger_fixes` | 12 | 12 failed, 33 passed, 1 skipped | 45 passed, 1 skipped | `site/index.html`: the profile read also asked for `link` runs. 3 failed. |
+
+The one skip in batch 7 is the existing Playwright `importorskip` in `test_segments.py`. It was a skip before this work.
+
+Three tests were renamed because their old names state a requirement that a merged commit removed. The inventory keeps the original names.
+
+- `test_run_card.py::test_the_landing_and_the_share_image_carry_the_line` is now `..._carry_the_brand_line`. The Strava line was removed by `d716f23`, `09294e4` and `4b313ab`.
+- `test_home_unfurl.py::test_the_unfurl_describes_the_product_and_names_the_tools_it_reads` is now `..._and_the_page_names_the_tools_it_reads`. The share description lost the tool list in `09294e4`.
+- `test_nav_simplify.py::test_responses_are_a_notification_drawer_not_navigation` is now `test_responses_are_a_profile_menu_item_not_primary_navigation`. The drawer was removed by `eb4023e`.
+
+Two tests were added in `test_post_recovery.py`: a capture without a reference cannot be saved from the preview, and the save with images checks the same reference before it inserts.
+
+New fixtures run real site code for these tests: `tests/fixtures/import_flow_probe.mjs`, `connect_body_probe.mjs` and `profile_view_probe.mjs`.
+
+## Real product bugs found
+
+Six rows now reach the real behaviour and fail because the product is wrong. They are left failing. This changes the earlier count of 0 confirmed real bugs.
+
+1. **Tool-call totals disagree on one run.** `PRODUCT.md` says tool-call totals use one source across `/r/`, the SPA strip, Explore and share. A run with `tool_calls: 0` and `ridge_tool_calls: 75` prints 75 in the `/r/` strip and 0 in the `/r/` recorded details, in Explore "Recorded activity" and on the SPA card face. Cause: `r.tool_calls??r.ridge_tool_calls` in `site/run-context.js` (two places) and `site/activity-post.js`, where `GrinderContract.toolCallCount(r)` is the rule. Reproduce: `node tests/fixtures/counts_truth_probe.mjs`. Test: `test_counts_truth.py::test_cross_surface_counts_agree_and_slice_is_labelled`.
+2. **A subagent capture prints the raw value `claude-agent`.** `site/feed-card.js` says such a run reads "Claude Code". The feed card with recorded usage, the share page and the run image print `claude-agent`. Cause: `server/public-run.mjs` and `site/run-context.js` use `run.harness` directly. Reproduce: `.venv/bin/python -m pytest -q tests/test_run_card.py -k subagent`.
+3. **The Python local card no longer matches the web preview card.** `agentgrinder/feedcard.py` says the two cannot drift. The web preview changed in `0c784e3` and `d2bb6d6`; the Python card still draws the inert reaction row, the harness in the meta line and the activity spark, and four card rules in `site/feed.css` changed in `c31fc94` and `0c784e3` without `CARD_CSS`. Reproduce: `.venv/bin/python -m pytest -q tests/test_feed_card_parity.py` (two rows).
+4. **Stat label drift.** `site/feed-card.js` labels the duration "Elapsed" since `34729c4`. `agentgrinder/feedcard.py` line 230 still says "Time". Reproduce: `.venv/bin/python -m pytest -q tests/test_run_card.py -k long_run`. When this is fixed, the expected label in that test changes from "Time" to "Elapsed".
+5. **The plugin bundle reports an old version.** The installed bundle's `scripts/strive.py doctor` prints `0.3.2`; its three manifests say `0.3.5`. Cause: `VERSION = '0.3.2'` in `agentgrinder/plugin.py` and its bundled copy. `7d3060c` moved the constant and the manifests together; `dc6cc32`, `90f093a` and `ffc8072` moved only the manifests. That the two must match is read from that history, not from a written rule. Reproduce: `.venv/bin/python -m pytest -q tests/test_post_session.py -k portable_bundle`.
+
+## What is still open
+
+Thirteen of the 103 rows fail on this branch. Status for every row is in the `status` field of [the inventory](failure-triage-20261012.jsonl).
+
+- Six rows: the five real bugs above.
+- Four rows in `tests/test_run_photos_ui.py`: repaired on the photo editor branch, which rewrites the editor they bind to. Repairing them here would bind them to markup that branch removes.
+- Three obsolete pins, not retired here: the source-wide brand ban, the every-harness flag and the README first-command pin.
+
+Full suite, `.venv/bin/python -m pytest -q`, same machine: main `210c182` 73 failed, 837 passed, 7 skipped; this branch 13 failed, 899 passed, 7 skipped.
+
+## After PR 180, 13 October 2026
+
+Main `6ad69dd` (PR 180) is merged into this branch. PR 180 added the gate `scripts/check-python-suite.py`: a failure outside the inventory fails CI.
+
+Four repaired tests went red against PR 180 and are rebound to the product it ships. No assertion was dropped.
+
+- `test_home_unfurl.py::test_the_share_image_is_the_run_image_pipeline_not_a_committed_png`: `12621ac` caches a drawn share image at the CDN for five minutes. The test now pins that header and that the endpoint starts `no-store`.
+- `test_landing_logged_out.py::test_landing_points_to_a_real_run_not_the_bundled_sample` and `::test_landing_loads_latest_public_run_only`: `58b3174` draws the feed 20 cards at a time and reads runs only (`GrinderHome.readRuns`). The tests run that read, check it touches the runs table alone, and keep the public-only checks on the full read.
+- `test_stride_ia_repair.py::test_global_shell_has_no_privacy_slogan_or_more_drawer`: `a72ddde` put a Skip to content link first in the shell and gave `#app` `tabindex="-1"`. The test now requires both.
+
+The inventory now lists only tests that fail: 12 rows, down from 103. 86 rows were removed because the test passes. 5 rows were removed because the test no longer exists under that name and its replacement passes (three renames above, and two renamed in batches 1 to 3). A removed row can no longer hide a new failure. PR 180 fixed real product bug 5 (`468be4f`), so `test_post_session.py::test_portable_bundle_can_install_itself` passes and its row is removed.
+
+Still listed: five real-bug rows (bugs 1 to 4), four `test_run_photos_ui.py` rows that the photo editor branch repairs, and three obsolete pins.
