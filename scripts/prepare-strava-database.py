@@ -3,7 +3,21 @@ from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[1]
-LAST = ('038_share_handle_reservations.sql', '042_private_auth_uid.sql')
+SHARE_HANDLES = '038_share_handle_reservations.sql'
+# From this number on, files are applied in number order after everything else, as in production.
+FIRST_IN_NUMBER_ORDER = 42
+
+
+def in_number_order(name):
+    number = re.match(r'(\d{3})_', name)
+    return bool(number) and int(number.group(1)) >= FIRST_IN_NUMBER_ORDER
+
+
+def strava_order(names):
+    """Unnumbered files and files below 042 by name, then 038, then 042 and every later number."""
+    names = sorted(name for name in names if name not in ('base.sql', 'preflight.sql'))
+    early = [name for name in names if name != SHARE_HANDLES and not in_number_order(name)]
+    return early + [SHARE_HANDLES] + [name for name in names if in_number_order(name)]
 
 
 def namespaced(sql):
@@ -30,15 +44,13 @@ grant insert,delete on acks to authenticated;
     for name in (ROOT / 'scripts/migration-order.txt').read_text().splitlines():
         parts.append('-- ' + name + '\n' + namespaced((ROOT / 'supabase/migrations' / name).read_text()))
     # Strava-only migrations: already strava-qualified, never translated, applied after the inherited list.
-    for path in sorted((ROOT / 'supabase/strava').glob('*.sql')):
-        if path.name in ('base.sql', 'preflight.sql') + LAST:
-            continue
-        parts.append('-- strava/' + path.name + '\n' + re.sub(r'^\s*(begin|commit);\s*$', '', path.read_text(), flags=re.M | re.I))
-    # Share-handle rules depend on the identity.sql columns and claim trigger. The auth_uid column
-    # grant must see every profile column, and replaces identity.sql's handle lookup.
-    for name in LAST:
-        path = ROOT / 'supabase/strava' / name
-        parts.append('-- strava/' + path.name + '\n' + re.sub(r'^\s*(begin|commit);\s*$', '', path.read_text(), flags=re.M | re.I))
+    # Share-handle rules (038) depend on the identity.sql columns and claim trigger, so 038 follows
+    # the unnumbered files. 042 grants SELECT on every profile column that exists, so it must also
+    # follow identity.sql, and it replaces identity.sql's handle lookup. Files numbered after 042
+    # run after it, so a test on this install sees what a later migration does to the 042 grants.
+    for name in strava_order(path.name for path in (ROOT / 'supabase/strava').glob('*.sql')):
+        text = (ROOT / 'supabase/strava' / name).read_text()
+        parts.append('-- strava/' + name + '\n' + re.sub(r'^\s*(begin|commit);\s*$', '', text, flags=re.M | re.I))
     parts.append("notify pgrst, 'reload schema';\ncommit;\n")
     return '\n'.join(parts)
 

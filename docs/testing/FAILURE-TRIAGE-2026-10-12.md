@@ -2,6 +2,8 @@
 
 The contributor workflow passes, but the full historical Python suite is not green. This inventory assigns every one of the 103 existing failures a next action. It does not disable, delete or mark tests expected to fail, and changes no product code.
 
+Update, 13 October 2026: the machine-readable inventory lists only the tests that fail now (12 rows; see the last section). The numbers below describe the 12 October baseline. From now on `scripts/check-python-suite.py` fails when an inventoried test passes, so each repair deletes its row in the same change. `npm run test:all` applies the same rule to the Node inventory.
+
 ## Pinned evidence
 
 - Comparison baseline: `6e90c2d1cd8521c51fdd131e2e568985aa7e5e0b`: 103 failed, 796 passed, 7 skipped.

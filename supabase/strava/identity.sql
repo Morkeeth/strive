@@ -120,12 +120,13 @@ create trigger strava_profile_handle_claim
   for each row execute function strava.strava_profile_handle_claim();
 
 -- Public lookup used by /?u=<handle>. Chosen handle wins; legacy github_handle is the fallback.
--- Readers cannot select auth_uid (042_private_auth_uid.sql), so the row comes back with it
--- empty. Kept identical to 042 because this script is re-run on installed schemas.
+-- It runs as definer and returns only the columns that anon may select, so auth_uid and any
+-- column without a reader grant come back empty (042_private_auth_uid.sql). Kept identical to
+-- 042 because this script is re-run on installed schemas.
 create or replace function strava.strava_profile_by_handle(lookup text)
 returns setof strava.profiles
 language sql stable security definer set search_path = strava, pg_temp as $$
-  select (jsonb_populate_record(null::strava.profiles, to_jsonb(found) - 'auth_uid')).*
+  select shown.*
   from (
     select * from strava.profiles where handle = lower(trim(lookup))
     union all
@@ -134,6 +135,12 @@ language sql stable security definer set search_path = strava, pg_temp as $$
       and not exists (select 1 from strava.profiles q where q.handle = lower(trim(lookup)))
     limit 1
   ) found
+  cross join lateral jsonb_populate_record(null::strava.profiles, (
+    select coalesce(jsonb_object_agg(field.key, field.value), '{}'::jsonb)
+    from jsonb_each(to_jsonb(found)) field
+    where field.key <> 'auth_uid'
+      and has_column_privilege('anon', 'strava.profiles'::regclass, field.key, 'select')
+  )) shown
 $$;
 revoke all on function strava.strava_profile_by_handle(text) from public;
 grant execute on function strava.strava_profile_by_handle(text) to anon, authenticated;

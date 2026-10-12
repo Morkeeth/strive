@@ -34,10 +34,11 @@ export async function readProfileActivities(profile,fetcher=fetch){
  const rows=await response.json();
  return Array.isArray(rows)?rows.filter(row=>validId(row?.id)&&row.profile_id===profile.id&&row.visibility==='public'):[];
 }
-export async function readShortRun(handle,short,fetcher=fetch){
- if(!validHandle(handle)||!/^[0-9a-f]{8}$/i.test(short))return null;
- const profile=await readProfile(handle,fetcher);
- if(!profile)return null;
+// A share link carries the first eight characters of the run id, with an optional title slug.
+export const SHORT_RUN=/^([0-9a-f]{8})(?:-[a-z0-9-]+)?$/i;
+// Public runs whose id starts with these eight characters. The query asks for public rows only and
+// each row is checked again here.
+async function publicRunsByShortId(short,fetcher){
  const lower=short.toLowerCase();
  const next=(BigInt('0x'+lower)+1n).toString(16).padStart(8,'0');
  const bounds=next.length===8?`(id.gte.${lower}-0000-0000-0000-000000000000,id.lt.${next}-0000-0000-0000-000000000000)`:`(id.gte.${lower}-0000-0000-0000-000000000000)`;
@@ -45,7 +46,22 @@ export async function readShortRun(handle,short,fetcher=fetch){
  const response=await fetcher(config.SB_URL+'/rest/v1/runs?'+query,{headers,cache:'no-store',signal:AbortSignal.timeout(8000)});
  if(!response.ok)throw new Error('Run unavailable');
  const rows=await response.json();
- const matches=Array.isArray(rows)?rows.filter(row=>row?.visibility==='public'&&row.id?.slice(0,8).toLowerCase()===lower&&row.profiles?.id===profile.id):[];
+ return Array.isArray(rows)?rows.filter(row=>row?.visibility==='public'&&typeof row.id==='string'&&row.id.slice(0,8).toLowerCase()===lower):[];
+}
+export async function readShortRun(handle,short,fetcher=fetch){
+ if(!validHandle(handle)||!/^[0-9a-f]{8}$/i.test(short))return null;
+ const profile=await readProfile(handle,fetcher);
+ if(!profile)return null;
+ const matches=(await publicRunsByShortId(short,fetcher)).filter(row=>row.profiles?.id===profile.id);
+ return matches.length===1?readPublic(matches[0].id,fetcher):null;
+}
+// /r/<short>.json has no handle in its path. The short id must name exactly one public run; a
+// private run, a missing run and a short id that two public runs share all return null, so the
+// caller gives them the same 404. readPublic then reads the row by its full id and checks it again.
+export async function readPublicByShortId(value,fetcher=fetch){
+ const match=typeof value==='string'?value.match(SHORT_RUN):null;
+ if(!match)return null;
+ const matches=await publicRunsByShortId(match[1],fetcher);
  return matches.length===1?readPublic(matches[0].id,fetcher):null;
 }
 export const canonicalProfile=handle=>shareOrigin+profilePath(handle);

@@ -6,6 +6,8 @@ const Activity=createRequire(import.meta.url)('../site/activity-order.js');
 globalThis.GrinderContract={projectLabel:s=>s};
 const ui={StriveActivity:Activity,history:{replaceState(){}},feedCards:async (rows,ad,{decorate=html=>html}={})=>rows.map(r=>decorate(`CARD:${r.id}:${r.visibility}`,r)).join(''),wireKudos(){},StriveProjectFollow:{mount(){}},showSignIn(){}};
 const html=readFileSync('site/index.html','utf8');
+const tabs=html.slice(html.indexOf('function myRunsTabs('),html.indexOf('function communityTabs('));
+const Day=createRequire(import.meta.url)('../site/day.js');
 const fn=html.slice(html.indexOf('async function viewProjects()'),html.indexOf('function toolLogoHtml'));
 const rows=[
  {project:'Oscar private work',profile_id:'oscar',visibility:'private',created_at:'2026-10-02'},
@@ -15,8 +17,8 @@ const rows=[
 async function render(me,search='?projects'){
  const app={innerHTML:''};let filters=[];
  const query={select(){return this},eq(k,v){filters.push(r=>r[k]===v);return this},not(k,op,v){filters.push(r=>r[k]!==v);return this},order(){return this},limit(){return Promise.resolve({data:rows.filter(r=>filters.every(f=>f(r)))})}};
- const ctx=vm.createContext({...ui,ackData:async()=>({mine:new Set(),counts:{}}),ME:me?{id:me}:null,location:{search},URLSearchParams,$:()=>app,frame(){},railHtml(){},setPrimarySection(){},skeletonCard(){return ''},sb:{from:()=>query},status(){},GrinderContract:{projectLabel:s=>s},projectTotals:r=>({runs:r.length,builders:new Set(r.map(x=>x.profile_id)).size,tool_calls:0}),safeOutputUrl:s=>s,esc:s=>s});
- await vm.runInContext(fn+';viewProjects()',ctx);return app.innerHTML;
+ const ctx=vm.createContext({...ui,StriveDay:Day,ackData:async()=>({mine:new Set(),counts:{}}),ME:me?{id:me}:null,location:{search},URLSearchParams,$:()=>app,frame(){},railHtml(){},setPrimarySection(){},skeletonCard(){return ''},sb:{from:()=>query},status(){},GrinderContract:{projectLabel:s=>s},projectTotals:r=>({runs:r.length,builders:new Set(r.map(x=>x.profile_id)).size,tool_calls:0}),safeOutputUrl:s=>s,esc:s=>s});
+ await vm.runInContext(tabs+fn+';viewProjects()',ctx);return app.innerHTML;
 }
 const own=await render('odawg');
 assert.match(own,/My projects/);assert.match(own,/scope=mine/);assert.match(own,/Odawg private work/i);assert.doesNotMatch(own,/Oscar private work|Shared public work/i);
@@ -53,7 +55,7 @@ function harness({me='odawg',search='?project=Shared%20name',fail=false,delayQue
    return Promise.resolve(result);
   }
  }}};
- const ctx=vm.createContext({...ui,
+ const ctx=vm.createContext({...ui,StriveDay:Day,
   ME:me?{id:me}:null,location:{search},URLSearchParams,$:()=>app,
   frame(){},railHtml(){},setPrimarySection(){},skeletonCard(){return 'Loading'},
   PROJECT_SELECT:'*',sb,status(){},noteTraces(){},GrinderContract:{projectLabel:s=>s},
@@ -68,8 +70,8 @@ function harness({me='odawg',search='?project=Shared%20name',fail=false,delayQue
  });
  return {ctx,app,renders,releaseQuery:()=>releaseQuery(),releaseAcks:()=>releaseAcks(),
   hasPendingAcks:()=>!!releaseAcks,queries:()=>queries,
-  startDetail:()=>vm.runInContext(detailFn+';viewProject("Shared name")',ctx),
-  startList:()=>vm.runInContext(fn+';viewProjects()',ctx)};
+  startDetail:()=>vm.runInContext(tabs+detailFn+';viewProject("Shared name")',ctx),
+  startList:()=>vm.runInContext(tabs+fn+';viewProjects()',ctx)};
 }
 for(const search of ['?project=Shared%20name','?project=Shared%20name&scope=public']){
  const h=harness({search});await h.startDetail();

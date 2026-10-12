@@ -1,5 +1,6 @@
 // Runs every offline scripts/test-*.mjs unchanged, four at a time. A failure fails the run unless
-// docs/testing/node-failure-triage-20261012.jsonl inventories it; inventoried scripts that pass are reported.
+// docs/testing/node-failure-triage-20261012.jsonl inventories it. An inventoried script that passes also fails
+// the run until its row is deleted, so the inventory always equals the set of real failures.
 import {readdirSync,readFileSync} from 'node:fs';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
@@ -28,8 +29,8 @@ const unexpected=results.filter(r=>!r.ok&&!pinned.has(r.name));
 const repaired=results.filter(r=>r.ok&&pinned.has(r.name));
 for(const r of results)console.log(`${r.ok?'pass':pinned.has(r.name)?'known':'FAIL'}  ${r.seconds.padStart(5)}s  ${r.name}`);
 for(const r of unexpected)console.log(`\n--- ${r.name}\n${r.output.trim().split('\n').slice(-25).join('\n')}`);
-if(repaired.length)console.log(`\nInventoried scripts that pass now:\n${repaired.map(r=>'  '+r.name).join('\n')}`);
+if(repaired.length)console.log(`\nInventoried scripts that pass now. Delete their rows from ${INVENTORY}:\n${repaired.map(r=>'  '+r.name).join('\n')}`);
 console.log(`\nNot run here:\n${[...BY_HAND].map(([name,why])=>`  ${name}: ${why}`).join('\n')}`);
 const count=(n,noun)=>`${n} ${noun}${n===1?'':'s'}`;
 console.log(`\n${results.filter(r=>r.ok).length} passed, ${count(results.length-results.filter(r=>r.ok).length-unexpected.length,'inventoried failure')}, ${count(unexpected.length,'failure')} outside ${INVENTORY}`);
-process.exit(unexpected.length?1:0);
+process.exit(unexpected.length||repaired.length?1:0);

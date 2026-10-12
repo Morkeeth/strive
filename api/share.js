@@ -11,14 +11,14 @@ module.exports=async function handler(req,res){
  res.setHeader('Cache-Control','private, no-store, max-age=0');
  res.setHeader('X-Content-Type-Options','nosniff');
  try{
-  const {readProfile,readProfileActivities,readShortRun,canonicalProfile,profilePath,runPath,validHandle,shareOrigin}=await import('../server/share-routes.mjs');
+  const {readProfile,readProfileActivities,readShortRun,canonicalProfile,profilePath,runPath,validHandle,shareOrigin,SHORT_RUN}=await import('../server/share-routes.mjs');
   const {readKudos,readPublicPhotos,readAvatar,html}=await import('../server/public-run.mjs');
   const handle=String(req.query.handle||'');
   if(!validHandle(handle))return res.status(404).send('Page unavailable.');
   const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const browser=interactiveBrowser(req.headers);
   if(req.query.run){
-   const match=String(req.query.run).match(/^([0-9a-f]{8})(?:-[a-z0-9-]+)?$/i);
+   const match=String(req.query.run).match(SHORT_RUN);
    if(!match)return res.status(404).send('Run unavailable.');
    const run=await readShortRun(handle,match[1]);
    if(!run)return res.status(404).send('Run unavailable.');

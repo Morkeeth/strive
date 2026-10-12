@@ -3,7 +3,9 @@
 docs/testing/failure-triage-20261012.jsonl names every test that already failed when
 the inventory was taken. Those tests still run unchanged and their results are
 printed; nothing is skipped or marked expected to fail. Any other failure, error or
-collection problem fails this check. Extra arguments go to pytest.
+collection problem fails this check. An inventoried test that passes also fails this
+check until its row is deleted, so the inventory always equals the set of real
+failures and a repaired test cannot break again unseen. Extra arguments go to pytest.
 """
 import json
 import os
@@ -49,18 +51,19 @@ def main(argv):
     inventoried = len(outcomes.failed & pinned)
     print(f"\n{failures(inventoried)} in the pinned inventory ({INVENTORY.relative_to(ROOT)}).")
     if repaired:
-        print(f"Inventoried tests that pass now ({len(repaired)}):")
+        print(f"Inventoried tests that pass now ({len(repaired)}). Delete their rows from {INVENTORY.relative_to(ROOT)}:")
         for test in repaired:
             print(f"  {test}")
     if unexpected:
         print(f"{failures(len(unexpected))} not in the inventory:")
         for test in unexpected:
             print(f"  {test}")
+    if unexpected or repaired:
         return 1
     if code == pytest.ExitCode.TESTS_FAILED and not outcomes.failed:
         print("pytest reported failures this check did not record.")
         return 1
-    print("No failure outside the inventory.")
+    print("No failure outside the inventory, and no inventoried test passes.")
     return 0
 
 
