@@ -5,8 +5,9 @@ module.exports=async function handler(req,res){
  const id=json?String(req.query.id).slice(0,-5):req.query.id;
  try{
   const {readPublic,readKudos,readPublicPhotos,readAvatar,html,card,privateCard,neutralHtml,validId,SHARE_IMAGE_CACHE}=await import('../server/public-run.mjs');
-  const {readProfileActivities}=await import('../server/share-routes.mjs');
-  const run=await readPublic(id);
+  const {readProfileActivities,readPublicByShortId}=await import('../server/share-routes.mjs');
+  // The JSON view also takes the short id that share links and the sitemap carry.
+  const run=json&&!validId(id)?await readPublicByShortId(id):await readPublic(id);
   if(json){
    const {runJson}=await import('../server/run-json.mjs');
    res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Access-Control-Allow-Origin','*');

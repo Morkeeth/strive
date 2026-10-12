@@ -17,7 +17,11 @@ const rows={
 };
 globalThis.fetch=async raw=>{
  const url=new URL(raw);
- if(url.pathname.endsWith('/runs')){const id=(url.searchParams.get('id')||'').slice(3);return {ok:true,status:200,json:async()=>rows[id]?[rows[id]]:[]}}
+ if(url.pathname.endsWith('/runs')){
+  // A short id is a range query on the id prefix. This mock ignores the visibility filter on purpose.
+  const range=(url.searchParams.get('and')||'').match(/^\(id\.gte\.([0-9a-f]{8})-/);
+  if(range)return {ok:true,status:200,json:async()=>Object.values(rows).filter(row=>row.id.startsWith(range[1]))};
+  const id=(url.searchParams.get('id')||'').slice(3);return {ok:true,status:200,json:async()=>rows[id]?[rows[id]]:[]}}
  throw Error('Unexpected URL '+url);
 };
 function response(){return {headers:{},statusCode:200,setHeader(k,v){this.headers[k.toLowerCase()]=v},end(b){this.body=b}}}
@@ -55,6 +59,24 @@ assert.equal(declared('-home-dave-proj'),'proj');
 assert.equal(declared('Users-morkeeth'),null,'a bare home directory is an unknown project');
 assert.equal(declared('session'),null);
 assert.equal(declared('agentgrinder-public'),'agentgrinder-public','an ordinary name is unchanged');
+// The sitemap and share links carry the 8-character short id (/<handle>/<short>-<title>). The JSON
+// view resolves the same short ids the run page resolves, with the same 404 for everything else.
+for(const short of ['90a16040','90A16040','90a16040-test-data-ship-the-json-endpoint']){
+ const res=await get(short+'.json');
+ assert.equal(res.statusCode,200,'/r/'+short+'.json resolves');
+ assert.equal(res.body,ok.body,'the short id returns the same document as the full id');
+}
+const twinA='33333333-aaaa-4aaa-8aaa-aaaaaaaaaaaa',twinB='33333333-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+rows[twinA]={...rows[publicId],id:twinA};rows[twinB]={...rows[publicId],id:twinB};
+for(const [id,why] of [['11111111','a private run'],['22222222','a missing run'],['33333333','a short id that two public runs share'],
+ ['90a1604','seven characters'],['90a16040-','a trailing hyphen'],['90a16040_x','a character the run page refuses']]){
+ const res=await get(id+'.json');
+ assert.equal(res.statusCode,404,why+' is a 404');
+ assert.equal(res.body,JSON.stringify({error:'This public run is unavailable.'}),why+' gets the one 404 body');
+ assert.match(res.headers['cache-control'],/no-store/);
+}
+assert.equal((await get(twinA+'.json')).statusCode,200,'a full id still resolves when the short id is shared');
+assert.equal((await get('90a16040')).statusCode,404,'the HTML route at /r/<short> is unchanged');
 const page=await get(publicId);
 assert.equal(page.headers['content-type'],'text/html; charset=utf-8','the HTML share page is unchanged');
 console.log('PASS: /r/<id>.json returns the public card as JSON; private, missing and malformed runs share one 404');
