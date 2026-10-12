@@ -15,6 +15,35 @@ const run=async(owner,visibility,title)=>{
 const riley=await run(RILEY,'public','TEST DATA public run'),casey=await run(CASEY,'private','TEST DATA Casey private run');
 const columns=(await db.query(`select column_name from information_schema.columns where table_schema='strava' and table_name='profiles' order by ordinal_position`)).rows.map(r=>r.column_name);
 
+// This runs after EVERY migration (scripts/prepare-strava-database.py applies 042 and later files
+// in number order), so it is the state production has. Each profile column is either granted to
+// both readers or named here as private. A later migration that adds a private column adds it here.
+const PRIVATE=['auth_uid'];
+async function readerGrants(){
+ for(const role of ['anon','authenticated']){
+  const {rows:[table]}=await db.query(`select has_table_privilege($1,'strava.profiles','select') as whole`,[role]);
+  assert.equal(table.whole,false,role+' has SELECT on the whole profiles table; a later migration undid the 042 revoke');
+  const {rows}=await db.query(`select attname,has_column_privilege($1,'strava.profiles',attname,'select') as granted from pg_attribute
+   where attrelid='strava.profiles'::regclass and attnum>0 and not attisdropped order by attnum`,[role]);
+  for(const {attname,granted} of rows)
+   assert.equal(granted,!PRIVATE.includes(attname),PRIVATE.includes(attname)?role+' can select the private column '+attname
+    :'profiles.'+attname+' has no SELECT grant for '+role+'; grant it in its migration or list it as private in this test');
+ }
+}
+await readerGrants();
+// The check must be able to fail. Each change is what a later migration could do; it is rolled back.
+for(const [change,message] of [
+ [`grant select on strava.profiles to anon, authenticated`,/whole profiles table/],
+ [`grant select (auth_uid) on strava.profiles to authenticated`,/private column auth_uid/],
+ [`alter table strava.profiles add column zz_later text`,/zz_later has no SELECT grant/],
+]){
+ await db.exec('begin');
+ await db.exec(change);
+ await assert.rejects(readerGrants(),message,'the reader check stays green after: '+change);
+ await db.exec('rollback');
+}
+await readerGrants();
+
 for(const [who,enter] of [['anon',anonymous],['another builder',()=>as(CASEY)]]){
  await enter();
  await denied('select auth_uid from profiles');

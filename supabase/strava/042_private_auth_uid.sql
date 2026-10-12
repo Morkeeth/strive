@@ -15,8 +15,9 @@ alter policy runs_owner_write on strava.runs
   with check (profile_id = (select strava.grinder_profile_id()));
 alter policy acks_write on strava.acks with check (from_profile = (select strava.grinder_profile_id()));
 
--- Every other profile column stays readable. A column added later needs its own grant;
--- scripts/test-private-auth-uid.mjs fails when one is missing.
+-- Every other profile column stays readable. A column added later needs its own grant, and no
+-- later migration may grant SELECT on the whole table again. scripts/test-private-auth-uid.mjs
+-- runs after every migration in number order and fails in both cases.
 revoke select on strava.profiles from anon, authenticated;
 do $$
 declare readable text;
