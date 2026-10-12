@@ -340,3 +340,22 @@ The unsaved import preview shows one harness identity and the recorded start's l
 An import and an agent's private draft lead with `StrivePost.render`, the saved selected-run renderer. Only me shows the owner view inside a nobody-else-sees-this frame; other audiences show the reader view. Card links and social actions are disabled until Save confirms the draft; measurements and disclosures remain readable. Optional metric choices alter the exact outgoing row and card together. Audience stays beside the card and changes its frame and Save consequence immediately. The three data columns remain in a closed Exactly what is saved disclosure. A public choice renders the same link-image tree and image engine as the hosted unfurl, on device, without uploading the draft.
 
 Reader cards omit absent headline statistics; absence cannot establish that a source failed to capture them. The owner review names deselected captured metrics as Not shared. Dates share the local en-GB 24-hour format. Preview reactions stay dimmed, untabbable and labelled Readers can react here. The owner story shortcut preserves metric and audience choices, and step content clears the measured sticky action bar.
+
+## 13 Oct 2026: one photo editor
+
+Oscar: "not sure we need to guide them this much, just have image upload and they can drag and drop".
+
+The import step and the saved-run editor draw the same grid, `render()` in `site/photo-grid.js`. This supersedes "Image roles and lead-image choices use direct controls" above for the owner's editor.
+
+- A plus tile adds photos. It takes a click or a dropped file.
+- Each image fills a square tile (`object-fit: cover`).
+- Order is the only cover control. The first photo readers can see is the cover and carries the label `Cover`. Reorder by drag, by a held touch on the handle, or by arrow keys, Home and End on the handle.
+- Remove comes with Undo.
+- Each photo is labelled with the run's audience: `Only you`, `Close friends`, `Followers` or `Public`. The label follows the audience control before Save. A photo the author hides reads `Hidden`. An unknown audience reads `Only you`. The label never says `Public` on a private run.
+- No explanatory paragraph. A line of text appears only for a state: a limit reached, a removed photo, a save that has started.
+- The editor saves nothing by itself. Import-step photos stay on the device until Save. Saved-run edits wait for Save changes. It never changes the audience.
+- Limits are unchanged: six shown, twelve stored (`supabase/strava/039_visible_photo_capacity.sql`).
+
+Gap: role controls (Result, Before, After, Personal photo) are no longer offered in either place. Roles already saved are kept and still drive the reader's card. A personal photo saved before this change shows as `Hidden` until the author shows it.
+
+Checks: `scripts/test-photo-editor.mjs`, `scripts/test-compact-photo-editor.mjs`, and in a real browser at 390 and 1440 `scripts/check-photo-editor.py`.

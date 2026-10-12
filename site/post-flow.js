@@ -108,7 +108,11 @@
     composer.querySelector('#post-pane-2 .post-flow-actions').append(save);
     composer.querySelector('.post-flow-recovery').append(recover);
     sourcePanel.replaceWith(composer);
-    if(root.StrivePhotoDraft&&photoOptions.token)root.StrivePhotoDraft.mount({slot:composer.querySelector('.post-photo-slot'),...photoOptions});
+    if(root.StrivePhotoDraft&&photoOptions.token){
+      // A photo is labelled with the audience chosen on the last step. Until then it is private.
+      root.StrivePhotoDraft.mount({slot:composer.querySelector('.post-photo-slot'),audience:()=>audience.value||'private',...photoOptions});
+      audience.addEventListener('change',()=>root.StrivePhotoGrid?.refreshAudience());
+    }
     const storageKey='strive-post-step:'+root.location.hash;
     let step=0;
     try{const old=Number(root.sessionStorage.getItem(storageKey));if(Number.isInteger(old)&&old>=0&&old<3)step=old}catch(_){}
