@@ -41,7 +41,7 @@ export function runJson(run){
    ridge:ridge(run),
   },
   declared:{
-   project:text(run.project),
+   project:Contract.projectLabel(run.project),
    shipped:(Array.isArray(run.shipped)?run.shipped:[]).map(text).filter(Boolean).slice(0,5),
    repo_url:safeUrl(run.repo_url),
    receipts:(Array.isArray(run.receipts)?run.receipts:[]).filter(r=>r&&text(r.label)&&safeUrl(r.url)).slice(0,5)

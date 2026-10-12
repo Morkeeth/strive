@@ -45,6 +45,16 @@ for(const res of [hidden,missing,junk]){
  assert.equal(res.body,JSON.stringify({error:'This public run is unavailable.'}));
  assert.match(res.headers['cache-control'],/no-store/);
 }
+// The project name follows the one reader rule (site/run-contract.js projectLabel): a workspace
+// slug built from a home path never leaves with the OS account name in it.
+const {runJson}=await import('../server/run-json.mjs');
+const declared=project=>runJson({...rows[publicId],project}).declared.project;
+assert.equal(declared('Users-morkeeth-code-app'),'code-app');
+assert.doesNotMatch(JSON.stringify(runJson({...rows[publicId],project:'Users-morkeeth-code-app'})),/morkeeth/);
+assert.equal(declared('-home-dave-proj'),'proj');
+assert.equal(declared('Users-morkeeth'),null,'a bare home directory is an unknown project');
+assert.equal(declared('session'),null);
+assert.equal(declared('agentgrinder-public'),'agentgrinder-public','an ordinary name is unchanged');
 const page=await get(publicId);
 assert.equal(page.headers['content-type'],'text/html; charset=utf-8','the HTML share page is unchanged');
 console.log('PASS: /r/<id>.json returns the public card as JSON; private, missing and malformed runs share one 404');
