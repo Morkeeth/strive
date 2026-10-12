@@ -61,6 +61,8 @@ You are responsible for the contribution even when an agent writes it. Read the 
 python3 scripts/dev.py check
 ```
 
+The full historical Python suite has a [pinned failure inventory](docs/testing/FAILURE-TRIAGE-2026-10-12.md); the targeted contributor workflow does not claim that full suite is green.
+
 This runs targeted Cursor-reader tests, MCP launch/onboarding checks and JavaScript syntax checks. It does not test every inherited feature or prove hosted behaviour. Add or run focused tests when you change behaviour; documentation-only changes need working links and accurate commands, not unrelated test runs.
 
 For capture, photo, feedback or database changes, install Node 22 dependencies with `npm ci --ignore-scripts`, then run the relevant focused checks. For example:
