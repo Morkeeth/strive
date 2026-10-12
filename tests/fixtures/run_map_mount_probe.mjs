@@ -106,7 +106,12 @@ const html = ridge({
   commits: 0,
 });
 assert.ok(!html.includes("ridge-chip"), "output_url must not fabricate a timed chip");
-assert.ok(html.includes("Activity along turn order"));
+// The basis is named where the map is read: the image label, the axis line and the help text
+// (ce9b610 replaced the single "Activity along turn order" caption with these).
+assert.ok(html.includes('aria-label="Tool calls across turn order"'));
+assert.ok(html.includes("Horizontal: turn order · vertical: 0–9 tool requests per slice"));
+assert.ok(html.includes("Each activity slice is one measured step along turn order."));
+assert.ok(!html.includes("wall time"), "a turn-order map must not claim wall time");
 assert.ok(html.includes("run-map-slider"));
 assert.ok(html.includes("activity slice"));
 

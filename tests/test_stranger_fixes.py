@@ -19,11 +19,32 @@ def test_the_share_link_is_never_cut_off_in_the_card():
 def test_docs_offer_only_the_sign_in_the_site_offers():
     index = (ROOT / "site/index.html").read_text()
     providers = json.loads(re.search(r"const PROVIDERS_ENABLED=(\[[^\]]*\]);", index).group(1))
-    for doc in ("README.md", "PRODUCT.md"):
-        text = " ".join((ROOT / doc).read_text().split())
-        if "email" not in providers:
-            assert "email link" not in text, f"{doc} promises email sign-in the site does not offer"
-        assert re.search(r"[Ss]ign[- ]in with GitHub", text), f"{doc} no longer says how to sign in"
+    email_ready = re.search(r"const EMAIL_SIGNIN_READY=(true|false);", index).group(1) == "true"
+    assert providers == ["github"] and email_ready is False  # what a stranger is offered by default
+    names = {"github": "github", "x": "x", "twitter": "x", "email": "email"}
+    offered = {names[p] for p in providers} | ({"email"} if email_ready else set())
+    docs = {doc: " ".join((ROOT / doc).read_text().split()) for doc in ("README.md", "PRODUCT.md")}
+    for doc, text in docs.items():
+        if "email" not in offered:
+            for promise in ("email link", "magic link", "sign in with email", "sign-in with email", "sign in by email"):
+                assert promise not in text.lower(), f"{doc} promises email sign-in the site does not offer"
+        # Every provider a doc names as a way in is one the site offers by default. A provider that
+        # is built but switched off (X) must say so on the same line.
+        way_in = r"(?:[Ss]ign(?:ing)?[- ]in (?:with|using|via|through)|Continue with) (GitHub|X|Twitter|Google|Apple|Cursor|Origin|email)\b"
+        for line in (ROOT / doc).read_text().splitlines():
+            for provider in re.findall(way_in, line):
+                if names.get(provider.lower()) in offered:
+                    continue
+                assert provider == "X" and "when the provider is on" in line and "Not live until" in line, \
+                    f"{doc} offers {provider} sign-in the site does not offer"
+            if re.search(r"\bX sign-in\b", line) and "x" not in offered:
+                assert "Not live until" in line, f"{doc} presents X sign-in as available"
+    # Since 9e0dfc9 (3 Oct) the README's first-run steps say when to sign in and leave the provider
+    # to what the site shows. Naming an offered provider there is still fine (checked above).
+    assert "3. **Save as Only me.** Sign in, choose **Only me**, save, then open the run again" in docs["README.md"]
+    # PRODUCT.md is where the offered provider is named.
+    assert "- Sign-in with GitHub. One profile per account, with a handle and display name you can edit." in docs["PRODUCT.md"]
+    assert "offers Continue with X when the provider is on" in docs["PRODUCT.md"]
 
 
 def test_malformed_routes_tell_no_decision_story():

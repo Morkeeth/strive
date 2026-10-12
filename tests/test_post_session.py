@@ -25,4 +25,13 @@ def test_portable_bundle_can_install_itself(tmp_path):
     installed=config/"plugins/local/strive"
     assert (installed/"runtime/agentgrinder/assets/post-session.js").is_file()
     result=subprocess.run([sys.executable,str(installed/"scripts/strive.py"),"--state",str(tmp_path/"state"),"doctor"],check=True,capture_output=True,text=True)
-    assert json.loads(result.stdout)["version"] == "0.2.0"
+    # The installed bundle is one release: its three manifests agree, its runtime files are
+    # there, and its own doctor names that release. The number is read from the bundle, not
+    # pinned here, so a release bump does not break this test; a bundle whose doctor reports a
+    # different number than the package it was installed from does.
+    manifests=[installed/"plugin.json",installed/".cursor-plugin/plugin.json",installed/".claude-plugin/plugin.json"]
+    versions={json.loads(path.read_text())["version"] for path in manifests}
+    assert len(versions)==1
+    for runtime in ("runtime/agentgrinder/plugin.py","runtime/agentgrinder/post_session.py","scripts/strive.py","scripts/strive-plugin.py"):
+        assert (installed/runtime).is_file(), runtime
+    assert json.loads(result.stdout)["version"] == versions.pop()

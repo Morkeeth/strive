@@ -158,16 +158,35 @@ def test_orange_is_spent_on_two_marks_only():
         assert "orange" not in rule
 
 
-def test_the_landing_and_the_share_image_carry_the_line():
+def test_the_landing_and_the_share_image_carry_the_brand_line():
+    # Was ..._carry_the_line: "Strava is for people who ran. STRIVE is for people who didn't."
+    # That line was retired on 8 Oct 2026 (d716f23 the landing headline, 09294e4 the share tags,
+    # 4b313ab the share image) for the product's own name and tagline, server/brand.mjs.
     html = (ROOT / "site/index.html").read_text()
-    assert "Strava is for people who ran. <i>__BRAND__</i> is for people who didn't." in html
-    assert html.count("Strava is for people who ran. __BRAND__ is for people who didn't.") == 2   # og + twitter
     server = (ROOT / "server/public-run.mjs").read_text()
-    assert "Strava is for people who ran. ${BRAND} is for people who didn't." in server
+    assert "Strava is for people who ran" not in html and "Strava is for people who ran" not in server
+    assert "<title>__BRAND__ · __TAGLINE__</title>" in html
+    assert html.count('content="__BRAND__ · __TAGLINE__"') == 4      # og + twitter, title and image alt
+    out = json.loads(node("""(async()=>{
+const {homeCard,card}=await import(process.argv[1]+'/server/public-run.mjs');
+const {BRAND,TAGLINE}=await import(process.argv[1]+'/server/brand.mjs');
+const text=n=>n==null||n===false?[]:typeof n==='string'||typeof n==='number'?[String(n)]:Array.isArray(n)?n.flatMap(text):text(n.props&&n.props.children);
+const marks=(n,type)=>n==null||typeof n!=='object'?0:Array.isArray(n)?n.reduce((a,c)=>a+marks(c,type),0):(n.type===type?1:0)+marks(n.props&&n.props.children,type);
+const run={...JSON.parse(process.argv[2]),id:'r1',visibility:'public'};
+const image=card(run),plain=card({...run,route:null});
+process.stdout.write(JSON.stringify({brand:BRAND,tagline:TAGLINE,home:text(homeCard()),image:text(image),dump:JSON.stringify(image),
+ stations:marks(image,'circle')-marks(plain,'circle'),hops:marks(image,'path')-marks(plain,'path')}));})()""",
+                          json.dumps({**LONG, "route": [0, 1, 0, 2, 1, 3], "hero_visual": "change_atlas"})))
+    assert (out["brand"], out["tagline"]) == ("STRIVE", "Post your strides")
+    assert out["home"][:2] == ["STRIVE", "Post your strides"]
     # The share image draws the map from the same geometry as the card, and no ghost badge.
     assert "Feed.routeGeometry(run)" in server and "ghost" not in server.lower()
+    geometry = feedcard.route_geometry({**LONG, "route": [0, 1, 0, 2, 1, 3]})
+    assert geometry["label"] == "4 folders · 5 moves · 2 returns" and geometry["label"] in out["image"]
+    assert (out["stations"], out["hops"]) == (len(geometry["stations"]), len(geometry["hops"])) == (4, 5)
+    assert "ghost" not in out["dump"].lower()
     # `route` is the map, and never a second line on the image.
-    assert "'Project ridge'" not in server
+    assert "'Project ridge'" not in server and "Project ridge" not in out["dump"]
 
 
 def test_a_subagent_capture_reads_claude_code_on_every_surface():
@@ -176,8 +195,26 @@ def test_a_subagent_capture_reads_claude_code_on_every_surface():
     assert "claude-agent" not in card and "Claude Code" in visible(card)
     assert feedcard.stride_text(row).startswith("STRIVE · Claude Code session, ")
     assert row["harness"] == "claude-agent"                  # the row keeps the raw value
-    js = node("const F=require(process.argv[1]+'/site/feed-card.js');process.stdout.write(F.card(JSON.parse(process.argv[2]),{preview:true,heading:'h1'}))", json.dumps(row))
-    assert js == feedcard.card(row, avatars=True)
+    # The same row through every web surface that draws a run: the unsaved preview, the feed card
+    # (with and without recorded usage), the public share page, the link image and the run image.
+    saved = {**row, "id": "11111111-1111-1111-1111-111111111111", "visibility": "public", "profiles": {"handle": "x"}}
+    out = json.loads(node("""(async()=>{
+const F=require(process.argv[1]+'/site/feed-card.js');
+const S=await import(process.argv[1]+'/server/public-run.mjs');
+const row=JSON.parse(process.argv[2]),saved=JSON.parse(process.argv[3]);
+process.stdout.write(JSON.stringify({name:F.harnessName(row),title:F.titleOf(row),stride:F.strideText(row),
+ surfaces:{preview:F.card(row,{preview:true,heading:'h1'}),feed:F.card(saved,{count:0}),
+  'feed card with recorded usage':F.card({...saved,capture_metadata:{basis:'claude-message-usage',models:['claude-opus-5-5']}},{count:0}),
+  'share page':S.html(saved),'link image':JSON.stringify(S.linkPreviewCard(saved)),'run image':JSON.stringify(S.card(saved))}}));})()""",
+                          json.dumps(row), json.dumps(saved)))
+    assert out["name"] == feedcard.harness_name(row) == "Claude Code"
+    assert out["title"] == feedcard.title_of(row) and out["title"].startswith("Claude Code session, ")
+    assert out["stride"] == feedcard.stride_text(row)
+    for surface in ("preview", "feed", "feed card with recorded usage"):
+        assert "Claude Code" in visible(out["surfaces"][surface]), surface
+    raw = [surface for surface, markup in out["surfaces"].items() if "claude-agent" in markup]
+    assert raw == [], f"these surfaces print the raw harness value: {raw}"
+    assert out["surfaces"]["preview"] == feedcard.card(row, avatars=True)
 
 
 def test_codex_desktop_rollouts_count_the_prompts_the_person_typed():
