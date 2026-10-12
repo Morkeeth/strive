@@ -933,6 +933,7 @@ function fiveRow(r){ return StriveContext.metrics(r); }
 const pace=(m,p)=>(!m||!p)?'-':`${Math.floor(Math.round(m*60/p)/60)}:${String(Math.round(m*60/p)%60).padStart(2,'0')}`;
 
 const ACK_REASONS={
+  appreciated:{label:'Appreciated',evidence:''},
   shipped:{label:'Shipped',evidence:'commits on this grind'},
   focus:{label:'Deep focus',evidence:'sustained prompt cadence'},
   pace:{label:'Strong pace',evidence:'high prompts per hour'},
@@ -956,8 +957,8 @@ function vibeForRun(r){
 function ackBingoHtml(acks){
   const got={}; Object.keys(ACK_REASONS).forEach(k=>got[k]=false);
   (acks||[]).forEach(a=>{ if(a.reason in got) got[a.reason]=true; });
-  const n=Object.values(got).filter(Boolean).length;
-  const cells=Object.entries(ACK_REASONS).map(([id,m])=>
+  const n=Object.entries(got).filter(([id,yes])=>id!=='appreciated'&&yes).length;
+  const cells=Object.entries(ACK_REASONS).filter(([id])=>id!=='appreciated').map(([id,m])=>
     `<div class="bingo-cell ${got[id]?'on':''}" title="${esc(m.evidence)}">${esc(m.label)}</div>`).join('');
   const sub=n===6?'BLACKOUT - every flavor.':n?`${n}/6 collected`:'Empty card - receive XUDOS.';
   return `<div class="head"><h2>XUDOS bingo</h2><span class="meta">${sub}</span></div><div class="bingo">${cells}</div>`;
@@ -976,7 +977,7 @@ function ackListHtml(rows){
   if(!rows||!rows.length) return '<p class="hint" style="padding:0 17px 14px">No XUDOS yet. Be the first to respond to this run.</p>';
   return `<div class="ack-list">${rows.map(a=>{
     const p=a.profiles||{}, h=profileHandle(p)||'?', meta=ACK_REASONS[a.reason]||{label:a.reason,evidence:''};
-    return `<div class="ack-row">${avatar(h)}<div><b>@${esc(h)}</b> sent XUDOS for <b>${esc(meta.label)}</b><br><span>${esc(meta.evidence)}</span></div></div>`;
+    return `<div class="ack-row">${avatar(h)}<div><b>@${esc(h)}</b> ${a.reason==='appreciated'?'gave XUDOS':`sent XUDOS for <b>${esc(meta.label)}</b>`}${meta.evidence?`<br><span>${esc(meta.evidence)}</span>`:''}</div></div>`;
   }).join('')}</div>`;
 }
 async function fetchAckList(runId){
@@ -996,26 +997,51 @@ async function fillTraces(rows){
     .in('profile_id',ids).eq('visibility','public').order('created_at',{ascending:false}).limit(200);
   noteTraces(data||[]); noteLooked(handles,'public');
 }
-async function submitAck(runId,toProfile,reason){
-  if(!ME){if(typeof showSignIn==='function')showSignIn({reason:'social'});else status('Sign in to send XUDOS.',true);return false;}
-  if(ME.id===toProfile){status('You cannot send XUDOS to your own run.',true);return false;}
-  const {error}=await sb.from('acks').insert({from_profile:ME.id,to_profile:toProfile,run_id:runId,reason,same_owner:false});
-  if(error){status('XUDOS could not be sent: '+error.message,true);return false;}
-  try{localStorage.setItem('ag_xudos_tip','1')}catch(_){}
-  status('XUDOS sent.');
-  return true;
+const XUDOS_PENDING_KEY='ag_pending_xudos';
+const xudosBusy=new Set();
+function rememberXudos(runId){
+  try{sessionStorage.setItem(XUDOS_PENDING_KEY,JSON.stringify({runId,at:Date.now()}));}catch(_){}
 }
-function ackPickerHtml(r,suggested,selected){
-  const chips=(suggested||[]).map(id=>{
-    const m=ACK_REASONS[id]; const on=id===selected;
-    return `<button type="button" class="ack-chip ${on?'on':''}" data-reason="${id}">${esc(m.label)}<small>${esc(m.evidence)}</small></button>`;
-  }).join('');
-  return `<div class="ack-picker" data-run="${r.id}" data-to="${r.profile_id}">
-    <p><b>Send XUDOS</b>. Choose what you appreciated.</p>
-    <div class="ack-chips">${chips}</div>
-    <button type="button" class="ack-send" ${selected?'':'disabled'}>Send XUDOS</button>
-    <button type="button" class="ghost ack-cancel" style="margin-left:8px">Cancel</button>
-  </div>`;
+function clearPendingXudos(){try{sessionStorage.removeItem(XUDOS_PENDING_KEY);}catch(_){}}
+function updateXudosButtons(runId,on,delta){
+  document.querySelectorAll('.kudo[data-run]').forEach(button=>{
+    if(button.dataset.run!==runId)return;
+    button.classList.toggle('on',on);
+    button.classList.toggle('pop',on);
+    button.setAttribute('aria-pressed',String(on));
+    button.setAttribute('aria-label',on?'Remove XUDOS':'Send XUDOS');
+    const number=button.querySelector('.num');
+    if(number&&/^\d+$/.test(number.textContent.trim())) number.textContent=String(Math.max(0,Number(number.textContent.trim())+delta));
+  });
+}
+async function toggleXudos(button){
+  const runId=button.dataset.run,toProfile=button.dataset.to;
+  if(!runId||!toProfile||xudosBusy.has(runId))return;
+  if(!ME){rememberXudos(runId);showSignIn({reason:'social',returnTo:'?run='+encodeURIComponent(runId)});return;}
+  if(ME.id===toProfile)return;
+  const wasOn=button.classList.contains('on');
+  xudosBusy.add(runId);
+  updateXudosButtons(runId,!wasOn,wasOn?-1:1);
+  try{
+    const query=wasOn
+      ?sb.from('acks').delete().eq('run_id',runId).eq('from_profile',ME.id).select('id')
+      :sb.from('acks').insert({from_profile:ME.id,to_profile:toProfile,run_id:runId,reason:'appreciated',same_owner:false}).select('id');
+    const {data,error}=await query;
+    if(error||!Array.isArray(data)||!data.length)throw error||new Error('No XUDOS record changed');
+    if(location.search.includes('run='))void viewRun(runId);
+  }catch(error){
+    updateXudosButtons(runId,wasOn,wasOn?1:-1);
+    status('XUDOS did not save. Please try again.',true);
+    console.warn('XUDOS failed',error);
+  }finally{xudosBusy.delete(runId);}
+}
+function consumePendingXudos(){
+  if(!ME)return;
+  let pending;try{pending=JSON.parse(sessionStorage.getItem(XUDOS_PENDING_KEY)||'null');}catch(_){}
+  if(!pending?.runId)return;
+  if(Date.now()-pending.at>10*60*1000){clearPendingXudos();return;}
+  const button=[...document.querySelectorAll('.kudo[data-run]')].find(b=>b.dataset.run===pending.runId);
+  if(button){clearPendingXudos();if(!button.classList.contains('on'))void toggleXudos(button);}
 }
 
 function grindShape(runs, acksReceived){
@@ -1263,7 +1289,6 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
   const selfAck=ME&&ME.id===r.profile_id;
   let xudosTip='';
   const ackBtn=selfAck?'':`<button class="act kudo ${acked?'on':''}" data-run="${r.id}" data-to="${r.profile_id}" title="Send XUDOS" aria-label="${acked?'XUDOS sent':'Send XUDOS'}">XUDOS${count?' <span class="n num">'+count+'</span>':''}</button>`;
-  const picker=opts.picker?ackPickerHtml(r,opts.suggested||suggestAckReasons(r),opts.selected||null):'';
   const whoLink=att.link&&!opts.preview?`<a href="${att.link}">${esc(att.name)}</a>`:`<span>${esc(att.name)}</span>`;
   const anonTag=att.ghost?'<span class="ghost-tag">anon</span>':'';
   const started=r.started_at&&Number.isFinite(Date.parse(r.started_at))?new Date(r.started_at).toLocaleString([], {dateStyle:'medium',timeStyle:'short'}):'Start time unknown';
@@ -1333,8 +1358,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     ${xudosTip}
     ${opts.preview?'<div class="foot"><span class="meta">Preview · not saved</span></div>':`${followSlot||detailLink?`<div class="foot run-social-actions"><span class="acts">${followSlot}${detailLink}</span></div>`:''}
       <footer class="fc-foot run-actions">${GrinderFeed.actions({id:r.id,to:r.profile_id,count:count===null?null:count||0,acked,mode:selfAck?'mine':'',commentHref:'#grind-thread'})}</footer>`}
-    ${explore}
-    ${picker}</div>`; }
+    ${explore}</div>`; }
 
 
 function wireKudos(){
@@ -1364,40 +1388,12 @@ function wireKudos(){
       },slot);
     }
   });
-  document.querySelectorAll('.kudo').forEach(b=>b.addEventListener('click',async()=>{
-  if(!ME){if(typeof showSignIn==='function')showSignIn({reason:'social'});else status('Sign in to send XUDOS.',true);return;}
-  if(b.classList.contains('on'))return;
-  const card=b.closest('.card'); if(!card)return;
-  const tip=card.querySelector('.xudos-tip'); if(tip) tip.remove();
-  const runId=b.dataset.run;
-  const {data:r}=await sb.from('runs').select('*').eq('id',runId).single();
-  if(!r)return;
-  const suggested=suggestAckReasons(r);
-  const old=card.querySelector('.ack-picker');
-  if(old){old.remove();return;}
-  card.insertAdjacentHTML('beforeend',ackPickerHtml(r,suggested,suggested[0]));
-  wireAckPicker(card,r,suggested[0]);
-})); }
-
-function wireAckPicker(card,r,selected){
-  let reason=selected;
-  card.querySelectorAll('.ack-chip').forEach(ch=>ch.addEventListener('click',()=>{
-    reason=ch.dataset.reason;
-    card.querySelectorAll('.ack-chip').forEach(x=>x.classList.toggle('on',x===ch));
-    const send=card.querySelector('.ack-send'); if(send) send.disabled=!reason;
-  }));
-  const cancel=card.querySelector('.ack-cancel');
-  if(cancel) cancel.addEventListener('click',()=>{ const p=card.querySelector('.ack-picker'); if(p)p.remove(); });
-  const send=card.querySelector('.ack-send');
-  if(send) send.addEventListener('click',async()=>{
-    if(!reason)return;
-    if(await submitAck(r.id,r.profile_id,reason)){
-      const p=card.querySelector('.ack-picker'); if(p)p.remove();
-      const btn=card.querySelector('.kudo');
-      if(btn){btn.classList.add('on','pop'); const n=btn.querySelector('.num'); if(btn.classList.contains('fc-act')&&n) n.textContent=String((Number(n.textContent)||0)+1); else btn.firstChild.textContent='XUDOS ';}
-      if(location.search.includes('run=')) viewRun(r.id);
-    }
+  document.querySelectorAll('.kudo[data-run]:not([data-xudos-wired])').forEach(b=>{
+    b.dataset.xudosWired='true';
+    b.setAttribute('aria-pressed',String(b.classList.contains('on')));
+    b.addEventListener('click',()=>void toggleXudos(b));
   });
+  consumePendingXudos();
 }
 
 function harnessLabel(h){
@@ -1932,8 +1928,6 @@ async function viewRun(id){
   if(!current())return;
   const acks=await fetchAckList(id);
   if(!current())return;
-  const suggested=suggestAckReasons(r);
-  const preselect=q.get('reason')&&ACK_REASONS[q.get('reason')]?q.get('reason'):suggested[0];
   const openAck=q.get('ack')==='1'&&ME&&!ad.mine.has(r.id)&&ME.id!==r.profile_id;
   const owner=ME?.id===r.profile_id;
   const shareable=r.visibility==='public'||r.visibility==='link'||r.visibility==='close_friends';
@@ -1945,7 +1939,7 @@ async function viewRun(id){
     : `<section class="run-primary-actions"><p class="meta">FROM THIS RUN</p><div class="cta">${shareable?`<a class="act blue" href="/?share=1&run=${r.id}">Share this run</a>`:''}<a class="act" href="${profileUrl}">Open builder profile</a></div><p class="hint">${r.visibility==='link'?'Followers. This run stays off the public profile. Follow from the card above.':'Follow, send XUDOS or share from the card above.'}</p></section>`;
   frame(typeof railHtml==='function'?railHtml(null):null,null);app.classList.remove('is-editing-run');
   app.innerHTML=`<div class="head"><h2>Behind the run</h2><span class="meta">${esc(audienceLabel(r.visibility))}</span></div>`
-    +runCard(r,ad.mine.has(r.id),ad.countsKnown===false?null:ad.counts[r.id]||0,{picker:openAck,suggested,selected:preselect,ownerActions:owner,detail:true})
+    +runCard(r,ad.mine.has(r.id),ad.countsKnown===false?null:ad.counts[r.id]||0,{ownerActions:owner,detail:true})
     +nextAction
     +`<section id="run-photos"></section>`
     +`<section id="grind-thread"></section><div class="head"><h2>XUDOS</h2><span class="meta">${acks===null?'Unavailable':acks.length}</span></div><div class="panel">`+ackListHtml(acks)+`</div>`
@@ -1978,7 +1972,7 @@ async function viewRun(id){
     $('run-save').onclick=async()=>{const title=$('run-title').value.trim(),project=$('run-project').value.trim(),caption=$('run-caption').value.trim(),output=$('run-output-url').value.trim(),audience=$('run-audience').value,heroVisual=controls.querySelector('input[name="run-hero-visual"]:checked')?.value||suggestedVisual||null;if(!title){status('Add a title.',true);$('run-title').focus();return}if(output&&!safeOutputUrl(output)){status('The output link must start with http:// or https://.',true);return}if(!(await requireCloseFriendsForSave(audience)))return;const saveButton=$('run-save');saveButton.disabled=true;try{await photoEditor?.save?.()}catch(error){saveButton.disabled=false;status(error.message,true);return}const pin=$('run-pin').checked;const {error}=await sb.from('runs').update({...StriveStory.read(controls),title,project:project||null,hero_visual:heroVisual,caption:caption||null,output_url:output||null,visibility:audience,pinned_at:pin?(r.pinned_at||new Date().toISOString()):null}).eq('id',r.id);if(error){saveButton.disabled=false;status(error.message,true);return}history.replaceState(null,'','/?run='+r.id);await viewRun(r.id)};
     $('run-delete').onclick=async()=>{if(!confirm('Delete this run and its discussion?'))return;const {error}=await sb.from('runs').delete().eq('id',r.id);if(error){status(error.message,true);return}history.replaceState(null,'','/?mine');viewMe()};
   }
-  wireKudos(); if(openAck){ const card=$('card-'+id); if(card) wireAckPicker(card,r,preselect); }
+  wireKudos(); if(openAck){ const button=$('card-'+id)?.querySelector('.kudo'); if(button)button.click(); }
   if(q.get('ack')) history.replaceState(null,'',StriveLinks.runPath(r)||`/?run=${id}`);
   // Where this run sits in its project (site/journey.js). The owner sees every run of theirs on the
   // project; anyone else sees the public ones. One other run is needed before there is a journey.
@@ -2484,7 +2478,8 @@ function signInWithGitHub(){
 function showSignIn(opts={}){
   if(!auth){status('Sign-in is unavailable. Please refresh.',true);return;}
   const imported=location.hash.match(/import=([^&]+)/);if(imported&&!stashImport(imported[1])){status('This browser could not preserve the draft. Save your run JSON before signing in.',true);return;}
-  try{sessionStorage.setItem('ag_social_return',location.search)}catch(_){}
+  const returnTo=opts.returnTo||location.search;
+  try{sessionStorage.setItem('ag_social_return',returnTo)}catch(_){}
   let dialog=$('signin-dialog');if(dialog)dialog.remove();
   dialog=document.createElement('dialog');dialog.id='signin-dialog';dialog.setAttribute('aria-labelledby','signin-title');
   const stranger=opts.reason==='social';
@@ -2493,9 +2488,9 @@ function showSignIn(opts={}){
     ?'Sign in to follow a project or builder, or cheer a run. You will return here after signing in. Nothing posts until you choose.'
     :'Sign in to keep your profile and responses connected. You will return to this preview or social action.';
   dialog.innerHTML='<h2 id="signin-title">'+title+'</h2><p id="signin-explanation">'+explanation+'</p><p class="hint">Closing or cancelling sign-in posts nothing and changes no audience.</p>'+PROVIDERS_ENABLED.filter(p=>p==='github'||p==='x'||p==='twitter').map(p=>'<button data-provider="'+p+'">Continue with '+providerLabel(p)+'</button>').join('')+(PROVIDERS_ENABLED.includes('email')?'<form id="signin-email" class="reply-form"><label>Email<input name="email" type="email" autocomplete="email" required></label><p>Your email stays out of your public profile.</p><button>Send a sign-in link</button></form>':'')+'<p id="signin-state" role="status"></p><button class="ghost" id="signin-close">Close</button>';
-  document.body.append(dialog);dialog.showModal();$('signin-close').onclick=()=>dialog.close();
-  dialog.querySelectorAll('[data-provider]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{await auth.signIn(button.dataset.provider,{returnTo:location.search})}catch(e){$('signin-state').textContent=e.detail?.message||'Sign-in could not start. Try again.';button.disabled=false}});
-  GrinderAuth.mountEmailForm($('signin-email'),$('signin-state'),auth,location.search);
+  document.body.append(dialog);dialog.showModal();$('signin-close').onclick=()=>{clearPendingXudos();dialog.close()};
+  dialog.querySelectorAll('[data-provider]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{await auth.signIn(button.dataset.provider,{returnTo})}catch(e){$('signin-state').textContent=e.detail?.message||'Sign-in could not start. Try again.';button.disabled=false}});
+  GrinderAuth.mountEmailForm($('signin-email'),$('signin-state'),auth,returnTo);
 }
 
 function viewIdentitySetup(){
