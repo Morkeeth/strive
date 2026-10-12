@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import struct
 import subprocess
@@ -163,10 +164,12 @@ def prepare_site(folder: Path) -> None:
         '<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">',
         "",
     )
-    html = html.replace(
-        '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>',
-        SUPABASE_FIXTURE,
+    html, sdk_tags = re.subn(
+        r'<script src="https://cdn\.jsdelivr\.net/npm/@supabase/supabase-js@[^"]+"[^>]*></script>',
+        lambda _: SUPABASE_FIXTURE,
+        html,
     )
+    assert sdk_tags == 1, "the Supabase SDK tag moved; update the cold first-minute fixture"
     html = html.replace("</body>", PROBE + "</body>")
     index.write_text(html)
 

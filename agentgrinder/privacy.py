@@ -204,7 +204,27 @@ def _patterns() -> list[tuple[str, re.Pattern]]:
         # construction, a private path that was truncated rather than withheld.
         ("elided-path", re.compile("\u2026" + s + r"[^<>\"'\n]{0,70}")),
     ]
-    return pats
+    return pats + _credential_patterns()
+
+
+def _credential_patterns() -> list[tuple[str, re.Pattern]]:
+    """Credential shapes with a fixed, published prefix, so prose and code never match by accident.
+
+    A commit subject, a file name or an author's caption can still carry a pasted secret; any
+    of these is a refusal wherever `scan` guards outbound text. Fragments keep this file clean.
+    """
+    dashes = "-" * 5
+    return [
+        ("private-key", re.compile(dashes + "BEG" + r"IN [A-Z0-9 ]*PRIV" + r"ATE KEY[A-Z ]*" + dashes)),
+        ("aws-access-key", re.compile(r"\b(?:AK|AS)" + r"IA[0-9A-Z]{16}\b")),
+        ("github-token", re.compile(r"\bgh[pousr]" + r"_[A-Za-z0-9]{30,}\b|\bgithub" + r"_pat_[A-Za-z0-9_]{30,}\b")),
+        ("slack-token", re.compile(r"\bxox" + r"[abprs]-[A-Za-z0-9-]{16,}\b")),
+        ("model-api-key", re.compile(r"\bs" + r"k-(?:ant-|proj-)?[A-Za-z0-9_-]{32,}")),
+        ("stripe-key", re.compile(r"\b[rs]" + r"k_live_[A-Za-z0-9]{16,}\b")),
+        ("google-api-key", re.compile(r"\bAI" + r"za[0-9A-Za-z_-]{35}\b")),
+        ("jwt", re.compile(r"\bey" + r"J[A-Za-z0-9_-]{10,}\.ey" + r"J[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}")),
+        ("strive-connect-token", re.compile(r"\bag" + r"_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")),
+    ]
 
 
 def _memory_basenames() -> set[str]:

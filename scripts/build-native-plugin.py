@@ -5,12 +5,15 @@ import base64
 import importlib.util
 import json
 from pathlib import Path
+import re
 import shutil
 import tempfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-MCP_CONFIG = {'command': 'uvx', 'args': ['--from', 'striverun', 'strive-mcp']}
+# MCP configs persist in people's editors, so they name one published release, never "latest".
+PACKAGE_SPEC = 'striverun==' + re.search(r'^version = "([^"]+)"', (ROOT/'pyproject.toml').read_text(), re.M).group(1)
+MCP_CONFIG = {'command': 'uvx', 'args': ['--from', PACKAGE_SPEC, 'strive-mcp']}
 MCP_ENCODED = base64.b64encode(json.dumps(MCP_CONFIG, separators=(',', ':')).encode()).decode()
 MCP_INSTALL_LINK = 'cursor://anysphere.cursor-deeplink/mcp/install?name=strive&config=' + MCP_ENCODED
 spec = importlib.util.spec_from_file_location('installer', ROOT/'scripts/strive-plugin.py')
@@ -43,7 +46,7 @@ with tempfile.TemporaryDirectory(prefix='strive-public-plugin-') as folder:
     (out/'release.json').write_text(json.dumps({'name':'strive','version':manifest['version'],
         'package':'/plugins/'+sha+'.zip','sha256':sha,'editors':['cursor','claude','codex'],
         'install':'/plugins/install.md'},indent=2)+'\n')
-    (out/'install.md').write_text('''# Install STRIVE
+    (out/'install.md').write_text(('''# Install STRIVE
 
 [Open the visual install page](https://striverun.app/install).
 
@@ -59,7 +62,7 @@ Python 3.9+ is required to capture. No model API key is needed.
 For the two local preview tools, add the MCP server with one command:
 
 ```sh
-claude mcp add strive -- uvx --from striverun strive-mcp
+claude mcp add strive -- uvx --from __STRIVE_MCP_SPEC__ strive-mcp
 ```
 
 For the `strive` skill and optional capture hook, install the plugin, then
@@ -81,7 +84,7 @@ review the server before adding it. If the link does not open the install
 dialog, add the same server to `~/.cursor/mcp.json`:
 
 ```json
-{"mcpServers":{"strive":{"command":"uvx","args":["--from","striverun","strive-mcp"]}}}
+{"mcpServers":{"strive":{"command":"uvx","args":["--from","__STRIVE_MCP_SPEC__","strive-mcp"]}}}
 ```
 
 The local plugin and `strive` skill were verified in Cursor's Customize screen
@@ -107,7 +110,7 @@ already installed, Cursor gives that one precedence.
 For the two local preview tools, add the MCP server with one command:
 
 ```sh
-codex mcp add strive -- uvx --from striverun strive-mcp
+codex mcp add strive -- uvx --from __STRIVE_MCP_SPEC__ strive-mcp
 ```
 
 For the `strive` skill, install the plugin, then start a new Codex session:
@@ -138,5 +141,14 @@ Review and save in STRIVE starts as Only me. Choose your audience separately.
 
 Tell us what happened at https://striverun.app/?feedback: your editor, the action,
 what you expected and what happened. Do not include tokens or raw transcripts.
-''' % MCP_INSTALL_LINK)
+''' % MCP_INSTALL_LINK).replace('__STRIVE_MCP_SPEC__', PACKAGE_SPEC))
 print('Built STRIVE native plugin '+manifest['version']+' '+sha)
+
+# The visual install page carries the same pinned server; dist/install.html is the copy build-site made.
+page = ROOT/'dist/install.html'
+html = page.read_text()
+for token, value in (('__STRIVE_MCP_SPEC__', PACKAGE_SPEC), ('__STRIVE_MCP_INSTALL_LINK__', MCP_INSTALL_LINK.replace('&', '&amp;'))):
+    if token not in html:
+        raise ValueError(f'install.html lost its {token} marker')
+    html = html.replace(token, value)
+page.write_text(html)

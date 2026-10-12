@@ -18,7 +18,7 @@ The public app uses Vercel and Supabase. Authentication shares a Supabase projec
 
 ## Capture and deployment
 
-`python3 scripts/dev.py setup` installs the capture package and Python test dependencies in a local virtual environment. `npm ci --ignore-scripts` installs locked website and database-test dependencies. `npm run build` copies the site into `dist/`, applies runtime configuration and builds the capture archive served with that release. `scripts/build-site.mjs` owns that build.
+`python3 scripts/dev.py setup` installs the capture package and Python test dependencies in a local virtual environment. `npm ci --ignore-scripts` installs locked website and database-test dependencies. `npm run build` copies the site into `dist/`, applies runtime configuration and builds the capture archive served with that release. `scripts/build-site.mjs` owns that build. Its last step writes a Content-Security-Policy into `dist/index.html` (`scripts/csp.mjs`) that allows each inline script by hash; the Supabase SDK is pinned with Subresource Integrity.
 
 The checked-in browser configuration targets a local database and uses a placeholder key. A contributor checkout cannot sign in to production from those constants. `server/runtime-config.mjs` validates deployment configuration; privileged keys must never reach browser output.
 
@@ -30,7 +30,7 @@ A migration, a deployed client and an observed user action are separate checks. 
 
 ## Access and test boundaries
 
-Run audience is enforced through database policies and server checks. Photo access follows the live run audience and explicit personal-photo selection. The browser's hidden controls are not an access boundary. Preserve owner/other-account/anonymous cases and revocation when changing these paths.
+Run audience is enforced through database policies and server checks. Photo access follows the live run audience and explicit personal-photo selection. The browser's hidden controls are not an access boundary. Readers cannot select `profiles.auth_uid` (`042_private_auth_uid.sql`); the signed-in owner reads their own row through `strava.my_profile()`. Preserve owner/other-account/anonymous cases and revocation when changing these paths.
 
 Fork CI uses repository fixtures and disposable data without production credentials. It verifies local behavior and builds; it does not prove hosted sign-in or real participation. Browser tests must state whether they used a fixture, a disposable database or the hosted service. See [security](../SECURITY.md), [contributor setup](../CONTRIBUTING.md) and [card rules](design/CARD-SYSTEM.md).
 

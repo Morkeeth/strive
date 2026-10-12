@@ -2,7 +2,7 @@
 
 Choose Claude Code, Codex or Cursor on **Add run**. Copy its command into Terminal on the computer where you worked. It opens a local picker with recent sessions and their first prompt. Pick a session, name the project, then choose a sitting. The next page opens your private STRIVE preview. Save is a separate choice; keep **Only me** selected for a private run.
 
-The command requires Python 3.10+ and uv. Add run also offers the same pinned package through pipx if you do not use uv. The short `uvx striverun` command is not published yet. Use the versioned command displayed by your current STRIVE site.
+The command requires Python 3.9+ and uv. Add run also offers the same pinned package through pipx if you do not use uv. The package is also on PyPI as `striverun`, and the MCP install commands name its released version (`striverun==<version>`). For capture, use the versioned command displayed by your current STRIVE site.
 
 ## Editor plugin and MCP
 

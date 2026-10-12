@@ -32,7 +32,8 @@ function mockClient(user) {
     async linkIdentity(a) { calls.push(['link', a.provider]); return { data: { url: 'y' }, error: null }; },
     async signOut() { user = null; return { error: null }; },
   };
-  return { auth, from: () => ({ select() { return this; }, eq() { return this; }, async maybeSingle() { return { data: null, error: null }; } }), calls, setUser(u) { user = u; } };
+  const none = () => ({ select() { return this; }, eq() { return this; }, async maybeSingle() { return { data: null, error: null }; } });
+  return { auth, from: none, rpc: none, calls, setUser(u) { user = u; } };
 }
 const store = new Map(); const storage = { setItem: (k, v) => store.set(k, v), getItem: (k) => store.get(k) ?? null, removeItem: (k) => store.delete(k) };
 let m = mockClient(null);
