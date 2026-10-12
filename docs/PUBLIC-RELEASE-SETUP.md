@@ -21,3 +21,8 @@ Use the separate Vercel project. Configure the browser, server and CLI endpoints
 GitHub sign-in (the only provider enabled, `PROVIDERS_ENABLED` in site/index.html) uses shared Auth but creates a profile in `strava`. Add the exact site callback to the allowlist without changing the project Site URL. Public handles are labels, not proof of account ownership.
 
 Before release, run `python3 scripts/dev.py check`, `npm run build`, and the relevant disposable browser path. Hosted acceptance needs consenting accounts and must verify private-by-default capture, deliberate posting, public browsing, responses and deletion. Local tests, hosted checks and real use are separate evidence.
+
+## Release order
+
+- **PyPI before a version bump goes live.** `/install`, `/plugins/install.md` and the Cursor one-click link name `striverun==<pyproject version>`, and `strive sync --install` pins the installed release. Publish that version to PyPI before deploying a site build whose `pyproject.toml` carries it.
+- **Migration 041 after the site.** `041_private_auth_uid.sql` stops readers selecting `profiles.auth_uid`. The site reads the owner's row through `strava.my_profile()` and falls back to the old owner read while that function is missing, so deploy the site first, then apply 041. Afterwards check a signed-out profile page (`/?u=<handle>`), sign-in, and one XUDOS. Rollback steps are at the top of the migration.
