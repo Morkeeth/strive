@@ -313,7 +313,7 @@ window.GrinderPeople = function ({
               const profiles = await result(
                 db
                   .from("profiles")
-                  .select("*")
+                  .select(PUBLIC_PROFILE)
                   .in(
                     "id",
                     ids.map((f) => f.followed_id),
