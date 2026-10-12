@@ -593,7 +593,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/feed-card.js"></script>
 <script src="/day.js"></script>
 <script src="/journey.js"></script>
-<script src="/import-row.js"></script>
+<script src="/import-row.js"></script><script src="/sharing-review.js"></script>
 <script src="/day-drafts.js"></script>
 <script src="/day-share.js"></script>
 <script src="/day-card.js"></script>
@@ -2613,6 +2613,7 @@ async function importRun(){
   app.innerHTML=`<div class="head"><h2>${sample?'Sample preview':'Your imported session'}</h2><span class="meta">${sample?'Example data · not your activity':'Not saved yet'}</span></div>
     ${sample?'<p role="note">This sample is for trying the preview. It cannot be saved or posted. Capture your own session to share a run.</p>':''}
     ${legacyImport?`<div class="card" role="alert"><div class="pad"><h3>This older import cannot be saved</h3><p>It has no session reference. Run the current STRIVE session picker on the computer where you worked, then choose this session again. Your new preview can be saved privately.</p><div class="cmd"><code class="c">${esc(SESSION_PICKER_LINE)}</code></div><button type="button" class="act" data-copy="${esc(SESSION_PICKER_LINE)}">Copy capture command</button> <a class="act" href="/?post">Add run instructions</a></div></div>`:''}
+    <div id="import-sharing-review"></div>
     <section aria-labelledby="import-card-heading"><h2 id="import-card-heading" class="visually-hidden">${sample?'Sample run preview':'Run preview'}, not saved</h2><div id="import-card-preview"></div></section>
     <div class="panel"><div class="pad preview-story">
     <label>Run title<input id="i_title" maxlength="120" required value="${esc(importedTitle())}"></label>
@@ -2640,7 +2641,11 @@ async function importRun(){
   const editFields=['i_title','i_project','i_repo','i_caption','i_output_url','i_stack','i_vis'];
   let savedImportEdits=null;
   try{const saved=JSON.parse(sessionStorage.getItem(draftKey)||sessionStorage.getItem('ag_import_edits')||'null');if(saved?.token===m[1]){savedImportEdits=saved;for(const key of editFields)if(typeof saved[key]==='string')$(key).value=saved[key];$('i_share_rig').checked=!!saved.shareRig}}catch(_){}
-  function saveImportEdits(){try{sessionStorage.setItem(draftKey,JSON.stringify({token:m[1],...Object.fromEntries(editFields.map(key=>[key,$(key).value])),shareRig:$('i_share_rig').checked}))}catch(_){}}
+  function saveImportEdits(){try{sessionStorage.setItem(draftKey,JSON.stringify({token:m[1],...Object.fromEntries(editFields.map(key=>[key,$(key).value])),shareRig:$('i_share_rig').checked,metricChoices:metricChoices()}))}catch(_){}}
+  let sharingReview=null;
+  const metricChoices=()=>sharingReview?.choices()||savedImportEdits?.metricChoices||{};
+  const reviewedRig=()=>{const rig={...(ME?.rig||{})};if(run.rig_mcps!=null)rig.mcps=run.rig_mcps;if(run.rig_skills!=null)rig.skills=run.rig_skills;const notes=$('i_stack')?.value;if(notes)rig.notes=notes;if($('i_share_rig')?.checked&&run.rig_mcp_names){rig.mcp_names=run.rig_mcp_names;rig.share_names=true;}return {rig};};
+  const reviewedRow=choices=>StriveImportRow.build(run,{profileId:ME?.id||'Your signed-in account',title:$('i_title').value,project:editedProject(),caption:$('i_caption').value.trim(),output:$('i_output_url').value.trim(),repo:safeRepoUrl(($('i_repo')?.value||'').trim()),metricChoices:choices});
   function paintImportPreview(){
     // Signed out there is no account to show: the neutral label and its initial, never a
     // made-up GitHub login. The title starts from receipt-backed output or basic session facts.
@@ -2660,13 +2665,16 @@ async function importRun(){
       code_route:run.code_route||null,
       visibility:'private',started_at:run.started||null,created_at:run.started||new Date().toISOString()};
     // The same card the feed draws (site/feed-card.js), in its unsaved form, above the form.
-    $('import-card-preview').innerHTML=GrinderFeed.card(preview,{preview:true});
+    const selected=reviewedRow(metricChoices());
+    $('import-card-preview').innerHTML=GrinderFeed.card({...selected,id:'preview',profiles:preview.profiles,created_at:preview.created_at},{preview:true});
+    sharingReview?.refresh();
     window.StriveCardMotion?.mount($('import-card-preview'));
   }
   editFields.forEach(key=>$(key).addEventListener('input',()=>{saveImportEdits();paintImportPreview()}));
-  $('i_share_rig').addEventListener('change',saveImportEdits);
+  $('i_share_rig').addEventListener('change',()=>{saveImportEdits();sharingReview?.refresh()});
+  sharingReview=StriveSharingReview.mount({slot:$('import-sharing-review'),run,buildRow:reviewedRow,audience:$('i_vis'),save:$('i_pub'),buildProfile:reviewedRig,initial:savedImportEdits?.metricChoices||{},onChange:()=>{saveImportEdits();paintImportPreview()}});
   paintImportPreview();
-  window.StrivePostFlow?.mountImport(app,{token:m[1],profileId:ME?.id||null,eligible:!!run.measurement_revision&&!sample&&run.trace_basis!=='typed-by-author',isCurrent:current});
+  window.StrivePostFlow?.mountImport(app,{token:m[1],profileId:ME?.id||null,eligible:!run.review_run_id&&!!run.measurement_revision&&!sample&&run.trace_basis!=='typed-by-author',isCurrent:current});
   $('i_pub').addEventListener('click',async()=>{
     if(!current())return;
     if(sample){status('Samples are preview-only. Capture your own session to save a run.',true);return;}
@@ -2686,9 +2694,9 @@ async function importRun(){
     if(!$('i_title').value.trim()||!audience){status('Add a title and choose who can see the run.',true);return}
     if(output&&!safeOutputUrl(output)){status('The output link must start with http:// or https://.',true);return}
     if(!(await requireCloseFriendsForSave(audience))||!current())return;
-    if(await StrivePhotoDraft.saveIfDraft({
+    if(!run.review_run_id&&await StrivePhotoDraft.saveIfDraft({
       token:m[1],profileId:ME.id,client:sb,audience,isCurrent:current,button:publishButton,recover:$('i_recover'),status,
-      buildRow:()=>StriveImportRow.build(run,{profileId:ME.id,title:$('i_title').value,project:editedProject(),caption,output,repo:safeRepoUrl(($('i_repo')?.value||'').trim())}),
+      buildRow:()=>StriveImportRow.build(run,{profileId:ME.id,title:$('i_title').value,project:editedProject(),caption,output,repo:safeRepoUrl(($('i_repo')?.value||'').trim()),metricChoices:metricChoices()}),
       onSaved:async({runId,visibility})=>{
         // Run and images are saved. A later rig error is a separate, non-fatal update.
         let rigNote='';
@@ -2740,13 +2748,17 @@ async function importRun(){
     let prior=null;
     try{ prior=await existingRun(); }catch(lookupError){ showRecovery(lookupError); return; }
     if(!current())return;
-    if(prior){ await openExisting(prior); return; }
+    if(prior&&(!run.review_run_id||prior.id!==run.review_run_id||prior.visibility!=='private')){ await openExisting(prior); return; }
     // The row is built by site/import-row.js, the same builder the day review uses.
     // The Repository field wins over the capture's value: an https link is saved, anything else
     // clears it. A typed value that is not a link is never saved as text.
     const row=StriveImportRow.build(run,{profileId:ME.id,title:$('i_title').value,project:editedProject(),caption,output,
-      repo:safeRepoUrl(($('i_repo')?.value||'').trim())});
-    let {data:published,error}=await sb.from('runs').insert(row).select('id').single();
+      repo:safeRepoUrl(($('i_repo')?.value||'').trim()),metricChoices:metricChoices()});
+    // An agent's private draft is updated only by its signed-in owner confirming here.
+    // Null explicitly clears fields already stored in that draft; insert omits them entirely.
+    const omitted=['tool_calls','shell_calls','files_touched','artifacts_produced','commits','model','duration_s','wall_time_s','ridge','ridge_basis','ridge_wall_seconds','worker_bins','ridge_tool_calls','commit_bins','receipts','shipped','code_route','route'].filter(key=>!Object.hasOwn(row,key));
+    const result=prior?await sb.from('runs').update({...Object.fromEntries(omitted.map(key=>[key,null])),...row}).eq('id',prior.id).eq('profile_id',ME.id).eq('visibility','private').select('id').single():await sb.from('runs').insert(row).select('id').single();
+    let {data:published,error}=result;
     if(!current())return;
     if(error&&error.code==='23505'){ let again=null; try{again=await existingRun()}catch(_){} if(again){ await openExisting(again); return; } }
     if(error){showRecovery(error);return;}

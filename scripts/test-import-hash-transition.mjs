@@ -11,7 +11,8 @@ let pending;
 const saved=[];
 const ctx={window:w,document:w.document,location:w.location,history:w.history,sessionStorage:w.sessionStorage,localStorage:w.localStorage,URL,atob,
  RUN_VIEW_GENERATION:0,AUTH_GENERATION:0,ME:{id:'owner',rig:{}},
- GrinderContract:require('../site/run-contract.js'),
+ GrinderContract:require('../site/run-contract.js'),StriveImportRow:require('../site/import-row.js'),StriveSharingReview:require('../site/sharing-review.js'),
+ StrivePhotoDraft:{saveIfDraft:async()=>false},
  GrinderFeed:{card:r=>`<article>${r.title}</article>`},
  $:id=>w.document.getElementById(id),esc:s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;'),
  frame(){},skeletonCard:()=>'<p>Loading</p>',projectForSave:(a,b)=>b||a,safeOutputUrl:()=>null,safeRepoUrl:()=>null,

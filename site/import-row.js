@@ -1,7 +1,7 @@
 // The run row an import saves, built in one place so the single preview and the day review cannot
 // drift apart. It always starts private. It carries only fields the export already showed.
 (function(root){
-  function build(run,{profileId,title,project,caption,output,repo}){
+  function build(run,{profileId,title,project,caption,output,repo,metricChoices={}}){
     const base={profile_id:profileId,title:title||'Untitled run',
       project,model:run.model||null,capture_metadata:run.capture_metadata||null,segment_id:run.segment_id||null,
       wall_time_s:Number.isInteger(run.wall_time_s)&&run.wall_time_s>=0?run.wall_time_s:null,
@@ -32,7 +32,21 @@
       if(run[key]!=null) coach[key]=run[key];
     // A repository link is an https address or nothing; the caller has already checked it.
     if(repo) coach.repo_url=repo; else delete coach.repo_url;
-    return {...base,...coach};
+    const row={...base,...coach};
+    const omit=keys=>keys.forEach(key=>delete row[key]);
+    if(metricChoices.tool_calls===false)omit(['tool_calls','shell_calls','ridge_tool_calls','ridge','ridge_basis','ridge_wall_seconds','worker_bins']);
+    if(metricChoices.files_touched===false)omit(['files_touched','artifacts_produced','route','code_route']);
+    if(metricChoices.commits===false)omit(['commits','commit_bins','shipped','receipts','code_route']);
+    if(metricChoices.model===false){omit(['model']);if(row.capture_metadata)row.capture_metadata={...row.capture_metadata,models:[]};}
+    if(metricChoices.duration===false)omit(['duration_s','wall_time_s','ridge_wall_seconds','ridge','ridge_basis','worker_bins','ridge_tool_calls']);
+    // Estimates and embedded receipt/trace summaries can restate deselected measurements.
+    if(Object.values(metricChoices).some(value=>value===false)){
+      if(row.capture_metadata){row.capture_metadata={...row.capture_metadata};delete row.capture_metadata.estimates;}
+      omit(['code_route','receipts']);
+    }
+    for(const key of ['tool_calls','files_touched','commits','duration_s','wall_time_s','model'])if(row[key]==null)delete row[key];
+    if(!row.ridge)omit(['commit_bins']);
+    return row;
   }
   const api={build};
   if(typeof module==='object'&&module.exports)module.exports=api;

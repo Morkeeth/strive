@@ -337,7 +337,7 @@ await db.exec(await readFile(new URL("../supabase/strava/007_agent_token_connect
   const key = randomUUID();
   const r1 = await upload({ method: "POST", headers: H({ "idempotency-key": key }), body: strivePayload(REV(50)) }, cfg, fakeRest);
   assert.equal(r1.status, 200);
-  assert.deepEqual(Object.keys(r1.body).sort(), ["existing", "id", "request_id", "visibility"]);
+  assert.deepEqual(Object.keys(r1.body).sort(), ["existing", "id", "preview_url", "request_id", "review_required", "visibility"]);
   assert.equal(r1.body.visibility, "private");
   assert.equal(r1.body.existing, false);
   assert.equal(r1.body.request_id, key);
@@ -346,7 +346,8 @@ await db.exec(await readFile(new URL("../supabase/strava/007_agent_token_connect
   assert.equal(calls[0].init.headers.apikey, "sb_publishable_test");
   assert.ok(!("authorization" in calls[0].init.headers) && !("Authorization" in calls[0].init.headers), "no service role or user JWT is forwarded");
   const r2 = await upload({ method: "POST", headers: H(), body: strivePayload(REV(50), { visibility: "public" }) }, cfg, fakeRest);
-  assert.equal(r2.status, 403, "a Connect token cannot ask for public");
+  assert.equal(r2.status, 200, "an agent public request prepares only a private draft");
+  assert.equal(r2.body.visibility,"private");assert.equal(r2.body.review_required,true);
   const r3 = await upload({ method: "POST", headers: H(), body: strivePayload(REV(50)) }, cfg, fakeRest);
   assert.deepEqual([r3.status, r3.body.id, r3.body.existing, r3.body.visibility], [200, r1.body.id, true, "private"]);
   const r4 = await upload({ method: "POST", headers: H(), body: strivePayload(REV(51), { transcript: "raw" }) }, cfg, fakeRest);
@@ -468,3 +469,27 @@ await db.exec(await readFile(new URL("../supabase/strava/009_code_route.sql", im
 }
 
 console.log("\nAGENT PUBLISH: all checks passed");
+
+
+// Current review gate. The old function demonstrably permits direct public writes.
+await db.exec(await readFile(new URL('../supabase/strava/032_capture_metadata.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../supabase/strava/033_agent_capture_metadata.sql',import.meta.url),'utf8'));
+const reviewToken=await token(await agent(OWNER_A,{visibility:'public'}),{scopes:['publish','draft'],audiences:['private','public']});
+const beforeGate=await act(reviewToken,'publish',strivePayload(REV('review-before'),{visibility:'public'}));
+assert.equal(beforeGate.visibility,'public','baseline: scoped agent could publish without the run panel');
+await db.exec(await readFile(new URL('../supabase/strava/041_agent_run_review.sql',import.meta.url),'utf8'));
+const afterGate=await act(reviewToken,'publish',strivePayload(REV('review-after'),{visibility:'public'}));
+assert.equal(afterGate.visibility,'private');assert.equal(afterGate.review_required,true);
+assert.equal((await db.query('select visibility from strava.runs where id=$1',[afterGate.id])).rows[0].visibility,'private');
+const reviewed=JSON.parse(Buffer.from(afterGate.preview_url.split('#import=')[1],'base64').toString());
+assert.equal(reviewed.review_run_id,afterGate.id);assert.equal(reviewed.visibility,'private');assert.equal(reviewed.tool_calls,28);
+const publicBefore=(await db.query('select to_jsonb(r) as row from strava.runs r where id=$1',[beforeGate.id])).rows[0].row;
+const repeatPublic=await act(reviewToken,'publish',strivePayload(REV('review-before'),{visibility:'public',title:'should never replace title'}));
+assert.equal(repeatPublic.id,beforeGate.id);assert.equal(repeatPublic.existing,true);assert.equal(repeatPublic.visibility,'public');assert.equal(repeatPublic.review_required,false);assert.equal(repeatPublic.preview_url,undefined);
+assert.deepEqual((await db.query('select to_jsonb(r) as row from strava.runs r where id=$1',[beforeGate.id])).rows[0].row,publicBefore);
+const draftGate=await act(reviewToken,'draft',strivePayload(REV('review-draft'),{visibility:'public'}));
+assert.equal(draftGate.review_required,true);
+assert.equal((await db.query('select payload from strava.grinder_agent_drafts where id=$1',[draftGate.id])).rows[0].payload.visibility,'private');
+assert.equal((await db.query("select count(*)::int as n from strava.runs where measurement_revision=$1 and visibility<>'private'",[REV('review-after')])).rows[0].n,0);
+console.log('PASS database review gate: direct RPC public request saves privately; private preview preserves measurements; existing public run is byte-for-byte unchanged on retry; draft payload forced private');
+await db.close();

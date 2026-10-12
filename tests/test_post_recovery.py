@@ -56,7 +56,9 @@ def test_capture_dedupe_has_a_database_unique_index():
 
 
 def test_a_failed_rig_update_never_reads_as_a_failed_save():
-    saved = IMPORT[IMPORT.index("let {data:published,error}=await sb.from('runs').insert") :]
+    result = re.search(r"let \{data:published,error\}=(?:await sb\.from\('runs'\)\.insert|result;)", IMPORT)
+    assert result, "save result must be handled before a profile update"
+    saved = IMPORT[result.start() :]
     assert "The run is saved from here on" in saved
     assert "were not updated; edit them from your profile" in saved
 

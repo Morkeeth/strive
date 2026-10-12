@@ -332,6 +332,11 @@ def save(db, review_id, approved, base, token=None):
             results.append({'status':'unknown; retry this same review','project':payload['project']})
             break
         result = {'id':run_id,'existing':result['existing'],'visibility':result['visibility'],'project':payload['project'],'url':base+'/r/'+run_id}
+        if result['visibility']=='private':
+            preview={**payload,'visibility':'private','review_run_id':run_id}
+            packed=base64.urlsafe_b64encode(gzip.compress(encoded(preview).encode(),mtime=0)).decode().rstrip('=')
+            result.update(review_required=True,preview_url=base+'/#import=gz.'+packed)
+        else:result['review_required']=False
         with db: db.execute('update saves set result=? where review=? and revision=? and origin=? and account=?',(encoded(result),)+args)
         results.append(result)
     return {'review':review_id,'results':results,'sharing':'No sharing action performed; stored audience is reported for each result.'}
