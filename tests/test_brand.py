@@ -36,7 +36,10 @@ def test_the_plumbing_derives_the_name_and_never_repeats_it():
 
 def test_the_source_tree_keeps_the_token_so_a_rename_is_one_edit():
     assert "<title>__BRAND__ · __TAGLINE__</title>" in SOURCE_INDEX
-    assert "STRIVE" not in SOURCE_INDEX
+    # Product names in prose, environment keys and captured user data are not branding plumbing.
+    # The browser title and social title/alt tags remain renameable build tokens.
+    assert SOURCE_INDEX.count('content="__BRAND__ · __TAGLINE__"') == 4
+    assert '>__BRAND__</a>' in SOURCE_INDEX
 
 
 def test_the_built_site_carries_the_name_and_leaves_no_token():
