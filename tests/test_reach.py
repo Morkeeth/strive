@@ -26,6 +26,11 @@ WINDOW = (NOW - timedelta(hours=1), NOW + timedelta(minutes=1))
 
 @pytest.fixture(autouse=True)
 def _hermetic(tmp_path, monkeypatch):
+    # Freeze the window when this test starts, not when pytest collects the whole suite.
+    # Other tests can take minutes before these real pushes happen.
+    now = datetime.now(timezone.utc)
+    monkeypatch.setattr(sys.modules[__name__], "NOW", now)
+    monkeypatch.setattr(sys.modules[__name__], "WINDOW", (now - timedelta(hours=1), now + timedelta(minutes=1)))
     empty = tmp_path / "gitconfig-empty"
     empty.write_text("")
     monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(empty))
