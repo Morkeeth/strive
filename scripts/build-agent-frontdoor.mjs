@@ -85,7 +85,7 @@ One-time use is complete without persistence. If the owner wants a reusable comp
 
 ## Claude Code, Codex and Cursor
 
-Run one local picker on the computer where the work happened. Python 3.10+ and uv are required; this downloads the pinned STRIVE package but does not upload sessions:
+Run one local picker on the computer where the work happened. Python 3.9+ and uv are required; this downloads the pinned STRIVE package but does not upload sessions:
 
     uvx --from '${packageURL}' strive sessions --all --open --site '${origin}'
 
