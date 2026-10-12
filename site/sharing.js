@@ -118,6 +118,28 @@ function traceSeries(run){
  }
  return null;
 }
+function mountPublic({run,slot}){
+ const url=location.origin+(cleanRunPath(run)||'/r/'+encodeURIComponent(run.id));
+ const imageUrl='/api/og?run='+encodeURIComponent(run.id)+'&v=4';
+ const text=run.title||'STRIVE run', encoded=encodeURIComponent(url);
+ const mobile=typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches&&matchMedia('(max-width: 767px)').matches;
+ slot.innerHTML=`<section class="run-share-sheet"><h2 id="run-share-title">Share this run</h2><img class="share-image-preview" src="${esc(imageUrl)}" alt="Share card for ${esc(text)}" width="1200" height="630"><button type="button" class="share-copy-link">Copy link</button><nav aria-label="Share destinations"><a target="_blank" rel="noopener noreferrer" href="https://twitter.com/intent/tweet?url=${encoded}&text=${encodeURIComponent(text)}">X</a><a href="sms:?&body=${encoded}">Messages</a><a target="_blank" rel="noopener noreferrer" href="https://wa.me/?text=${encoded}">WhatsApp</a><a target="_blank" rel="noopener noreferrer" href="https://www.linkedin.com/sharing/share-offsite/?url=${encoded}">LinkedIn</a></nav>${mobile&&navigator.share?'<button type="button" class="ghost share-more">More…</button>':''}<p class="share-copy-status" role="status"></p><input class="share-link-fallback" aria-label="Public run link" readonly hidden value="${esc(url)}"></section>`;
+ const button=slot.querySelector('.share-copy-link'),message=slot.querySelector('.share-copy-status');
+ button.onclick=async()=>{try{await navigator.clipboard.writeText(url);button.textContent='Copied';message.textContent='Public link copied.';}catch(_){message.textContent='Select and copy the link.';const input=slot.querySelector('.share-link-fallback');input.hidden=false;input.focus();input.select();}};
+ const more=slot.querySelector('.share-more');if(more)more.onclick=async()=>{try{await navigator.share({title:text,url})}catch(error){if(error?.name!=='AbortError')message.textContent='Sharing is unavailable. Copy the link instead.'}};
+}
+function openPublic(run){
+ if(run?.visibility!=='public')return false;
+ document.querySelector('dialog.run-share-dialog')?.close();
+ const previous=document.activeElement,dialog=document.createElement('dialog');
+ dialog.className='run-share-dialog';dialog.setAttribute('aria-labelledby','run-share-title');
+ dialog.innerHTML='<button type="button" class="ghost share-close" aria-label="Close share sheet">×</button><div class="share-sheet-body"></div>';
+ document.body.append(dialog);mountPublic({run,slot:dialog.querySelector('.share-sheet-body')});
+ dialog.querySelector('.share-close').onclick=()=>dialog.close();
+ dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}});
+ dialog.addEventListener('close',()=>{dialog.remove();if(previous?.isConnected)previous.focus();},{once:true});
+ dialog.showModal();dialog.querySelector('.share-copy-link').focus();return true;
+}
 function mount({run,slot,status,moment=null,review=null}){
  if(moment&&(moment.run_id!==run.id||moment.measurement_revision!==run.measurement_revision)){
   slot.innerHTML='<p>This moment belongs to a different measurement. Return to the grind and choose a current moment before making a card.</p>';return;
@@ -125,13 +147,7 @@ function mount({run,slot,status,moment=null,review=null}){
  const publicShare=run.visibility==='public', handle=run.profiles?.github_handle;
  const url=moment?location.origin+'/?run='+encodeURIComponent(run.id)+'&moment='+encodeURIComponent(moment.id):location.origin+(cleanRunPath(run)||(publicShare?'/r/':'/?run=')+encodeURIComponent(run.id));
  if(publicShare&&!moment&&!review){
-  const imageUrl='/api/og?run='+encodeURIComponent(run.id)+'&v=3';
-  const caption=[run.title,run.caption,url].filter(Boolean).join('\n\n');
-  slot.innerHTML=`<div class="head"><h2>Share your run</h2><a href="${esc(links.runHref(run))}">Back to run</a></div><p class="hint">This is the same card people see in a message and at the top of your public run.</p><div class="share-studio"><div class="panel"><img class="share-image-preview" src="${esc(imageUrl)}" alt="Share card for ${esc(run.title)}" width="1200" height="630"><label><input type="checkbox" id="share-image-reviewed"> I have reviewed this image and caption for sharing.</label><div class="cta"><button type="button" id="post-download" disabled>Download PNG</button><button type="button" class="ghost" id="post-copy" disabled>Copy caption</button></div></div><div class="post-preview"><label>Caption<textarea id="post-caption" readonly rows="8">${esc(caption)}</textarea></label><p class="hint" id="post-message" role="status"></p></div></div>`;
-  const approved=slot.querySelector('#share-image-reviewed'),download=slot.querySelector('#post-download'),copy=slot.querySelector('#post-copy');
-  approved.onchange=()=>{download.disabled=copy.disabled=!approved.checked};
-  copy.onclick=async()=>{try{await navigator.clipboard.writeText(caption);status('Caption copied.')}catch(_){status('Select and copy the caption beside the image.')}};
-  download.onclick=async()=>{try{const response=await fetch(imageUrl,{cache:'no-store'});if(!response.ok||!response.headers.get('content-type')?.startsWith('image/'))throw new Error('Image unavailable');const object=URL.createObjectURL(await response.blob()),link=document.createElement('a');link.href=object;link.download='strive-run-'+run.id+'.png';link.click();setTimeout(()=>URL.revokeObjectURL(object),1000)}catch(_){status('Image export failed. Try again.')}};
+  mountPublic({run,slot});
   return;
  }
  slot.innerHTML=`<div class="head"><h2>${review?"Share my outcome":"Share your run"}</h2>${review?"":`<a href="${esc(links.runHref(run))}">Back to run</a>`}</div>
@@ -226,5 +242,5 @@ function mountReview({attempt,viewerId,slot,status}){
  if(!value){slot.textContent='Only your own saved review can be exported.';return;}
  return mount({...value,slot,status});
 }
-root.GrinderSharing={mount,reviewExport,mountReview,metricStrip,storyFacts,traceSeries,cleanRunPath,cleanProfilePath};
+root.GrinderSharing={mount,openPublic,reviewExport,mountReview,metricStrip,storyFacts,traceSeries,cleanRunPath,cleanProfilePath};
 })(window);

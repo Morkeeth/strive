@@ -790,6 +790,7 @@ let AUTH_GENERATION=0, RUN_VIEW_GENERATION=0;
 // Invalidate synchronously, before any queued auth refresh or pending private request.
 function invalidatePrivateView(){
   AUTH_GENERATION++;RUN_VIEW_GENERATION++;
+  document.querySelector('dialog.run-share-dialog')?.close();
   ME=null;AUTH_USER=null;IDENTITY_SETUP=null;
   window.StriveRunPhotos?.disposeAll?.();
   if($('app')&&document.documentElement.dataset.authBoot!=='pending')$('app').innerHTML=skeletonCard();
@@ -2973,7 +2974,17 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.addEventListener('keydown',e=>{ if(e.key!=='Escape') return; menus.forEach(m=>{ if(m.open){ m.open=false; m.querySelector('summary')?.focus(); } }); });
   document.addEventListener('click',e=>{
     const publicShare=e.target.closest('a[data-share-public]');
-    if(publicShare){e.preventDefault();const url=new URL(publicShare.getAttribute('href'),location.origin).href;void (async()=>{try{if(navigator.share){await navigator.share({url});return;}await navigator.clipboard.writeText(url);status('Public link copied.');}catch(error){if(error?.name!=='AbortError')location.href=url;}})();return;}
+    const shareEntry=publicShare||e.target.closest('a[href^="/?share=1&run="]');
+    if(shareEntry&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey){
+      const url=new URL(shareEntry.href,location.origin),id=url.searchParams.get('run')||StriveLinks.knownRunId(url.pathname);
+      if(id){e.preventDefault();void (async()=>{
+        const generation=AUTH_GENERATION,entryUrl=location.href;
+        const {data:run,error}=await sb.from('runs').select('*, profiles!runs_profile_id_fkey(github_handle,name,handle,display_name)').eq('id',id).single();
+        if(generation!==AUTH_GENERATION||entryUrl!==location.href)return;
+        if(error||!run){status('This run could not load. Try again.',true);return;}
+        if(!GrinderSharing.openPublic(run))location.href='/?share=1&run='+encodeURIComponent(id);
+      })().catch(()=>status('This run could not load. Try again.',true));return;}
+    }
     // Public hrefs stay canonical for copy, open-in-new-tab and crawlers. A normal click from
     // inside the app opens the interactive run; the short public page is the external entry.
     const runLink=e.target.closest('a[href]');
