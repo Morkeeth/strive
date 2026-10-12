@@ -1358,7 +1358,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     ${opts.detail?'':StriveEvidence.summary(r)}
     ${xudosTip}
     ${opts.preview?'<div class="foot"><span class="meta">Preview · not saved</span></div>':`${followSlot||detailLink?`<div class="foot run-social-actions"><span class="acts">${followSlot}${detailLink}</span></div>`:''}
-      <footer class="fc-foot run-actions">${GrinderFeed.actions({id:r.id,to:r.profile_id,count:count===null?null:count||0,acked,mode:selfAck?'mine':'',commentHref:'#grind-thread'})}</footer>`}
+      <footer class="fc-foot run-actions">${GrinderFeed.actions({id:r.id,shareHref:'/?share=1&run='+encodeURIComponent(r.id),to:r.profile_id,count:count===null?null:count||0,acked,mode:selfAck?'mine':'',commentHref:'#grind-thread'})}</footer>`}
     ${explore}</div>`; }
 
 
