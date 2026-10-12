@@ -77,6 +77,36 @@ class PickerTests(unittest.TestCase):
             self.assertEqual(db.execute('select count(*) from saves').fetchone()[0],0);db.close()
         finally:server.shutdown();server.server_close();thread.join()
 
+    def test_slow_capture_survives_a_closed_browser_and_a_second_press(self):
+        # Reported 12 Oct: a long capture finished after the browser had gone; the ready page hit a dead socket.
+        import socket, time
+        from agentgrinder import plugin
+        real=plugin.capture;calls=[]
+        def slow(*a,**k):calls.append(1);time.sleep(4);return real(*a,**k)
+        server,url=make_server('codex',self.root/'state','https://striverun.app',[('codex',self.source)])
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        plugin.capture=slow
+        try:
+            token=url.rsplit('/',1)[1];origin=url.rsplit('/',1)[0];port=int(origin.rsplit(':',1)[1])
+            data=urlencode({'session':'0','project':'My project','token':token,'sitting':'1'}).encode()
+            raw=socket.create_connection(('127.0.0.1',port))
+            raw.sendall(('POST /'+token+' HTTP/1.1\r\nHost: 127.0.0.1:'+str(port)+'\r\nOrigin: '+origin+'\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: '+str(len(data))+'\r\n\r\n').encode()+data)
+            time.sleep(0.3);raw.close()
+            req=urllib.request.Request(url,data=data,headers={'Origin':origin})
+            response=urllib.request.urlopen(req);self.assertEqual(response.status,202)
+            waiting=response.read().decode();self.assertIn('Preparing your private preview',waiting)
+            route=waiting.split('url=',1)[1].split('"',1)[0];self.assertTrue(route.startswith('/'+token+'/job/'))
+            deadline=time.time()+20
+            while time.time()<deadline:
+                page=urllib.request.urlopen(origin+route).read().decode()
+                if 'Open private preview' in page:break
+                time.sleep(0.5)
+            self.assertIn('Open private preview',page);self.assertNotIn('PRIVATE FIRST PROMPT',page)
+            self.assertEqual(len(calls),1,'a second press reuses the running capture')
+            again=urllib.request.urlopen(urllib.request.Request(url,data=data,headers={'Origin':origin}))
+            self.assertEqual(again.status,200);self.assertIn('Open private preview',again.read().decode());self.assertEqual(len(calls),1)
+        finally:plugin.capture=real;server.shutdown();server.server_close()
+
     def test_picker_names_existing_folder_instead_of_opaque_capture_error(self):
         server,url=make_server('codex',self.root/'state','https://striverun.app',[('codex',self.source)])
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()

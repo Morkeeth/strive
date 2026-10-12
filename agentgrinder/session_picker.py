@@ -2,7 +2,7 @@
 from __future__ import annotations
 import base64, gzip, html, json, secrets, threading, webbrowser
 from datetime import datetime, timezone
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
@@ -64,16 +64,57 @@ def make_server(harness, root, site, candidates=None):
     from . import plugin
     from .stream_capture import inspect_source
     site=plugin.origin(site);root=plugin.root_path(root)
-    rows=discover(harness,candidates=candidates);nonce=secrets.token_urlsafe(24);downloads={}
+    rows=discover(harness,candidates=candidates);nonce=secrets.token_urlsafe(24);downloads={};jobs={};failed={};jobs_lock=threading.Lock()
+    def prepare(index,name,sitting):
+        # Runs once per choice; the result is kept so a reload or a second press returns at once.
+        try:
+            selected=rows[index];kind=selected['harness']
+            with plugin.connect(root) as db:
+                plugin.register_capture_project(db,name,selected['source'])
+                captured=plugin.capture(db,root,name,kind,selected['source'],sitting)
+            packed=base64.urlsafe_b64encode(gzip.compress(plugin.encoded(captured['payload']).encode(),mtime=0)).decode().rstrip('=')
+            preview_url=site+'/#import=gz.'+packed
+            if len(preview_url)>65536:
+                route='/'+nonce+'/download/'+secrets.token_urlsafe(18);downloads[route]=plugin.encoded(captured['payload']).encode()
+                action='<a class="primary" href="'+route+'">Download private preview file</a><p>Open Add run on STRIVE and choose this .strive.json file. The preview is too large for a link; no run was truncated.</p>'
+            else:action='<a class="primary" href="'+html.escape(preview_url,quote=True)+'">Open private preview</a>'
+            selection=captured.get('selection');scope=(f'<p>Selected sitting {selection["selected"]["sitting"]}; skipped {selection["skipped_sittings"]} other sittings. Captured through {html.escape(selection["selected"]["end"] or "the last complete record")}. Later work in a live session is not part of this preview.</p>' if selection else '')
+            return '<h1>Your private preview is ready</h1><p>The preview link carries the run fields, including recorded counts and your chosen project name. It does not carry the raw transcript, first prompt or source path. No run is saved online yet.</p>'+scope+action+'<p>Review your run, add your story, then save with Only me. Sharing is a separate choice.</p>',200
+        except (ValueError,KeyError,IndexError,OSError) as exc:
+            return '<h1>Could not prepare this session</h1><p>'+html.escape(str(exc))+'</p><a href="/'+nonce+'">Back to sessions</a>',400
+    def start(index,name,sitting):
+        key=(index,name,sitting)
+        with jobs_lock:
+            job=jobs.get(key)
+            if job is None:
+                job=jobs[key]={'route':'/'+nonce+'/job/'+secrets.token_urlsafe(18),'done':threading.Event(),'result':None,'began':datetime.now(timezone.utc)}
+                def run():
+                    try:job['result']=prepare(index,name,sitting)
+                    except Exception as exc:job['result']=('<h1>Could not prepare this session</h1><p>'+html.escape(type(exc).__name__+': '+str(exc))+'</p><a href="/'+nonce+'">Back to sessions</a>',500)
+                    if job['result'][1]==200:print('Preview ready: http://127.0.0.1:'+str(server.server_port)+job['route'],flush=True)
+                    else:
+                        with jobs_lock:jobs.pop(key,None);failed[job['route']]=job
+                    job['done'].set()
+                threading.Thread(target=run,daemon=True).start()
+        return job
+    def waiting(job):
+        seconds=int((datetime.now(timezone.utc)-job['began']).total_seconds())
+        return '<meta http-equiv="refresh" content="2;url='+job['route']+'"><h1>Preparing your private preview</h1><p>Reading the session on this computer. A long session can take a few minutes. This page updates by itself; '+str(seconds)+' seconds so far. Nothing is uploaded.</p><a href="'+job['route']+'">Check again</a>'
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args): pass
         def respond(self,body,status=200):
+            # The browser may have gone (reload, second press, closed tab). The finished job stays cached.
+            try:self._respond(body,status)
+            except (BrokenPipeError,ConnectionResetError):pass
+        def _respond(self,body,status=200):
             self.send_response(status);self.send_header('Content-Type','text/html; charset=utf-8');self.send_header('Cache-Control','no-store');self.send_header('Referrer-Policy','no-referrer');self.send_header('X-Frame-Options','DENY');self.send_header('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");self.end_headers();self.wfile.write(page(body).encode())
         def valid_host(self):return self.headers.get('Host')==f'127.0.0.1:{self.server.server_port}'
         def do_GET(self):
             if not self.valid_host():self.respond('This local picker link has expired.',404);return
             if self.path in downloads:
                 self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Cache-Control','no-store');self.send_header('Content-Disposition','attachment; filename="run.strive.json"');self.end_headers();self.wfile.write(downloads[self.path]);return
+            job=next((j for j in list(jobs.values())+list(failed.values()) if j['route']==self.path),None)
+            if job:self.respond(*(job['result'] if job['done'].is_set() else (waiting(job),202)));return
             if self.path!='/'+nonce:self.respond('This local picker link has expired.',404);return
             e=html.escape
             cards=''.join(f'<label class="pick"><input type="radio" name="session" value="{i}" required> <strong>{e(r["project"] or "Project not recorded")}</strong><small>{e(r["started"])} · {e(r["time_basis"])} · {e(r["harness"])}</small><p>{e(r["prompt"])}</p></label>' for i,r in enumerate(rows))
@@ -93,20 +134,13 @@ def make_server(harness, root, site, candidates=None):
                     if not groups:raise ValueError('No recorded human sitting found in this session.')
                     self.respond(f'<h1>Choose the part you worked on</h1><p>A sitting starts with a human turn and splits after a recorded gap of 30 minutes. Times include their UTC offset. Only your choice becomes a preview.</p><form method="post"><input type="hidden" name="token" value="{nonce}"><input type="hidden" name="session" value="{index}"><input type="hidden" name="project" value="{e(name,quote=True)}">{choices}<button>Prepare private preview</button></form>');return
                 sitting=int(form.get('sitting',['-1'])[0])
-                with plugin.connect(root) as db:
-                    plugin.register_capture_project(db,name,selected['source'])
-                    captured=plugin.capture(db,root,name,kind,selected['source'],sitting)
-                packed=base64.urlsafe_b64encode(gzip.compress(plugin.encoded(captured['payload']).encode(),mtime=0)).decode().rstrip('=')
-                preview_url=site+'/#import=gz.'+packed
-                if len(preview_url)>65536:
-                    route='/'+nonce+'/download/'+secrets.token_urlsafe(18);downloads[route]=plugin.encoded(captured['payload']).encode()
-                    action='<a class="primary" href="'+route+'">Download private preview file</a><p>Open Add run on STRIVE and choose this .strive.json file. The preview is too large for a link; no run was truncated.</p>'
-                else:action='<a class="primary" href="'+html.escape(preview_url,quote=True)+'">Open private preview</a>'
-                selection=captured.get('selection');scope=(f'<p>Selected sitting {selection["selected"]["sitting"]}; skipped {selection["skipped_sittings"]} other sittings. Captured through {html.escape(selection["selected"]["end"] or "the last complete record")}. Later work in a live session is not part of this preview.</p>' if selection else '')
-                self.respond('<h1>Your private preview is ready</h1><p>The preview link carries the run fields, including recorded counts and your chosen project name. It does not carry the raw transcript, first prompt or source path. No run is saved online yet.</p>'+scope+action+'<p>Review your run, add your story, then save with Only me. Sharing is a separate choice.</p>')
+                job=start(index,name,sitting)
+                # Short sessions answer in this request; long ones get a page that waits.
+                if job['done'].wait(3):self.respond(*job['result'])
+                else:self.respond(waiting(job),202)
             except (ValueError,KeyError,IndexError,OSError) as exc:
                 self.respond('<h1>Could not prepare this session</h1><p>'+html.escape(str(exc))+'</p><a href="/'+nonce+'">Back to sessions</a>',400)
-    server=HTTPServer(('127.0.0.1',0),Handler)
+    server=ThreadingHTTPServer(('127.0.0.1',0),Handler);server.daemon_threads=True
     return server,f'http://127.0.0.1:{server.server_port}/{nonce}'
 
 
