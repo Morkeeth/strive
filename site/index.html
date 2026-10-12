@@ -1545,6 +1545,7 @@ async function shouldOnboard(){
 // wizard) and, once signed in, a uvx line. Now: one page, fastest path first, one command per
 // agent, and the same drop zone as the landing. /?onboard and /?connect both land here.
 const ONE_LINE=h=>`uvx --from __CAPTURE_PACKAGE__ agentgrinder grind${h?' --harness '+h:''} --push --open --no-rank --no-series --push-url __ORIGIN__`;
+const SESSION_PICKER_LINE='uvx --from __CAPTURE_PACKAGE__ strive sessions --all --open --site __ORIGIN__';
 // AUTOMATIC SYNC (Oscar, 25 Sep 2026 evening: "the uploads is awful ... automatic fetch").
 // Signed in, one button issues a private Connect token (migration 007) and shows one line to run
 // once on the computer the agent runs on. From then on `agentgrinder sync` uploads every finished
@@ -2570,6 +2571,7 @@ async function importRun(){
     run.coach_experiment=GrinderContract.rejectPaths(run.coach_experiment);
   }
   const sample=run.is_sample===true;
+  const legacyImport=!sample&&!run.measurement_revision;
   // THE PROJECT IS A DIRECTORY NAME UNTIL THE AUTHOR SAYS OTHERWISE. Claude Code capture reads
   // the folder the session ran in, so a run posted from `~/code/the-fair` published `the-fair`
   // as "Project touched" with no way to change it: a private folder name, chosen for a laptop,
@@ -2602,13 +2604,14 @@ async function importRun(){
   frame(typeof railHtml==='function'?railHtml(null):null,null);app.classList.remove('is-editing-run');
   app.innerHTML=`<div class="head"><h2>${sample?'Sample preview':'Your imported session'}</h2><span class="meta">${sample?'Example data · not your activity':'Not saved yet'}</span></div>
     ${sample?'<p role="note">This sample is for trying the preview. It cannot be saved or posted. Capture your own session to share a run.</p>':''}
+    ${legacyImport?`<div class="card" role="alert"><div class="pad"><h3>This older import cannot be saved</h3><p>It has no session reference. Run the current STRIVE session picker on the computer where you worked, then choose this session again. Your new preview can be saved privately.</p><div class="cmd"><code class="c">${esc(SESSION_PICKER_LINE)}</code></div><button type="button" class="act" data-copy="${esc(SESSION_PICKER_LINE)}">Copy capture command</button> <a class="act" href="/?post">Add run instructions</a></div></div>`:''}
     <section aria-labelledby="import-card-heading"><h2 id="import-card-heading" class="visually-hidden">${sample?'Sample run preview':'Run preview'}, not saved</h2><div id="import-card-preview"></div></section>
     <div class="panel"><div class="pad preview-story">
     <label>Run title<input id="i_title" maxlength="120" required value="${esc(importedTitle())}"></label>
     <label>Add a note <span class="hint">(optional)</span><textarea id="i_caption" maxlength="280" placeholder="What would you like people to know?">${run.trace_basis==='observed native events; timestamps unavailable'?esc(run.caption||'Observed tool requests from a redacted source; a lower bound, not a complete activity count.'):''}</textarea></label>
     <label>Audience<select id="i_vis" required><option value="private" selected>Only me</option><option value="close_friends">Close friends</option><option value="link">Followers</option><option value="public">Public feed and profile</option></select></label>
     <p class="hint">The run stays private unless you choose another audience and save.</p>
-    <button id="i_pub" ${sample?'disabled':''}>${sample?'Sample - preview only':(ME?'Save run':'Sign in to save')}</button>
+    <button id="i_pub" ${sample||legacyImport?'disabled':''}>${sample?'Sample - preview only':legacyImport?'Capture this session again':(ME?'Save run':'Sign in to save')}</button>
     <p class="hint">Add photos after saving this run privately. The saved run opens with its photo picker.</p>
     <details class="preview-details"><summary>Edit details</summary>
       <label>Project<input id="i_project" maxlength="80" value="${esc(capturedProject||'')}" placeholder="Project name"></label>
@@ -2659,6 +2662,7 @@ async function importRun(){
   $('i_pub').addEventListener('click',async()=>{
     if(!current())return;
     if(sample){status('Samples are preview-only. Capture your own session to save a run.',true);return;}
+    if(legacyImport){status('This older import cannot be saved. Use the current STRIVE session picker above.',true);return;}
     saveImportEdits();
     const publishButton=$('i_pub');
     if(publishButton.disabled)return;
