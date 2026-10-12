@@ -20,7 +20,10 @@ def test_global_shell_has_no_privacy_slogan_or_more_drawer():
     # two "not in" checks could not fail. The shell is everything from <body> to its first script.
     start = INDEX.index("<body>")
     body = INDEX[start : INDEX.index("<script src=", start)]
-    assert '<nav id="product-nav"' in body and '<main class="main" id="app">' in body
+    # a72ddde (12 Oct 2026): a Skip to content link is the first thing in the shell, and the main
+    # region takes focus from it (tabindex="-1"). The shell is otherwise the same.
+    assert body.startswith('<body>\n<a class="skip-link" href="#app">Skip to content</a>\n')
+    assert '<nav id="product-nav"' in body and '<main class="main" id="app" tabindex="-1">' in body
     assert "Private by default" not in body
     assert ">More<" not in body
     assert "<details" not in body[body.index('<nav id="product-nav"') : body.index("</nav>")]

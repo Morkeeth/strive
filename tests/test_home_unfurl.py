@@ -97,7 +97,13 @@ def test_the_share_image_is_the_run_image_pipeline_not_a_committed_png():
     # Run the endpoint itself. It answers with a 1200x630 PNG drawn on request, with no database.
     out = _home_image()
     assert (out["status"], out["type"], out["png"], out["width"], out["height"]) == (200, "image/png", "PNG", 1200, 630)
-    assert out["cache"] == "private, no-store, max-age=0"
+    # 12621ac (12 Oct 2026) lets the CDN keep a rendered share image for five minutes. The browser
+    # still revalidates every time (max-age=0), and the header is the one constant both image
+    # endpoints send. Before that commit the answer was "private, no-store, max-age=0".
+    assert out["cache"] == "public, max-age=0, s-maxage=300, stale-while-revalidate=600"
+    assert "export const SHARE_IMAGE_CACHE='public, max-age=0, s-maxage=300, stale-while-revalidate=600';" in PUBLIC_RUN
+    # Nothing else is cached: the endpoint starts no-store and only a drawn image changes it.
+    assert OG_ENDPOINT.index("res.setHeader('Cache-Control','private, no-store, max-age=0');") < OG_ENDPOINT.index("SHARE_IMAGE_CACHE")
     # Until 00bdaf8 (11 Oct 2026) the home image read no run at all. It may now draw one featured
     # trail, and reads exactly that one row through the public-visibility filter and nothing else.
     assert len(out["calls"]) == 1

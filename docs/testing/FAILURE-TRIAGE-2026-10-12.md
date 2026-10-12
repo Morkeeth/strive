@@ -212,3 +212,17 @@ Thirteen of the 103 rows fail on this branch. Status for every row is in the `st
 - Three obsolete pins, not retired here: the source-wide brand ban, the every-harness flag and the README first-command pin.
 
 Full suite, `.venv/bin/python -m pytest -q`, same machine: main `210c182` 73 failed, 837 passed, 7 skipped; this branch 13 failed, 899 passed, 7 skipped.
+
+## After PR 180, 13 October 2026
+
+Main `6ad69dd` (PR 180) is merged into this branch. PR 180 added the gate `scripts/check-python-suite.py`: a failure outside the inventory fails CI.
+
+Four repaired tests went red against PR 180 and are rebound to the product it ships. No assertion was dropped.
+
+- `test_home_unfurl.py::test_the_share_image_is_the_run_image_pipeline_not_a_committed_png`: `12621ac` caches a drawn share image at the CDN for five minutes. The test now pins that header and that the endpoint starts `no-store`.
+- `test_landing_logged_out.py::test_landing_points_to_a_real_run_not_the_bundled_sample` and `::test_landing_loads_latest_public_run_only`: `58b3174` draws the feed 20 cards at a time and reads runs only (`GrinderHome.readRuns`). The tests run that read, check it touches the runs table alone, and keep the public-only checks on the full read.
+- `test_stride_ia_repair.py::test_global_shell_has_no_privacy_slogan_or_more_drawer`: `a72ddde` put a Skip to content link first in the shell and gave `#app` `tabindex="-1"`. The test now requires both.
+
+The inventory now lists only tests that fail: 12 rows, down from 103. 86 rows were removed because the test passes. 5 rows were removed because the test no longer exists under that name and its replacement passes (three renames above, and two renamed in batches 1 to 3). A removed row can no longer hide a new failure. PR 180 fixed real product bug 5 (`468be4f`), so `test_post_session.py::test_portable_bundle_can_install_itself` passes and its row is removed.
+
+Still listed: five real-bug rows (bugs 1 to 4), four `test_run_photos_ui.py` rows that the photo editor branch repairs, and three obsolete pins.

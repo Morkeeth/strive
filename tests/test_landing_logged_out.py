@@ -147,7 +147,12 @@ def test_landing_points_to_a_real_run_not_the_bundled_sample():
     assert out["skeleton"] is True and out["labelledby"] == "h-popular"
     view = view_landing()
     assert "let runs=data.runs||[], runsFailed=data.runs===null;" in view
-    assert "const cards=await feedCards(StriveActivity.sort(runs),ad);if(!current())return;body.innerHTML=cards;" in view
+    # 58b3174 (12 Oct 2026): the same sorted real runs, drawn one page of 20 at a time.
+    assert "\nconst FEED_PAGE=20;\n" in HTML
+    assert "const sorted=StriveActivity.sort(runs);let shown=0;" in view
+    assert "const page=sorted.slice(shown,shown+FEED_PAGE);shown+=page.length;" in view
+    assert "const cards=await feedCards(page,await ackData(page));if(!current())return false;" in view
+    assert "body.insertAdjacentHTML('beforeend',cards);wireKudos();return true;" in view
     # The one sample a newcomer is offered, on Add a run, is a real public run address.
     assert re.fullmatch(r"/r/[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}", node(RENDER_CONNECT)["sample"])
     assert 'aria-label="Sample run card"' not in body
@@ -176,11 +181,13 @@ const rows=[{id:'a',profile_id:'p1',visibility:'public',created_at:'2026-10-01T1
   {id:'c',profile_id:'p3',visibility:'private',created_at:'2026-10-03T10:00:00Z'},
   {id:'d',profile_id:'p4',visibility:'close_friends',created_at:'2026-10-04T10:00:00Z'}];
 (async()=>{
-  const home=[],older=[];
-  const data=await H.read(client(home),Date.parse('2026-10-05T12:00:00Z'));
+  const home=[],older=[],full=[];
+  const data=await H.readRuns(client(home));
+  const fullData=await H.read(client(full),Date.parse('2026-10-05T12:00:00Z'));
   const empty=await run(client(older));
-  process.stdout.write(JSON.stringify({home,older,data,empty,
-    failedHome:await H.read(client([],true),Date.now()),failedOlder:await run(client([],true)),noClient:await run(null),
+  process.stdout.write(JSON.stringify({home,older,data,empty,full,fullData,
+    failedFull:await H.read(client([],true),Date.now()),
+    failedHome:await H.readRuns(client([],true)),failedOlder:await run(client([],true)),noClient:await run(null),
     builders:H.builders(rows,6).map(b=>b.run.id),days:H.popularDays(rows,{},5).map(r=>r.id)}));
 })().catch(e=>{console.error(e);process.exitCode=1});
 """
@@ -190,21 +197,32 @@ def test_landing_loads_latest_public_run_only():
     view = view_landing()
     # Real run cards above the fold: the newest Public runs, drawn with the feed card. d716f23 replaced
     # the "popular five" strip with the whole public read, newest activity first.
-    assert "H.read(sb,now)" in view and "feedCards(StriveActivity.sort(runs),ad)" in view
+    # 58b3174 (12 Oct 2026): with Clubs and Events hidden the landing reads runs only (readRuns), and
+    # draws the sorted runs a page at a time, reading XUDOS for the cards on that page.
+    assert "await H.readRuns(sb)" in view and "H.read(sb" not in view
+    assert "const sorted=StriveActivity.sort(runs);" in view and "feedCards(page,await ackData(page))" in view
     assert "if(!runs.length){const older=await fetchLatestPublicRuns(5);" in view
     seen = node(PUBLIC_READS)
     filters = lambda q: [c[1:] for c in q["calls"] if c[0] not in ("select", "order", "limit")]
+    # The landing's read touches the runs table once and nothing else.
+    assert [q["table"] for q in seen["home"]] == ["runs"]
     home = {q["table"]: q for q in seen["home"]}
     assert filters(home["runs"]) == [["visibility", "public"]]
-    assert filters(home["grinder_crews"]) == [["visibility", "public"]]
     assert ["limit", 300] in home["runs"]["calls"]
+    # The full read (still used where Clubs are shown) asks for the same Public runs and Public clubs.
+    full = {q["table"]: q for q in seen["full"]}
+    assert full["runs"]["calls"] == home["runs"]["calls"]
+    assert filters(full["grinder_crews"]) == [["visibility", "public"]]
     assert [q["table"] for q in seen["older"]] == ["runs"]
     assert filters(seen["older"][0]) == [["visibility", "public"]]
     assert ["limit", 5] in seen["older"][0]["calls"]
     assert "link" not in json.dumps(seen["home"]) and "link" not in json.dumps(seen["older"])
+    assert "link" not in json.dumps(seen["full"])
     # A read that worked and found nothing is empty; a read that failed is unknown, never "none".
-    assert seen["data"] == {"runs": [], "clubs": [], "events": []} and seen["empty"] == []
-    assert seen["failedHome"]["runs"] is None and seen["failedOlder"] is None and seen["noClient"] is None
+    assert seen["data"] == {"runs": []} and seen["empty"] == []
+    assert seen["fullData"] == {"runs": [], "clubs": [], "events": []}
+    assert seen["failedHome"] == {"runs": None} and seen["failedFull"]["runs"] is None
+    assert seen["failedOlder"] is None and seen["noClient"] is None
     # The helpers that pick what is shown keep only Public rows even if another row arrives.
     assert seen["builders"] == ["a"] and seen["days"] == ["a"]
     fetch = HTML[HTML.index('async function fetchLatestPublicRuns('):HTML.index('async function viewLanding()')]
