@@ -92,6 +92,14 @@
       .slice(0, limit || 5).flatMap(g => g.runs);
   }
 
+  const runsQuery = (sb) => sb.from("runs").select("*, profiles!runs_profile_id_fkey(github_handle,name,rig,handle,display_name,avatar_url)")
+    .eq("visibility", "public").order("started_at", { ascending: false, nullsFirst: false }).order("id", { ascending: false }).limit(300);
+
+  // The feed with Clubs and Events hidden reads runs only; null still means the read failed.
+  async function readRuns(sb) {
+    try { return { runs: await runsQuery(sb).then((r) => (r.error ? null : r.data || []), () => null) }; } catch (_) { return { runs: null }; }
+  }
+
   // Never throws: a failed or missing read is an empty section, not a broken page.
   async function read(sb, now) {
     try { return await readAll(sb, now); } catch (_) { return { runs: null, clubs: null, events: null }; }
@@ -99,8 +107,7 @@
   async function readAll(sb, now) {
 
     const until = new Date(addDays(now, 8)).toISOString(); // the end of the seventh day ahead
-    const runsQ = sb.from("runs").select("*, profiles!runs_profile_id_fkey(github_handle,name,rig,handle,display_name,avatar_url)")
-      .eq("visibility", "public").order("started_at", { ascending: false, nullsFirst: false }).order("id", { ascending: false }).limit(300);
+    const runsQ = runsQuery(sb);
     const clubsQ = sb.from("grinder_crews").select("id,name,visibility,created_at,grinder_memberships(count)").eq("visibility", "public").order("created_at", { ascending: false }).limit(12);
     const eventsQ = sb.from("grinder_events").select("id,title,place,starts_at,crew_id,grinder_crews(name),grinder_event_people(count)")
       .gte("starts_at", new Date(now).toISOString()).lt("starts_at", until).order("starts_at", { ascending: true }).limit(20);
@@ -126,7 +133,7 @@
     return `<section class="home-community" aria-label="Clubs and events"><div class="hc-col"><div class="land-head"><h2>Events</h2></div>${events}</div><div class="hc-col"><div class="land-head"><h2 id="h-clubs">Clubs</h2><a href="/?crews">${data.clubs && data.clubs.length ? "All clubs" : "Start or join a club"}</a></div>${clubs}</div></section>`;
   }
 
-  const api = { week, weekHtml, eventRow, clubRow, community, builders, popular, popularDays, read };
+  const api = { week, weekHtml, eventRow, clubRow, community, builders, popular, popularDays, read, readRuns };
   root.GrinderHome = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

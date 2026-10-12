@@ -1807,6 +1807,7 @@ async function feedCards(runs,ad,{ownerView=false,decorate=html=>html}={}){
 }
 
 // A stranger lands on what is going on, then people, then runs. Real rows only (site/home.js).
+const FEED_PAGE=20;
 async function viewLanding(){
   const app=$('app'),generation=AUTH_GENERATION,viewGeneration=RUN_VIEW_GENERATION;
   const current=()=>generation===AUTH_GENERATION&&viewGeneration===RUN_VIEW_GENERATION;
@@ -1816,12 +1817,12 @@ async function viewLanding(){
   if(!app.querySelector('.home[data-boot-skeleton]'))app.innerHTML=feedTabs('home')+landingHTML();
   app.querySelector('.home')?.removeAttribute('data-boot-skeleton');
   const H=window.GrinderHome, now=Date.now();
-  const data=H&&sb?await H.read(sb,now):{runs:null,clubs:null,events:null};
+  const data=H&&sb?await H.readRuns(sb):{runs:null};
   if(!current())return;
   const put=(id,html)=>{const el=$(id);if(el)el.innerHTML=html};
   // A failed read says it failed; only a read that worked may say there is nothing.
   const failed='<p class="home-none" data-failed>This section could not load. Refresh to try again.</p>';
-  put('home-week',data.runs===null&&data.events===null?failed:H.weekHtml(data.runs,[],now,{showEvents:false}));
+  put('home-week',data.runs===null?failed:H.weekHtml(data.runs,[],now,{showEvents:false}));
   $('home-community')?.remove();$('home-join')?.remove();
   if(data.runs!==null&&!data.runs.length)$('home-week-section')?.setAttribute('hidden','');
   const who=data.runs?H.builders(data.runs.filter(r=>r.profile_id!==ME?.id),6):[];
@@ -1831,8 +1832,20 @@ async function viewLanding(){
   if(!runs.length){const older=await fetchLatestPublicRuns(5);if(older===null)runsFailed=true;else{runs=older;runsFailed=false}}
   if(runs.length){
     noteTraces(runs);
-    const ad=await ackData(runs);
-    const cards=await feedCards(StriveActivity.sort(runs),ad);if(!current())return;body.innerHTML=cards;wireKudos();
+    // One page of cards at a time: each card costs its own XUDOS, day-card and photo reads.
+    const sorted=StriveActivity.sort(runs);let shown=0;
+    const more=async()=>{
+      const page=sorted.slice(shown,shown+FEED_PAGE);shown+=page.length;
+      const cards=await feedCards(page,await ackData(page));if(!current())return false;
+      body.insertAdjacentHTML('beforeend',cards);wireKudos();return true;
+    };
+    body.innerHTML='';$('feed-more')?.closest('.feed-more-row')?.remove();
+    if(!await more())return;
+    if(shown<sorted.length){
+      body.insertAdjacentHTML('afterend','<p class="feed-more-row"><button type="button" class="act ghost" id="feed-more">Show more runs</button></p>');
+      const button=$('feed-more');
+      button.addEventListener('click',async()=>{button.disabled=true;await more();if(shown>=sorted.length)button.parentElement.remove();else button.disabled=false;});
+    }
     put('public-run-count','Newest activity first · '+runs.length+' public runs'+(runs.some(r=>StriveActivity.time(r)===null)?' · undated activity follows dated runs':''));
   }else if(body){
     body.innerHTML=runsFailed?failed:'<p class="home-none">No public run yet.</p>';
