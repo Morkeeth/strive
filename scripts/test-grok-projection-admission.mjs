@@ -1,7 +1,8 @@
+import {assertAgentPrivateReview} from './assert-agent-private-review.mjs';
 // Synthetic native records only, actual disposable SQL migrations. No hosted calls.
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
-import {bootDisposable,seedJourneyActors,CASEY} from './disposable-supabase.mjs';
+import {bootDisposable,seedJourneyActors,CASEY,RILEY} from './disposable-supabase.mjs';
 const payload=JSON.parse(execFileSync('python3',['-c',`
 import sys,json
 sys.path.insert(0,'templates/grokbot/post-agent-run/scripts')
@@ -11,7 +12,7 @@ case=ProjectionContract();case.setUp();case.capture()
 print(json.dumps(upload_payload(case.path,format='projection',bounds=case.bounds)))
 case.tmp.cleanup()
 `],{encoding:'utf8'}));
-const {db,as}=await bootDisposable();
+const {db,as,anonymous}=await bootDisposable();
 try {
  await seedJourneyActors(db);await as(CASEY);
  const access=(await db.query("select strava.agent_token_create('synthetic native admission') value")).rows[0].value;
@@ -32,6 +33,6 @@ try {
  await assert.rejects(check({...payload,tool_calls:-1}),/non-negative/);
  await assert.rejects(check({...payload,code_route:{v:1,secret:'/Users/private'}}),/code_route/);
  await as(CASEY);
- await assert.rejects(db.query("select strava.grinder_agent_action($1,'publish',$2,gen_random_uuid())",[access.token,JSON.stringify({...payload,visibility:'public',measurement_revision:'9'.repeat(64)})]),/outside the granted scope/);
+ await assertAgentPrivateReview({db,as,anonymous,owner:CASEY,reader:RILEY,actor:result.agent_id,token:access.token,payload});
  console.log('Observed projection payload admitted through actual024/Connect; unknowns remain NULL; repeat deduplicates. Synthetic only.');
 } catch(error) {console.error(error.message);process.exitCode=1;} finally {await db.close();}

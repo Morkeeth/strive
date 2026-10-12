@@ -1,3 +1,4 @@
+import {assertAgentPrivateReview} from './assert-agent-private-review.mjs';
 // Real storage rules in disposable Postgres; optional actual capture JSON stays local.
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -59,8 +60,8 @@ try{
  assert.equal(retried.id,saved.id,'retry resolves the same capture instead of duplicating it');
  assert.equal(retried.existing,true);assert.equal(retried.visibility,'private');
  assert.deepEqual((await db.query('select code_route from strava.runs where id=$1',[saved.id])).rows[0].code_route,run.code_route);
- await assert.rejects(act('publish',{...payload,visibility:'public'}),/outside the granted scope/);
+ await assertAgentPrivateReview({db,as,anonymous,owner:CASEY,reader:RILEY,actor,token,payload});
  await assert.rejects(act('publish',{...payload,code_route:unsafe.code_route}),/paths|private/i,'RPC refuses local source paths independently');
  await anonymous();assert.equal((await db.query('select id from strava.runs where id=$1',[saved.id])).rows.length,0);
- console.log('PASS: import and agent private saves preserve ordered checkpoints/source; owner reload succeeds; other user and anonymous denied; route facts immutable; public scope denied. '+(supplied?'Actual supplied capture exercised locally.':'TEST DATA fixture.'));
+ console.log('PASS: import and agent private saves preserve ordered checkpoints/source; owner reload succeeds; other user and anonymous denied; route facts immutable; agent public request stores a private review draft. '+(supplied?'Actual supplied capture exercised locally.':'TEST DATA fixture.'));
 }finally{await db.close();}
