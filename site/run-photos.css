@@ -40,3 +40,7 @@
 .run-photos .photo-undo button{border:0;background:transparent;color:#1258f4;font-weight:700;cursor:pointer;padding:4px}
 @media(max-width:600px){.run-photos .run-photo-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.run-photos .photo-help{font-size:12px}}
 .run-photos .run-photo-grid .photo-dragging{opacity:.68;box-shadow:0 8px 24px #1b2c4d33}.run-photos .run-photo-grid .photo-drop-target{outline:3px solid #1258f4;outline-offset:-3px}
+
+/* Owner editor thumbnails fill their square frame beneath the existing controls.
+   Absolute positioning avoids intrinsic-size/flex shrink from the editor layout. */
+#run-edit .run-photo-grid:not(.run-photo-grid--reader) figure>img{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:none;max-height:none;object-fit:cover}

@@ -100,6 +100,7 @@
       <section class="post-flow-pane" id="post-pane-1" aria-label="Your story" hidden><h2 tabindex="-1">What happened?</h2><div class="post-flow-fields"></div><div class="post-photo-slot"></div><div class="post-flow-actions"><button type="button" class="act" data-post-next="0">Back</button><button type="button" class="act blue" data-post-next="2">Choose audience</button></div></section>
       <section class="post-flow-pane" id="post-pane-2" aria-label="Audience" hidden><h2 tabindex="-1">Who can see this?</h2><div class="post-flow-audience"></div><div class="post-flow-actions"><button type="button" class="act" data-post-next="1">Back</button></div><div class="post-flow-recovery"></div></section>`;
     composer.querySelector('.post-flow-preview').append(previewSection);
+    const review=scope.querySelector('#import-sharing-review');if(review)composer.prepend(review);
     const fields=composer.querySelector('.post-flow-fields');fields.append(title.closest('label'),caption.closest('label'));if(details)fields.append(details);
     composer.querySelector('.post-flow-audience').append(audience.closest('label'),...hints.slice(0,1));
     save.classList.add('act','blue');

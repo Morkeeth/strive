@@ -70,6 +70,7 @@ class AgentClient:
 
     def perform(self,action: str,payload: dict,request_id: str | None = None) -> dict:
         if action not in ("draft","publish","reply","ack"):raise ValueError("Unsupported agent action.")
+        if action in ('draft','publish'):payload={**payload,'visibility':'private'}
         rid=str(uuid.UUID(request_id)) if request_id else str(uuid.uuid4())
         if self._product:
             if action!='publish':raise ValueError('A product URL takes publish only. Pass the Supabase URL for draft, reply or ack.')
@@ -102,6 +103,13 @@ class AgentClient:
             if not isinstance(result.get('existing'),bool) or result.get('visibility') not in ('private','close_friends','link','public','crew','anonymous'):
                 raise RuntimeError(f'Agent endpoint returned no stored audience; request {rid}.')
             safe['existing']=result['existing'];safe['visibility']=result['visibility']
+        if action in ('draft','publish') and (action=='draft' or safe.get('visibility')=='private'):
+            import base64
+            preview={**payload,'visibility':'private'}
+            if action=='publish':preview['review_run_id']=result_id
+            safe['review_required']=True
+            safe['preview_url']='https://striverun.app/#import='+base64.b64encode(json.dumps(preview).encode()).decode()
+        elif action=='publish':safe['review_required']=False
         return safe
 
 
@@ -124,7 +132,8 @@ class AgentClient:
             raise RuntimeError(f'STRIVE returned no stored run; request {rid}.')
         try:run_id=str(uuid.UUID(str(result.get('id'))))
         except ValueError:raise RuntimeError(f'STRIVE returned an invalid run id; request {rid}.') from None
-        return dict(id=run_id,action='publish',request_id=rid,existing=result['existing'],visibility=result['visibility'])
+        if result['visibility']!='private':return dict(id=run_id,action='publish',request_id=rid,existing=True,visibility=result['visibility'],review_required=False)
+        return dict(id=run_id,action='publish',request_id=rid,existing=result['existing'],visibility=result['visibility'],review_required=True,preview_url='https://striverun.app/#import='+__import__('base64').b64encode(json.dumps({**payload,'visibility':'private','review_run_id':run_id}).encode()).decode())
 
 
 def add_parser(subparsers):
