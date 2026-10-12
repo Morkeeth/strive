@@ -4,6 +4,7 @@ import {runtimeConfig} from '../server/runtime-config.mjs';
 import {BRAND,TAGLINE} from '../server/brand.mjs';
 import {deploymentGitSha} from '../server/deployment-identity.mjs';
 import {buildAgentFrontdoor} from './build-agent-frontdoor.mjs';
+import {withContentSecurityPolicy} from './csp.mjs';
 import {execFileSync} from 'node:child_process';
 const config=runtimeConfig();
 await mkdir('dist',{recursive:true});
@@ -78,3 +79,5 @@ console.log(`Built ${BRAND} website with explicit strava schema; no privileged k
 
 await buildAgentFrontdoor({origin:config.ORIGIN,revision:gitSha});
 execFileSync('python3',['scripts/build-native-plugin.py'],{stdio:'inherit'});
+await writeFile('dist/index.html',withContentSecurityPolicy(await readFile('dist/index.html','utf8'),{supabaseOrigin:config.SB_URL}));
+console.log('Content-Security-Policy written for dist/index.html.');

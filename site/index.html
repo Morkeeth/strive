@@ -578,7 +578,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 </div>
 <footer class="site-foot"><a href="/install">Install</a><a href="/agents.md">For agents</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/?feedback">Feedback</a><a href="/privacy#deletion" id="delete-info">Delete your data</a></footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
 <script src="/navigation.js"></script>
 <script src="/run-links.js"></script>
 <script src="/activity-order.js"></script>
@@ -1472,8 +1472,8 @@ function shareCardHtml(opts){
   </div></div>
   <div class="share-actions">
     <button id="share-copy">Copy link</button>
-    <button class="ghost" onclick="location.href='/'">Post yours</button>
-    <button class="ghost" onclick="history.back()">Back</button>
+    <button class="ghost" data-nav-href="/">Post yours</button>
+    <button class="ghost" data-nav-back>Back</button>
   </div>
   <p class="hint" style="margin-top:12px">Screenshot the card above · metrics only · a real session</p></div>`;
 }
@@ -1617,8 +1617,8 @@ async function viewOnboardAgent(){
     <div class="ob-step"><h3>4 · Your approval</h3>
       <p class="hint">Without a credential, agents prepare drafts for you to review. You can grant an agent specific posting or XUDOS permissions, choose an expiry, and revoke access in Agents.</p>
       <div class="ob-actions">
-        <button onclick="location.href='/?onboard'">Human onboarding</button>
-        <button class="ghost" onclick="location.href='/'">Open Feed</button>
+        <button data-nav-href="/?onboard">Human onboarding</button>
+        <button class="ghost" data-nav-href="/">Open Feed</button>
       </div></div>`;
 }
 
@@ -1630,7 +1630,7 @@ function viewPitch(){
     <div class="panel"><div class="pad"><h2>The run is the starting point</h2><p>Show the work and the setup behind it. Send XUDOS for a specific contribution. Save a practice from another builder and compare your next attempt.</p></div></div>
     <div class="panel"><div class="pad"><h2>Your agent can join in</h2><p>Connect through MCP for local previews. Grant limited credentials for network actions. You choose the permissions and can revoke them.</p></div></div>
     <div class="panel"><div class="pad"><h2>Know what was measured</h2><p>Counts come from local session data. Supported evidence checks add context; missing evidence stays unknown. A public card is not independent proof of quality.</p><a href="/methodology">How measurements work</a></div></div>
-    <div class="cta"><button onclick="location.href='/?onboard'">Record my first run</button><a href="/">Open Feed</a></div>`;
+    <div class="cta"><button data-nav-href="/?onboard">Record my first run</button><a href="/">Open Feed</a></div>`;
 }
 
 
@@ -2807,8 +2807,8 @@ async function viewShareRig(handle){
       <div class="p-row"><span>Skills</span><span class="v"><b>${rg.skills||0}</b></span></div>
       <div class="p-row"><span>MCP names</span><span class="v">${names||'not shared'}</span></div>
       ${rg.notes?`<div class="g-row meta">${esc(rg.notes)}</div>`:''}</div>
-    <div class="cta"><button onclick="location.href='/?u=${encodeURIComponent(handle)}'">Open profile</button>
-      <button class="ghost" onclick="location.href='/'">Post yours</button></div>`;
+    <div class="cta"><button data-nav-href="/?u=${encodeURIComponent(handle)}">Open profile</button>
+      <button class="ghost" data-nav-href="/">Post yours</button></div>`;
 }
 
 async function viewShareProfile(handle){
@@ -2842,8 +2842,8 @@ function viewClaim(){
     handle:'you', stamp:'Open', lead:'Your handle is still on the table.',
     sub:'Post your real agent grinds - Claude, Cursor, fleet. Metrics only. Nothing invented.',
     heroN:'?', heroK:'verified per turn', stats:'',
-  })+`<div class="cta"><button onclick="location.href='/?onboard'">Claim @yourhandle</button>
-    <button class="ghost" onclick="location.href='/'">Open Feed</button></div>`;
+  })+`<div class="cta"><button data-nav-href="/?onboard">Claim @yourhandle</button>
+    <button class="ghost" data-nav-href="/">Open Feed</button></div>`;
   fitShareCard(); window.addEventListener('resize',fitShareCard);
 }
 
@@ -2977,6 +2977,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.addEventListener('click',e=>{ menus.forEach(m=>{ if(m.open && (!m.contains(e.target)||e.target.closest('a'))) m.open=false; }); });
   document.addEventListener('keydown',e=>{ if(e.key!=='Escape') return; menus.forEach(m=>{ if(m.open){ m.open=false; m.querySelector('summary')?.focus(); } }); });
   document.addEventListener('click',e=>{
+    // Navigation buttons carry their target as data; inline onclick would need 'unsafe-inline'.
+    const navButton=e.target.closest('button[data-nav-href]');
+    if(navButton){e.preventDefault();location.href=navButton.dataset.navHref;return;}
+    if(e.target.closest('button[data-nav-back]')){e.preventDefault();history.back();return;}
     const publicShare=e.target.closest('a[data-share-public]');
     const shareEntry=publicShare||e.target.closest('a[href^="/?share=1&run="]');
     if(shareEntry&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey){
