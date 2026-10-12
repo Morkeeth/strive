@@ -70,6 +70,24 @@ class PickerTests(unittest.TestCase):
             self.assertEqual(db.execute('select count(*) from saves').fetchone()[0],0);db.close()
         finally:server.shutdown();server.server_close();thread.join()
 
+    def test_picker_names_existing_folder_instead_of_opaque_capture_error(self):
+        server,url=make_server('codex',self.root/'state','https://striverun.app',[('codex',self.source)])
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        try:
+            token=url.rsplit('/',1)[1];origin=url.rsplit('/',1)[0]
+            def submit(name):
+                data=urlencode({'session':'0','project':name,'token':token}).encode()
+                return urllib.request.urlopen(urllib.request.Request(url,data=data,headers={'Origin':origin}))
+            self.assertIn('Open private preview',submit('Night run').read().decode())
+            with self.assertRaises(urllib.error.HTTPError) as caught: submit('Other name')
+            self.assertEqual(caught.exception.code,400)
+            body=caught.exception.read().decode()
+            self.assertIn('already registered as Night run',body)
+            self.assertIn('Use that project name in the picker',body)
+            self.assertIn('Nothing was uploaded',body)
+            self.assertIn('Open private preview',submit('Night run').read().decode())
+        finally:server.shutdown();server.server_close();thread.join()
+
     def test_local_mcp_has_no_outward_tools_and_shares_capture(self):
         from unittest.mock import patch
         from agentgrinder import mcp_server as mcp

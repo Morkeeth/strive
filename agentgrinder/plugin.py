@@ -78,6 +78,20 @@ def project(db, name, path, hooks=False):
     return {'project': name, 'root': str(path), 'hooks': hooks, 'uploaded': 0}
 
 
+def register_capture_project(db, name, source):
+    """Bind a picker label to its source folder without silently ignoring a collision."""
+    name = label(name)
+    source_root = str(Path(source).expanduser().resolve(strict=True).parent)
+    with db:
+        existing = db.execute('select name from projects where root=?', (source_root,)).fetchone()
+        if existing and existing['name'] != name:
+            raise ValueError(f'This folder is already registered as {existing["name"]}. Use that project name in the picker and choose this session again. Nothing was uploaded.')
+        named = db.execute('select root from projects where name=?', (name,)).fetchone()
+        if named and named['root'] != source_root:
+            raise ValueError(f'{name} already names another folder. Choose a different project name in the picker. Nothing was uploaded.')
+        db.execute('insert or ignore into projects values(?,?,0)', (name, source_root))
+
+
 def read_source(path):
     path = Path(path).expanduser().resolve(strict=True)
     if not path.is_file() or path.stat().st_size > MAX_SOURCE:
