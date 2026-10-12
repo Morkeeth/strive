@@ -13,4 +13,8 @@ const socialDom=new JSDOM('<div class="fc-builder"><div class="card-follow"></di
 const c=new JSDOM('',{runScripts:'outside-only'}).window;for(const file of ['run-contract.js','run-estimates.js','run-context.js','story-tile.js','run-placeholders.js','run-story.js','feed-card.js','day.js','day-card.js','activity-order.js','activity-post.js'])c.eval(fs.readFileSync('site/'+file,'utf8'));
 const run={id:'fixture',title:'TEST DATA source-bound card',caption:'An author description.',harness:'Codex',visibility:'public',capture_metadata:{basis:'codex-records',models:['test-model']}};
 const empty=new JSDOM(c.StrivePost.render({...run,_readablePhotoCount:0})).window.document;assert.equal(empty.querySelectorAll('.harness-mark').length,1);assert.ok(empty.querySelector('.story-tile .harness-mark'));const withImage=new JSDOM(c.StrivePost.render({...run,_readablePhotoCount:1})).window.document;assert.ok(withImage.querySelector('.media-loading'));assert.equal(withImage.querySelector('.story-tile'),null);assert.ok(withImage.querySelector('.post-workline .harness-mark'));
-console.log('PASS startup coalescing, expired/blocked cache hint, non-empty first count-up frame, actual self control, one no-image chip and neutral image placeholder.');
+const selectedRun='20000000-0000-0000-0000-000000000001',selectedPhoto='30000000-0000-0000-0000-000000000001';
+const selected=new JSDOM(c.StrivePost.render({...run,id:selectedRun,_readablePhotoCount:1},{choices:{v:2,visual:'photo',photo:{run:selectedRun,id:selectedPhoto}}})).window.document;
+assert.equal(selected.querySelectorAll('.run-media-slot').length,1,'selected photo keeps one reserved image region');
+assert.equal(selected.querySelectorAll('.post-visual').length,0,'no second image is removed after an async photo fetch');
+console.log('PASS startup coalescing, count-up, self control, and one stable feed media slot even with a selected photo.');

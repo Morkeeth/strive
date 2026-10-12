@@ -44,9 +44,9 @@
     const dataOnly=choice?.visual==='data'||(!pick&&clean.photo&&clean.visual==='data');
     const photo=choice?.photo?.run===id&&choice.visual!=='data'?choice.photo:null;
     const gallery=!dataOnly,noImage=gallery&&r._readablePhotoCount===0;
-    const kind=photo?choice.visual:'data';
     const projectFirst=r.photo_layout==='result'&&r.capture_metadata?.estimates?.v===1;
-    const visual=(dataOnly||!photo||projectFirst)?'':`<figure class="dc-visual post-visual" data-kind="${esc(kind)}"${dataOnly?'':` data-visual-run="${esc(id)}"${photo?` data-visual-photo="${esc(photo.id)}" data-focus="${esc(choice.focus||'center')}"`:' data-visual-cover'}`}><div class="dc-fallback"${photo?' hidden':''}></div>${dataOnly?'':`<div class="dc-picture"${photo?'':' hidden'}></div>`}</figure>`;
+    // Gallery images arrive after the card. Keep one reserved media slot instead of
+    // painting a second photo above it and removing that photo after the fetch.
     const audience=owner?({public:'Public',private:'Only me',link:'Followers',close_friends:'Close friends',anonymous:'Only me'}[r.visibility]||'Only me'):r.visibility!=='public'?'Shared with you':'';
     const day=root.StriveActivity.time(r)!==null?root.StriveDay.localDay(new Date(r.started_at)):null;
     return `<article class="card dc dc-compact activity-post" id="${esc(cardId)}" data-run-id="${esc(id)}" data-run-visibility="${esc(r.visibility||'')}" data-run-owner="${owner}" data-media-seed="${esc(id)}" data-media-story="${esc(r.caption||title)}" data-media-harness="${esc(r.harness||'')}" data-media-model="${esc((Array.isArray(r.capture_metadata?.models)?r.capture_metadata.models:[]).join(', '))}" data-photo-layout="${esc(r.photo_layout||'cover')}"${r.photo_layout==='result'&&r.capture_metadata?.estimates?.v===1?' data-project-gallery':''}${gallery?' data-photo-gallery':''}${photo&&!projectFirst?' data-gallery-supporting':''} data-at="0" data-count="1">
@@ -56,7 +56,7 @@
       ${root.StriveContext?.headlineHtml?.(r)||''}
       <div class="post-workline">${!noImage?(root.StriveContext?.cardSecondary?.(r)||''):''}
       ${work.length?`<p class="post-work">Recorded work · ${work.map(([label,value])=>esc(value)+' '+esc(value==='1'?({'Commits':'commit','Files touched':'file touched','Files changed':'file changed','Projects':'project'}[label]||label.toLowerCase()):label.toLowerCase())).join(' · ')}</p>`:''}</div>
-      ${visual}${gallery?`<div class="run-media-slot"><div class="post-media-empty" data-photo-placeholder>${noImage?(root.StrivePlaceholders?.render('screenshot',{story:r.caption||title,owner,seed:id,harness:r.harness,model:(Array.isArray(r.capture_metadata?.models)?r.capture_metadata.models:[]).join(', ')})||''):'<div class="media-loading" role="status" aria-label="Loading run images"></div>'}</div></div>`:''}${r.feedback_question?`<p class="post-question">${esc(r.feedback_question)}</p>`:''}
+      ${gallery?`<div class="run-media-slot"><div class="post-media-empty" data-photo-placeholder>${noImage?(root.StrivePlaceholders?.render('screenshot',{story:r.caption||title,owner,seed:id,harness:r.harness,model:(Array.isArray(r.capture_metadata?.models)?r.capture_metadata.models:[]).join(', ')})||''):'<div class="media-loading" role="status" aria-label="Loading run images"></div>'}</div></div>`:''}${r.feedback_question?`<p class="post-question">${esc(r.feedback_question)}</p>`:''}
       <p class="post-open"><a href="${esc(href)}">View full run <span aria-hidden="true">→</span></a></p><footer class="fc-foot">${actions}</footer><section class="dc-comments" hidden aria-label="Comments on this run"></section>
     </article>`;
   }
