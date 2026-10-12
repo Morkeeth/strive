@@ -12,15 +12,15 @@
 <div class="install-note"><p>The MCP server runs on your computer. It offers two tools: <strong>list_sessions</strong> and <strong>preview_session</strong>. Adding it does not upload or publish a run. You need <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> and Python 3.9+.</p></div>
 <div class="install-grid">
 <section class="install-card" id="cursor"><h2>Cursor</h2><p>Open Cursor's install dialog with the local server already filled in.</p>
-<a class="install-action" href="cursor://anysphere.cursor-deeplink/mcp/install?name=strive&amp;config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJzdHJpdmVydW4iLCJzdHJpdmUtbWNwIl19">Add to Cursor ↗</a>
+<a class="install-action" href="__STRIVE_MCP_INSTALL_LINK__">Add to Cursor ↗</a>
 <div class="install-step">Manual fallback</div><p>In Cursor, open Settings → Tools &amp; MCP → Add custom MCP. Add this server to <code>~/.cursor/mcp.json</code>:</p>
-<code class="install-command" id="cursor-command">{"mcpServers":{"strive":{"command":"uvx","args":["--from","striverun","strive-mcp"]}}}</code><button class="install-copy" type="button" data-copy="cursor-command">Copy Cursor config</button>
+<code class="install-command" id="cursor-command">{"mcpServers":{"strive":{"command":"uvx","args":["--from","__STRIVE_MCP_SPEC__","strive-mcp"]}}}</code><button class="install-copy" type="button" data-copy="cursor-command">Copy Cursor config</button>
 </section>
 <section class="install-card" id="claude"><h2>Claude Code</h2><p>Add the same two private preview tools with one command.</p>
-<div class="install-step">Run in Terminal</div><code class="install-command" id="claude-command">claude mcp add strive -- uvx --from striverun strive-mcp</code><button class="install-copy" type="button" data-copy="claude-command">Copy command</button>
+<div class="install-step">Run in Terminal</div><code class="install-command" id="claude-command">claude mcp add strive -- uvx --from __STRIVE_MCP_SPEC__ strive-mcp</code><button class="install-copy" type="button" data-copy="claude-command">Copy command</button>
 </section>
 <section class="install-card" id="codex"><h2>Codex</h2><p>Add the same two private preview tools with one command.</p>
-<div class="install-step">Run in Terminal</div><code class="install-command" id="codex-command">codex mcp add strive -- uvx --from striverun strive-mcp</code><button class="install-copy" type="button" data-copy="codex-command">Copy command</button>
+<div class="install-step">Run in Terminal</div><code class="install-command" id="codex-command">codex mcp add strive -- uvx --from __STRIVE_MCP_SPEC__ strive-mcp</code><button class="install-copy" type="button" data-copy="codex-command">Copy command</button>
 </section>
 <section class="install-card" id="grok-bot"><h2>Grok Bot</h2><p>Use the shared STRIVE companion to preview this Bot's own work. It makes a local preview first; saving to your STRIVE account is a separate choice.</p>
 <a class="install-action" href="https://x.ai/bot/JWU4CVq6sWA8LGcRHSxp4">Open STRIVE Bot ↗</a>

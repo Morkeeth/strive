@@ -41,7 +41,9 @@ INTERVAL = 15 * 60
 MAX_PER_SYNC = 20   # the database rate-limits uploads; the rest go on the next sync
 LABEL = "app.strive.sync"
 NAMESPACE = uuid.UUID("7d3f0a52-6d3c-4b7e-9a4f-2f0c6a1e5b11")
-UVX_SOURCE = "git+https://github.com/Morkeeth/strive"
+# The background job reads every local transcript and holds the upload token, so it runs one
+# published release, never whatever a branch holds at the next tick.
+PACKAGE = "striverun"
 # The upload token only ever goes to these hosts, over HTTPS, with redirects refused.
 TRUSTED_HOSTS = {"striverun.app", "agentic-strava.vercel.app"} | {
     h.strip().lower() for h in os.environ.get("STRIVE_TRUSTED_HOSTS", "").split(",") if h.strip()}
@@ -280,10 +282,19 @@ def sync_once(token: str, site: str = DEFAULT_SITE, dry_run: bool = False, since
     return counts
 
 
+def _release_spec() -> str | None:
+    from importlib.metadata import PackageNotFoundError, version
+    try:
+        return f"{PACKAGE}=={version(PACKAGE)}"
+    except PackageNotFoundError:
+        return None
+
+
 def _command() -> list[str]:
     uvx = shutil.which("uvx")
-    if uvx:
-        return [uvx, "--from", UVX_SOURCE, "agentgrinder", "sync"]
+    spec = _release_spec()
+    if uvx and spec:
+        return [uvx, "--from", spec, "agentgrinder", "sync"]
     return [sys.executable, "-m", "agentgrinder", "sync"]
 
 

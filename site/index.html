@@ -552,6 +552,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
+<a class="skip-link" href="#app">Skip to content</a>
 <div class="bar"><div class="bar-in">
   <a class="mark" href="/">__BRAND__</a>
   <span class="alpha-label">Alpha</span>
@@ -573,12 +574,12 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <div id="status" role="status" aria-live="polite" aria-atomic="true"></div>
 <div class="shell solo" id="shell">
   <aside class="rail" id="rail"></aside>
-  <main class="main" id="app"></main>
+  <main class="main" id="app" tabindex="-1"></main>
   <aside class="side" id="side"></aside>
 </div>
 <footer class="site-foot"><a href="/install">Install</a><a href="/agents.md">For agents</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/?feedback">Feedback</a><a href="/privacy#deletion" id="delete-info">Delete your data</a></footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
 <script src="/navigation.js"></script>
 <script src="/run-links.js"></script>
 <script src="/activity-order.js"></script>
@@ -1472,8 +1473,8 @@ function shareCardHtml(opts){
   </div></div>
   <div class="share-actions">
     <button id="share-copy">Copy link</button>
-    <button class="ghost" onclick="location.href='/'">Post yours</button>
-    <button class="ghost" onclick="history.back()">Back</button>
+    <button class="ghost" data-nav-href="/">Post yours</button>
+    <button class="ghost" data-nav-back>Back</button>
   </div>
   <p class="hint" style="margin-top:12px">Screenshot the card above · metrics only · a real session</p></div>`;
 }
@@ -1617,8 +1618,8 @@ async function viewOnboardAgent(){
     <div class="ob-step"><h3>4 · Your approval</h3>
       <p class="hint">Without a credential, agents prepare drafts for you to review. You can grant an agent specific posting or XUDOS permissions, choose an expiry, and revoke access in Agents.</p>
       <div class="ob-actions">
-        <button onclick="location.href='/?onboard'">Human onboarding</button>
-        <button class="ghost" onclick="location.href='/'">Open Feed</button>
+        <button data-nav-href="/?onboard">Human onboarding</button>
+        <button class="ghost" data-nav-href="/">Open Feed</button>
       </div></div>`;
 }
 
@@ -1630,7 +1631,7 @@ function viewPitch(){
     <div class="panel"><div class="pad"><h2>The run is the starting point</h2><p>Show the work and the setup behind it. Send XUDOS for a specific contribution. Save a practice from another builder and compare your next attempt.</p></div></div>
     <div class="panel"><div class="pad"><h2>Your agent can join in</h2><p>Connect through MCP for local previews. Grant limited credentials for network actions. You choose the permissions and can revoke them.</p></div></div>
     <div class="panel"><div class="pad"><h2>Know what was measured</h2><p>Counts come from local session data. Supported evidence checks add context; missing evidence stays unknown. A public card is not independent proof of quality.</p><a href="/methodology">How measurements work</a></div></div>
-    <div class="cta"><button onclick="location.href='/?onboard'">Record my first run</button><a href="/">Open Feed</a></div>`;
+    <div class="cta"><button data-nav-href="/?onboard">Record my first run</button><a href="/">Open Feed</a></div>`;
 }
 
 
@@ -1806,6 +1807,7 @@ async function feedCards(runs,ad,{ownerView=false,decorate=html=>html}={}){
 }
 
 // A stranger lands on what is going on, then people, then runs. Real rows only (site/home.js).
+const FEED_PAGE=20;
 async function viewLanding(){
   const app=$('app'),generation=AUTH_GENERATION,viewGeneration=RUN_VIEW_GENERATION;
   const current=()=>generation===AUTH_GENERATION&&viewGeneration===RUN_VIEW_GENERATION;
@@ -1815,12 +1817,12 @@ async function viewLanding(){
   if(!app.querySelector('.home[data-boot-skeleton]'))app.innerHTML=feedTabs('home')+landingHTML();
   app.querySelector('.home')?.removeAttribute('data-boot-skeleton');
   const H=window.GrinderHome, now=Date.now();
-  const data=H&&sb?await H.read(sb,now):{runs:null,clubs:null,events:null};
+  const data=H&&sb?await H.readRuns(sb):{runs:null};
   if(!current())return;
   const put=(id,html)=>{const el=$(id);if(el)el.innerHTML=html};
   // A failed read says it failed; only a read that worked may say there is nothing.
   const failed='<p class="home-none" data-failed>This section could not load. Refresh to try again.</p>';
-  put('home-week',data.runs===null&&data.events===null?failed:H.weekHtml(data.runs,[],now,{showEvents:false}));
+  put('home-week',data.runs===null?failed:H.weekHtml(data.runs,[],now,{showEvents:false}));
   $('home-community')?.remove();$('home-join')?.remove();
   if(data.runs!==null&&!data.runs.length)$('home-week-section')?.setAttribute('hidden','');
   const who=data.runs?H.builders(data.runs.filter(r=>r.profile_id!==ME?.id),6):[];
@@ -1830,8 +1832,20 @@ async function viewLanding(){
   if(!runs.length){const older=await fetchLatestPublicRuns(5);if(older===null)runsFailed=true;else{runs=older;runsFailed=false}}
   if(runs.length){
     noteTraces(runs);
-    const ad=await ackData(runs);
-    const cards=await feedCards(StriveActivity.sort(runs),ad);if(!current())return;body.innerHTML=cards;wireKudos();
+    // One page of cards at a time: each card costs its own XUDOS, day-card and photo reads.
+    const sorted=StriveActivity.sort(runs);let shown=0;
+    const more=async()=>{
+      const page=sorted.slice(shown,shown+FEED_PAGE);shown+=page.length;
+      const cards=await feedCards(page,await ackData(page));if(!current())return false;
+      body.insertAdjacentHTML('beforeend',cards);wireKudos();return true;
+    };
+    body.innerHTML='';$('feed-more')?.closest('.feed-more-row')?.remove();
+    if(!await more())return;
+    if(shown<sorted.length){
+      body.insertAdjacentHTML('afterend','<p class="feed-more-row"><button type="button" class="act ghost" id="feed-more">Show more runs</button></p>');
+      const button=$('feed-more');
+      button.addEventListener('click',async()=>{button.disabled=true;await more();if(shown>=sorted.length)button.parentElement.remove();else button.disabled=false;});
+    }
     put('public-run-count','Newest activity first · '+runs.length+' public runs'+(runs.some(r=>StriveActivity.time(r)===null)?' · undated activity follows dated runs':''));
   }else if(body){
     body.innerHTML=runsFailed?failed:'<p class="home-none">No public run yet.</p>';
@@ -2807,8 +2821,8 @@ async function viewShareRig(handle){
       <div class="p-row"><span>Skills</span><span class="v"><b>${rg.skills||0}</b></span></div>
       <div class="p-row"><span>MCP names</span><span class="v">${names||'not shared'}</span></div>
       ${rg.notes?`<div class="g-row meta">${esc(rg.notes)}</div>`:''}</div>
-    <div class="cta"><button onclick="location.href='/?u=${encodeURIComponent(handle)}'">Open profile</button>
-      <button class="ghost" onclick="location.href='/'">Post yours</button></div>`;
+    <div class="cta"><button data-nav-href="/?u=${encodeURIComponent(handle)}">Open profile</button>
+      <button class="ghost" data-nav-href="/">Post yours</button></div>`;
 }
 
 async function viewShareProfile(handle){
@@ -2842,8 +2856,8 @@ function viewClaim(){
     handle:'you', stamp:'Open', lead:'Your handle is still on the table.',
     sub:'Post your real agent grinds - Claude, Cursor, fleet. Metrics only. Nothing invented.',
     heroN:'?', heroK:'verified per turn', stats:'',
-  })+`<div class="cta"><button onclick="location.href='/?onboard'">Claim @yourhandle</button>
-    <button class="ghost" onclick="location.href='/'">Open Feed</button></div>`;
+  })+`<div class="cta"><button data-nav-href="/?onboard">Claim @yourhandle</button>
+    <button class="ghost" data-nav-href="/">Open Feed</button></div>`;
   fitShareCard(); window.addEventListener('resize',fitShareCard);
 }
 
@@ -2977,6 +2991,12 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.addEventListener('click',e=>{ menus.forEach(m=>{ if(m.open && (!m.contains(e.target)||e.target.closest('a'))) m.open=false; }); });
   document.addEventListener('keydown',e=>{ if(e.key!=='Escape') return; menus.forEach(m=>{ if(m.open){ m.open=false; m.querySelector('summary')?.focus(); } }); });
   document.addEventListener('click',e=>{
+    // Navigation buttons carry their target as data; inline onclick would need 'unsafe-inline'.
+    // Focus moves without a hash: the SPA reads #import= and run anchors from location.hash.
+    if(e.target.closest('a.skip-link')){e.preventDefault();$('app').focus();return;}
+    const navButton=e.target.closest('button[data-nav-href]');
+    if(navButton){e.preventDefault();location.href=navButton.dataset.navHref;return;}
+    if(e.target.closest('button[data-nav-back]')){e.preventDefault();history.back();return;}
     const publicShare=e.target.closest('a[data-share-public]');
     const shareEntry=publicShare||e.target.closest('a[href^="/?share=1&run="]');
     if(shareEntry&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey){

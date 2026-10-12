@@ -38,7 +38,7 @@ const server=createServer(async(req,res)=>{try{
  }
  if(u.pathname==='/local-supabase.js'){res.setHeader('Content-Type','text/javascript');return res.end(await readFile(sdk));}
  const file=resolve(root,'.'+(u.pathname==='/'?'/index.html':u.pathname));if(!file.startsWith(root+'/')){res.writeHead(404);return res.end();}
- let body=await readFile(file);if(file.endsWith('index.html'))body=Buffer.from(body.toString().replace('http://127.0.0.1:54321',backend.url).replace('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2','/local-supabase.js'));
+ let body=await readFile(file);if(file.endsWith('index.html'))body=Buffer.from(body.toString().replace('http://127.0.0.1:54321',backend.url).replace(/<meta http-equiv="Content-Security-Policy"[^>]*>\n?/,'').replace(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@[^"]+"[^>]*><\/script>/,'<script src="/local-supabase.js"></script>'));
  res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.jpg':'image/jpeg'})[extname(file)]||'application/octet-stream');res.end(body);
  }catch(e){res.writeHead(500,{'Content-Type':'text/plain'});res.end('Local rehearsal failed: '+e.message)}});
 server.listen(Number(process.env.PORT)||0,'127.0.0.1',()=>console.log(JSON.stringify({url:'http://127.0.0.1:'+server.address().port,run,missing,backend:backend.url})));

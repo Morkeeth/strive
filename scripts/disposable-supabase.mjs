@@ -459,6 +459,9 @@ async function handle(db, req, res) {
   const singular = /vnd\.pgrst\.object/.test(String(req.headers.accept || "")) || /return=representation/.test(prefer) && req.method === "GET" && url.searchParams.has("limit") === false && filters.some((f) => f.key === "id" && f.op === "=");
   const wantObject =
     /vnd\.pgrst\.object/.test(String(req.headers.accept || ""));
+  // Like PostgREST, a write returns rows only when asked. Otherwise it needs no SELECT on
+  // the written columns, which matters for columns readers cannot select (profiles.auth_uid).
+  const returned = /return=representation/.test(prefer) || url.searchParams.has("select") ? select : null;
   const body = ["POST", "PATCH"].includes(req.method) ? await readBody(req) : null;
 
   const result = await withRole(db, sub, async () => {
@@ -470,14 +473,14 @@ async function handle(db, req, res) {
     if (req.method === "POST") {
       const rows = Array.isArray(body) ? body : [body];
       const out = [];
-      for (const row of rows) out.push(await insertRow(db, table, row, select));
-      return out;
+      for (const row of rows) out.push(await insertRow(db, table, row, returned));
+      return returned === null ? [] : out;
     }
     if (req.method === "PATCH") {
-      return updateRows(db, table, body || {}, filters, select);
+      return updateRows(db, table, body || {}, filters, returned);
     }
     if (req.method === "DELETE") {
-      return deleteRows(db, table, filters);
+      return deleteRows(db, table, filters, returned);
     }
     throw new Error("Unsupported method");
   });
@@ -487,6 +490,10 @@ async function handle(db, req, res) {
     res.setHeader("Content-Range", `*/${result}`);
     res.setHeader("Access-Control-Expose-Headers", "Content-Range");
     res.end();
+    return;
+  }
+  if (req.method !== "GET" && returned === null) {
+    res.end("[]");
     return;
   }
   if (wantObject) {
@@ -588,8 +595,7 @@ async function insertRow(db, table, row, select) {
   const keys = Object.keys(row || {}).filter((k) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(k));
   if (!keys.length) throw new Error("Empty insert");
   const values = keys.map((k) => row[k]);
-  const returning = select && select !== "*" ? select.split(",").map((c) => ident(c.trim())).join(",") : "*";
-  const q = `insert into ${ident(table)} (${keys.map(ident).join(",")}) values (${keys.map((_, i) => "$" + (i + 1)).join(",")}) returning ${returning}`;
+  const q = `insert into ${ident(table)} (${keys.map(ident).join(",")}) values (${keys.map((_, i) => "$" + (i + 1)).join(",")})${returningClause(select)}`;
   return (await db.query(q, values)).rows[0];
 }
 
@@ -598,15 +604,20 @@ async function updateRows(db, table, row, filters, select) {
   if (!keys.length) return [];
   const set = keys.map((k, i) => `${ident(k)}=$${i + 1}`).join(",");
   const { sql, params } = whereClause(filters, keys.length + 1);
-  const returning = select && select !== "*" ? select.split(",").map((c) => ident(c.trim())).join(",") : "*";
-  const q = `update ${ident(table)} set ${set}${sql} returning ${returning}`;
+  const q = `update ${ident(table)} set ${set}${sql}${returningClause(select)}`;
   return (await db.query(q, [...keys.map((k) => row[k]), ...params])).rows;
 }
 
-async function deleteRows(db, table, filters) {
+async function deleteRows(db, table, filters, select) {
   const { sql, params } = whereClause(filters);
-  const q = `delete from ${ident(table)}${sql} returning *`;
+  const q = `delete from ${ident(table)}${sql}${returningClause(select)}`;
   return (await db.query(q, params)).rows;
+}
+
+// null: the client did not ask for the written rows.
+function returningClause(select) {
+  if (select === null) return "";
+  return " returning " + (select && select !== "*" ? select.split(",").map((c) => ident(c.trim())).join(",") : "*");
 }
 
 const COACH_PLAN = `Friction: Claim 2 named test_draft_renders as done, but check_claim found no matching evidence in that claim's own turn.

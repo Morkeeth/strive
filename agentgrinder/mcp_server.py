@@ -15,7 +15,7 @@ import os
 import sys
 from datetime import datetime
 
-from . import ingest
+from . import __version__, ingest
 from .a2a import export_grind, onboarding_text
 from .push import import_url
 
@@ -345,7 +345,7 @@ def _handle(req: dict):
             "result": {
                 "protocolVersion": PROTO,
                 "capabilities": {"tools": {}},
-                "serverInfo": {"name": "agentgrinder", "version": "0.2.0-a2a"},
+                "serverInfo": {"name": "agentgrinder", "version": __version__},
             },
         }
     if m == "tools/list":
