@@ -42,6 +42,10 @@
       "destination": "/api/link?id=:id"
     },
     {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
       "source": "/:handle/:run",
       "destination": "/api/share?handle=:handle&run=:run"
     },
