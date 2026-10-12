@@ -2577,6 +2577,8 @@ async function importRun(){
   const editedProject=()=>projectForSave(capturedProject,$('i_project')?.value ?? null);
   const importedProject=capturedProject;
   const importedTitle=()=>{
+    const title=typeof run.title==='string'?GrinderContract.rejectPaths(run.title).trim().slice(0,120):'';
+    if(title)return title;
     if(run.trace_basis==='observed native events; timestamps unavailable') return 'Observed bot activity';
     const receiptBacked=Array.isArray(run.shipped)&&run.shipped.length&&Array.isArray(run.receipts)&&run.receipts.length
       ? String(run.shipped[0]||'').trim().slice(0,120):'';
@@ -2637,7 +2639,7 @@ async function importRun(){
   function paintImportPreview(){
     // Signed out there is no account to show: the neutral label and its initial, never a
     // made-up GitHub login. The title starts from receipt-backed output or basic session facts.
-    const preview={id:'preview',profile_id:ME?.id||'preview',profiles:ME||{display_name:'Local run'},title:$('i_title').value.trim(),
+    const preview={id:'preview',profile_id:ME?.id||'preview',profiles:ME||{display_name:'Your preview'},title:$('i_title').value.trim(),
       project:editedProject(),model:run.model||null,capture_metadata:run.capture_metadata||null,segment_id:run.segment_id||null,
       wall_time_s:Number.isInteger(run.wall_time_s)&&run.wall_time_s>=0?run.wall_time_s:null,
       harness:run.harness||null,prompts:run.turns_typed??null,duration_s:run.duration_s??null,

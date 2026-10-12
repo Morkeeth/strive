@@ -330,3 +330,7 @@ The owner sees a thumbnail strip: tap for cover, × to hide reversibly, plus to 
 ## Follow states · 11 October 16:20
 
 All person Follow controls use `GrinderSocial.followControl` and the shared `.follow-button` rules. Follow is solid blue. Following is white with a one-pixel border and dark text; hover or keyboard focus says Unfollow. The button keeps its width across labels. Self controls remain absent, and signed-out Follow opens sign-in without writing a relationship. The profile header, People page and feed rail share these states.
+
+## Unsaved import card · 12 October
+
+The unsaved import preview shows one harness identity and the recorded start's local clock and timezone, never the import time as session time. Model and recorded commits share quiet text styling. A zero commit count without repository context stays out of the preview face; the captured value is preserved in imported-field details. Plain stat labels keep their definitions in About these measurements. Unsaved cards omit the social action row and the extra story prompt; the composer owns the one Add your story action. Step changes scroll the import heading below the actual sticky header. Saved card actions, captured values and audiences are unchanged.
