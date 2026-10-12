@@ -5,11 +5,11 @@ import {createRequire} from 'node:module';
 import {JSDOM} from 'jsdom';
 const require=createRequire(import.meta.url);
 const html=fs.readFileSync('site/index.html','utf8');
-const dom=new JSDOM('<main id="app"></main>',{url:'https://striverun.app/'});
+const dom=new JSDOM('<main id="app"></main>',{url:'https://striverun.app/',runScripts:'outside-only'});
 const w=dom.window;
 let pending;
 const saved=[];
-const ctx={window:w,document:w.document,location:w.location,history:w.history,sessionStorage:w.sessionStorage,localStorage:w.localStorage,URL,atob,
+const ctx={setTimeout,clearTimeout,window:w,document:w.document,location:w.location,history:w.history,sessionStorage:w.sessionStorage,localStorage:w.localStorage,URL,atob,
  RUN_VIEW_GENERATION:0,AUTH_GENERATION:0,ME:{id:'owner',rig:{}},
  GrinderContract:require('../site/run-contract.js'),StriveImportRow:require('../site/import-row.js'),StriveSharingReview:require('../site/sharing-review.js'),
  StrivePhotoDraft:{saveIfDraft:async()=>false},
@@ -18,6 +18,8 @@ const ctx={window:w,document:w.document,location:w.location,history:w.history,se
  frame(){},skeletonCard:()=>'<p>Loading</p>',projectForSave:(a,b)=>b||a,safeOutputUrl:()=>null,safeRepoUrl:()=>null,
  status(){},requireCloseFriendsForSave:async()=>true,dropNullSegmentColumns(){},fairConfirmRun(){},viewRun(){},
  audienceLabel:x=>x};
+for(const file of ['run-contract','story-tile','run-placeholders','run-estimates','run-context','run-story','run-evidence','feed-card','day','day-card','activity-order','activity-post'])w.eval(fs.readFileSync('site/'+file+'.js','utf8'));
+Object.assign(ctx,{GrinderFeed:w.GrinderFeed,StrivePost:w.StrivePost,StriveActivity:w.StriveActivity,StriveSharingLinkImage:{render(){}}});
 ctx.sb={from:()=>({
  select:()=>({eq(){return this},order(){return this},limit(){return new Promise(resolve=>pending=resolve)}}),
  insert:row=>{saved.push(row);return {select:()=>({single:async()=>({data:{id:'saved'}})})}}

@@ -48,7 +48,7 @@ const meanings={'Recorded tokens':'Text the model read and wrote.','Typed turns'
 function headlineFacts(r,{preview=false}={}){
  const facts=cardFacts(r),known=label=>facts.find(row=>row[0]===label&&row[1]!=='Not recorded');
  const numeric=(label,value)=>count(value)?[label,value.toLocaleString('en-US'),meanings[label]]:null;
- const missing=label=>[label,'Not captured',meanings[label]+' This source did not record it.','missing'];
+ const missing=label=>[label,'Not captured',meanings[label]+' This run does not include it.','missing'];
  let sourceSeconds=null;try{const source=validate(r.capture_metadata)?.estimates?.source;if(source)sourceSeconds=(Date.parse(source.ended_at)-Date.parse(source.started_at))/1000}catch{}
  const seconds=[sourceSeconds,r.ridge_basis==='wall-time'?r.ridge_wall_seconds:null,r.wall_time_s,r.duration_s].find(v=>Number.isFinite(v)&&v>=0);
  const elapsed=seconds==null?null:['Elapsed',seconds<60?Math.floor(seconds)+' sec':root.GrinderFeed?.durationLabel?.(seconds)||Math.round(seconds/60)+' min',meanings.Elapsed];
@@ -59,21 +59,22 @@ function headlineFacts(r,{preview=false}={}){
  ];
 }
 
-function headlineHtml(r,className='post-facts',{preview=false}={}){
- const rows=headlineFacts(r,{preview});
+function headlineHtml(r,className='post-facts',{preview=false,omitUnknown=false}={}){
+ const rows=headlineFacts(r,{preview}).filter(row=>!omitUnknown||row[3]!=='missing');
+ if(omitUnknown&&!rows.length)return '';
  const tokenNote=!preview&&rows[0]?.[0]==='Typed turns'?`<p class="post-token-note">${r.capture_metadata?.basis==='cursor-model-info'?(preview?'This source does not record tokens':'Cursor does not record tokens'):'This capture does not include tokens'}</p>`:'';
- if(rows.length===3)return `<dl class="${esc(className)}" aria-label="Recorded activity">${rows.map(([label,value,detail,state])=>`<div${state==='missing'?' class="post-fact-placeholder"':''}><dt>${preview?factLabel(label):`<details class="metric-definition"><summary aria-label="What ${esc(label.replace(' · proxy',''))} means">${factLabel(label)}</summary><p>${esc(meanings[label]||detail)}</p></details>`}</dt><dd title="${esc(meanings[label]||detail)}">${esc(value)}</dd></div>`).join('')}</dl>${tokenNote}`;
+ if(rows.length===3||omitUnknown)return `<dl class="${esc(className)}" aria-label="Recorded activity">${rows.map(([label,value,detail,state])=>`<div${state==='missing'?' class="post-fact-placeholder"':''}><dt>${preview?factLabel(label):`<details class="metric-definition"><summary aria-label="What ${esc(label.replace(' · proxy',''))} means">${factLabel(label)}</summary><p>${esc(meanings[label]||detail)}</p></details>`}</dt><dd title="${esc(meanings[label]||detail)}">${esc(value)}</dd></div>`).join('')}</dl>${tokenNote}`;
  let inconsistent=false;try{validate(r.capture_metadata)}catch{inconsistent=true}
  const placeholders=root.StrivePlaceholders||(typeof require==='function'?require('./run-placeholders.js'):null);
  return placeholders?.render('numbers',{compact:true,inconsistent,facts:rows,story:r.caption||r.title})||'';
 }
 function factLabel(label){return esc(label.replace(' · proxy',''))+(label==='Est. dollars'?'<sup aria-label="See measurement basis">*</sup>':'');}
-function cardSecondary(r,{commits=false,preview=false}={}){
+function cardSecondary(r,{commits=false,preview=false,omitUnknown=false}={}){
  const facts=cardFacts(r),model=facts.find(row=>row[0]==='Model');
  const harness=({codex:'Codex',claude:'Claude Code','claude code':'Claude Code',cursor:'Cursor','grok bot':'Grok Bot'})[String(r.harness||'').toLowerCase()]||r.harness||'Agent';
  const glyph=({Codex:'M5 8l5 4-5 4m8 0h6',Cursor:'M6 4l13 9-7 1-3 6z','Claude Code':'M12 3v18M3 12h18M5 5l14 14M5 19L19 5'})[harness]||'M5 5h14v14H5z';
  const mark=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${glyph}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
- return `<div class="run-agent-identity"><span class="harness-mark" ${preview?'aria-hidden="true"':`aria-label="${esc(harness)}"`}>${mark}</span><span class="harness-name">${esc(harness)}</span><span class="${preview?'agent-fact':'model-chip'}">${esc(model&&model[1]!=='Not recorded'?model[1]:'Model not captured')}</span>${preview&&facts[0]?.[1]==='Not recorded'?'<span class="agent-fact preview-token-note">Tokens not recorded</span>':''}${commits&&count(r.commits)&&(!preview||r.commits>0||r.repo_url)?`<span${preview?' class="agent-fact"':''}>${r.commits} ${r.commits===1?'commit':'commits'}</span>`:''}</div>`;
+ return `<div class="run-agent-identity"><span class="harness-mark" ${preview?'aria-hidden="true"':`aria-label="${esc(harness)}"`}>${mark}</span><span class="harness-name">${esc(harness)}</span>${omitUnknown&&(!model||model[1]==='Not recorded')?'':`<span class="${preview?'agent-fact':'model-chip'}">${esc(model&&model[1]!=='Not recorded'?model[1]:'Model not captured')}</span>`}${preview&&facts[0]?.[1]==='Not recorded'?'<span class="agent-fact preview-token-note">Tokens not recorded</span>':''}${commits&&count(r.commits)&&(!preview||r.commits>0||r.repo_url)?`<span${preview?' class="agent-fact"':''}>${r.commits} ${r.commits===1?'commit':'commits'}</span>`:''}</div>`;
 }
 function measurementNotes(r){
  let m=null;try{m=validate(r.capture_metadata)}catch{}

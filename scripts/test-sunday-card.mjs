@@ -20,7 +20,7 @@ const fullCaption='Author '.repeat(40);assert.ok(P.render({...run,caption:fullCa
 const summary=C.profileFacts([run,run,{id:'missing',prompts:null,duration_s:400}]);assert.match(summary,/1,025/);assert.match(summary,/1 of 2 loaded runs have usage/);assert.match(summary,/1 of 2 loaded runs have human message counts/);assert.doesNotMatch(summary,/1,925|14m/);
 console.log('PASS Sunday card: no double-counted cache, recorded zero retained, missing bill and active time unknown, authored model kept separate, public profile coverage and saved visual choices preserved.');
 
-const missing=P.render({...run,duration_s:null,commits:null,files_touched:null,capture_metadata:null,caption:'',story_result:''});assert.match(missing,/Not captured/);assert.doesNotMatch(missing,/<dl class="post-facts"[^>]*><\/dl>/);console.log('PASS missing usage gets an honest card state without an empty facts row.');
+const missing=P.render({...run,duration_s:null,commits:null,files_touched:null,capture_metadata:null,caption:'',story_result:''});assert.doesNotMatch(missing,/Not captured/);assert.match(missing,/Typed turns/);assert.match(missing,/>0<\/dd>/);assert.doesNotMatch(missing,/<dl class="post-facts"[^>]*><\/dl>/);console.log('PASS missing usage gets an honest card state without an empty facts row.');
 
 const inconsistent=P.render({...run,duration_s:null,commits:null,files_touched:null,capture_metadata:{...run.capture_metadata,cached_input_tokens:1001}});assert.match(inconsistent,/could not be interpreted consistently/);assert.doesNotMatch(inconsistent,/Usage not captured/);
 const cursor=P.render({...run,duration_s:null,commits:null,files_touched:null,capture_metadata:{basis:'cursor-model-info',models:[]}});assert.match(cursor,/Cursor does not record tokens/);assert.doesNotMatch(cursor,/Usage needs review/);
@@ -36,7 +36,7 @@ console.log('PASS import preview omits missing usage without hiding recorded zer
 assert.deepEqual(JSON.parse(JSON.stringify(C.headlineFacts(run))).map(r=>r[0]),['Recorded tokens','Tool calls','Elapsed']);
 assert.deepEqual(JSON.parse(JSON.stringify(C.headlineFacts({...run,duration_s:null,files_touched:7}))).map(r=>r[0]),['Recorded tokens','Tool calls','Files touched']);
 assert.deepEqual(JSON.parse(JSON.stringify(C.headlineFacts({...run,duration_s:null,commits:null,files_touched:null}))).map(r=>r[0]),['Recorded tokens','Tool calls','Files touched']);
-assert.match(P.render({...run,duration_s:null,commits:null,files_touched:null}),/Not captured/);
+assert.doesNotMatch(P.render({...run,duration_s:null,commits:null,files_touched:null}),/Not captured/);
 assert.match(P.render({...run,duration_s:null,commits:null,files_touched:null}),/<dl class="post-facts"/);
 assert.equal(C.headlineFacts({...run,duration_s:null,files_touched:null,commits:0})[2][1],'0');
 console.log('PASS three-stat fallback order, labelled elapsed, zero commits and partial-data template.');
