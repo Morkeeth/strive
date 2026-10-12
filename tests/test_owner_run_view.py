@@ -92,6 +92,10 @@ def _open(browser, site, run, session):
             return route.fulfill(status=200, content_type="application/json", body=json.dumps(fresh))
         if "/auth/v1/user" in url:
             return route.fulfill(status=200, content_type="application/json", body=json.dumps(USER))
+        if "/rest/v1/rpc/my_profile" in url:
+            # Deployed pre-042 behaviour: owner reads through the existing profile fallback.
+            return route.fulfill(status=404, content_type="application/json",
+                                 body=json.dumps({"code": "PGRST202", "message": "my_profile not found"}))
         if "/rest/v1/profiles" in url and "auth_uid=eq." in url:
             single = "vnd.pgrst.object" in (req.headers.get("accept") or "")
             return route.fulfill(status=200, content_type="application/json",
@@ -128,9 +132,11 @@ def test_owner_sees_audience_selector_and_can_save_public(browser, site, run, ex
     now = int(time.time())
     page, requests, patches, errors = _open(browser, site, run, _session(now - 600 if expired else now + 3600))
     try:
+        page.get_by_role("link", name="Edit run", exact=True).wait_for(timeout=15000)
+        assert "Choose who can see this" in page.inner_text("#app")
+        page.get_by_role("link", name="Edit run", exact=True).click()
         page.wait_for_selector("#run-audience", timeout=15000)
         assert page.input_value("#run-audience") == "private"
-        assert "Choose who can see this" in page.inner_text("#app")
         page.select_option("#run-audience", "public")
         page.click("#run-save")
         deadline = time.time() + 10

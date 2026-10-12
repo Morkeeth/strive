@@ -8,7 +8,7 @@ const choose=id=>db.query('select strava.choose_run_cover($1,$2)',[run,id]);
 await choose(photos[1].id);assert.equal((await db.query('select id from strava.run_photos where is_cover')).rows[0].id,photos[1].id);
 await as(RILEY);await assert.rejects(choose(photos[0].id),/Run not found/);
 await anonymous();await assert.rejects(choose(photos[0].id),/permission denied/);
-await as(CASEY);await assert.rejects(choose('11111111-1111-4111-8111-111111111111'),/Photo not found/);
+await as(CASEY);await assert.rejects(choose('11111111-1111-4111-8111-111111111111'),/Only a visible public image can be the cover/);
 assert.equal((await db.query('select id from strava.run_photos where is_cover')).rows[0].id,photos[1].id,'failed choice does not clear cover');
 await choose(photos[0].id);assert.equal((await db.query('select count(*) n from strava.run_photos where is_cover')).rows[0].n,1);
 await assert.rejects(db.query('update strava.run_photos set is_cover=true where run_id=$1',[run]),/permission denied/);

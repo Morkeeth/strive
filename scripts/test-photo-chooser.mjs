@@ -4,6 +4,7 @@ import {JSDOM} from 'jsdom';
 const dom=new JSDOM('<div id="slot"></div>',{runScripts:'outside-only'}),w=dom.window;
 w.URL.createObjectURL=()=> 'blob:test';w.URL.revokeObjectURL=()=>{};
 let release;w.fetch=()=>new Promise(resolve=>{release=resolve});
+w.eval(readFileSync('site/run-links.js','utf8'));
 w.eval(readFileSync('site/run-photos.js','utf8'));
 const slot=w.document.querySelector('#slot');
 const reset=w.StriveRunPhotos.mountChooser({slot,runs:[{id:'run1'}],selected:{run:'run1',id:'saved'},onPick:()=>{}});

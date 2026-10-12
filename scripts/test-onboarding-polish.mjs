@@ -1,18 +1,30 @@
+import {JSDOM} from 'jsdom';
+import {execFileSync} from 'node:child_process';
+import Links from '../site/run-links.js';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 const html=readFileSync('site/index.html','utf8');
 const take=(start,end)=>html.slice(html.indexOf(start),html.indexOf(end,html.indexOf(start)));
-const context={ME:{id:'owner',handle:'fixture'},AUTH_USER:{id:'auth'},profileHandle:p=>p.handle,signInLabel:()=> 'Sign in',encodeURIComponent};
-vm.createContext(context);vm.runInContext(take('function menuLinks(', 'function syncAuthNav('),context);
-for(const state of [{id:'owner',handle:'fixture'},null]){context.ME=state;const menu=vm.runInContext('menuLinks()',context);assert.ok(menu.includes('/?feedback'));assert.ok(menu.includes('/?connect'));}
+const context={StriveLinks:Links,ME:{id:'owner',handle:'fixture'},AUTH_USER:{id:'auth'},profileHandle:p=>p.handle,signInLabel:()=> 'Sign in',encodeURIComponent};
+vm.createContext(context);vm.runInContext(html.split('\n').find(line=>line.startsWith('const esc=')),context);vm.runInContext(take('function menuLinks(', 'function syncAuthNav('),context);
+for(const state of [{id:'owner',handle:'fixture'},null]){context.ME=state;const menu=vm.runInContext('menuLinks()',context);assert.match(html,/href="\/\?feedback"/);assert.ok(menu.includes('/?connect'));}
 assert.match(html,/prefers-reduced-motion:reduce/);
 assert.match(html,/aria-label="Loading runs"/);
 const body=take('function connectBodyHtml()', 'function wireConnectCopies(');
-assert.ok(body.indexOf('Copy link for your agent')<body.indexOf('${autoSyncHtml()}'));
-assert.ok(!body.includes('opens it privately for review'));
-const feedback=take('function viewFeedback()', 'function wireComposer(');
-assert.ok(feedback.indexOf('GrinderFeedbackWake')>feedback.indexOf('if(error)'));
+const entry=JSON.parse(execFileSync(process.execPath,['tests/fixtures/connect_body_probe.mjs',process.cwd()],{encoding:'utf8'}));
+assert.deepEqual(entry.order,[...entry.order].sort((a,b)=>a-b));assert.equal(entry.order[0],0);
+assert.deepEqual(entry.before,{quick:false,agent:false});
+for(const agent of ['cursor','claude','codex'])assert.match(entry.picks[agent].command,/strive sessions --harness/);
+assert.equal(entry.hints[0],'You can preview without signing in. Nothing is saved until you choose to save it.');
+const feedbackWindow=new JSDOM('',{url:'https://strive.test/',runScripts:'outside-only'}).window;
+feedbackWindow.eval(readFileSync('site/roadmap-feedback.js','utf8'));
+let wakes=0,failed=true;feedbackWindow.GrinderFeedbackWake=()=>{wakes++};
+const panel=feedbackWindow.StriveFeedback({client:{auth:{},rpc:async name=>{assert.equal(name,'save_feedback');return failed?{error:{message:'offline'}}:{data:'saved',error:null}}},me:()=>({id:'test-owner'}),signIn(){throw Error('unexpected sign-in')}});
+try{const form=feedbackWindow.document.querySelector('form'),message=form.elements.message;message.value='TEST DATA feedback';
+await form.onsubmit({preventDefault(){}});assert.equal(wakes,0);assert.equal(message.value,'TEST DATA feedback');
+failed=false;await form.onsubmit({preventDefault(){}});assert.equal(wakes,1);assert.equal(message.value,'');
+}finally{panel.destroy();feedbackWindow.close()}
 const wake=readFileSync('site/feedback-wake.js','utf8');
 let calls=[];const box={window:{},fetch:async(...a)=>{calls.push(a);throw Error('offline')}};
 vm.createContext(box);vm.runInContext(wake,box);

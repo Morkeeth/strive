@@ -1,4 +1,4 @@
-// Runs every offline scripts/test-*.mjs unchanged, four at a time. A failure fails the run unless
+// Runs every offline scripts/test-*.mjs unchanged. Scripts that run build-site go one at a time; the rest run four at a time. A failure fails the run unless
 // docs/testing/node-failure-triage-20261012.jsonl inventories it. An inventoried script that passes also fails
 // the run until its row is deleted, so the inventory always equals the set of real failures.
 import {readdirSync,readFileSync} from 'node:fs';
@@ -22,8 +22,13 @@ function run(name){
   child.on('close',code=>{clearTimeout(timer);resolve({name,ok:code===0,seconds:((Date.now()-started)/1000).toFixed(1),output})});
  });
 }
+// build-site rewrites dist/ in place. Overlapping builders can read one another's
+// partial manifests and archives, so each build check must finish before the next starts.
+const builders=tests.filter(name=>readFileSync(root+name,'utf8').includes('scripts/build-site.mjs'));
+const parallel=tests.filter(name=>!builders.includes(name));
 const results=[];let next=0;
-await Promise.all(Array.from({length:4},async()=>{while(next<tests.length)results.push(await run(tests[next++]))}));
+await Promise.all(Array.from({length:4},async()=>{while(next<parallel.length)results.push(await run(parallel[next++]))}));
+for(const name of builders)results.push(await run(name));
 results.sort((a,b)=>a.name.localeCompare(b.name));
 const unexpected=results.filter(r=>!r.ok&&!pinned.has(r.name));
 const repaired=results.filter(r=>r.ok&&pinned.has(r.name));
