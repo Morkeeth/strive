@@ -7,3 +7,16 @@ for(const key of ['tool_calls','shell_calls','files_touched','commits','model','
 assert.ok(!JSON.stringify(row.capture_metadata).includes('TEST MODEL'));
 assert.equal(row.visibility,'private');assert.equal(run.tool_calls,385,'original capture remains unchanged');
 console.log('PASS omitted optional metrics and their dependent fields are absent from the actual saved row');
+// Exercise the actual review panel with an unknown repository and local clock.
+process.env.TZ='Europe/Paris';
+const {JSDOM}=await import('jsdom');
+const dom=new JSDOM('<div id="review"></div><select id="audience"><option value="private">Only me</option></select><button id="save">Save</button>',{runScripts:'outside-only'});
+dom.window.eval(fs.readFileSync('site/sharing-review.js','utf8'));
+const slot=dom.window.document.getElementById('review');
+const panel=dom.window.StriveSharingReview.mount({slot,run:{commits:0,turns_typed:16,started:'2026-10-12T13:50:00Z'},buildRow:choices=>({prompts:16,started_at:'2026-10-12T13:50:00Z',...(choices.commits===false?{}:{commits:0})}),audience:dom.window.document.getElementById('audience'),save:dom.window.document.getElementById('save'),onChange(){}});
+assert.equal(slot.querySelector('[data-share-metric="commits"]').checked,false,'unknown repository zero must not be pre-ticked');
+assert.equal(panel.choices().commits,false,'unknown zero must be omitted from the saved row');
+assert.ok(slot.textContent.includes('12 Oct 2026, 15:50'),'start must use an unambiguous local 24-hour format');
+assert.ok(slot.textContent.includes('Typed turns'),'panel and card use one name');
+assert.ok(!slot.textContent.includes('Recorded human messages'));
+console.log('PASS actual panel excludes unknown zero commits, formats local time and uses Typed turns');

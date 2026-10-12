@@ -1,3 +1,5 @@
+-- Applied by the Fable database gate on 12 October 2026 as agent_run_review_041.
+-- Gate readback: security definer/execute ACL unchanged; 10 private and 1 link agent runs unchanged.
 -- Agent run review: no credential can publish a new visible run. Owner confirmation stays in the UI.
 begin;
 create or replace function strava.grinder_agent_action(token text, action text, payload jsonb, request_id uuid)
