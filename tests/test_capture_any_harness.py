@@ -54,12 +54,14 @@ def _claude_transcript(home: Path) -> Path:
 
 # ---- the copied command ---------------------------------------------------------------------
 
-def test_the_copied_command_reads_any_of_the_four_tools():
-    assert 'python3 -m agentgrinder grind --harness auto"' in INDEX     # INSTALL_CMD
-    assert "python3 -m agentgrinder grind --harness auto --push" in INDEX
-    assert "const capture=ONE_LINE('auto')" in INDEX
-    assert "hook install --harness cursor" in INDEX
-    assert "Capture from Cursor, Claude Code, Codex or Grok Bot" in INDEX
+def test_the_capture_commands_offer_deliberate_native_session_selection():
+    # Native pickers support these three readers; imported Grok Bot uses the file path.
+    assert "strive sessions --all --open --site __ORIGIN__" in INDEX
+    assert "strive sessions --harness ${h} --open --site __ORIGIN__" in INDEX
+    assert "['cursor','claude','codex'].map(h=>[h,picker(h)])" in INDEX
+    assert "agentgrinder grind --harness auto" in INDEX  # Advanced legacy import still exists.
+    assert "uvx --from __CAPTURE_PACKAGE__" in INDEX
+    assert "striverun.app/?post" in README
 
 
 def test_the_page_promises_exactly_the_tools_the_reader_supports():
@@ -68,7 +70,8 @@ def test_the_page_promises_exactly_the_tools_the_reader_supports():
     assert "reads the freshest Cursor, Claude Code, Codex or imported Grok Bot session" in INDEX
     for tool in HARNESSES.values():
         assert tool in INDEX, tool
-    assert "python3 -m agentgrinder grind" in README
+    assert "striverun.app/?post" in README
+    assert "session" in README and "privately" in README
 
 
 def test_auto_makes_a_card_from_a_claude_code_session(tmp_path):

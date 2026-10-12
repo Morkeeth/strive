@@ -1,5 +1,6 @@
 """Account control and sign-in recovery lane contracts: honest providers, safe destructive copy."""
 from pathlib import Path
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 ACCOUNT = (ROOT / "site" / "account.js").read_text()
@@ -21,7 +22,18 @@ def test_account_module_owns_the_panel_and_recovery():
 
 def test_no_cursor_or_origin_login_and_x_is_gated():
     assert "data-link=\"cursor\"" not in ACCOUNT and "Continue with Cursor" not in ACCOUNT and "Continue with Origin" not in ACCOUNT
-    assert "not a login" in ACCOUNT
+    # Render the actual provider menu with X disabled, then enabled.
+    subprocess.run(['node','-e',r"""
+const fs=require('fs'),{JSDOM}=require('jsdom'),assert=require('node:assert/strict');
+const w=new JSDOM('<main id="app"></main>',{runScripts:'outside-only'}).window;
+for(const file of ['auth','account'])w.eval(fs.readFileSync('site/'+file+'.js','utf8'));
+const render=providersEnabled=>w.GrinderAccount({providersEnabled}).identitiesHtml([]);
+for(const providers of [['github','email'],['github','email','x']]){
+ const doc=new JSDOM(render(providers)).window.document;
+ assert.equal(doc.querySelector('[data-link="cursor"],[data-link="origin"]'),null);
+ assert.equal(!!doc.querySelector('[data-link="x"]'),providers.includes('x'));
+}
+"""],cwd=ROOT,check=True)
     assert "is not available on this service yet" in ACCOUNT
     assert "providersEnabled" in ACCOUNT
 
@@ -86,7 +98,8 @@ def test_shell_is_integrated_not_patched_in_memory():
     assert INDEX.index('<script src="/origin.js"></script>') < INDEX.index('<script src="/account.js"></script>')
     assert "const account=GrinderAccount({" in INDEX
     assert "const originConnection=GrinderOrigin.create();" in INDEX
-    assert "async function route(){ account.recover();" in INDEX
+    route = INDEX[INDEX.index("async function route(){"):INDEX.index("const q=new URLSearchParams(location.search);", INDEX.index("async function route(){"))]
+    assert "account.recover();" in route
     assert "authErrorFromUrl" not in INDEX
     assert "if(q.has('account')){return account.view();}" in INDEX
     assert "people|account|connect|explore|boards|projects?|crews?)(=|&|$)" in INDEX
@@ -95,6 +108,6 @@ def test_shell_is_integrated_not_patched_in_memory():
     assert '<a href="/?account" role="menuitem">Settings</a>' in you
     assert "AUTH_USER" in you and "Sign out" in you
     assert you.index("if(!ME)") < you.index('href="/?account"')
-    assert '<a href="/?account#danger" id="delete">Delete my __BRAND__ profile</a>' in INDEX
+    assert 'href="/?account"' in INDEX and "profile deletion" in INDEX
     delete_path = INDEX[INDEX.index("document.addEventListener('DOMContentLoaded'"):]
     assert "$('delete').addEventListener" not in delete_path and "Delete your STRIVE profile and owned work?" not in delete_path
