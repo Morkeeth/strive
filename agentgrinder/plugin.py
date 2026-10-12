@@ -21,7 +21,7 @@ from urllib.parse import urlsplit
 import uuid
 from datetime import datetime
 
-VERSION = '0.3.2'
+VERSION = '0.3.5'
 MAX_SOURCE = 64 * 1024 * 1024
 FIELDS = {'harness', 'capture_metadata', 'project', 'turns_typed', 'duration_s',
           'tool_calls', 'files_touched', 'commits', 'started', 'rhythm', 'ridge',

@@ -6,6 +6,7 @@
   },
   "scripts": {
     "test:launch": "node scripts/test-launch-backend.mjs && node scripts/test-github-friends.mjs && node scripts/test-x-identity-guard.mjs && node scripts/test-readiness.mjs && node scripts/test-photo-cleanup-auth.mjs && node scripts/test-personal-photo-server-access.mjs && node scripts/test-photo-selection.mjs",
+    "test:all": "node scripts/run-all-tests.mjs",
     "test:database": "node scripts/test-database.mjs",
     "test:code-route-storage": "node scripts/test-code-route-storage.mjs",
     "test:journey": "node scripts/check-persisted-journey.mjs",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
+    "@supabase/supabase-js": "2.117.3",
     "jsdom": "^26.1.0"
   },
   "dependencies": {

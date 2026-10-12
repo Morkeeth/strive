@@ -48,4 +48,4 @@ def test_profile_carries_a_heatmap_of_visible_runs():
 
 def test_product_states_the_rules():
     assert "not quality or human effort" in PRODUCT
-    assert "Feed, My runs, Discover and People" in PRODUCT
+    assert "The primary navigation, signed in or out, is Feed and Add run" in PRODUCT

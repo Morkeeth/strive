@@ -217,7 +217,7 @@ def parse_session(path: str, athlete: str = "you") -> dict:
     repo = gitwork.repo_of(cwd) if cwd else None
     reach_value, reach_reason = reachmod.reach_of(
         repo[1] if repo else None, min(typed_ts), max(all_ts or typed_ts))
-    # real characteristic: does the project carry a rules/context file? (Karpathy: rules cut errors ~41%->11%)
+    # real characteristic: does the project carry a rules/context file?
     rules = None; rules_lines = 0; has_plan = False
     if cwd:
         for pc in ("spec.md", "PLAN.md", "plan.md", "docs/spec.md", "docs/PLAN.md"):
@@ -1026,19 +1026,20 @@ def coach_lines(this_run: dict) -> list[str]:
     if d and durs:
         rank = 1 + sum(1 for x in durs if x > d)
         if rank <= 3: graded.append(f"one of your longest focus sessions (#{rank} of {len(durs)})")
-    # GROUNDED + CITED, most actionable first
+    # Practice suggestions, most actionable first. Each names only what this run measured: no
+    # study statistic and no person's name, because neither is measured here.
     if this_run.get("has_rules") is False and this_run.get("project"):
-        graded.append("no CLAUDE.md/rules file here - a rules file cut agent errors ~41%->11% (Karpathy)")
+        graded.append("no CLAUDE.md/rules file here - write down the conventions you keep repeating")
     elif this_run.get("rules_lines") and this_run["rules_lines"] < 15:
-        graded.append(f"your rules file is only {this_run['rules_lines']} lines - thin rules leave the agent guessing (Karpathy/Osmani)")
+        graded.append(f"your rules file is only {this_run['rules_lines']} lines - thin rules leave the agent guessing")
     if this_run.get("has_plan") is False and this_run.get("project") and tp >= 8:
-        graded.append("no plan/spec.md in this project - plan first, save the spec (Hashimoto/Willison)")
+        graded.append("no plan/spec.md in this project - plan first, save the spec")
     if tc >= 40 and commits == 0:
-        graded.append(f"{tc} tool calls, 0 commits - commit per unit of work (Huntley/Willison)")
+        graded.append(f"{tc} tool calls, 0 commits - commit per unit of work")
     elif tp >= 8 and commits and commits < max(1, tp // 20):
-        graded.append("few commits for the prompts - commit per unit of work, don't batch (Huntley)")
+        graded.append("few commits for the prompts - commit per unit of work, don't batch")
     if regions >= 5 and tp and regions > tp / 4:
-        graded.append(f"touched {regions} regions - one bounded objective per session (Willison)")
+        graded.append(f"touched {regions} regions - one bounded objective per session")
     if rig.get("mcps") == 0 and rig.get("skills") == 0:
         graded.append("no MCPs or skills in your rig - a real setup is the cheap edge")
     # DESCRIPTIVE (real ratio, not a verdict) - only if room

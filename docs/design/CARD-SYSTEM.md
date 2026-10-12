@@ -215,7 +215,7 @@ Official reference read for this change: [feed stats](https://support.strava.com
 
 ## 12. Home composition · 8 October evening
 
-Home opens on real public project cards for signed-in and signed-out readers. Following remains an explicit filter. Community, official directories and builders sit beside the feed on wide screens and follow it on phones. Empty events and club rows never push the first real card below an onboarding stack. The blue card renderer and author visual choices are unchanged. Home ranks author-days by XUDOS then newest from the latest 300 public sessions, states that window, and keeps all loaded sessions of a selected day so choosing highlights does not discard that day's projects. It does not call this an all-time ranking or claim memberships that do not exist.
+Home opens on real public project cards for signed-in and signed-out readers. Following remains an explicit filter. Community, official directories and builders sit beside the feed on wide screens and follow it on phones. Empty events and club rows never push the first real card below an onboarding stack. The blue card renderer and author visual choices are unchanged. Home ranks author-days by XUDOS then newest from the latest 300 public sessions, states that window, and keeps all loaded sessions of a selected day so choosing highlights does not discard that day's projects. Superseded the same evening by "scrolling selected-run posts" below: the feed orders runs by recorded start time (`site/activity-order.js`), XUDOS never move a run up, and the home renders them 20 at a time. It does not call this an all-time ranking or claim memberships that do not exist.
 
 
 ## 8 October evening — scrolling selected-run posts

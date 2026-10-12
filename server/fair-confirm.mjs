@@ -47,7 +47,7 @@ export function fairConfig(env=process.env){
 }
 
 // The action, read from STRIVE's own database. A run must belong to the signed-in person (their
-// token, RLS, and the owner's auth id); a link is public by id.
+// token, RLS, and their own profile id); a link is public by id. auth_uid is not readable here.
 async function actionTime({kind,id,accessToken},{SB_URL,SB_KEY},fetchImpl){
  const base={apikey:SB_KEY,'Accept-Profile':'strava','Content-Profile':'strava'};
  if(kind==='link'){
@@ -60,10 +60,14 @@ async function actionTime({kind,id,accessToken},{SB_URL,SB_KEY},fetchImpl){
  const who=await fetchImpl(SB_URL+'/auth/v1/user',{headers:auth,signal:AbortSignal.timeout(8000)});
  const user=who.ok?await who.json().catch(()=>null):null;
  if(!user?.id) return null;
- const r=await fetchImpl(`${SB_URL}/rest/v1/runs?id=eq.${id}&select=id,created_at,profiles!runs_profile_id_fkey(auth_uid)`,{headers:auth,signal:AbortSignal.timeout(8000)});
+ const [r,me]=await Promise.all([
+  fetchImpl(`${SB_URL}/rest/v1/runs?id=eq.${id}&select=id,created_at,profile_id`,{headers:auth,signal:AbortSignal.timeout(8000)}),
+  fetchImpl(SB_URL+'/rest/v1/rpc/grinder_profile_id',{method:'POST',headers:{...auth,'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(8000)}),
+ ]);
  const rows=r.ok?await r.json().catch(()=>null):null;
+ const owner=me.ok?await me.json().catch(()=>null):null;
  const row=Array.isArray(rows)?rows[0]:null;
- return row&&row.id===id&&row.profiles?.auth_uid===user.id?row.created_at:null;
+ return row&&row.id===id&&typeof owner==='string'&&row.profile_id===owner?row.created_at:null;
 }
 
 export async function confirm({method,headers={},body},config,env=process.env,fetchImpl=fetch){

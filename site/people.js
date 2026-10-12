@@ -12,6 +12,8 @@ window.GrinderPeople = function ({
   renderRuns,
   drawAvatar,
 }) {
+  // Everything a reader may see on a profile; auth_uid is not readable outside my_profile().
+  const PUBLIC_PROFILE = "id,handle,github_handle,display_name,name,avatar_url,bio,x_handle,created_at,featured_run_id,agents,rig";
   const esc = (x) =>
     String(x ?? "").replace(
       /[&<>"']/g,
@@ -156,7 +158,7 @@ window.GrinderPeople = function ({
       if (!id) continue;
       try {
         const rows = await result(
-          db.from("profiles").select("*").eq("id", id).limit(1),
+          db.from("profiles").select(PUBLIC_PROFILE).eq("id", id).limit(1),
         );
         const person = Array.isArray(rows) ? rows[0] : rows;
         if (person) await social.followControl(person, slot);
@@ -311,7 +313,7 @@ window.GrinderPeople = function ({
               const profiles = await result(
                 db
                   .from("profiles")
-                  .select("*")
+                  .select(PUBLIC_PROFILE)
                   .in(
                     "id",
                     ids.map((f) => f.followed_id),
@@ -428,19 +430,19 @@ window.GrinderPeople = function ({
       const uuid = /^[0-9a-f-]{36}$/i.test(key);
       if (uuid) {
         const rows = await result(
-          db.from("profiles").select("*").eq("id", key).limit(1),
+          db.from("profiles").select(PUBLIC_PROFILE).eq("id", key).limit(1),
         );
         person = Array.isArray(rows) ? rows[0] : rows;
       } else {
         // Prefer future handle column when Claude lands identity migration; fall back.
         let rows = await result(
-          db.from("profiles").select("*").eq("github_handle", key).limit(1),
+          db.from("profiles").select(PUBLIC_PROFILE).eq("github_handle", key).limit(1),
         );
         person = Array.isArray(rows) ? rows[0] : rows;
         if (!person) {
           try {
             rows = await result(
-              db.from("profiles").select("*").eq("handle", key).limit(1),
+              db.from("profiles").select(PUBLIC_PROFILE).eq("handle", key).limit(1),
             );
             person = Array.isArray(rows) ? rows[0] : rows;
           } catch (_) {

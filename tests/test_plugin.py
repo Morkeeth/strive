@@ -198,3 +198,23 @@ def test_claude_install_cannot_auto_discover_duplicate_cursor_components(tmp_pat
     assert cursor['hooks']=={'version':1,'hooks':{}}
     assert claude['hooks']=='./config/claude-hooks.json'
     assert (bundle/'skills/strive/SKILL.md').is_file()
+
+
+def test_install_guides_name_one_published_release():
+    import base64
+    import re
+    from urllib.parse import parse_qs, urlsplit
+    root=Path(__file__).parents[1]
+    spec='striverun=='+re.search(r'^version = "([^"]+)"',(root/'pyproject.toml').read_text(),re.M).group(1)
+    page=(root/'dist/install.html').read_text()
+    guide=(root/'dist/plugins/install.md').read_text()
+    for text in (page,guide):
+        assert '__STRIVE_MCP' not in text
+        assert not re.search(r'--from[ ",]+striverun(?!==)',text), 'an MCP install names an unpinned package'
+        assert f'claude mcp add strive -- uvx --from {spec} strive-mcp' in text
+        assert f'codex mcp add strive -- uvx --from {spec} strive-mcp' in text
+        assert f'"args":["--from","{spec}","strive-mcp"]' in text
+    link=re.search(r'href="(cursor://anysphere\.cursor-deeplink/mcp/install\?[^"]+)"',page).group(1).replace('&amp;','&')
+    config=json.loads(base64.b64decode(parse_qs(urlsplit(link).query)['config'][0]))
+    assert config=={'command':'uvx','args':['--from',spec,'strive-mcp']}
+    assert '__STRIVE_MCP' in (root/'site/install.html').read_text(), 'the source page keeps its build markers'

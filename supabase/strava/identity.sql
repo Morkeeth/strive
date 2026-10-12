@@ -120,16 +120,20 @@ create trigger strava_profile_handle_claim
   for each row execute function strava.strava_profile_handle_claim();
 
 -- Public lookup used by /?u=<handle>. Chosen handle wins; legacy github_handle is the fallback.
--- security invoker: the caller's own read policy applies.
+-- Readers cannot select auth_uid (042_private_auth_uid.sql), so the row comes back with it
+-- empty. Kept identical to 042 because this script is re-run on installed schemas.
 create or replace function strava.strava_profile_by_handle(lookup text)
 returns setof strava.profiles
-language sql stable security invoker set search_path = strava, pg_temp as $$
-  select * from strava.profiles where handle = lower(trim(lookup))
-  union all
-  select * from strava.profiles p
-  where lower(p.github_handle) = lower(trim(lookup))
-    and not exists (select 1 from strava.profiles q where q.handle = lower(trim(lookup)))
-  limit 1
+language sql stable security definer set search_path = strava, pg_temp as $$
+  select (jsonb_populate_record(null::strava.profiles, to_jsonb(found) - 'auth_uid')).*
+  from (
+    select * from strava.profiles where handle = lower(trim(lookup))
+    union all
+    select * from strava.profiles p
+    where lower(p.github_handle) = lower(trim(lookup))
+      and not exists (select 1 from strava.profiles q where q.handle = lower(trim(lookup)))
+    limit 1
+  ) found
 $$;
 revoke all on function strava.strava_profile_by_handle(text) from public;
 grant execute on function strava.strava_profile_by_handle(text) to anon, authenticated;
