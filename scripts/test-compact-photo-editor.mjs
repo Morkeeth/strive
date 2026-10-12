@@ -4,7 +4,7 @@ import {JSDOM} from 'jsdom';
 const run={id:'11111111-1111-4111-a111-111111111111',visibility:'public'};
 const seed=['one','two','three'].map((id,sort_position)=>({id,role:'photo',is_selected:true,is_private:false,sort_position,url:`/api/run-photos?run_id=${run.id}&id=${id}`}));
 async function setup(){
- const w=new JSDOM('<div id="photos"></div>',{url:'https://striverun.app',runScripts:'outside-only'}).window,writes=[];
+ const w=new JSDOM('<style>'+fs.readFileSync('site/design.css','utf8')+fs.readFileSync('site/run-photos.css','utf8')+'</style><div id="run-edit"><div id="photos"></div></div>',{url:'https://striverun.app',runScripts:'outside-only'}).window,writes=[];
  w.URL.createObjectURL=()=> 'blob:TEST';w.URL.revokeObjectURL=()=>{};
  w.fetch=async(path,opts={})=>{if(opts.method&&opts.method!=='GET'){writes.push({path,method:opts.method,body:opts.body?JSON.parse(opts.body):null});return {ok:true,json:async()=>({})}}return path.includes('?run_id=')&&!path.includes('&id=')?{ok:true,json:async()=>({photos:seed.map(p=>({...p}))})}:{ok:true,blob:async()=>new w.Blob(['TEST'])}};
  w.eval(fs.readFileSync('site/run-photos.js','utf8'));
@@ -13,6 +13,9 @@ async function setup(){
 }
 const edit=await setup(),d=edit.w.document;
 assert.equal(d.querySelectorAll('.run-photo-grid figure').length,3);
+const thumbnail=edit.w.getComputedStyle(d.querySelector('.run-photo-grid figure>img'));
+assert.equal(thumbnail.position,'absolute','thumbnail fills its frame independently of intrinsic size');
+assert.equal(thumbnail.width,'100%');assert.equal(thumbnail.height,'100%');assert.equal(thumbnail.objectFit,'cover');
 assert.equal(d.querySelectorAll('[data-photo-role],[data-photo-cover],[data-photo-delete]').length,0,'no old control jungle');
 assert.equal(d.querySelectorAll('[data-photo-private]').length,3);
 assert.equal(d.querySelectorAll('[data-photo-selected]').length,3);

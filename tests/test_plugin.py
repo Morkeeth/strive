@@ -107,6 +107,11 @@ def test_ambiguous_save_retries_same_request_and_other_accounts_do_not_reuse_rec
         assert first['results'][0]['status'].startswith('unknown')
         second=plugin.save(db,rid,rid,base,token)
         assert second['results'][0]['existing'] is True
+        assert second['results'][0]['review_required'] is True
+        preview=second['results'][0]['preview_url'].split('#import=gz.')[1]
+        import base64,gzip
+        decoded=json.loads(gzip.decompress(base64.urlsafe_b64decode(preview+'='*((4-len(preview)%4)%4))))
+        assert decoded['review_run_id']==second['results'][0]['id'] and decoded['visibility']=='private'
         assert len(saved)==1 and received[0][0]==received[1][0]
         assert received[0][1]['visibility']=='private'
         assert 'PRIVATE SENTINEL' not in json.dumps(received)

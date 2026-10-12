@@ -208,6 +208,7 @@ html:has(.post-composer),body:has(.post-composer){overflow-x:clip}
 .post-flow-pane{padding-bottom:12px}
 .post-composer input,.post-composer textarea,.post-composer select{scroll-margin:140px 0}
 @media(max-width:700px){.post-composer{scroll-margin-top:66px}.post-flow-nav{top:56px;gap:6px}.post-flow-nav button{padding:7px 4px;gap:5px;font-size:12px}.post-flow-actions{bottom:calc(66px + env(safe-area-inset-bottom));padding:10px}.post-flow-actions .act{padding:10px 8px}}
+.sharing-review{padding:20px;border:1px solid var(--rule,#d9dde6);border-radius:12px;background:#fff;margin:0 0 20px;min-width:0}.sharing-review-kicker{font-size:12px;font-weight:700;color:var(--blue,#0047ff);letter-spacing:.06em}.sharing-review h2{font-size:22px;margin:8px 0}.sharing-review p{font-size:14px;line-height:1.5}.sharing-review-choices{display:flex;flex-wrap:wrap;gap:8px 18px;border:0;padding:10px 0 18px;margin:0}.sharing-review-choices legend{font-size:14px;font-weight:600}.sharing-review-choices label{display:flex;align-items:center;gap:8px;font-size:13px;margin:0}.sharing-review-choices input{width:18px;min-height:18px;margin:0;flex-shrink:0}.sharing-review-columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.sharing-review-columns>section{padding:14px;background:#f5f7fb;border-radius:8px;min-width:0}.sharing-review h3{font-size:15px;margin:0 0 10px}.sharing-review pre{font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:auto}.sharing-review-audience{font-weight:650}.sharing-review summary{font-size:13px;cursor:pointer}@media(max-width:700px){.sharing-review{padding:16px}.sharing-review-columns{grid-template-columns:1fr}.sharing-review pre{max-height:180px}}
 
 /* Preview has one clear next action, without an empty panel around it. */
 #post-pane-0>.post-flow-actions{background:transparent;border:0;box-shadow:none;padding:0;justify-content:stretch;margin-top:16px}
@@ -216,3 +217,6 @@ html:has(.post-composer),body:has(.post-composer){overflow-x:clip}
 .fc-preview{overflow:clip}
 .fc-preview .fc-top{position:sticky;top:var(--import-header-offset,132px);z-index:11;background:var(--box);padding-bottom:8px;border-radius:12px 12px 0 0}
 .fc-preview .fc-who small{white-space:normal;overflow:visible}
+
+.sharing-review dl{font-size:13px;margin:10px 0}.sharing-review dl>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin:6px 0}.sharing-review dt{color:#617085}.sharing-review dd{margin:0;overflow-wrap:anywhere}
+.post-composer:has(.sharing-review){max-width:980px}.post-composer:has(.sharing-review)>.post-flow-nav,.post-composer:has(.sharing-review)>.post-flow-pane{max-width:640px;margin-left:auto;margin-right:auto;width:100%;box-sizing:border-box}

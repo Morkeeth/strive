@@ -20,7 +20,7 @@ export async function upload({method,headers,body},{SB_URL,SB_KEY},fetchImpl=fet
  if(Number(headers['content-length']||0)>MAX_BYTES) return {status:413,body:{error:'Send a run under 64 KiB.'}};
  if(!body||typeof body!=='object'||Array.isArray(body)) return {status:400,body:{error:'Send one run as a JSON object.'}};
  // Measure what will be sent, not the header: a body can arrive without content-length.
- const serialized=JSON.stringify(body);
+ const serialized=JSON.stringify({...body,visibility:'private'});
  if(Buffer.byteLength(serialized,'utf8')>MAX_BYTES) return {status:413,body:{error:'Send a run under 64 KiB.'}};
  const key=headers['idempotency-key'];
  if(key!==undefined&&!UUID.test(String(key))) return {status:400,body:{error:'Idempotency-Key must be a UUID.'}};
@@ -41,5 +41,8 @@ export async function upload({method,headers,body},{SB_URL,SB_KEY},fetchImpl=fet
  }
  if(!result||typeof result.id!=='string'||typeof result.visibility!=='string'||typeof result.existing!=='boolean')
   return {status:502,body:{error:'STRIVE returned an unexpected response.',request_id}};
- return {status:200,body:{id:result.id,visibility:result.visibility,existing:result.existing,request_id}};
+ if(result.visibility!=='private')return {status:200,body:{id:result.id,visibility:result.visibility,existing:true,request_id,review_required:false}};
+ const preview={...body,visibility:'private',review_run_id:result.id};
+ const preview_url='https://striverun.app/#import='+Buffer.from(JSON.stringify(preview),'utf8').toString('base64');
+ return {status:200,body:{id:result.id,visibility:'private',existing:result.existing,request_id,review_required:true,preview_url}};
 }

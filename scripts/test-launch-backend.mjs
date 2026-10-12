@@ -71,7 +71,11 @@ assert.equal(one.existing,false);assert.equal(two.existing,true);assert.equal(on
 await db.query('insert into strava.close_friends(owner_profile_id,friend_profile_id) values($1,$2)',[CASEY,RILEY]);
 await db.query("update strava.runs set visibility='close_friends' where id=$1",[one.id]);
 await db.query("update strava.runs set visibility='public' where id=$1",[one.id]);
-await assert.rejects(act({...payload,measurement_revision:'8'.repeat(64),visibility:'public'}),/outside the granted scope/);
+const draft=await act({...payload,measurement_revision:'8'.repeat(64),visibility:'public'});
+assert.equal(draft.visibility,'private');assert.equal(draft.review_required,true);
+assert.ok(draft.preview_url.includes('#import='),'agent returns owner review instead of publishing');
+await as(RILEY);assert.equal((await db.query('select count(*) n from strava.runs where id=$1',[draft.id])).rows[0].n,0,'other person cannot read unconfirmed agent draft');
+await as(CASEY);
 await db.query('insert into strava.run_photos(id,run_id,width,height,byte_size) values($1,$2,10,10,100)',[PHOTO,RUN]);
 await db.query('delete from strava.runs where id=$1',[RUN]);
 await assert.rejects(db.query('select * from strava.photo_deletion_queue'),/permission denied/);
