@@ -185,4 +185,32 @@ class PickerTests(unittest.TestCase):
         denied=mcp.capture_handle({'id':2,'method':'tools/call','params':{'name':'agent_action','arguments':{'action':'publish'}}})
         self.assertTrue(denied['result']['isError'])
 
+
+    def test_cursor_truncated_wrappers_are_not_prompt_text(self):
+        from agentgrinder.session_picker import clean_prompt
+        self.assertEqual(clean_prompt('<user_query>Build the garden', 'cursor'), 'Build the garden')
+        self.assertEqual(clean_prompt('<timestamp>2026-10-12T13:50:00Z', 'cursor'), '')
+        self.assertEqual(clean_prompt('<timestamp>2026-10-12T13:50:00Z<user_query>Build the garden', 'cursor'), 'Build the garden')
+        self.assertEqual(clean_prompt('<timestamp>2026-10-12T13:50:00Z</timestamp><user_query>Build the garden', 'cursor'), 'Build the garden')
+        self.assertEqual(clean_prompt('<user_query>Keep <timestamp> in the code</user_query>', 'cursor'), 'Keep <timestamp> in the code')
+        self.assertEqual(clean_prompt('<user_query>Keep this literal', 'claude'), '<user_query>Keep this literal')
+
+    def test_cursor_sitting_page_cleans_the_actual_truncated_excerpt(self):
+        query='Build the garden with escaped <script> text and real flowers. '*8
+        self.source.write_text(json.dumps({'role':'user','message':{'content':'<timestamp>2026-10-12T13:50:00Z</timestamp><user_query>'+query+'</user_query>'}})+'\n')
+        server,url=make_server('cursor',self.root/'state','https://striverun.app',[('cursor',self.source)])
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        try:
+            token=url.rsplit('/',1)[1]
+            data=urlencode({'session':'0','project':'Garden','token':token,'phase':'sittings'}).encode()
+            request=urllib.request.Request(url,data=data,headers={'Origin':url.rsplit('/',1)[0]})
+            page=urllib.request.urlopen(request).read().decode()
+            self.assertIn('Choose the part you worked on',page)
+            self.assertIn('Build the garden',page)
+            self.assertNotIn('&lt;user_query&gt;',page)
+            self.assertNotIn('&lt;timestamp&gt;',page)
+            self.assertIn('&lt;script&gt;',page)
+            self.assertNotIn('<script>',page)
+        finally:server.shutdown();server.server_close();thread.join()
+
 if __name__=='__main__':unittest.main()

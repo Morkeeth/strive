@@ -17,7 +17,11 @@ def clean_prompt(value, harness):
     if harness == 'cursor':
         match=re.search(r'<user_query>(.*?)</user_query>',value,re.S)
         if match:value=match.group(1)
-        else:value=re.sub(r'<timestamp>.*?</timestamp>', '', value, flags=re.S)
+        else:
+            # Sitting excerpts may end before a closing wrapper. Keep clock metadata
+            # out of the prompt, but retain literal tags inside a complete user query.
+            value=re.sub(r'^\s*<timestamp>.*?(?:</timestamp>|(?=<user_query>)|$)', '', value, flags=re.S)
+            value=re.sub(r'^\s*<user_query>\s*', '', value)
     return ' '.join(value.split())[:180]
 
 
