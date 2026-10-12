@@ -1,3 +1,4 @@
+import Links from '../site/run-links.js';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {JSDOM} from 'jsdom';
@@ -11,7 +12,7 @@ assert.ok(document.querySelector('.dc .fc-foot'),'numeric animation must not rep
 assert.equal(document.querySelector('b').textContent,'12');
 const binder=source.slice(source.indexOf('function bindCompactCard('),source.indexOf('async function feedCards('));
 let change;const requests=[];
-const bind=new Function('document','StriveDayCard','GrinderFeed','ME','social','wireKudos',binder+';return bindCompactCard;')(document,{wire:(_card,options)=>{change=options.onChange;return{}}},{actions:()=>'<a data-comment href="#">Comments</a>'},null,{thread:async(id,node)=>{requests.push({id,node})}},()=>{});
+const bind=new Function('document','StriveDayCard','GrinderFeed','ME','social','wireKudos','StriveLinks',binder+';return bindCompactCard;')(document,{wire:(_card,options)=>{change=options.onChange;return{}}},{actions:()=>'<a data-comment href="#">Comments</a>'},null,{thread:async(id,node)=>{requests.push({id,node})}},()=>{},Links);
 const card=document.querySelector('.dc'),deck={slides:[{key:'alpha',name:'Alpha',open:{id:'run-a',profile_id:'owner'}},{key:'beta',name:'Beta',open:{id:'run-b',profile_id:'owner'}}]};
 bind(card,deck,{counts:{},mine:new Set()});
 card.querySelector('[data-comment]').click();
@@ -37,8 +38,8 @@ let calls=0,fail=false;
 const client={rpc:async(name,args)=>{calls++;assert.equal(name,'read_day_card');assert.equal(args.owner_id,rows[0].profile_id);assert.equal(args.card_key,day+'_'+day);assert.ok(args.viewer_timezone);return fail?{error:{message:'unavailable'}}:{data:choices,error:null}}};
 const feedSource=source.slice(source.indexOf('async function feedCards('),source.indexOf('// A stranger lands'));
 const feedWindow=new JSDOM('',{runScripts:'outside-only'}).window;
-for(const file of ['run-contract.js','feed-card.js','day.js','day-card.js','activity-order.js','activity-post.js'])feedWindow.eval(readFileSync(new URL('../site/'+file,import.meta.url),'utf8'));
-const feed=new Function('sb','StriveDay','StriveDayCard','GrinderContract','StriveActivity','StrivePost','ME','setTimeout',feedSource+';return feedCards;')(client,Day,Card,feedWindow.GrinderContract,feedWindow.StriveActivity,feedWindow.StrivePost,null,()=>{});
+for(const file of ['run-contract.js','run-context.js','run-story.js','historical-import.js','run-evidence.js','run-links.js','feed-card.js','day.js','day-card.js','activity-order.js','activity-post.js'])feedWindow.eval(readFileSync(new URL('../site/'+file,import.meta.url),'utf8'));
+const feed=new Function('sb','StriveDay','StriveDayCard','GrinderContract','StriveActivity','StrivePost','ME','setTimeout','window','document','StriveLinks',feedSource+';return feedCards;')(client,Day,Card,feedWindow.GrinderContract,feedWindow.StriveActivity,feedWindow.StrivePost,null,()=>{},feedWindow,feedWindow.document,Links);
 const rendered=await feed(rows,{});
 assert.ok(!rendered.includes('href="/?u="'),'unknown author handle is plain text, not a broken profile link');
 assert.equal(calls,1);assert.ok(rendered.includes(photo),'feed preserves saved specific photo');

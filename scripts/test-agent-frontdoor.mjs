@@ -19,9 +19,10 @@ assert.ok(guide.includes('/plugins/install.md'));
 assert.match(guide,/explicitly selected/);
 assert.match(guide,/does not upload/);
 assert.match(guide,/--format native --bounds/);
-assert.match(guide,/--list-offset 20/);
-assert.match(guide,/selected-session.jsonl --harness cursor --list --show-paths/);
-assert.match(guide,/no-path --push is refused/);
+assert.match(guide,/strive sessions --all --open --site/);
+assert.match(guide,/Select an opaque session choice, inspect its sittings/);
+assert.match(guide,/only list_sessions and preview_session/);
+assert.match(guide,/It cannot publish or send/);
 assert.ok(guide.indexOf('## Choose your harness') < guide.indexOf('    python3 '));
 assert.ok(guide.indexOf('--format projection --bounds') < guide.indexOf('--format native --bounds'));
 assert.match(guide,/One-time capture does not require writing a skill/);
@@ -37,7 +38,7 @@ const archiveFiles=execFileSync('tar',['-tzf','dist'+release.package],{encoding:
 assert.ok(archiveFiles.includes('templates/grokbot/post-agent-run/scripts/test_native.py'));
 assert.ok(archiveFiles.every(path=>!/(^|\/)(\.env|sessions|trace\.db|SOURCE-RECEIPT)/.test(path)));
 for(const path of ['/capture/grok/SKILL.md','/capture/grok/INSTALL.md','/capture/grok/scripts/preview.py'])assert.ok((await readFile('dist'+path)).length);
-assert.match(html,/role="menuitem"[^>]*href="\/\?feedback"|href="\/\?feedback"[^>]*role="menuitem"/);
+assert.match(html,/<footer[\s\S]*href="\/\?feedback"/);
 console.log('Front door, same-release archive hash and Grok kit pass');
 
 // Cold HTTP reader: discover the contract and fetch every reusable kit component.

@@ -1,3 +1,4 @@
+import {JSDOM} from 'jsdom';
 import assert from 'node:assert/strict';import {createRequire} from 'node:module';import fs from 'node:fs';import vm from 'node:vm';
 const require=createRequire(import.meta.url),Auth=require('../site/auth.js'),Feed=require('../site/feed-card.js'),Origin=require('../site/origin.js');
 const profile={id:'p-a',auth_uid:'u-a',handle:'my-strive-name',display_name:'Current owner',github_handle:'real-github',avatar_url:null};
@@ -34,7 +35,7 @@ const calls=[];const api=Auth.create({client:{from(){throw new Error("unused")},
 await api.signIn('twitter');await api.link('twitter');assert.deepEqual(calls,['twitter','twitter']);
 console.log('PASS: disabled X remains absent; x and twitter identifiers reach their actual OAuth endpoint');
 const refreshSource=html.slice(html.indexOf('async function refreshAuth(){'),html.indexOf('// The publish payload survives'));
-let resolve;const nodes={};const ctx={AUTH_GENERATION:0,AUTH_USER:null,ME:null,IDENTITY_SETUP:null,
+let resolve;const nodes={};const document=new JSDOM('').window.document;const ctx={document,AUTH_GENERATION:0,AUTH_USER:null,ME:null,IDENTITY_SETUP:null,
  auth:{current:()=>new Promise(r=>resolve=r)},$:id=>nodes[id]||(nodes[id]={innerHTML:'',outerHTML:'',hidden:false}),
  GrinderAuth:Auth,GrinderFeed:Feed,window:{GrinderFeed:Feed},profileHandle:p=>p.handle,esc:s=>s,syncAuthNav(){},status(){},social:{}};
 vm.createContext(ctx);vm.runInContext(refreshSource,ctx);

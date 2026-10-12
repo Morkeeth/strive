@@ -13,7 +13,8 @@ assert.deepEqual([...nav.querySelectorAll('[data-nav-page]')].map(a=>a.dataset.n
 assert.equal(nav.querySelectorAll('details').length,0);
 assert.equal(document.querySelectorAll('.site-foot a[href="/?feedback"]').length,1);
 assert.equal(document.querySelectorAll('.site-foot a[href="/privacy#deletion"]').length,1);
-assert.equal(document.querySelectorAll('.site-foot a[href="/?account#danger"]').length,1);
+const privacy=new JSDOM(readFileSync(new URL('../site/privacy.html',import.meta.url),'utf8')).window.document;
+assert.ok(privacy.getElementById('deletion'));assert.ok(privacy.querySelector('a[href="/?account#danger"]'),'footer deletion link reaches the Settings deletion control');
 assert.equal(document.querySelectorAll('a[href="/?explore"]').length,0);
 for(const [path,page] of [
  ['/', 'feed'],['/?mine',null],['/?explore','feed'],['/?post','post'],
