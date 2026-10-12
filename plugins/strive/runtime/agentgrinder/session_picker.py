@@ -102,7 +102,7 @@ def make_server(harness, root, site, candidates=None):
                     route='/'+nonce+'/download/'+secrets.token_urlsafe(18);downloads[route]=plugin.encoded(captured['payload']).encode()
                     action='<a class="primary" href="'+route+'">Download private preview file</a><p>Open Add run on STRIVE and choose this .strive.json file. The preview is too large for a link; no run was truncated.</p>'
                 else:action='<a class="primary" href="'+html.escape(preview_url,quote=True)+'">Open private preview</a>'
-                selection=captured.get('selection');scope=(f'<p>Selected sitting {selection["selected"]["sitting"]}; skipped {selection["skipped_sittings"]} other sittings. The source hash covers the unchanged original file.</p>' if selection else '')
+                selection=captured.get('selection');scope=(f'<p>Selected sitting {selection["selected"]["sitting"]}; skipped {selection["skipped_sittings"]} other sittings. Captured through {html.escape(selection["selected"]["end"] or "last complete record")}. The source hash covers this frozen, complete-record prefix.</p>' if selection else '')
                 self.respond('<h1>Your private preview is ready</h1><p>Only measured facts travel in the URL fragment, which is decoded on your device. Your first prompt and source path stay here. No run is saved online yet.</p>'+scope+action+'<p>Review your run, add your story, then save with Only me. Sharing is a separate choice.</p>')
             except (ValueError,KeyError,IndexError,OSError) as exc:
                 self.respond('<h1>Could not prepare this session</h1><p>'+html.escape(str(exc))+'</p><a href="/'+nonce+'">Back to sessions</a>',400)

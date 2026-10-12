@@ -40,6 +40,63 @@ def signature(path):
     return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns
 
 
+def _copy_prefix(source, destination, size):
+    remaining = size
+    with source.open('rb') as src, destination.open('xb') as dest:
+        os.chmod(destination, 0o600)
+        while remaining:
+            chunk = src.read(min(1024 * 1024, remaining))
+            if not chunk: raise ValueError('The session was shortened while reading. Retry the capture.')
+            dest.write(chunk)
+            remaining -= len(chunk)
+
+
+@contextmanager
+def frozen_source(source, root=None):
+    """Read an append-only native transcript through one complete-record boundary."""
+    source = Path(source).expanduser().resolve(strict=True)
+    before = signature(source)
+    if not source.is_file() or before[2] > MAX_SOURCE:
+        raise ValueError('Select a native transcript no larger than 2 GiB.')
+    with tempfile.TemporaryDirectory(prefix='strive-selected-', dir=root) as directory:
+        snapshot = Path(directory) / 'original.jsonl'
+        _copy_prefix(source, snapshot, before[2])
+        after = signature(source)
+        if after[:2] != before[:2] or after[2] < before[2] or (after[2] == before[2] and after[3] != before[3]):
+            raise ValueError('The session was replaced or rewritten while reading. Retry the capture.')
+        # A writer may be partway through its next JSONL record. Keep only
+        # complete records from the boundary observed when this read began.
+        with snapshot.open('rb+') as stream:
+            size = snapshot.stat().st_size
+            if size and not _ends_with_newline(stream, size):
+                start = max(0, size - MAX_RECORD)
+                stream.seek(start)
+                tail = stream.read()
+                newline = tail.rfind(b'\n')
+                last = tail[newline + 1:] if newline >= 0 else tail
+                try: json.loads(last)
+                except (ValueError, UnicodeDecodeError):
+                    if newline < 0: raise ValueError('Transcript has no complete record yet.') from None
+                    stream.truncate(start + newline + 1)
+        digest = hashlib.sha256()
+        size = snapshot.stat().st_size
+        with snapshot.open('rb') as src, source.open('rb') as original:
+            remaining = size
+            while remaining:
+                amount = min(1024 * 1024, remaining)
+                chunk = src.read(amount)
+                if chunk != original.read(amount):
+                    raise ValueError('The session prefix changed while reading. Retry the capture.')
+                digest.update(chunk)
+                remaining -= len(chunk)
+        yield dict(path=snapshot, source=str(source), sha256=digest.hexdigest(), bytes=size, signature=before)
+
+
+def _ends_with_newline(stream, size):
+    stream.seek(size - 1)
+    return stream.read(1) == b'\n'
+
+
 def stamp(row):
     value = row.get('timestamp')
     if not isinstance(value, str): return None
@@ -68,9 +125,17 @@ def prompt(row, harness, codex_events=False):
     return value if row.get('role') == 'user' and '<user_query>' in value else None
 
 
-def inspect_source(source, harness, gap=1800):
+def inspect_source(source, harness, gap=1800, _frozen=False):
     if harness not in ('claude', 'codex', 'cursor'): raise ValueError('This harness is not supported yet.')
     path = Path(source).expanduser().resolve(strict=True)
+    if not _frozen:
+        with frozen_source(path) as frozen:
+            info = inspect_source(frozen['path'], harness, gap, _frozen=True)
+            from .plugin import source_identity
+            info.update({k:frozen[k] for k in ('source','sha256','bytes','signature')})
+            info['session'] = source_identity((row for _, row, _ in records(frozen['path'])), harness, path)
+            info['captured_through'] = info['sittings'][-1]['end'] if info['sittings'] else None
+            return info
     before = signature(path)
     if not path.is_file() or before[2] > MAX_SOURCE: raise ValueError('Select a native transcript no larger than 2 GiB.')
     digest = hashlib.sha256()
@@ -125,19 +190,11 @@ def inspect_source(source, harness, gap=1800):
 @contextmanager
 def selected_source(source, harness, sitting=-1, root=None):
     original=Path(source).expanduser().resolve(strict=True)
-    before=signature(original)
-    if before[2]>MAX_SOURCE: raise ValueError('Select a native transcript no larger than 2 GiB.')
-    with tempfile.TemporaryDirectory(prefix='strive-selected-',dir=root) as directory:
-        snapshot=Path(directory)/'original.jsonl'; selected=Path(directory)/original.name
-        if selected==snapshot: selected=Path(directory)/'selected.jsonl'
-        with original.open('rb') as src,snapshot.open('xb') as dest:
-            os.chmod(snapshot,0o600); total=0
-            for chunk in iter(lambda:src.read(1024*1024),b''):
-                total+=len(chunk)
-                if total>MAX_SOURCE: raise ValueError('Source grew beyond 2 GiB; retry when its writer is idle.')
-                dest.write(chunk)
-        if signature(original)!=before: raise ValueError('The session changed while reading. Retry when its writer is idle.')
-        info=inspect_source(snapshot,harness)
+    with frozen_source(original,root) as frozen:
+        snapshot=frozen['path']; selected=snapshot.parent/original.name
+        if selected==snapshot: selected=snapshot.parent/'selected.jsonl'
+        info=inspect_source(snapshot,harness,_frozen=True)
+        info.update({k:frozen[k] for k in ('source','sha256','bytes','signature')})
         # Validate identity against the real path too, so subagent directories stay excluded.
         from .plugin import source_identity
         info['session']=source_identity((r for _,r,_ in records(snapshot)),harness,original)
