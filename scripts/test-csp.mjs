@@ -26,7 +26,13 @@ assert.throws(()=>withContentSecurityPolicy(built,{supabaseOrigin:'https://examp
 
 // A third-party script without Subresource Integrity fails the build instead of shipping.
 assert.throws(()=>contentSecurityPolicy('<script src="https://cdn.example/x.js"></script>',{supabaseOrigin:'https://example.supabase.co'}),/without integrity/);
-assert.match(index,/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@[^"]+" integrity="sha384-[A-Za-z0-9+/=]+" crossorigin="anonymous"><\/script>/);
+// The pinned tag, the devDependency tests load, and the integrity hash name the same bytes.
+const sdk=JSON.parse(readFileSync(new URL('../node_modules/@supabase/supabase-js/package.json',import.meta.url))).version;
+const umd=readFileSync(new URL('../node_modules/@supabase/supabase-js/dist/umd/supabase.js',import.meta.url));
+const tag=index.match(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@([^/"]+)\/dist\/umd\/supabase\.js" integrity="(sha384-[A-Za-z0-9+/=]+)" crossorigin="anonymous"><\/script>/);
+assert.ok(tag,'the SDK tag is pinned with integrity');
+assert.equal(tag[1],sdk,'the page pins the version package.json installs');
+assert.equal(tag[2],'sha384-'+createHash('sha384').update(umd).digest('base64'),'integrity matches the installed SDK file');
 
 // No inline event handler can be added to the app without a policy change.
 const sources=['index.html',...readdirSync(site).filter(name=>name.endsWith('.js'))];
