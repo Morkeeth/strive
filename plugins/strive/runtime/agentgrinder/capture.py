@@ -277,7 +277,7 @@ pre{{font-size:12px;overflow:auto;background:#f7f7f5;padding:10px}}summary{{curs
 {f'{renamed} drafts were given their registry product name from the token contract file.' if names else ''}
 {f'{unmeasured} drafts could not be given a measurement reference and will be refused at Save.' if unmeasured else ''}
 {other} drafts from other days are not shown. A session with no typed turns makes no draft: run capture scan to see which were skipped.</p>
-{f'<p><a class="open" href="{e(review)}" target="_blank" rel="noopener">Review all {len(batch)}{f' and {len(recovered)} windows of git history' if recovered else ''} and save the ones you tick</a><span class="src">opens a list in the app; nothing is saved until you press Save there</span></p>' if review else ''}
+{review_link}
 {''.join(rows) or '<article><h2>No drafts on this day</h2><p class="facts">Run capture scan first.</p></article>'}</main>"""
     target = Path(out or f'strive-day-{day}.html')
     target.write_text(page)
