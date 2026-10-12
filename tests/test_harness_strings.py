@@ -55,10 +55,29 @@ def test_every_mcp_harness_argument_offers_every_harness():
             assert set(enum) == set(ingest.HARNESSES), tool["name"]
 
 
-def test_every_cli_harness_flag_offers_every_harness():
-    src = open(os.path.join(REPO, "agentgrinder", "cli.py"), encoding="utf-8").read()
-    lines = [l for l in src.splitlines() if '--harness"' in l and "choices=" in l]
-    assert lines
-    for line in lines:
-        choices = set(re.findall(r'"([a-z]+)"', line.split("choices=")[1].split("]")[0]))
-        assert choices - {"auto"} == set(ingest.HARNESSES), line
+def test_cli_harness_choices_match_each_commands_capture_capability(monkeypatch):
+    import argparse
+    from agentgrinder import cli
+
+    captured = []
+    class ParserReady(Exception):
+        pass
+    def inspect_parser(parser, argv=None):
+        captured.append(parser)
+        raise ParserReady
+    monkeypatch.setattr(argparse.ArgumentParser, "parse_args", inspect_parser)
+    try:
+        cli.main([])
+    except ParserReady:
+        pass
+    assert len(captured) == 1
+    sub = next(a for a in captured[0]._actions if isinstance(a, argparse._SubParsersAction))
+    a2a_sub = next(a for a in sub.choices["a2a"]._actions if isinstance(a, argparse._SubParsersAction))
+    parsers = {name: sub.choices[name] for name in ("grind", "share", "vibe", "v1card", "sessions")}
+    parsers["a2a export"] = a2a_sub.choices["export"]
+    for command, parser in parsers.items():
+        flag = next(a for a in parser._actions if "--harness" in a.option_strings)
+        expected = {"claude", "cursor", "codex"} if command == "sessions" else set(ingest.HARNESSES)
+        assert set(flag.choices) - {"auto"} == expected, command
+    # The picker has an explicit all-local-stores choice; Grok reads an explicit export instead.
+    assert any("--all" in a.option_strings for a in sub.choices["sessions"]._actions)

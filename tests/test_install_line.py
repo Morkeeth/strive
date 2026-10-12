@@ -58,11 +58,18 @@ def test_every_coach_hint_in_the_cli_names_a_venv():
             assert "venv" in window, f"{rel}:{line_no} hints [coach] without naming a venv"
 
 
-def test_the_readme_lead_command_matches_the_website():
-    assert "python3 -m agentgrinder grind" in README
+def test_the_readme_starts_with_private_review_and_isolated_contributor_setup():
+    first_run = README.split("## Make your first private run", 1)[1].split("## Run locally", 1)[0]
+    assert "https://striverun.app/?post" in first_run
+    assert "https://striverun.app/agents.md" in first_run
+    assert first_run.index("Review the preview") < first_run.index("Save as Only me")
+    assert "A preview is not a saved run" in first_run
     # The first command block works without depending on editable-install support.
     first_block = re.search(r'```(?:sh|bash)\n(.*?)```', README, re.S).group(1)
     assert "pip install" not in first_block
+    assert "python3 scripts/dev.py setup" in first_block
+    assert "npm ci --ignore-scripts" in first_block
+    assert "python3 scripts/dev.py serve" in first_block
 
 
 def test_the_hint_the_user_actually_sees_names_a_venv_and_the_running_version():
