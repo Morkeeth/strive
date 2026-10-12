@@ -16,6 +16,13 @@ counts live on Cursor's servers, not on disk. Do not add a tokens field here wit
 
 The `agent-transcripts/*.jsonl` files the rest of this package reads carry role and message only;
 they hold no model, no timestamps and no tree, which is why this module opens the database.
+
+Performance observation, 12 October 2026: a six-record moon-demo capture took 5.555 seconds
+in one local profile, including 1.883 seconds copying the Cursor store and 3.300 seconds
+in build_ridge/_bubble_activity. This is one machine/store measurement, not a general
+Cursor timing estimate. See docs/review/import-loaders/PROFILE.md for the source receipt.
+The import-loader change uses indexed composer-prefix reads in bubble statistics and
+activity, preserving rowid order. It does not cache the store or change captured measurements.
 """
 from __future__ import annotations
 
@@ -59,6 +66,36 @@ def db_path() -> Path:
 
 def workspace_storage() -> Path:
     return Path(os.environ.get(ENV_WORKSPACE_STORAGE) or DEFAULT_WORKSPACE_STORAGE).expanduser()
+
+
+class ReadOnlyDb:
+    """Short read transaction on the live store, including committed WAL rows.
+
+    Do not use immutable: Cursor may still append to this database. mode=ro and
+    query_only prevent SQL writes; BEGIN keeps ridge and tree on one snapshot.
+    SQLite may use its normal WAL shared-memory sidecar. No full copy is made.
+    """
+
+    def __init__(self, source: Path):
+        self.source = Path(source)
+        self.conn: sqlite3.Connection | None = None
+
+    def __enter__(self) -> sqlite3.Connection:
+        if not self.source.is_file():
+            raise FileNotFoundError(ABSENT_MESSAGE.format(path=self.source))
+        self.conn = sqlite3.connect(self.source.resolve().as_uri() + '?mode=ro',
+                                    uri=True, timeout=0.25)
+        try:
+            self.conn.execute('PRAGMA query_only=ON')
+            self.conn.execute('BEGIN')
+        except BaseException:
+            self.conn.close()
+            raise
+        return self.conn
+
+    def __exit__(self, *exc) -> None:
+        if self.conn is not None:
+            self.conn.close()
 
 
 class CopiedDb:
@@ -123,12 +160,20 @@ def _seconds_between(start: str | None, end: str | None) -> float | None:
     return round(max(0.0, (b - a).total_seconds()), 1)
 
 
+def _bubble_rows(conn: sqlite3.Connection, composer_id: str):
+    # Default SQLite LIKE can scan the entire store. The binary prefix range uses
+    # its unique key index; rowid keeps the existing insertion order for untimed tools.
+    prefix=f'bubbleId:{composer_id}:'
+    return conn.execute('select value from cursorDiskKV where key >= ? and key < ? order by rowid',
+                        (prefix,prefix[:-1]+';'))
+
+
 def _bubble_stats(conn: sqlite3.Connection, composer_id: str) -> dict:
     """Counts and timing from the bubble rows of one composer. No text is read out."""
     first = last = None
     bubbles = tool_calls = tool_errors = 0
     models: Counter = Counter()
-    for (raw,) in conn.execute('select value from cursorDiskKV where key like ?', (f'bubbleId:{composer_id}:%',)):
+    for (raw,) in _bubble_rows(conn,composer_id):
         try:
             bubble = json.loads(raw)
         except (TypeError, ValueError):
@@ -178,8 +223,7 @@ def _bubble_activity(conn: sqlite3.Connection,
     tools: list[str | None] = []
     stamps: list[str] = []
     commits: list[str] = []
-    for (raw,) in conn.execute(
-            'select value from cursorDiskKV where key like ?', (f'bubbleId:{composer_id}:%',)):
+    for (raw,) in _bubble_rows(conn,composer_id):
         try:
             bubble = json.loads(raw)
         except (TypeError, ValueError):

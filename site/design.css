@@ -583,3 +583,8 @@ button,summary{touch-action:manipulation}
 .run-share-sheet nav a{display:flex;align-items:center;justify-content:center;flex:1 1 40%;min-height:44px;border:1px solid #d5ddea;border-radius:9px;color:#244370;text-decoration:none}
 .run-share-sheet .share-copy-status{font-size:14px;min-height:20px}
 .run-share-sheet .share-link-fallback{width:100%;box-sizing:border-box}
+
+/* Import progress: no estimate of completion where decoding has no denominator. */
+.import-loader{padding:24px}.import-spinner{display:inline-block;width:24px;height:24px;border:3px solid var(--line,#d9e5ff);border-top-color:var(--blue,#0047ff);border-radius:50%;animation:import-spin 1s linear infinite}
+@keyframes import-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.import-spinner{animation:none}}

@@ -1,0 +1,18 @@
+# Cursor import profile — 12 October 2026
+
+A live-package check of a six-record moon-demo session produced a 5.555-second local cProfile capture. Capture/read_sitting/parse_cursor_session consumed 5.552/5.531/5.530 seconds inclusive. CopiedDb.__enter__ used 1.883 seconds; build_ridge/_bubble_activity used 3.300 seconds inclusive. These nested times are not additive across every frame.
+
+The receipt also observed a 9.192-second browser preview path, 0.045-second sitting selection and 1.329-second hosted rendering. They are separate runs/measurements; the profile cannot establish the whole browser delay or Jonathan's failed connection cause. Cursor source size alone does not bound time spent copying and scanning the separate local Cursor store.
+
+Source receipts supplied by the Cursor acceptance owner: `~/.local/state/fleet/cursor-import-check-20261012/prof.txt` and `live-facts.json`. Private store/session data is not copied into this repository. The two bubble readers now use the unique key index with an exact composer-prefix range, preserving the previous rowid order. The actual local Cursor table schema was inspected read-only: key TEXT UNIQUE, value BLOB, ordinary rowid table. The candidate query plan searches the key index; unrelated composers are excluded. Capture now opens a short read-only transaction on the live store instead of copying it. Committed WAL rows stay visible; immutable mode is deliberately not used. SQL writes are blocked and the connection closes after the ridge/tree read; a busy or unavailable store retains the existing call-index fallback. SQLite may use its normal shared-memory sidecar. The separate tree CLI still uses CopiedDb. The loader reports actual record counts where available; tool totals are known after the measured adapter completes. No percentage or completion-time estimate is invented.
+
+The local picker retains its no-script Content-Security-Policy. CSS draws the spinner, server-rendered job responses show stages/counts/elapsed time, and a two-second meta refresh advances the page. Sitting discovery now uses that same background-job path. No CSP change is needed.
+
+Session-row counts are not currently available from the bounded discovery header. Reading every full session and its separate Cursor store during discovery would repeat the expensive capture work per row. This change does not label header samples as whole-session totals: human turns appear after sitting inspection; tool counts appear in the measured preview. A future local index can supply verified counts without adding a full capture to every row.
+
+
+## Large-session local capture comparison
+
+On this Mac, using the same frozen Moon Garden JSONL (282,290 bytes, 385 tool calls, 15 files), three fresh-process captures of sitting 1 on the index-only candidate took 2.188, 2.415 and 1.633 seconds (median 2.188). With the read-only capture path they took 0.250, 0.162 and 0.139 seconds (median 0.162). The global database was 992,456,704 bytes. Instrumented store copying fell from 992,489,472 bytes including sidecars per capture to zero. Source hash, reported tool/file/commit counts, ridge basis and ridge digest were identical across all six captures. No browser, upload or hosted rendering is included in these times. This does not establish constant time for every session or store size.
+
+Private measurement script and raw before/after receipts are under `~/.local/state/fleet/receipts/strive-cursor-readonly-20261012/`. Tests exercise committed WAL data, stable reads while another connection commits, rejected writes, missing-source behavior, and a matching legacy session with copyfile failing as if the disk were full. They do not simulate SQL query results.

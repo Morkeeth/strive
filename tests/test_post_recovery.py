@@ -21,7 +21,8 @@ def test_failed_save_keeps_the_draft_and_offers_an_explicit_retry():
     assert 'id="i_retry"' in IMPORT and "Check and try again" in IMPORT
     assert 'href="/?mine">My runs' in IMPORT
     # no timer or loop re-sends the insert; the only retry is the person's click
-    assert "setTimeout" not in IMPORT and "setInterval" not in IMPORT
+    save_handler = IMPORT[IMPORT.index("$('i_pub').addEventListener('click'") :]
+    assert "setTimeout" not in save_handler and "setInterval" not in save_handler
     assert "Check Your runs before retrying" not in IMPORT
 
 

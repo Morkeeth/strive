@@ -78,6 +78,12 @@ def project(db, name, path, hooks=False):
     return {'project': name, 'root': str(path), 'hooks': hooks, 'uploaded': 0}
 
 
+class ProjectNameConflict(ValueError):
+    def __init__(self, project):
+        self.project=project
+        super().__init__(f'This folder is already registered as {project}. Use that project name in the picker and choose this session again. Nothing was uploaded.')
+
+
 def register_capture_project(db, name, source):
     """Bind a picker label to its source folder without silently ignoring a collision."""
     name = label(name)
@@ -85,7 +91,7 @@ def register_capture_project(db, name, source):
     with db:
         existing = db.execute('select name from projects where root=?', (source_root,)).fetchone()
         if existing and existing['name'] != name:
-            raise ValueError(f'This folder is already registered as {existing["name"]}. Use that project name in the picker and choose this session again. Nothing was uploaded.')
+            raise ProjectNameConflict(existing["name"])
         named = db.execute('select root from projects where name=?', (name,)).fetchone()
         if named and named['root'] != source_root:
             raise ValueError(f'{name} already names another folder. Choose a different project name in the picker. Nothing was uploaded.')
@@ -127,7 +133,7 @@ def source_identity(rows, harness, path):
     return next(iter(ids)) if ids else path.stem
 
 
-def capture(db, root, name, harness, source, sitting=-1, code_route=None):
+def capture(db, root, name, harness, source, sitting=-1, code_route=None, progress=None):
     name = label(name)
     if code_route:
         from .route_capture import session_file
@@ -139,13 +145,14 @@ def capture(db, root, name, harness, source, sitting=-1, code_route=None):
         return capture_route(db,root,code_route)
     if not db.execute('select 1 from projects where name=?', (name,)).fetchone():
         raise ValueError('Register the named project first.')
+    if progress: progress('finding')
     path = Path(source).expanduser().resolve(strict=True)
     selection = None
     # The picker always supplies a sitting number. Freeze that choice even for
     # short files: its writer may append between the sitting list and preview.
     if sitting > 0 or path.stat().st_size > MAX_SOURCE:
         from .stream_capture import selected_source
-        with selected_source(path, harness, sitting, root) as selected:
+        with selected_source(path, harness, sitting, root, progress=progress) as selected:
             _, raw, rows = read_source(selected['path'])
             selection = {k:selected[k] for k in ('sha256','bytes','selected_bytes','selected_records','skipped_sittings')}
             selection['selected'] = {k:v for k,v in selected['selected'].items() if k in ('sitting','start','end','typed','records')}
@@ -153,6 +160,7 @@ def capture(db, root, name, harness, source, sitting=-1, code_route=None):
             session = selected['session']
         sitting = -1  # the bounded copy contains only the explicitly chosen sitting
     else:
+        if progress: progress('reading')
         path, raw, rows = read_source(path)
         session = source_identity(rows, harness, path)
         source_hash = digest(raw)
@@ -174,10 +182,13 @@ def capture(db, root, name, harness, source, sitting=-1, code_route=None):
         frozen = Path(folder)/path.name
         frozen.write_bytes(raw)
         os.chmod(frozen, 0o600)
+        if progress: progress('counting')
         run = read_sitting(str(frozen), harness, pick=sitting)
+        if progress and run.get('tool_calls') is not None: progress('counting', run['tool_calls'], 'tools counted')
         if harness == 'codex':
             from .native_sittings import choose, sittings
             selected_for_estimate = choose(sittings(str(frozen), harness), sitting)
+    if progress: progress('building')
     run.pop('code_route', None) # legacy count summaries are not new consented checkpoints
     run['project'] = name
     run['project_proven'] = True  # explicitly declared, never inferred from a folder name
@@ -215,7 +226,9 @@ def capture(db, root, name, harness, source, sitting=-1, code_route=None):
         db.execute('insert into drafts values(?,?,?,?,?,?,?,?) on conflict(id) do update set source_hash=excluded.source_hash,payload=excluded.payload',
                    (key, name, harness, session, str(path), source_hash, run['started'], encoded(payload)))
     return {'draft': key, 'project': name, 'status': 'unchanged' if prior and prior['payload'] == encoded(payload) else 'captured',
-            'payload': payload, 'selection': selection, 'uploaded': 0}
+            'payload': payload, 'selection': selection, 'uploaded': 0,
+            'capture_note': ('Cursor store is busy. Preview uses transcript counts and call order; store timing is unavailable.'
+                             if run.get('cursor_store_status') == 'busy-jsonl-fallback' else None)}
 
 
 

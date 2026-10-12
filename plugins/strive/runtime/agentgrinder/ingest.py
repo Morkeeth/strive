@@ -582,7 +582,7 @@ def parse_cursor_session(path: str, athlete: str = "you", records=None, cursor_d
             ridge_source = "cursor-chat-store"
     if ridge_source == "call-index" and source.is_file():
         try:
-            with cursor_tree.CopiedDb(source) as conn:
+            with cursor_tree.ReadOnlyDb(source) as conn:
                 candidate = cursor_tree.build_ridge(
                     conn, composer_id, commit_call_indices=commit_call_indices)
                 store_calls = sum(candidate["ridge"])
@@ -590,6 +590,11 @@ def parse_cursor_session(path: str, athlete: str = "you", records=None, cursor_d
                     ridge = candidate
                     ridge_source = "cursor-global-store"
                     run["tree"] = cursor_tree.build_tree(conn, composer_id)
+        except sqlite3.OperationalError as exc:
+            # sqlite's busy timeout retries locks for up to 250 ms. Never copy the
+            # whole store on failure: keep the transcript counts and mark its clock.
+            if 'locked' in str(exc).lower() or 'busy' in str(exc).lower():
+                run['cursor_store_status'] = 'busy-jsonl-fallback'
         except (KeyError, OSError, sqlite3.DatabaseError, ValueError):
             pass
     run.update(ridge)
