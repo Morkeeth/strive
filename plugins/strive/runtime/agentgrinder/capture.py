@@ -261,6 +261,10 @@ def write_day(db, day=None, out=None, project=None, push_url=None, names=None, s
     packed = gzip.compress(json.dumps({'schema': 'strive-day-drafts-v1', 'day': day, 'project': project.strip() if project else None,
                                        'runs': batch, 'history': recovered}, separators=(',', ':')).encode(), mtime=0)
     review = f"{(push_url or DEFAULT_URL).rstrip('/')}/#day-drafts=gz.{base64.urlsafe_b64encode(packed).decode().rstrip('=')}" if batch or recovered else None
+    # Built outside the page template: a nested f-string reusing its quote only parses on 3.12+.
+    windows = f' and {len(recovered)} windows of git history' if recovered else ''
+    review_link = (f'<p><a class="open" href="{e(review)}" target="_blank" rel="noopener">Review all {len(batch)}{windows} and save the ones you tick</a>'
+                   '<span class="src">opens a list in the app; nothing is saved until you press Save there</span></p>') if review else ''
     page = f"""<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>STRIVE day review {e(day)}</title>
 <style>body{{font:16px/1.5 "IBM Plex Sans",Arial,sans-serif;background:#f7f7f5;color:#0a0a0a;margin:0}}main{{max-width:820px;margin:0 auto;padding:24px 16px 80px}}
