@@ -1,7 +1,8 @@
 -- Profiles stay public; the Supabase Auth user id behind each one does not. Auth is shared with
 -- another app on this project, and anyone could list every profile's auth_uid.
--- Rollback: GRANT SELECT ON strava.profiles TO anon, authenticated; restore the three policies
--- from base.sql; DROP FUNCTION strava.my_profile(); restore strava_profile_by_handle from identity.sql.
+-- Rollback: run docs/review/private-auth-uid/rollback-042-private-auth-uid.sql. It is complete and
+-- tested (scripts/test-private-auth-uid-rollback.mjs). Do not restore strava_profile_by_handle
+-- from identity.sql: that file carries this migration's version of the function.
 begin;
 
 -- These three policies looked up profiles.auth_uid in a subquery, which needs column access once

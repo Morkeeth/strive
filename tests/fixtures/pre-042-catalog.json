@@ -1,0 +1,97 @@
+{
+ "policies": [
+  {
+   "tablename": "acks",
+   "policyname": "acks_write",
+   "permissive": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "INSERT",
+   "qual": null,
+   "with_check": "(from_profile IN ( SELECT profiles.id\n   FROM profiles\n  WHERE (profiles.auth_uid = auth.uid())))"
+  },
+  {
+   "tablename": "runs",
+   "policyname": "runs_owner_write",
+   "permissive": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "(profile_id IN ( SELECT profiles.id\n   FROM profiles\n  WHERE (profiles.auth_uid = auth.uid())))",
+   "with_check": "(profile_id IN ( SELECT profiles.id\n   FROM profiles\n  WHERE (profiles.auth_uid = auth.uid())))"
+  },
+  {
+   "tablename": "runs",
+   "policyname": "runs_read",
+   "permissive": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "((visibility = ANY (ARRAY['public'::text, 'link'::text, 'anonymous'::text])) OR (profile_id IN ( SELECT profiles.id\n   FROM profiles\n  WHERE (profiles.auth_uid = auth.uid()))))",
+   "with_check": null
+  }
+ ],
+ "table_privileges": [
+  {
+   "role": "anon",
+   "privilege": "delete",
+   "granted": false
+  },
+  {
+   "role": "anon",
+   "privilege": "insert",
+   "granted": false
+  },
+  {
+   "role": "anon",
+   "privilege": "select",
+   "granted": true
+  },
+  {
+   "role": "anon",
+   "privilege": "update",
+   "granted": false
+  },
+  {
+   "role": "authenticated",
+   "privilege": "delete",
+   "granted": true
+  },
+  {
+   "role": "authenticated",
+   "privilege": "insert",
+   "granted": true
+  },
+  {
+   "role": "authenticated",
+   "privilege": "select",
+   "granted": true
+  },
+  {
+   "role": "authenticated",
+   "privilege": "update",
+   "granted": true
+  }
+ ],
+ "columns_with_own_grant": [],
+ "auth_uid_readable": [
+  {
+   "role": "anon",
+   "granted": true
+  },
+  {
+   "role": "authenticated",
+   "granted": true
+  }
+ ],
+ "functions": [
+  {
+   "proname": "strava_profile_by_handle",
+   "prosecdef": false,
+   "provolatile": "s",
+   "proconfig": "{\"search_path=strava, pg_temp\"}",
+   "returns": "SETOF profiles",
+   "prosrc": "\n  select * from strava.profiles where handle = lower(trim(lookup))\n  union all\n  select * from strava.profiles p\n  where lower(p.github_handle) = lower(trim(lookup))\n    and not exists (select 1 from strava.profiles q where q.handle = lower(trim(lookup)))\n  limit 1\n",
+   "anon_can": true,
+   "authenticated_can": true,
+   "public_can": false
+  }
+ ]
+}
