@@ -37,10 +37,24 @@ const current={id:runId,visibility:'public',title:'TEST DATA actual post',photo_
 const newPost=w.StrivePost.render(current,{choices:selected});
 assert.match(newPost,/data-project-gallery/);assert.doesNotMatch(newPost,/data-visual-photo|data-gallery-supporting/,'result mode uses one gallery rather than a duplicate selected visual');
 const oldPost=w.StrivePost.render({...current,capture_metadata:null},{choices:selected});
-assert.match(oldPost,/data-visual-photo/);assert.doesNotMatch(oldPost,/data-project-gallery/);
+assert.match(oldPost,/data-selected-photo/);assert.doesNotMatch(oldPost,/data-project-gallery/);
 const coverPost=w.StrivePost.render({...current,photo_layout:'cover'},{choices:selected});
-assert.match(coverPost,/data-visual-photo/);assert.doesNotMatch(coverPost,/data-project-gallery/,'estimates alone never opt into project-first rendering');
+assert.match(coverPost,/data-selected-photo/);assert.doesNotMatch(coverPost,/data-project-gallery/,'estimates alone never opt into project-first rendering');
 console.log('PASS actual activity post with saved personal visual: explicit Result plus estimates opts in; old and cover choices preserved.');
+
+// A legacy visual choice must lead inside the reserved gallery after the async read.
+// An unapproved personal photo must never be promoted by that saved choice.
+{
+ const photos=[personal,result,support,hidden];
+ const card=new JSDOM(w.StrivePost.render({...current,photo_layout:'cover',capture_metadata:null},{choices:{v:2,visual:'photo',photo:{run:runId,id:support.id}}}),{url:'https://striverun.app'});
+ const scope={document:card.window.document,location:card.window.location,URL,AbortController,fetch:async()=>({ok:true,json:async()=>({photos})})};vm.createContext(scope);
+ vm.runInContext(fs.readFileSync('site/run-photos.js','utf8'),scope);
+ await scope.StriveRunPhotos.mountCovers({client:null,root:scope.document});
+ const figures=[...card.window.document.querySelectorAll('.run-media-slot .run-media-gallery > figure')];
+ assert.equal(figures[0].querySelector('img').alt,'Photo');
+ assert.ok(figures[0].querySelector('img').src.includes(support.id),'saved approved choice leads in the single gallery');
+ assert.equal(figures.length,3);assert.ok(!card.window.document.body.innerHTML.includes(hidden.id),'unguarded personal photo stays hidden');
+}
 
 // More than three authorized images remain in the full viewer; only three fill the card.
 {

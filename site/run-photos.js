@@ -327,7 +327,15 @@
         const ordered=photos.length>0&&photos.every(p=>Number.isInteger(p.sort_position));
         const projectFirst=!ordered&&card.dataset.projectGallery!==undefined;
         if(ordered)card.querySelector('.post-visual[data-visual-run]')?.remove();
-        const selected=cardPhotos(!ordered&&!projectFirst&&card.dataset.gallerySupporting!==undefined?photos.filter(p=>p.role!=='personal'):photos,mode,projectFirst);
+        const selected=cardPhotos(photos,mode,projectFirst);
+        if(!ordered&&card.dataset.selectedPhoto){
+          const chosen=selected.find(p=>p.id===card.dataset.selectedPhoto);
+          if(chosen){selected.splice(selected.indexOf(chosen),1);selected.unshift(chosen);}
+          else{
+            const approved=photos.find(p=>p.id===card.dataset.selectedPhoto&&p.is_selected!==false&&p.is_private!==true&&(p.role!=='personal'||p.personal_public_selected===true));
+            if(approved){selected.unshift(approved);selected.length=Math.min(selected.length,6);}
+          }
+        }
         if(!selected.length&&!visuals.length){card.querySelector('.post-workline>.run-agent-identity')?.remove();const empty=card.querySelector('[data-photo-placeholder]');if(empty){empty.hidden=false;if(root.StrivePlaceholders)empty.innerHTML=root.StrivePlaceholders.render('screenshot',{story:card.dataset.mediaStory||'',owner:card.dataset.runOwner==='true',seed:card.dataset.mediaSeed,harness:card.dataset.mediaHarness,model:card.dataset.mediaModel});}return;}
         // Build a detached group. Attach only while the same view is active, after all reads.
         const group=document.createElement('div');group.className='run-media run-media-gallery';group.setAttribute('aria-label','Images from this run');group.tabIndex=0;
