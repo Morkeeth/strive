@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 import {bootDisposable,seedJourneyActors,CASEY,RILEY} from './disposable-supabase.mjs';
 
 // Migration 042: no reader can list Auth user ids; profiles, runs, XUDOS and owner writes still work.
@@ -38,5 +39,27 @@ assert.equal((await db.query(`insert into acks(from_profile,to_profile,run_id,re
 await denied(`insert into acks(from_profile,to_profile,run_id,reason) values($1,$2,$3,'appreciated')`,[RILEY,RILEY,riley]);
 assert.deepEqual((await db.query(`update runs set caption='x' where id=$1 returning id`,[riley])).rows,[],'another builder cannot edit a run');
 assert.deepEqual((await db.query(`update runs set caption='TEST DATA owner caption' where id=$1 returning id`,[casey])).rows,[{id:casey}],'the owner edits their run');
+
+// A column added after 042 has no grant. It must stay closed on both paths: the direct read and
+// the definer lookup, which may only return what the anon grant already allows.
+await db.exec('reset role');
+await db.exec(`alter table strava.profiles add column zz_private_email text`);
+await db.query(`update strava.profiles set zz_private_email='TEST DATA private' where id=$1`,[RILEY]);
+for(const [who,enter] of [['anon',anonymous],['another builder',()=>as(CASEY)]]){
+ await enter();
+ await denied('select zz_private_email from profiles');
+ const [later]=(await db.query(`select id,handle,auth_uid,zz_private_email from strava.strava_profile_by_handle('test-riley')`)).rows;
+ assert.deepEqual(later,{id:RILEY,handle:'test-riley',auth_uid:null,zz_private_email:null},who+' gets no later private column through the handle lookup');
+}
+// Once the column is granted to readers, the lookup returns it. The grant is the one rule.
+await db.exec('reset role');
+await db.exec(`grant select (zz_private_email) on strava.profiles to anon, authenticated`);
+await anonymous();
+assert.equal((await db.query(`select zz_private_email from strava.strava_profile_by_handle('test-riley')`)).rows[0].zz_private_email,'TEST DATA private','a granted column comes back through the handle lookup');
+await db.exec('reset role');
+await db.exec(`alter table strava.profiles drop column zz_private_email`);
+// identity.sql is re-run on installed schemas, so it must carry the same lookup as 042.
+const lookupSql=async file=>(await readFile(new URL('../supabase/strava/'+file,import.meta.url),'utf8')).match(/create or replace function strava\.strava_profile_by_handle[\s\S]*?\n\$\$;/)[0];
+assert.equal(await lookupSql('identity.sql'),await lookupSql('042_private_auth_uid.sql'),'identity.sql and 042 define the same handle lookup');
 await db.close();
 console.log('PASS 042: anon and other builders cannot read auth_uid; profiles, runs, XUDOS and owner edits work; my_profile() is owner-only');

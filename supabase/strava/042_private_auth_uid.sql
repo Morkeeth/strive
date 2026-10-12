@@ -34,11 +34,13 @@ $$;
 revoke all on function strava.my_profile() from public, anon;
 grant execute on function strava.my_profile() to authenticated;
 
--- The public /?u= lookup keeps its row shape, with auth_uid empty.
+-- The public /?u= lookup keeps its row shape. It runs as definer, so it returns only the columns
+-- that anon may select: the column grant above is the one allow list. auth_uid and any column
+-- added later without a grant come back empty.
 create or replace function strava.strava_profile_by_handle(lookup text)
 returns setof strava.profiles
 language sql stable security definer set search_path = strava, pg_temp as $$
-  select (jsonb_populate_record(null::strava.profiles, to_jsonb(found) - 'auth_uid')).*
+  select shown.*
   from (
     select * from strava.profiles where handle = lower(trim(lookup))
     union all
@@ -47,6 +49,12 @@ language sql stable security definer set search_path = strava, pg_temp as $$
       and not exists (select 1 from strava.profiles q where q.handle = lower(trim(lookup)))
     limit 1
   ) found
+  cross join lateral jsonb_populate_record(null::strava.profiles, (
+    select coalesce(jsonb_object_agg(field.key, field.value), '{}'::jsonb)
+    from jsonb_each(to_jsonb(found)) field
+    where field.key <> 'auth_uid'
+      and has_column_privilege('anon', 'strava.profiles'::regclass, field.key, 'select')
+  )) shown
 $$;
 revoke all on function strava.strava_profile_by_handle(text) from public;
 grant execute on function strava.strava_profile_by_handle(text) to anon, authenticated;
