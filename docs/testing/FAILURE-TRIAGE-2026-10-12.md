@@ -160,9 +160,9 @@ The original 103-row inventory above is a pinned baseline, not a current failure
 
 ## Repair batch 2: persisted activity and readers
 
-Ten more `fix` rows reach the current activity renderer, shared import-row builder and hosted link-image tree. All 16 checks in the ridge-card, ridge-persistence and disposable browser acceptance files pass. Recorded bins, commit ticks and rate disclosure survive an owner reload; a public run is a positive control for the excluded reader; the excluded reader receives neither private content nor a non-neutral image. The reload case uses a private owner URL because public rows now navigate to a canonical hosted route that the static fixture server does not implement. This proves a disposable browser/database round trip, not a hosted acceptance result.
+Nine more original `fix` rows and a newer link-image module extraction failure reach the current activity renderer, shared import-row builder and hosted link-image tree. All 16 checks in the ridge-card, ridge-persistence and disposable browser acceptance files pass. Recorded bins, commit ticks and rate disclosure survive an owner reload; a public run is a positive control for the excluded reader; the excluded reader receives neither private content nor a non-neutral image. The reload case uses a private owner URL because public rows now navigate to a canonical hosted route that the static fixture server does not implement. This proves a disposable browser/database round trip, not a hosted acceptance result.
 
-The initial broader red run included these ten failures and three run-card failures deferred to a later batch. A mutation dropping `ridge` from the real saved-row builder made the new round-trip assertion fail; the builder was restored. No product code changes, skips or expected failures.
+The initial broader red run included these ten failures (nine from the pinned inventory) and three run-card failures deferred to a later batch. A mutation dropping `ridge` from the real saved-row builder made the new round-trip assertion fail; the builder was restored. No product code changes, skips or expected failures.
 
 ## Repair batch 3: account, feedback, titles and activity entry
 
