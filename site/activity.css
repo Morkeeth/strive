@@ -208,3 +208,6 @@ html[data-auth-hint="member"] #auth-pending>span{width:30px;height:30px;border-r
 .media-loading{height:100%;background:#f4f6fa;border:0}
 html[data-auth-boot="pending"] #app{min-height:100vh}
 #home-builders{min-height:80px}
+
+/* Unsaved import facts are plain labels; definitions remain in the one disclosure. */
+.fc-preview .agent-fact{font-size:12px;color:var(--soft);font-weight:400}

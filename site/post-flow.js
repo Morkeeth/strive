@@ -118,7 +118,8 @@
       composer.querySelectorAll('.post-flow-pane').forEach((pane,i)=>{pane.hidden=i!==next;});
       composer.querySelectorAll('[data-post-step]').forEach((button,i)=>{button.classList.toggle('is-done',i<next);if(i===next)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');});
       try{root.sessionStorage.setItem(storageKey,String(next))}catch(_){}
-      if(focus){const target=next===1?title:next===2?audience:preview;if(target===preview)target.setAttribute('tabindex','-1');target.focus({preventScroll:true});composer.scrollIntoView({block:'start',behavior:'instant'});}
+      const barHeight=document.querySelector('.bar')?.getBoundingClientRect().height||64;composer.style.setProperty('--post-bar-height',barHeight+'px');composer.style.setProperty('--import-header-offset',(barHeight+composer.querySelector('.post-flow-nav').getBoundingClientRect().height+8)+'px');
+      if(focus){const target=next===1?title:next===2?audience:preview;if(target===preview)target.setAttribute('tabindex','-1');target.focus({preventScroll:true});const heading=scope.querySelector('.head')||composer;heading.style.scrollMarginTop=(barHeight+12)+'px';heading.scrollIntoView({block:'start',behavior:'instant'});}
     }
     composer.querySelectorAll('[data-post-step],[data-post-next]').forEach(button=>button.addEventListener('click',()=>go(Number(button.dataset.postStep??button.dataset.postNext))));
     go(step,false);

@@ -445,32 +445,33 @@
     // Partial observations have no measured event date. Creation time is only a posting date.
     const sourceDate = r.started_at || r.started;
     const posted = when(r.created_at);
-    const dateLabel = preview ? (when(sourceDate) || "Session date unknown")
+    const clock=Number.isFinite(Date.parse(sourceDate))?new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZoneName:'short'}).format(new Date(sourceDate)):null;
+    const dateLabel = preview ? (clock?[when(sourceDate),clock].filter(Boolean).join(" · "):"Session time unknown")
       : observedProjection(r)
         ? (posted ? `Posted ${/^(Today|Yesterday)$/.test(posted) ? posted.toLowerCase() : posted}` : "Session date unknown")
         : posted;
-    const meta = [esc(harnessName(r)), esc(dateLabel), opts.metaExtra ? esc(opts.metaExtra) : ""].filter(Boolean).join(" · ");
+    const meta = [preview?"":esc(harnessName(r)), esc(dateLabel), opts.metaExtra ? esc(opts.metaExtra) : ""].filter(Boolean).join(" · ");
     const shipped = r.output_url && /^https:\/\//i.test(r.output_url) ? `<span class="fc-chip">Work linked</span>` : "";
     const faceHtml = anon || preview ? face(r) : `<a href="${esc(links.profileHref(p.handle))}" tabindex="-1">${face(r)}</a>`;
     const strideHtml = opts.stride === false || !(preview || page || opts.url) ? "" : stride(r, { url: opts.url, copy: !!opts.copy });
     const body = `
     <${tag} class="fc-title">${esc(titleOf(r))}</${tag}>
     ${cardSummary(r) ? `<p class="fc-cap">${esc(cardSummary(r))}</p>` : ""}
-    ${page||checkpoints||r.capture_metadata?`${context?.headlineHtml?.(r,'fc-activity-stats')||''}${context?.cardSecondary?.(r,{commits:true})||''}`:''}
+    ${page||checkpoints||r.capture_metadata?`${context?.headlineHtml?.(r,'fc-activity-stats',{preview})||''}${context?.cardSecondary?.(r,{commits:true,preview})||''}`:''}
     ${story?story.visual(r):''}
     ${r.feedback_question?`<p class="fc-question"><span>Feedback welcome</span>${esc(r.feedback_question)}</p>`:''}
-    ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Typed by the author. No capture.</p>' : ''}${evidence&&!page?evidence.summary(r):''}
+    ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Typed by the author. No capture.</p>' : ''}${evidence&&!page&&!preview?evidence.summary(r):''}
     ${page&&context?`<details class="public-receipts"><summary>Receipts and scope</summary>${context.context(r,{shownText:cardSummary(r)})}</details>`:''}
     <div class="fc-route-secondary">${checkpoints?"":(page?(typeof module!=="undefined"&&module.exports?require("./activity-post.js"):root.StrivePost)?.trail(r)||"":heroVisual(r))}</div>
-    ${checkpoints?'':`<p class="fc-open">${preview?'Preview your story':'Open the story →'}</p>`}
+    ${checkpoints||preview?'':`<p class="fc-open">Open the story →</p>`}
   `;
-    return `<article class="card fc"${preview ? "" : ` id="card-${id}" data-run-id="${id}" data-run-visibility="${esc(r.visibility||'')}" data-photo-layout="${esc(r.photo_layout||'cover')}"${r.photo_layout==='result'&&r.capture_metadata?.estimates?.v===1?' data-project-gallery':''}`}>
+    return `<article class="card fc${preview?' fc-preview':''}"${preview ? "" : ` id="card-${id}" data-run-id="${id}" data-run-visibility="${esc(r.visibility||'')}" data-photo-layout="${esc(r.photo_layout||'cover')}"${r.photo_layout==='result'&&r.capture_metadata?.estimates?.v===1?' data-project-gallery':''}`}>
   <header class="fc-top">${faceHtml}<div class="fc-who">${who}<small>${meta}</small></div>${shipped}</header>
   ${preview||page ? `<div class="fc-body">${body}</div>` : `<a class="fc-body" href="${esc(links.runHref(r))}">${body}</a>`}
-  ${page||checkpoints||r.capture_metadata?context?.measurementDetails?.(r)||'':''}
+  ${page||checkpoints||r.capture_metadata?context?.measurementDetails?.(r,{preview})||'':''}
   ${checkpoints}
   ${!preview&&typeof r.output_url==='string'&&/^https:\/\/[^\s<>"'\\]+$/i.test(r.output_url)?`<p class="fc-output-link"><a href="${esc(r.output_url)}" target="_blank" rel="noopener noreferrer">Open the work ↗</a></p>`:''}
-  ${opts.foot === false ? "" : `<footer class="fc-foot">${actions({ id: r.id, runHref:page?(opts.appRunHref||links.runHref(r)):links.runHref(r), publicShare:!page&&!!links.runPath(r), to: r.profile_id, count: preview || (opts.count === null && page) ? null : opts.count, acked: opts.acked, mode: preview ? "preview" : page ? "page" : mine ? "mine" : "" })}</footer>`}
+  ${preview||opts.foot === false ? "" : `<footer class="fc-foot">${actions({ id: r.id, runHref:page?(opts.appRunHref||links.runHref(r)):links.runHref(r), publicShare:!page&&!!links.runPath(r), to: r.profile_id, count: preview || (opts.count === null && page) ? null : opts.count, acked: opts.acked, mode: preview ? "preview" : page ? "page" : mine ? "mine" : "" })}</footer>`}
 </article>`;
   }
 
