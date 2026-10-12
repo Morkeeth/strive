@@ -15,7 +15,8 @@ function net(over={}){
   const json=(b,s=200)=>({ok:s<400,status:s,json:async()=>b});
   if(url.endsWith('/rpc/dropin_read')) return json(over.link===undefined?{id:LINK,created_at:iso(now)}:over.link);
   if(url.endsWith('/auth/v1/user')) return json(over.user??{id:'me'});
-  if(url.includes('/rest/v1/runs?')) return json(over.runs??[{id:RUN,created_at:iso(now),profiles:{auth_uid:'me'}}]);
+  if(url.endsWith('/rpc/grinder_profile_id')) return json(over.owner??'profile-me');
+  if(url.includes('/rest/v1/runs?')) return json(over.runs??[{id:RUN,created_at:iso(now),profile_id:'profile-me'}]);
   if(url.includes('/api/build/challenge')) return over.challenge===null?json({},404):json({challenge:over.challenge??challenge});
   if(url.endsWith('/api/build/confirm')){f.proof=JSON.parse(opts.body).proof;return json(over.confirm??{receipt:{id:'r',kind:'fair-witnessed'}},over.confirmStatus??200);}
   throw new Error('unexpected '+url);
@@ -43,7 +44,7 @@ for(const b of [{},{challengeId:'x',kind:'link',id:LINK},{challengeId:CH,kind:'p
 {const f=net({link:null});const out=await confirm(post({challengeId:CH,kind:'link',id:LINK,ticket:TICKET}),SB,env,f);assert.equal(out.status,404);assert.ok(!f.calls.some(u=>u.startsWith(FAIR)));}
 // A run needs the owner's token, and must be theirs.
 {const f=net();const out=await confirm(post({challengeId:CH,kind:'run',id:RUN}),SB,env,f);assert.equal(out.status,404);assert.ok(!f.calls.some(u=>u.startsWith(FAIR)));}
-{const f=net({runs:[{id:RUN,created_at:iso(now),profiles:{auth_uid:'someone-else'}}]});const out=await confirm(post({challengeId:CH,kind:'run',id:RUN},{authorization:'Bearer t'}),SB,env,f);assert.equal(out.status,404);assert.ok(!f.calls.some(u=>u.startsWith(FAIR)));}
+{const f=net({runs:[{id:RUN,created_at:iso(now),profile_id:'profile-someone-else'}]});const out=await confirm(post({challengeId:CH,kind:'run',id:RUN},{authorization:'Bearer t'}),SB,env,f);assert.equal(out.status,404);assert.ok(!f.calls.some(u=>u.startsWith(FAIR)));}
 // An action made before the visit, or a challenge for another product, is not confirmed.
 {const f=net({link:{id:LINK,created_at:iso(now-3600e3)}});const out=await confirm(post({challengeId:CH,kind:'link',id:LINK,ticket:TICKET}),SB,env,f);assert.equal(out.status,409);assert.ok(!f.calls.some(u=>u.endsWith('/api/build/confirm')));}
 {const f=net({challenge:{...challenge,projectId:'favour'}});const out=await confirm(post({challengeId:CH,kind:'link',id:LINK,ticket:TICKET}),SB,env,f);assert.equal(out.status,409);}

@@ -56,11 +56,11 @@ const lookup = async (h) => (await db.query('select id,handle,github_handle from
 
 // Onboarding: chosen handle is normalised, github_handle stays legacy/provider-owned.
 await as(a);
-const pa = (await db.query("insert into profiles(auth_uid,handle,display_name,avatar_url,github_handle,name) values($1,'  Alice_Builder ','  Alice  ','https://example.test/a.png','AliceGH','Alice') returning *", [a])).rows[0];
+const pa = (await db.query("insert into profiles(auth_uid,handle,display_name,avatar_url,github_handle,name) values($1,'  Alice_Builder ','  Alice  ','https://example.test/a.png','AliceGH','Alice') returning id,handle,display_name,avatar_url,github_handle,name", [a])).rows[0];
 assert.equal(pa.handle, 'alice_builder'); assert.equal(pa.display_name, 'Alice'); assert.equal(pa.github_handle, 'AliceGH');
 // Legacy profile: github_handle only, no chosen handle (what pre-migration rows look like).
 await as(b);
-const pb = (await db.query("insert into profiles(auth_uid,github_handle,name) values($1,'bob_legacy','Bob') returning *", [b])).rows[0];
+const pb = (await db.query("insert into profiles(auth_uid,github_handle,name) values($1,'bob_legacy','Bob') returning id,handle,display_name,avatar_url,github_handle,name", [b])).rows[0];
 assert.equal(pb.handle, null);
 // Two different profiles may not shadow either alias column, regardless of case.
 await as(b);
@@ -87,7 +87,7 @@ await denied("insert into profiles(auth_uid,handle,avatar_url) values($1,'carol'
 await denied("insert into profiles(auth_uid,handle,display_name) values($1,'carol',$2)", [c, 'x'.repeat(61)], ['23514']);
 // Cannot insert a profile for someone else's auth_uid (server-side ownership, not handle).
 await denied("insert into profiles(auth_uid,handle) values($1,'carol')", [a], ['42501']);
-const pc = (await db.query("insert into profiles(auth_uid,handle) values($1,'Carol') returning *", [c])).rows[0];
+const pc = (await db.query("insert into profiles(auth_uid,handle) values($1,'Carol') returning id,handle,display_name,avatar_url,github_handle,name", [c])).rows[0];
 assert.equal(pc.handle, 'carol');
 
 // Lookup: chosen handle first, legacy github_handle second, case-insensitive without LIKE wildcards.
@@ -107,7 +107,7 @@ assert.equal((await db.query("update profiles set handle='mine',avatar_url='http
 assert.equal((await db.query('delete from profiles where id=$1 returning id', [pa.id])).rows.length, 0);
 // Legacy owner adopts a chosen handle in place: same id, github_handle untouched, old URL still resolves.
 await db.query("update profiles set handle='bob_legacy' where id=$1", [pb.id]); // both labels may belong to the same profile
-const pb2 = (await db.query("update profiles set handle='Bobby',display_name='Bobby B' where id=$1 returning *", [pb.id])).rows[0];
+const pb2 = (await db.query("update profiles set handle='Bobby',display_name='Bobby B' where id=$1 returning id,handle,display_name,avatar_url,github_handle,name", [pb.id])).rows[0];
 assert.equal(pb2.id, pb.id); assert.equal(pb2.handle, 'bobby'); assert.equal(pb2.github_handle, 'bob_legacy');
 await anon();
 assert.equal((await lookup('bobby')).id, pb.id); assert.equal((await lookup('bob_legacy')).id, pb.id);
@@ -145,11 +145,17 @@ await as(c);
 const RealAuth = createRequire(import.meta.url)('../site/auth.js');
 const providerUser = {id:c, identities:[{provider:'github',identity_data:{user_name:'alice_builder'}}]};
 let inserts=0;
+// auth_uid is readable only through my_profile(), so the stand-in honours requested columns.
+const settle=(sql,args,resolve)=>db.query(sql,args).then(r=>resolve({data:r.rows[0]||null,error:null}),e=>resolve({data:null,error:{code:e.code,message:e.message}}));
 const sqlClient={auth:{getSession:async()=>({data:{session:{user:providerUser}},error:null})},
+  rpc(name){
+    assert.equal(name,'my_profile');
+    const q={single(){return q;},maybeSingle(){return q;},then(resolve){return settle('select * from strava.my_profile()',[],resolve);}};return q;
+  },
   from(table){
     assert.equal(table,'profiles');
-    let inserted=null;const filters=[];
-    const q={select(){return q;},single(){return q;},maybeSingle(){return q;},
+    let inserted=null,columns='*';const filters=[];
+    const q={select(c){if(c){assert(/^[a-z_,]+$/.test(c));columns=c;}return q;},single(){return q;},maybeSingle(){return q;},
       eq(k,v){assert(['id','auth_uid'].includes(k));filters.push([k,v]);return q;},
       insert(row){inserted=row;return q;},
       async then(resolve){
@@ -158,15 +164,15 @@ const sqlClient={auth:{getSession:async()=>({data:{session:{user:providerUser}},
           if(inserted){
             inserts++;
             const keys=Object.keys(inserted);assert(keys.every(k=>/^[a-z_]+$/.test(k)));
-            result=await db.query('insert into strava.profiles('+keys.join(',')+') values ('+keys.map((_,i)=>'$'+(i+1)).join(',')+') returning *',Object.values(inserted));
-          }else result=await db.query('select * from strava.profiles where '+filters.map(([k],i)=>k+'=$'+(i+1)).join(' and '),filters.map(([,v])=>v));
+            result=await db.query('insert into strava.profiles('+keys.join(',')+') values ('+keys.map((_,i)=>'$'+(i+1)).join(',')+') returning '+columns,Object.values(inserted));
+          }else result=await db.query('select '+columns+' from strava.profiles where '+filters.map(([k],i)=>k+'=$'+(i+1)).join(' and '),filters.map(([,v])=>v));
           return resolve({data:result.rows[0]||null,error:null});
         }catch(e){return resolve({data:null,error:{code:e.code,message:e.message}});}
       }};return q;
   }};
 const sqlAuth=RealAuth.create({client:sqlClient});
 await assert.rejects(sqlAuth.onboard({handle:'alice_builder'}),e=>e.detail.code==='handle_taken');
-assert.equal((await db.query('select count(*)::int n from profiles where auth_uid=$1',[c])).rows[0].n,0,'chosen collision creates no profile');
+assert.equal((await db.query('select count(*)::int n from strava.my_profile()')).rows[0].n,0,'chosen collision creates no profile');
 const recovered=await sqlAuth.onboard({handle:'new-builder',display_name:'New Builder'});
 assert.equal(recovered.profile.handle,'new-builder');assert.equal(recovered.profile.github_handle,null);
 assert.equal((await lookup('alice_builder')).id,pa.id,'existing URL owner is unchanged');
@@ -262,7 +268,12 @@ function mockClient({ user, rows = [], authIdentities = null }) {
     async signOut(args) { calls.push(['signout', args]); user = null; return { error: null }; },
     onAuthStateChange() { return { data: { subscription: { unsubscribe() {} } } }; },
   };
-  return { client: { auth, from: q, rpc: (fn, args) => ({ maybeSingle: async () => ({ data: table.find((r) => r.handle === args.lookup.toLowerCase()) || table.find((r) => (r.github_handle || '').toLowerCase() === args.lookup.toLowerCase()) || null, error: null }) }) }, calls, table };
+  // my_profile() is the owner's own row by Auth id; strava_profile_by_handle is the public lookup.
+  const rpc = (fn, args) => ({ maybeSingle: async () => {
+    if (fn === 'my_profile') { calls.push(['rpc', fn]); return { data: (user && table.find((r) => r.auth_uid === user.id)) || null, error: null }; }
+    return { data: table.find((r) => r.handle === args.lookup.toLowerCase()) || table.find((r) => (r.github_handle || '').toLowerCase() === args.lookup.toLowerCase()) || null, error: null };
+  } });
+  return { client: { auth, from: q, rpc }, calls, table };
 }
 const store = new Map(); const storage = { setItem: (k, v) => store.set(k, v), getItem: (k) => store.get(k) ?? null, removeItem: (k) => store.delete(k) };
 
@@ -291,10 +302,11 @@ assert.equal(first.profile.display_name, 'X Person'); assert.equal(first.profile
 const second = await A.onboard({ handle: 'other' });
 assert.equal(second.created, false); assert.equal(second.profile.id, first.profile.id, 'profile id is stable across onboarding retries');
 assert.deepEqual(GrinderAuth.present(second.profile), { id: first.profile.id, handle: 'xperson', display_name: 'X Person', avatar_url: null, legacy: false, url: '/?u=xperson' });
-// Edits keep the id and scope the statement to the owner.
+// Edits keep the id; the database policy scopes the statement to the owner, then the owner row is re-read.
 const edited = await A.updateProfile({ display_name: 'X P', avatar_url: 'https://pbs.test/new.jpg' });
 assert.equal(edited.id, first.profile.id); assert.equal(edited.avatar_url, 'https://pbs.test/new.jpg'); assert.equal(edited.name, 'X P');
-assert.deepEqual(m.calls.at(-1), ['profiles', 'update', [['id', first.profile.id], ['auth_uid', 'u-x']]]);
+assert.deepEqual(m.calls.at(-2), ['profiles', 'update', [['id', first.profile.id]]]);
+assert.deepEqual(m.calls.at(-1), ['rpc', 'my_profile']);
 await assert.rejects(A.updateProfile({ avatar_url: 'ftp://x' }), (e) => e.detail.code === 'avatar_invalid');
 assert.equal((await A.byHandle('@XPERSON')).id, first.profile.id); assert.equal((await A.byHandle('taken')).id, 'legacy-1');
 
@@ -340,7 +352,7 @@ assert.equal(m.table.length, 1);
 m = mockClient({ user: xUser, rows: [{ ...first.profile }] });
 A = GrinderAuth.create({ client: m.client, storage });
 assert.deepEqual(await A.deleteProfile(), { deleted: first.profile.id });
-assert.deepEqual(m.calls.at(-2), ['profiles', 'delete', [['id', first.profile.id], ['auth_uid', 'u-x']]]);
+assert.deepEqual(m.calls.at(-2), ['profiles', 'delete', [['id', first.profile.id]]]);
 assert.deepEqual(m.calls.at(-1), ['signout', { scope: 'local' }]);
 assert.equal(m.table.length, 0);
 console.log('PASS auth.js: providers (no Cursor), normalisation, presentation fallback, onboarding once, stable id, owner-scoped edits, handle squat refusal, link/unlink error mapping, local sign-out, delete');

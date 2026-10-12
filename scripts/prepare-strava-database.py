@@ -3,6 +3,7 @@ from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[1]
+LAST = ('038_share_handle_reservations.sql', '041_private_auth_uid.sql')
 
 
 def namespaced(sql):
@@ -30,12 +31,14 @@ grant insert,delete on acks to authenticated;
         parts.append('-- ' + name + '\n' + namespaced((ROOT / 'supabase/migrations' / name).read_text()))
     # Strava-only migrations: already strava-qualified, never translated, applied after the inherited list.
     for path in sorted((ROOT / 'supabase/strava').glob('*.sql')):
-        if path.name in ('base.sql', 'preflight.sql', '038_share_handle_reservations.sql'):
+        if path.name in ('base.sql', 'preflight.sql') + LAST:
             continue
         parts.append('-- strava/' + path.name + '\n' + re.sub(r'^\s*(begin|commit);\s*$', '', path.read_text(), flags=re.M | re.I))
-    # Share-handle rules depend on the identity.sql columns and claim trigger.
-    path = ROOT / 'supabase/strava/038_share_handle_reservations.sql'
-    parts.append('-- strava/' + path.name + '\n' + re.sub(r'^\s*(begin|commit);\s*$', '', path.read_text(), flags=re.M | re.I))
+    # Share-handle rules depend on the identity.sql columns and claim trigger. The auth_uid column
+    # grant must see every profile column, and replaces identity.sql's handle lookup.
+    for name in LAST:
+        path = ROOT / 'supabase/strava' / name
+        parts.append('-- strava/' + path.name + '\n' + re.sub(r'^\s*(begin|commit);\s*$', '', path.read_text(), flags=re.M | re.I))
     parts.append("notify pgrst, 'reload schema';\ncommit;\n")
     return '\n'.join(parts)
 

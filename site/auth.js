@@ -249,10 +249,14 @@
     }
 
     // Profile for the signed-in Auth user, or null. Never creates: onboarding is explicit.
+    // auth_uid is readable only through my_profile(), so every owner write re-reads through it.
     async function profile() {
       const u = await user();
       if (!u) return null;
-      const { data, error } = await client.from("profiles").select("*").eq("auth_uid", u.id).maybeSingle();
+      let { data, error } = await client.rpc("my_profile").maybeSingle();
+      // Until 041 is applied the function does not exist and the owner can still read auth_uid.
+      if (error && (error.code === "PGRST202" || error.code === "42883"))
+        ({ data, error } = await client.from("profiles").select("*").eq("auth_uid", u.id).maybeSingle());
       if (error) throw fail(error);
       return data || null;
     }
@@ -283,15 +287,15 @@
         github_handle: s.github_handle,
         name: normalizeDisplayName(choice.display_name, s.display_name || v.handle) || null,
       };
-      let created = await client.from("profiles").insert(row).select("*").single();
+      let created = await client.from("profiles").insert(row).select("id").single();
       // The linked GitHub name is an optional legacy URL alias. Another builder may
       // already own it as their chosen STRIVE handle. Retry only a definite uniqueness
       // rejection; the database still arbitrates the chosen handle and account identity.
       if (created.error?.code === "23505" && row.github_handle &&
           !/auth_uid/.test(String(created.error.message))) {
-        created = await client.from("profiles").insert({ ...row, github_handle: null }).select("*").single();
+        created = await client.from("profiles").insert({ ...row, github_handle: null }).select("id").single();
       }
-      if (!created.error) return { profile: created.data, created: true };
+      if (!created.error) return { profile: await profile(), created: true };
       if (created.error.code === "23505" && /auth_uid/.test(String(created.error.message))) {
         const again = await profile();
         if (again) return { profile: again, created: false };
@@ -320,9 +324,9 @@
         row.avatar_url = a;
       }
       if (!Object.keys(row).length) return p;
-      const { data, error } = await client.from("profiles").update(row).eq("id", p.id).eq("auth_uid", u.id).select("*").single();
+      const { error } = await client.from("profiles").update(row).eq("id", p.id).select("id").single();
       if (error) throw fail(error);
-      return data;
+      return await profile();
     }
 
     // Public lookup for /?u=<handle>: chosen handle first, legacy github_handle second.
@@ -377,12 +381,12 @@
       const x = xHandleOf(ids);
       if (x && !p.x_handle) patch.x_handle = x;
       if (!Object.keys(patch).length) return p;
-      const { data, error } = await client.from("profiles").update(patch).eq("id", p.id).eq("auth_uid", u.id).select("*").single();
+      const { error } = await client.from("profiles").update(patch).eq("id", p.id).select("id").single();
       if (error) {
         if (explain(error).code === "handle_taken") return p; // someone else's label; leave legacy column empty
         throw fail(error);
       }
-      return data;
+      return await profile();
     }
 
     // Local sign-out only: other devices and the shared Grinder session stay signed in.
@@ -398,7 +402,7 @@
       const u = await user();
       const p = await profile();
       if (!u || !p) throw fail({ code: "42501", message: "not signed in" });
-      const { data, error } = await client.from("profiles").delete().eq("id", p.id).eq("auth_uid", u.id).select("id");
+      const { data, error } = await client.from("profiles").delete().eq("id", p.id).select("id");
       if (error) throw fail(error);
       // A stale profile id must not show "deleted" while the row is still there.
       if (!data || !data.length) throw fail({ code: "PGRST116", message: "Your profile could not be found. Refresh and try again." });
