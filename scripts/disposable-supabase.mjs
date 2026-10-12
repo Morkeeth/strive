@@ -257,7 +257,7 @@ async function readBody(req) {
 function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,POST,PATCH,DELETE,OPTIONS");
   res.setHeader("Access-Control-Expose-Headers", "Content-Range,Content-Profile,Location");
 }
 
@@ -462,6 +462,10 @@ async function handle(db, req, res) {
   const body = ["POST", "PATCH"].includes(req.method) ? await readBody(req) : null;
 
   const result = await withRole(db, sub, async () => {
+    if (req.method === "HEAD") {
+      const { sql, params } = whereClause(filters);
+      return Number((await db.query(`select count(*) n from ${ident(table)}${sql}`, params)).rows[0].n);
+    }
     if (req.method === "GET") return selectRows(db, table, select, filters, url);
     if (req.method === "POST") {
       const rows = Array.isArray(body) ? body : [body];
@@ -479,6 +483,12 @@ async function handle(db, req, res) {
   });
   res.statusCode = 200;
   res.setHeader("Content-Type", "application/json");
+  if (req.method === "HEAD") {
+    res.setHeader("Content-Range", `*/${result}`);
+    res.setHeader("Access-Control-Expose-Headers", "Content-Range");
+    res.end();
+    return;
+  }
   if (wantObject) {
     const row = Array.isArray(result) ? result[0] : result;
     if (!row) {

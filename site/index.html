@@ -1779,7 +1779,7 @@ function bindCompactCard(card,deck,ad,{onChange=()=>{},shareHref=null}={}){
     foot.innerHTML=GrinderFeed.actions({id:run.id,runHref:StriveLinks.runHref(run),publicShare:!!StriveLinks.runPath(run)&&!shareHref,to:run.profile_id,count:ad.countsKnown===false?null:ad.counts[run.id]||0,acked:ad.mine.has(run.id),mode:ME?.id===run.profile_id?'mine':'',commentHref:'#'+card.id+'-comments',shareHref});
     thread.id=card.id+'-comments';thread.dataset.runId=run.id;
     const comments=foot.querySelector('[data-comment]');comments.setAttribute('aria-label','Comments on '+slide.name);comments.setAttribute('aria-expanded','false');comments.setAttribute('aria-controls',thread.id);
-    comments.onclick=e=>{e.preventDefault();e.stopPropagation();thread.hidden=!thread.hidden;comments.setAttribute('aria-expanded',String(!thread.hidden));if(!thread.hidden&&!thread.dataset.loaded){thread.dataset.loaded='1';void social.thread(run.id,thread,{compact:true})}};
+    comments.onclick=e=>{e.preventDefault();e.stopPropagation();thread.hidden=!thread.hidden;comments.setAttribute('aria-expanded',String(!thread.hidden));if(!thread.hidden&&!thread.dataset.loaded){thread.dataset.loaded='1';void social.thread(run.id,thread,{compact:true,onCount:n=>{if(!thread.isConnected)return;comments.querySelector('span').textContent=n?'Comment · '+n:'Comment';comments.setAttribute('aria-label','Comments on '+slide.name+' · '+n)}})}};
     wireKudos();
   };
   const pager=StriveDayCard.wire(card,{onChange:(...args)=>{bindActions();onChange(...args)}});bindActions();return pager;

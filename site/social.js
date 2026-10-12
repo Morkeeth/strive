@@ -953,6 +953,7 @@ window.GrinderSocial = function ({
               edit.disabled = false;
             };
             save.onclick = async () => {
+              if (!area.value.trim()) { area.focus(); return; }
               save.disabled = true;
               try {
                 await result(
@@ -961,7 +962,7 @@ window.GrinderSocial = function ({
                     .update({ body: area.value })
                     .eq("id", reply.id),
                 );
-                await thread(runId, slot);
+                await thread(runId, slot, opts);
               } catch (e) {
                 fail(e);
                 save.disabled = false;
@@ -978,7 +979,7 @@ window.GrinderSocial = function ({
               await result(
                 db.from("grinder_replies").delete().eq("id", reply.id),
               );
-              article.remove();
+              await thread(runId, slot, opts);
             } catch (e) {
               fail(e);
               remove.disabled = false;
@@ -1108,6 +1109,12 @@ window.GrinderSocial = function ({
     } else if (focusReply && sawFocus) {
       focusTarget();
     }
+    if (typeof opts?.onCount === "function") {
+      try {
+        const total = await db.from("grinder_replies").select("id", { count: "exact", head: true }).eq("run_id", runId);
+        if (!total.error && Number.isSafeInteger(total.count)) opts.onCount(total.count);
+      } catch (_) { /* A failed count read stays unknown. */ }
+    }
     if (me()) {
       const form = document.createElement("form");
       form.className = "reply-form";
@@ -1117,6 +1124,7 @@ window.GrinderSocial = function ({
       form.onsubmit = async (e) => {
         e.preventDefault();
         const button = form.querySelector("button");
+        if (button.disabled || !form.elements.body.value.trim()) return;
         button.disabled = true;
         try {
           await result(
@@ -1134,12 +1142,19 @@ window.GrinderSocial = function ({
               ? "Reply posted. Return to Notifications when you are ready."
               : "Reply posted.",
           );
-          await thread(runId, slot);
+          await thread(runId, slot, opts);
+          slot.querySelector('textarea[name="body"]')?.focus();
         } catch (error) {
           fail(error);
           button.disabled = false;
         }
       };
+      if (compact) form.elements.body.addEventListener("keydown", event => {
+        if (event.key === "Enter" && !event.shiftKey && !event.isComposing && !event.ctrlKey && !event.altKey && !event.metaKey) {
+          event.preventDefault();
+          form.requestSubmit();
+        }
+      });
       slot.append(form);
     } else {
       // A reader who is signed out can start sign-in from here; the shell brings them back to this page.
