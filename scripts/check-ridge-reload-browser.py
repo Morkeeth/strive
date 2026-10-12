@@ -2,8 +2,8 @@
 
 What this proves. A real Chromium loads the shipped `site/index.html`, signs in as a TEST DATA
 owner, opens a run that was saved through the same REST path the browser Save uses, and finds the
-ridge polygon in the DOM. It then RELOADS the page, so the second render is served from the
-database and not from anything the first render left in memory, and finds the same ridge again.
+activity bars in the DOM. It then RELOADS the page, so the second render is served from the
+database and not from anything the first render left in memory, and finds the same recorded bars again.
 
 What this does not prove. The stack is the repository's disposable stack: PGlite plus the
 PostgREST and auth shim in `scripts/disposable-supabase.mjs`, not a hosted Supabase project. It has
@@ -120,14 +120,9 @@ def proxy(route, disposable):
 
 
 def ridge_state(page) -> dict:
-    return page.evaluate(
-        "() => {const s=document.querySelector('svg.ridge');"
-        "return s?{present:true,"
-        "fill:(s.querySelector('polygon.ridge-fill')||{}).getAttribute?"
-        "s.querySelector('polygon.ridge-fill').getAttribute('points').length:0,"
-        "ticks:s.querySelectorAll('line.ridge-commit').length,"
-        "workers:s.querySelectorAll('polygon.ridge-worker').length,"
-        "label:s.getAttribute('aria-label')}:{present:false};}")
+    return page.evaluate("""() => {const s=document.querySelector('.post-trail svg');
+      return s ? {present:true,bars:[...s.querySelectorAll('.activity-bar')].map(n=>({height:n.getAttribute('height'),title:n.textContent})),
+      ticks:s.querySelectorAll('.activity-commit').length,label:s.getAttribute('aria-label')} : {present:false};}""")
 
 
 def main() -> int:
@@ -155,8 +150,10 @@ def main() -> int:
               "visibility": "public", "prompts": 12, "commits": 3, "tool_calls": 226,
               "wall_time_s": 1234, "rhythm": [1, 2, 1], "schema_version": 1,
               "trace_basis": "elapsed"}
+    # Owner reload uses a private run: its owner URL stays in this disposable SPA.
+    # Public runs navigate to the hosted canonical page; three-reader checks cover public access.
     with_ridge = save_run(disposable, casey, "casey", dict(
-        common, title="TEST DATA ridge survives a reload",
+        common, visibility="private", title="TEST DATA ridge survives a reload",
         caption="TEST DATA caption", ridge=RIDGE, worker_bins=WORKER_BINS,
         commit_bins=COMMIT_BINS, ridge_basis="wall-time",
         ridge_wall_seconds=WALL_SECONDS, ridge_tool_calls=255))
@@ -185,21 +182,25 @@ def main() -> int:
                 failures.append("the control run drew a ridge, so the positive result proves nothing")
 
             page.goto(base + "/?run=" + with_ridge, wait_until="networkidle")
+            page.locator(".post-trail .activity-bar").first.wait_for(state="visible")
             first = ridge_state(page)
             results.append(("ridge run", "first load", first))
             if not first["present"]:
                 failures.append("the ridge did not render on the first load")
 
             page.reload(wait_until="networkidle")
+            page.locator(".post-trail .activity-bar").first.wait_for(state="visible")
             second = ridge_state(page)
             results.append(("ridge run", "after reload", second))
             if not second["present"]:
                 failures.append("the ridge did not survive the reload")
             elif second != first:
                 failures.append("the ridge changed across the reload: %r then %r" % (first, second))
+            elif len(second["bars"]) != sum(bool(n) or i in COMMIT_BINS for i,n in enumerate(RIDGE)):
+                failures.append("recorded time windows lost across reload")
             elif second["ticks"] != len(COMMIT_BINS):
                 failures.append("commit ticks lost across the reload")
-            elif second["label"] != "Tool calls across wall time":
+            elif second["label"] != "Tool calls / min; idle gaps compressed":
                 failures.append("the reloaded ridge fell back from wall time: " + str(second["label"]))
 
             out = Path(os.environ.get("RIDGE_RELOAD_RECEIPTS")

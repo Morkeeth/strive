@@ -157,3 +157,9 @@ Ten `fix` failures now load the browser's current modules and real card composit
 The four affected files run 28 tests: baseline 10 failed / 18 passed; repaired 28 passed. A temporary mutation of the real tree renderer made the 14-worker check fail (0 workers), then the source was restored and the checks passed. Old rhythm rows without a recognized clock remain labelled unavailable; timed ridge rows retain 40 positive bars, 12-second bins and compressed idle-gap disclosure. Route headline assertions use recorded commits/files/projects and preserve run-row precedence.
 
 The original 103-row inventory above is a pinned baseline, not a current failure count. This batch repairs ten of its 99 `fix` rows; the full suite still needs the remaining batches.
+
+## Repair batch 2: persisted activity and readers
+
+Ten more `fix` rows reach the current activity renderer, shared import-row builder and hosted link-image tree. All 16 checks in the ridge-card, ridge-persistence and disposable browser acceptance files pass. Recorded bins, commit ticks and rate disclosure survive an owner reload; a public run is a positive control for the excluded reader; the excluded reader receives neither private content nor a non-neutral image. The reload case uses a private owner URL because public rows now navigate to a canonical hosted route that the static fixture server does not implement. This proves a disposable browser/database round trip, not a hosted acceptance result.
+
+The initial broader red run included these ten failures and three run-card failures deferred to a later batch. A mutation dropping `ridge` from the real saved-row builder made the new round-trip assertion fail; the builder was restored. No product code changes, skips or expected failures.

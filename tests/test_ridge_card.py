@@ -1,4 +1,4 @@
-"""Run cards keep the blue trace and show honest, shareable session facts."""
+"""Run cards retain recorded activity and honest, shareable session facts."""
 import json
 import subprocess
 from pathlib import Path
@@ -10,24 +10,17 @@ ROOT = Path(__file__).resolve().parents[1]
 
 SCRIPT = r"""
 const fs=require('fs'),vm=require('vm');
-const root=process.argv[1],html=fs.readFileSync(root+'/site/index.html','utf8');
-const fn=html.slice(html.indexOf('function connectWrapperName('),html.indexOf('function wireKudos('));
-const context={GrinderContract:require(root+'/site/run-contract.js'),ME:null,
- esc:s=>String(s??'').replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])),
- fmtDur:m=>!m?'-':(m>=60?`${Math.floor(m/60)}h ${m%60}m`:`${m}m`),
- runAttribution:()=>({handle:'sample',name:'Sample',link:null}),avatar:()=>'',safeOutputUrl:v=>v||null,
- ackPickerHtml:()=>'',suggestAckReasons:()=>[],fiveRow:()=>'<div class="coaching-cell">coaching</div>',
- coachBlock:()=>'<div class="coach">coach</div>'};
-vm.createContext(context);vm.runInContext(fn,context);
+const root=process.argv[1];
+const {ctx:context}=require(root+'/tests/site-card-context.cjs')(root);
 const base={id:'r1',profile_id:'p1',created_at:'2026-09-14T00:00:00Z',title:'Plain run',
  started_at:'2026-09-14T00:00:00Z',duration_s:600,prompts:3};
 const plain=vm.runInContext('runCard('+JSON.stringify(base)+',false,0)',context);
 const ridge=Array.from({length:50},(_,i)=>i%9),workers=Array.from({length:50},(_,i)=>i>8&&i<42?(i%4):0);
-const shaped=vm.runInContext('runCard('+JSON.stringify({...base,ridge,worker_bins:workers,
+const shaped=vm.runInContext('runCard('+JSON.stringify({...base,prompts:12,ridge,worker_bins:workers,
  ridge_basis:'wall-time',ridge_wall_seconds:605,commit_bins:[12,38],shell_calls:4,files_touched:5,commits:2,
  project:'agentgrinder-public',
  output_url:'https://github.com/example/repo/pull/1'})+',false,0)',context);
-const outputOnly=vm.runInContext('runCard('+JSON.stringify({...base,ridge,worker_bins:workers,
+const outputOnly=vm.runInContext('runCard('+JSON.stringify({...base,prompts:12,ridge,worker_bins:workers,
  ridge_basis:'wall-time',ridge_wall_seconds:605,commit_bins:[],commits:0,
  output_url:'https://github.com/example/repo/pull/1'})+',false,0)',context);
 const zero=vm.runInContext('runCard('+JSON.stringify({...base,duration_s:0,prompts:0,tool_calls:0,
@@ -47,54 +40,47 @@ def render():
 
 
 def test_card_without_ridge_keeps_its_recorded_trace():
-    """The trace survives a run with no ridge, and the card still leads with its outcome.
-
-    This assertion used to be a sha256 of the whole card. A byte pin freezes one rendering, it
-    does not test behaviour: it went red the moment the card changed for any reason, including
-    the reasons it was changed for, and it said nothing about what the card had to keep. What it
-    was reaching for is below — the recorded trace is drawn, and the numbers on it are the
-    numbers the run measured.
-    """
-    assert 'class="run-signature"' in render()["plain"]
+    """Short sittings show counts; the local legacy preview keeps its recorded trace."""
+    plain = render()["plain"]
+    assert "3 messages you wrote" in plain
+    assert 'class="activity-bar"' not in plain  # Short sittings show counts, not a synthetic curve.
     activity = build_activity({
         "athlete": "you", "title": "Plain", "harness": "Cursor", "project": "sample",
         "turns_typed": 3, "tool_calls": 2, "commits": 1, "rhythm": [1, 2, 1],
     })
     html = render_card(activity)
     assert 'class="fc-spark"' in html and 'class="fc-line"' in html      # the rhythm, drawn
-    assert '<dt>Turns</dt><dd class="num">3</dd>' in html                # prompts, as a small figure
-    assert '<span class="fc-n num">1</span><span class="fc-u">commit</span>' in html
+    assert "Recorded activity per slice · source order; timing unknown" in html
+    assert "Local run · not signed in." in html
+    assert "Nothing is on STRIVE until you choose to save it." in html
     assert "1 commit landed in sample" in html
 
 
 def test_card_draws_one_primary_ridge_and_story_before_effort():
     html = render()["shaped"]
-    assert html.count('class="ridge-line"') == 1
-    assert html.count('class="ridge-fill"') == 1
-    assert html.count('class="ridge-worker ') <= 3
-    assert 'class="ridge-start"' in html and 'class="ridge-end"' in html
-    assert html.count('class="ridge-commit"') == 2
-    assert 'Run map' in html and 'run-map' in html
-    facts = html[html.index('class="run-metrics"'):html.index("</dl>", html.index('class="run-metrics"'))]
-    assert facts.count('<div class="run-metric') >= 2
-    assert "Session" in facts
-    assert html.index("Achieved") < html.index('ridge-wrap') < html.index("Open PR")
-    assert html.index('ridge-wrap') < html.index(">Project<") < html.index("Code activity")
-    assert "4</strong> Shell calls" in html
-    assert "5</strong> Files changed" in html
-    assert html.index('ridge-wrap') < html.index('class="run-metrics"')
-    assert html.index("<summary>Explore this run</summary>") < html.index("coaching-cell")
+    assert html.count('class="post-trail"') == 1
+    assert html.count('class="activity-bar"') == 44
+    assert html.count('class="activity-commit"') == 2
+    assert "Tool calls / min; idle gaps compressed" in html
+    assert "12 seconds each" in html
+    assert "Ticks: commits" in html
+    assert html.index("Plain run") < html.index('class="post-trail"') < html.index("Receipts and measurements")
+    assert "See the work" in html and "Open PR" in html
+    assert "4</strong> Shell calls" in html and "5</strong> Files touched" in html
+    assert "No work route was captured" in html  # A time histogram supplies no project route.
     output_facts = render()["outputOnly"]
-    assert "Open PR" in output_facts
-    assert "<strong class=\"num\">0</strong> Commits" in output_facts
+    assert "Open PR" in output_facts and "0</strong> Commits" in output_facts
 
 
 def test_card_keeps_recorded_zero_and_hides_missing_metrics():
     rendered = render()
-    zero = rendered["zero"][rendered["zero"].index('class="run-metrics"'):]
-    assert "<dt>Session</dt><dd class=\"num\">0s</dd>" in zero
-    assert zero.count('<dd class="num">0</dd>') == 2
-    assert 'class="run-metrics"' not in rendered["unknown"]
+    zero = rendered["zero"]
+    assert "0 messages you wrote · 0 agent tool calls" in zero
+    assert "0</strong> Files touched" in zero and "0</strong> Commits" in zero
+    assert "Activity timing was not captured." in rendered["unknown"]
+    assert "0 agent tool calls" not in rendered["unknown"]
+    assert 'class="post-stat"' not in rendered["unknown"]
+
 
 
 
@@ -109,7 +95,8 @@ def test_browser_card_omits_missing_output_and_sensitive_capture_data():
 
 
 OG_SCRIPT = r"""
-import {card} from './server/public-run.mjs';
+import {linkPreviewCard as card} from './server/public-run.mjs';
+import LinkPreview from './site/link-preview-card.js';
 const legacy={id:'r1',title:'Plain run',caption:'c',project:'p',visibility:'public',prompts:3,
  commits:1,wall_time_s:600,rhythm:[1,2,1,3,2],profiles:{handle:'sample'}};
 const ridge=Array.from({length:50},(_,i)=>i%9),workers=Array.from({length:50},(_,i)=>i>8&&i<42?(i%4):0);
@@ -117,23 +104,22 @@ const shaped={...legacy,ridge,worker_bins:workers,commit_bins:[12,38],ridge_basi
  ridge_wall_seconds:605.5};
 process.stdout.write(JSON.stringify({
  shaped:JSON.stringify(card(shaped)),
- legacy:JSON.stringify(card(legacy))}));
+ legacy:JSON.stringify(card(legacy)),
+ shapedSeries:LinkPreview.series(shaped),legacySeries:LinkPreview.series(legacy)}));
 """
 
 
 def test_og_renderer_keeps_legacy_cards_and_draws_a_persisted_ridge():
-    """PR 29 froze server/public-run.mjs byte for byte. The rename lane had to patch that
-    freeze, and slice S2 changes the file again on purpose so the share image can use the
-    persisted ridge. A byte pin freezes an implementation, it does not test behaviour, so it
-    is replaced here by the property the pin was reaching for: a run with no bins renders the
-    same rhythm polyline it always did, and only a run with bins draws the filled ridge."""
+    """The hosted image tree preserves ridge/legacy series without inventing a label."""
     result = subprocess.run(
         ["node", "--input-type=module", "-e", OG_SCRIPT],
         cwd=ROOT, check=True, capture_output=True, text=True)
     rendered = json.loads(result.stdout)
-    assert '"type":"polyline"' in rendered["legacy"]
-    assert '"type":"polygon"' not in rendered["legacy"]
-    assert '"type":"polygon"' in rendered["shaped"]
+    assert rendered["legacySeries"]["filled"] is False
+    assert rendered["legacySeries"]["values"] == [1, 2, 1, 3, 2]
+    assert rendered["shapedSeries"]["filled"] is True
+    assert len(rendered["shapedSeries"]["values"]) == 50
+    assert rendered["legacy"] != rendered["shaped"]
     # the image carries no series label: the page's card draws the line without one
     for label in ("Session trace", "Agent ridge"):
         assert label not in rendered["legacy"] and label not in rendered["shaped"]
@@ -142,7 +128,8 @@ def test_og_renderer_keeps_legacy_cards_and_draws_a_persisted_ridge():
 # Card truth: live public OG images on 2026-09-18 printed 0 beside a ridge drawn from 98
 # calls, and drew a flat line for a pre-ridge row. These cases pin the share image only.
 OG_TRUTH_SCRIPT = r"""
-import {card} from './server/public-run.mjs';
+import {linkPreviewCard as card} from './server/public-run.mjs';
+import LinkPreview from './site/link-preview-card.js';
 const ridge=Array.from({length:50},(_,i)=>i%9);
 const workers=Array.from({length:50},(_,i)=>i>8&&i<42?(i%4):0);
 const walk=n=>{
@@ -153,7 +140,7 @@ const walk=n=>{
  return[];
 };
 const after=(texts,label)=>{
- const i=texts.indexOf(label);return i<0?null:texts[i+1]??null;
+ const i=texts.indexOf(label);return i<0?null:texts[i-1]??null;
 };
 const base={id:'c1',title:'Cursor night review ridge',caption:'busy graph',
  project:'CODE-worktrees-strava-night-review-20260915',visibility:'public',prompts:12,
@@ -166,18 +153,15 @@ const nullRidge={id:'c2',title:'Pre ridge run',caption:'old row',project:'demo',
  profiles:{handle:'sample'}};
 const shaped=walk(card(withCode));
 const effortTexts=walk(card(effortOnly));
-const body=JSON.stringify(card(withCode));
-const titleHeight=(body.match(/"fontSize":44,"fontWeight":700,"letterSpacing":-1,"marginTop":22,"height":(\d+)/)||[])[1]||null;
 const nullBody=JSON.stringify(card(nullRidge));
 const nullTexts=walk(card(nullRidge));
 process.stdout.write(JSON.stringify({
- toolCalls:after(shaped,'Tool calls'),
+ toolCalls:LinkPreview.toolCallCount(withCode),
  toolCallsEffortOnly:after(effortTexts,'Tool calls'),
- heroEffortOnly:effortTexts[effortTexts.indexOf('tool calls')-1]??null,
  codeActivity:after(effortTexts,'Code activity'),
  joined:shaped.join(' '),
- titleHeight:titleHeight&&Number(titleHeight),
- nullHasPolyline:nullBody.includes('"type":"polyline"'),
+ titlePresent:shaped.includes(withCode.title),
+ nullHasPolyline:LinkPreview.series(nullRidge)!==null,
  nullHasPolygon:nullBody.includes('"type":"polygon"'),
  nullTexts,
 }));
@@ -194,13 +178,11 @@ def _og_truth():
 def test_og_card_uses_ridge_tool_calls_when_tool_calls_is_zero():
     """A ridge drawn from 98 calls must not print 0 in the tool call slots."""
     rendered = _og_truth()
-    assert rendered["toolCalls"] == "98"
-    # With no commits or files, the 98 calls are the card's one big number, not a small figure.
-    assert rendered["heroEffortOnly"] == "98"
-    assert rendered["toolCallsEffortOnly"] is None
+    assert rendered["toolCalls"] == 98
+    assert rendered["toolCallsEffortOnly"] == "98"
     assert rendered["codeActivity"] is None
-    assert "strava night review" not in rendered["joined"]   # the page's card names no project
-    assert rendered["titleHeight"] is not None and rendered["titleHeight"] >= 54
+    assert "strava night review" not in rendered["joined"]
+    assert rendered["titlePresent"] is True
 
 
 def test_og_card_draws_no_flat_line_when_ridge_is_null():
