@@ -2538,7 +2538,7 @@ function restoreImport(){
 async function decodeImportPayload(payload,onProgress=()=>{}){
   onProgress('Reading preview data');
   // Yield before base64/JSON work so the loader can paint for large previews.
-  await new Promise(resolve=>window.setTimeout(resolve,0));
+  await new Promise(resolve=>globalThis.setTimeout(resolve,0));
   if(payload.startsWith('gz.')){
     if(typeof DecompressionStream!=='function'){
       const error=new Error('This compressed import needs a browser with built-in gzip support. Update the browser, or use the local card while keeping the selected session available.');
@@ -2551,7 +2551,7 @@ async function decodeImportPayload(payload,onProgress=()=>{}){
     const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
     const decoded=await new Response(stream).text();
     onProgress('Reading run fields');
-    await new Promise(resolve=>window.setTimeout(resolve,0));
+    await new Promise(resolve=>globalThis.setTimeout(resolve,0));
     return JSON.parse(decoded);
   }
   return JSON.parse(atob(decodeURIComponent(payload)));

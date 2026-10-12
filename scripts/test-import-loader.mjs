@@ -5,7 +5,7 @@ import {JSDOM} from 'jsdom';
 const source=fs.readFileSync('site/index.html','utf8');
 const dom=new JSDOM('<main id="app"></main>',{url:'https://striverun.app/#import=test'}),w=dom.window;
 let resolve;const pending=new Promise(ok=>resolve=ok);
-const ctx={window:w,document:w.document,location:w.location,Date,RUN_VIEW_GENERATION:1,AUTH_GENERATION:1,
+const ctx={window:w,document:w.document,location:w.location,Date,setTimeout,RUN_VIEW_GENERATION:1,AUTH_GENERATION:1,
  $:id=>w.document.getElementById(id),decodeImportPayload:()=>pending,esc:s=>String(s),frame(){},skeletonCard:()=>'<p>Loading</p>'};
 vm.createContext(ctx);
 const start=source.indexOf('async function importRun(){'),end=source.indexOf('  try{ GrinderContract.validate(run); }',start);
