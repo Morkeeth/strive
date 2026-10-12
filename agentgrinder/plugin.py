@@ -141,7 +141,9 @@ def capture(db, root, name, harness, source, sitting=-1, code_route=None):
         raise ValueError('Register the named project first.')
     path = Path(source).expanduser().resolve(strict=True)
     selection = None
-    if path.stat().st_size > MAX_SOURCE:
+    # The picker always supplies a sitting number. Freeze that choice even for
+    # short files: its writer may append between the sitting list and preview.
+    if sitting > 0 or path.stat().st_size > MAX_SOURCE:
         from .stream_capture import selected_source
         with selected_source(path, harness, sitting, root) as selected:
             _, raw, rows = read_source(selected['path'])
