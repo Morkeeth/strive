@@ -570,3 +570,16 @@ button,summary{touch-action:manipulation}
 .profile-header{background:#fff;border-radius:12px}.profile-header .phero{background:transparent;box-shadow:none;border-radius:0}
 .profile-header .social-follow.profile-follow{border:0;border-radius:0;box-shadow:none;background:transparent;flex-wrap:nowrap}
 .profile-header .profile-follow button{min-height:32px;flex:none}
+
+/* One owner-neutral public run share sheet for Feed and detail. */
+.run-share-dialog{width:min(480px,calc(100% - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:1px solid #d5ddea;border-radius:18px;padding:24px;background:#fff;color:#172445;box-sizing:border-box}
+.run-share-dialog::backdrop{background:rgb(23 36 69 / 35%)}
+.run-share-dialog .share-close{float:right;min-width:44px;min-height:44px;font-size:24px;padding:0}
+.run-share-sheet{max-width:480px;margin:auto;clear:both}
+.run-share-sheet h2{font-size:22px;margin:0 0 16px}
+.run-share-sheet .share-image-preview{display:block;width:100%;height:auto;border:1px solid #d5ddea;border-radius:10px;box-sizing:border-box;margin:0 0 18px}
+.run-share-sheet .share-copy-link{width:100%;min-height:48px;background:#245edb;color:white;border:0;border-radius:10px;font-size:16px;font-weight:600}
+.run-share-sheet nav{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.run-share-sheet nav a{display:flex;align-items:center;justify-content:center;flex:1 1 40%;min-height:44px;border:1px solid #d5ddea;border-radius:9px;color:#244370;text-decoration:none}
+.run-share-sheet .share-copy-status{font-size:14px;min-height:20px}
+.run-share-sheet .share-link-fallback{width:100%;box-sizing:border-box}
