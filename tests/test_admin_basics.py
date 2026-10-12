@@ -1,5 +1,7 @@
 """Footer, favicon, titles, About and 404 on every page (fresh-eyes review, 25 Sep 2026)."""
 from pathlib import Path
+import json
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "site"
@@ -25,8 +27,16 @@ def test_deletion_has_an_anchor_and_terms_link_clean_urls():
 def test_each_spa_page_sets_its_own_title():
     html = (SITE / "index.html").read_text()
     assert "document.title=pageTitle(new URLSearchParams(location.search))" in html
-    for label in ("'Leaderboard'", "'Add a run'", "'Find people'", "'Settings'"):
-        assert label in html
+    # Execute the real title rule, including run/profile precedence.
+    script = r"""
+const fs=require('fs'),vm=require('vm');const s=fs.readFileSync('site/index.html','utf8');
+const ctx={URLSearchParams};vm.createContext(ctx);
+vm.runInContext(s.slice(s.indexOf('const RETIRED='),s.indexOf('function menuLinks('))+
+ s.slice(s.indexOf('const PAGE_TITLES='),s.indexOf('// The signed-in start page')),ctx);
+process.stdout.write(JSON.stringify(['?boards','?post','?people','?account','?run=run&u=person'].map(q=>ctx.pageTitle(new URLSearchParams(q)))));
+"""
+    titles=json.loads(subprocess.check_output(['node','-e',script],cwd=ROOT,text=True))
+    assert titles == [label+' · __BRAND__' for label in ['Activity','Add a run','People','Settings','Run']]
 
 
 def test_the_404_page_is_branded_and_not_indexed():
@@ -38,7 +48,9 @@ def test_server_pages_carry_footer_and_favicon():
     for name in ("server/public-run.mjs", "server/dropin-link.mjs"):
         src = (ROOT / name).read_text()
         assert 'rel="icon" href="/favicon.svg"' in src
-        assert src.count("</main>") == src.count("</main>${siteFoot}")
+        # Public shares use their shared-post footer; private/error pages use the site footer.
+        assert src.count("</main>") == src.count("</main>${siteFoot}") + src.count("</main>${shareFoot}")
+        assert 'href="/privacy"' in src and 'href="/terms"' in src
 
 
 def test_page_titles_follow_route_order():
