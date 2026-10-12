@@ -4,6 +4,8 @@ about: A short, reproducible user-path bug
 ---
 What were you trying to do?
 
+Where did this happen: hosted striverun.app or a local checkout? For local, include `git rev-parse --short HEAD`.
+
 Steps to reproduce:
 
 Expected / actual result:

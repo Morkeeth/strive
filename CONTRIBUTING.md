@@ -27,11 +27,11 @@ Python 3.9+ is required; Node 22 runs the JavaScript checks. On Windows, use `py
 
 ```sh
 python3 scripts/dev.py setup
-npm ci
+npm ci --ignore-scripts
 python3 scripts/dev.py serve
 ```
 
-Open http://127.0.0.1:8000. `setup` installs test dependencies in `.venv`; it does not alter global Python. `serve` needs only Python. Use `python3 scripts/dev.py serve --port 8001` if port 8000 is busy. Stop it with Ctrl+C. Capture prints a preview link; the CLI opens a browser only with `--open`. Set `AGENTGRINDER_URL=http://localhost:8000` to target this static UI. A preview is not a database save. `npm ci` installs the website and disposable-test dependencies from the lockfile.
+Open http://127.0.0.1:8000. `setup` installs test dependencies in `.venv`; it does not alter global Python. `serve` needs only Python. Use `python3 scripts/dev.py serve --port 8001` if port 8000 is busy. Stop it with Ctrl+C. Capture prints a preview link; the CLI opens a browser only with `--open`. Set `AGENTGRINDER_URL=http://localhost:8000` to target this static UI. A preview is not a database save. `npm ci --ignore-scripts` installs the website and disposable-test dependencies from the lockfile.
 
 This local server is the UI with no database behind it. The hosted app at https://striverun.app has sign-in, posting and replies; a local checkout does not connect to it. You can work on layouts, docs, local capture and tests now. To test sign-in, posting and replies locally you need your own database, set up as described below. The inherited coaching fixture at `/?example` is development material, outside the product’s main flow.
 
@@ -63,7 +63,7 @@ python3 scripts/dev.py check
 
 This runs targeted Cursor-reader tests, MCP launch/onboarding checks and JavaScript syntax checks. It does not test every inherited feature or prove hosted behaviour. Add or run focused tests when you change behaviour; documentation-only changes need working links and accurate commands, not unrelated test runs.
 
-For capture, photo, feedback or database changes, install Node 22 dependencies with `npm ci`, then run the relevant focused checks. For example:
+For capture, photo, feedback or database changes, install Node 22 dependencies with `npm ci --ignore-scripts`, then run the relevant focused checks. For example:
 
 ```sh
 npm run test:launch
@@ -89,11 +89,14 @@ Open a PR from your branch to `Morkeeth/strive:main`. Use the template: describe
 
 Keep the PR focused. If review asks for changes, push to the same branch. A maintainer reviews before merging. Reviews have no guaranteed response time; keep follow-ups on the PR so the context stays together. See [maintainer guidelines](docs/MAINTAINING.md).
 
+See the [current architecture](docs/architecture.md) for the capture package, runtime configuration, migrations and access boundaries. Ideas in [the roadmap](docs/ROADMAP.md) are exploring, not building.
+
 ## Code map
 
 - `site/index.html`: layout, routes, onboarding and run cards.
 - `site/social.js`, `site/sharing.js`, `site/progress.js`: social actions, sharing and run history.
 - `agentgrinder/ingest.py`, `agentgrinder/mcp_server.py`: local capture and agent tools.
+- `api/`: Vercel HTTP entry points for run reads, previews, photos and other app operations.
 - `server/public-run.mjs`: public link previews.
 - `scripts/dev.py`: contributor commands.
 - `PRODUCT.md`: agreed scope. Old hackathon checklists are historical, not the backlog.
@@ -110,6 +113,6 @@ The signed-in [feedback form](https://striverun.app/?feedback) is for private pr
 
 ## Working together
 
-Be kind, specific and respectful. Critique the change, not the person. Welcome questions and first-time contributors. No harassment, discrimination, spam or publication of another person’s private information. Maintainers may edit or remove harmful content and limit participation when needed.
+Follow the [code of conduct](CODE_OF_CONDUCT.md). Be kind, specific and respectful. Critique the change, not the person. Welcome questions and first-time contributors. No harassment, discrimination, spam or publication of another person’s private information. Maintainers may edit or remove harmful content and limit participation when needed.
 
 Keep existing attribution. Contributions must be yours to share and are distributed under this project’s [MIT license](LICENSE).

@@ -1,84 +1,37 @@
-# Architecture
+# STRIVE architecture
 
-One session in, one checked card out. Every box below is a file in this repository or a service
-this repository actually talks to. Nothing here is planned; it all runs today.
+The product path is capture → preview → save privately → choose an audience → read and respond. Capture, save and publication are separate actions.
 
-```mermaid
-flowchart LR
-  T["<b>the session</b><br/>a .jsonl from Claude Code, Cursor or Codex"]
-  SIT["<b>one sitting</b><br/>split at 30 min idle, only the turns you typed<br/>solo.py · authorship.py · gitwork.py"]
-  CTX["<b>CoachContext</b><br/>one sitting, and a record of every tool result<br/>coach/tools.py"]
-  AG(["<b>strands.Agent</b><br/>coach/agent.py:87"])
-  HOOK["<b>AfterToolCallEvent hook</b><br/>counts the calls the SDK really dispatched<br/>coach/agent.py:63"]
-  MODE{"which model<br/>drives the loop"}
-  LOCAL["<b>local</b> · default<br/>Model subclass over a<br/>deterministic policy<br/>no key, no network"]
-  BED["<b>bedrock</b> · opt in<br/>a real model on AWS<br/>costs money, claim<br/>lines leave the machine"]
-  NONE["<b>none</b> · fallback<br/>no agent, five calls<br/>in order. A failed agent<br/>mode prints DEGRADED"]
+## What lives where
 
-  subgraph TOOLS["the five @tool functions · coach/tools.py"]
-    direction TB
-    T1["<b>read_run</b> :128<br/>counts, claim lines,<br/>results per turn"]
-    T2["<b>check_claim</b> :146<br/>evidence in this<br/>claim's own turn"]
-    T3["<b>verify_artifact</b> :167<br/>does the file exist,<br/>and when"]
-    T4["<b>git_evidence</b> :183<br/>which commits<br/>contain it"]
-    T5["<b>write_verdict</b> :207<br/>five numbers,<br/>or a refusal"]
-    T1 ~~~ T2 ~~~ T3 ~~~ T4 ~~~ T5
-  end
+| Location | Responsibility |
+| --- | --- |
+| `agentgrinder/` | Python CLI and companion: read a selected local session, derive recorded facts, and prepare a preview. Package metadata is in `pyproject.toml`. |
+| `site/` | Browser app. `index.html` contains routes and the shell; separate scripts handle identity, cards, photos, social controls and sharing. `design.css` holds shared card tokens. |
+| `api/` | Vercel HTTP entry points. Handlers delegate validation, access checks and rendering to `server/`. |
+| `server/` | Server access checks, public run/profile metadata, image rendering and runtime configuration. |
+| `supabase/strava/` | Ordered app migrations. App tables, functions and policies use the `strava` schema. |
+| `scripts/` and `tests/` | Build, contributor commands, isolated database harnesses and labelled fixtures. |
+| `archive/` | Historical hackathon material; it does not define the current product. |
 
-  V["<b>the verdict</b><br/>typed turns · claims verified of claims<br/>artifacts on disk of artifacts written · commits<br/>verified per turn · a next-session plan"]
-  SER["<b>the series</b><br/>one reading per grind, counts only<br/>~/.agentgrinder/series.db · engine/log.py"]
-  REP["<b>helped, hurt or baseline</b><br/>against your last grind on this project<br/>engine/reporter.py"]
-  CARD["<b>the card</b> · grind.html<br/>headline, five numbers, the verdict block with<br/>the tool-call count, the series line, the grind trace<br/>solocard.py · soloroute.py"]
-  CLICK{{"you click publish · push.py<br/>counts only. no prompt text, no code, no paths"}}
-  DB[("<b>Supabase</b> · public.runs<br/>+ claims, claims_verified, artifacts_produced,<br/>coach_verdict, coach_plan, coach_tool_calls,<br/>progress_verdict")]
-  WEB["<b>Vercel</b> · site/index.html<br/>the hosted card at /?run=id, the feed, ACKs"]
+The public app uses Vercel and Supabase. Authentication shares a Supabase project with a separate service; the app's data is in `strava`. An app change must not modify shared Auth triggers or the other service's public-schema records.
 
-  T --> SIT --> CTX --> AG
-  AG --> MODE
-  MODE --> LOCAL
-  MODE --> BED
-  MODE --> NONE
-  AG -. logs every call .-> HOOK
-  AG <== calls, and reads back ==> TOOLS
-  T5 -- "a number no tool returned" --> REFUSE(["refused. the loop is told why<br/>and can go get the evidence"])
-  REFUSE -.-> AG
-  T5 -- "every number backed" --> V
-  V --> SER --> REP --> CARD
-  V --> CARD
-  HOOK --> CARD
-  CARD --> CLICK --> DB --> WEB
+## Capture and deployment
 
-  classDef cloud fill:#dbeafe,stroke:#1d4ed8,stroke-width:2px
-  class DB,WEB cloud
-```
+`python3 scripts/dev.py setup` installs the capture package and Python test dependencies in a local virtual environment. `npm ci --ignore-scripts` installs locked website and database-test dependencies. `npm run build` copies the site into `dist/`, applies runtime configuration and builds the capture archive served with that release. `scripts/build-site.mjs` owns that build.
 
-Everything left of the publish click runs on your machine. Only Supabase and Vercel, the two boxes
-with the blue border, are hosted, and only what you publish reaches them.
+The checked-in browser configuration targets a local database and uses a placeholder key. A contributor checkout cannot sign in to production from those constants. `server/runtime-config.mjs` validates deployment configuration; privileged keys must never reach browser output.
 
-## Reading it in one line
+## Database changes
 
-The transcript becomes one sitting, the sitting becomes a context, a Strands agent works that
-context through five tools, the fifth tool refuses anything the first four did not support, and
-only what survives that refusal reaches the card, the local series, and, if you click, the hosted
-page.
+`python3 scripts/prepare-strava-database.py` prints the schema-qualified installation SQL; it does not apply it. A maintainer reviews migrations and runs them against an isolated database first. `npm run test:shared-schema` checks app isolation alongside the separate service's schema. `scripts/disposable-supabase.mjs` builds an in-memory PostgreSQL-compatible database from the app migrations for local tests.
 
-## The three claims this diagram makes, and where to check each
+A migration, a deployed client and an observed user action are separate checks. A release that depends on new schema needs the schema applied and verified before its client path is accepted. Follow [release setup](PUBLIC-RELEASE-SETUP.md); do not run the historical public-schema installer against the shared project.
 
-| Claim | Check it with |
-|---|---|
-| The loop is a real Strands event loop, not a wrapper around a function chain | `python3 -m agentgrinder coach samples/sample_session.jsonl` prints the mode and the dispatch list; `tests/test_coach.py` asserts the local path never constructs a Bedrock model and opens no socket |
-| The tool-call count on the card comes from the SDK, not from the plan | the report line `tools dispatched 8 (by the Strands event loop; hook logged 8)`. The left number is read back off the agent's message history, the right one is the `AfterToolCallEvent` hook's own log |
-| `write_verdict` refuses a number the tools did not return | `python3 scripts/show-refusal.py` offers it 2 verified of 2 when the tools found 1, and prints the refusal with the reasons |
+## Access and test boundaries
 
-## What the boxes do not do
+Run audience is enforced through database policies and server checks. Photo access follows the live run audience and explicit personal-photo selection. The browser's hidden controls are not an access boundary. Preserve owner/other-account/anonymous cases and revocation when changing these paths.
 
-- The coach never sends a typed prompt, an absolute path, or code into a tool result. Paths become
-  the same labels the card prints.
-- In `local` mode nothing leaves the machine at all. In `bedrock` mode the claim lines and result
-  snippets go to AWS, and the command prints that sentence before it runs.
-- Nothing is uploaded without the publish click. There is no background sync and no auto-post.
-- The five tools sit side by side in the drawing on purpose. The agent chooses which to call and
-  in what order; only `write_verdict` has a fixed place, at the end, because it is the gate.
+Fork CI uses repository fixtures and disposable data without production credentials. It verifies local behavior and builds; it does not prove hosted sign-in or real participation. Browser tests must state whether they used a fixture, a disposable database or the hosted service. See [security](../SECURITY.md), [contributor setup](../CONTRIBUTING.md) and [card rules](design/CARD-SYSTEM.md).
 
-An older narrative version, with the user journey and the screen list, is at
-`docs/ARCHITECTURE-AND-JOURNEY.md`. This file is the current one.
+The earlier coach diagram is preserved in [technical history](../archive/hackathon-2026-09/docs/coach-architecture.md).

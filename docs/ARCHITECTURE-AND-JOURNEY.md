@@ -1,4 +1,6 @@
-# AGENT GRINDER — architecture + user journey (2026-08-30)
+# Historical Agent Grinder architecture (2026-08-30)
+
+This is the historical hackathon design. Read [the current STRIVE architecture](architecture.md) for contributor work.
 
 Screens: `../archive/hackathon-2026-09/docs/screens/`: 01 landing · 02 feed-card · 03 profile.
 
