@@ -334,3 +334,9 @@ All person Follow controls use `GrinderSocial.followControl` and the shared `.fo
 ## Unsaved import card · 12 October
 
 The unsaved import preview shows one harness identity and the recorded start's local clock and timezone, never the import time as session time. Model and recorded commits share quiet text styling. A zero commit count without repository context stays out of the preview face; the captured value is preserved in imported-field details. Plain stat labels keep their definitions in About these measurements. Unsaved cards omit the social action row and the extra story prompt; the composer owns the one Add your story action. Step changes scroll the import heading below the actual sticky header. Saved card actions, captured values and audiences are unchanged.
+
+## Visual sharing review · 12 October
+
+An import and an agent's private draft lead with `StrivePost.render`, the saved selected-run renderer. Only me shows the owner view inside a nobody-else-sees-this frame; other audiences show the reader view. Card links and social actions are disabled until Save confirms the draft; measurements and disclosures remain readable. Optional metric choices alter the exact outgoing row and card together. Audience stays beside the card and changes its frame and Save consequence immediately. The three data columns remain in a closed Exactly what is saved disclosure. A public choice renders the same link-image tree and image engine as the hosted unfurl, on device, without uploading the draft.
+
+Reader cards omit absent headline statistics; absence cannot establish that a source failed to capture them. The owner review names deselected captured metrics as Not shared. Dates share the local en-GB 24-hour format. Preview reactions stay dimmed, untabbable and labelled Readers can react here. The owner story shortcut preserves metric and audience choices, and step content clears the measured sticky action bar.

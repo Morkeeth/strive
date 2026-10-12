@@ -1,3 +1,4 @@
+import {buildReviewImageEngine} from './build-review-image-engine.mjs';
 import {cp,mkdir,readdir,readFile,writeFile} from 'node:fs/promises';
 import {runtimeConfig} from '../server/runtime-config.mjs';
 import {BRAND,TAGLINE} from '../server/brand.mjs';
@@ -7,6 +8,7 @@ import {execFileSync} from 'node:child_process';
 const config=runtimeConfig();
 await mkdir('dist',{recursive:true});
 await cp('site','dist',{recursive:true});
+await buildReviewImageEngine();
 // Default off: old production validators reject the estimates key.
 // Turn on only after the approved SQL validator has been applied and verified.
 if(process.env.STRIVE_ESTIMATE_UPLOADS_READY==='1') {

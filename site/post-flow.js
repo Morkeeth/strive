@@ -99,10 +99,11 @@
       <section class="post-flow-pane" id="post-pane-0" aria-label="Preview"><p class="post-flow-intro">Check the session you brought in. You can edit how it reads on the next step.</p><div class="post-flow-preview"></div><div class="post-flow-actions"><button type="button" class="act blue" data-post-next="1">Add your story</button></div></section>
       <section class="post-flow-pane" id="post-pane-1" aria-label="Your story" hidden><h2 tabindex="-1">What happened?</h2><div class="post-flow-fields"></div><div class="post-photo-slot"></div><div class="post-flow-actions"><button type="button" class="act" data-post-next="0">Back</button><button type="button" class="act blue" data-post-next="2">Choose audience</button></div></section>
       <section class="post-flow-pane" id="post-pane-2" aria-label="Audience" hidden><h2 tabindex="-1">Who can see this?</h2><div class="post-flow-audience"></div><div class="post-flow-actions"><button type="button" class="act" data-post-next="1">Back</button></div><div class="post-flow-recovery"></div></section>`;
-    composer.querySelector('.post-flow-preview').append(previewSection);
-    const review=scope.querySelector('#import-sharing-review');if(review)composer.prepend(review);
+    const review=scope.querySelector('#import-sharing-review');
+    if(review){scope.querySelector('#import-card-heading')?.closest('section')?.remove();composer.insertBefore(review,composer.querySelector('#post-pane-0'));previewSection?.querySelector('[data-share-audience-choice]')?.append(audience.closest('label'));}
+    else composer.querySelector('.post-flow-preview').append(previewSection);
     const fields=composer.querySelector('.post-flow-fields');fields.append(title.closest('label'),caption.closest('label'));if(details)fields.append(details);
-    composer.querySelector('.post-flow-audience').append(audience.closest('label'),...hints.slice(0,1));
+    composer.querySelector('.post-flow-audience').append(...(review?[]:[audience.closest('label')]),...hints.slice(0,1));
     save.classList.add('act','blue');
     composer.querySelector('#post-pane-2 .post-flow-actions').append(save);
     composer.querySelector('.post-flow-recovery').append(recover);
@@ -117,12 +118,13 @@
       }
       step=next;
       composer.querySelectorAll('.post-flow-pane').forEach((pane,i)=>{pane.hidden=i!==next;});
+      const actions=composer.querySelector('#post-pane-'+next+' .post-flow-actions'),height=actions?.getBoundingClientRect().height||68;composer.style.setProperty('--post-action-height',height+'px');
       composer.querySelectorAll('[data-post-step]').forEach((button,i)=>{button.classList.toggle('is-done',i<next);if(i===next)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');});
       try{root.sessionStorage.setItem(storageKey,String(next))}catch(_){}
       const barHeight=document.querySelector('.bar')?.getBoundingClientRect().height||64;composer.style.setProperty('--post-bar-height',barHeight+'px');composer.style.setProperty('--import-header-offset',(barHeight+composer.querySelector('.post-flow-nav').getBoundingClientRect().height+8)+'px');
-      if(focus){const target=next===1?title:next===2?audience:preview;if(target===preview)target.setAttribute('tabindex','-1');target.focus({preventScroll:true});const heading=scope.querySelector('.head')||composer;heading.style.scrollMarginTop=(barHeight+12)+'px';heading.scrollIntoView({block:'start',behavior:'instant'});}
+      if(focus){const target=next===1?title:next===2?audience:preview;if(target===preview)target.setAttribute('tabindex','-1');target.focus({preventScroll:true});const heading=next===0?(scope.querySelector('.head')||composer):composer.querySelector('#post-pane-'+next);heading.style.scrollMarginTop=(barHeight+12)+'px';heading.scrollIntoView({block:'start',behavior:'instant'});}
     }
-    composer.querySelectorAll('[data-post-step],[data-post-next]').forEach(button=>button.addEventListener('click',()=>go(Number(button.dataset.postStep??button.dataset.postNext))));
+    composer.querySelectorAll('[data-post-step],[data-post-next]').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();go(Number(button.dataset.postStep??button.dataset.postNext))}));
     go(step,false);
   }
   root.StrivePostFlow={setupHtml,mountSetup,mountImport};

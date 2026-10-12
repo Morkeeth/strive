@@ -34,7 +34,7 @@
     if(repo) coach.repo_url=repo; else delete coach.repo_url;
     const row={...base,...coach};
     const omit=keys=>keys.forEach(key=>delete row[key]);
-    if(metricChoices.tool_calls===false)omit(['tool_calls','shell_calls','ridge_tool_calls','ridge','ridge_basis','ridge_wall_seconds','worker_bins']);
+    if(metricChoices.tool_calls===false)omit(['rhythm','tool_calls','shell_calls','ridge_tool_calls','ridge','ridge_basis','ridge_wall_seconds','worker_bins']);
     if(metricChoices.files_touched===false)omit(['files_touched','artifacts_produced','route','code_route']);
     if(metricChoices.commits===false)omit(['commits','commit_bins','shipped','receipts','code_route']);
     if(metricChoices.model===false){omit(['model']);if(row.capture_metadata)row.capture_metadata={...row.capture_metadata,models:[]};}
