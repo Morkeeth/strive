@@ -115,7 +115,7 @@ A separate job from capture. It needs a browser you were actually given. Full te
 
 Three levels of access:
 
-- Public read, no account: ${origin}/?day=YYYY-MM-DD&p=<profile id> shows what any reader gets, public runs only. Add &through=YYYY-MM-DD for a span of days. A single run is ${origin}/?run=<run id>.
+- Public read, no account: ${origin}/?day=YYYY-MM-DD&p=<profile id> shows what any reader gets, public runs only. Add &through=YYYY-MM-DD for a span of days. A single run is ${origin}/?run=<run id>. The same public run as JSON is ${origin}/r/<run id>.json: measured fields are null when unrecorded, and a private or missing run is the same 404.
 - Authorized XUDOS and comment: a signed-in account plus the owner's explicit request for that exact act.
 - Owner edit: the owner's own signed-in session. The same address without &p= is the owner's view.
 
