@@ -20,7 +20,8 @@ jobs:
       - run: python3 scripts/dev.py check
       - run: npm ci --ignore-scripts
       - run: npm run build
-      # Every Python test, unchanged; only failures outside docs/testing/failure-triage-20261012.jsonl fail.
+      # Every Python test, unchanged. A failure outside docs/testing/failure-triage-20261012.jsonl fails,
+      # and so does an inventoried test that passes: delete its row.
       - run: .venv/bin/python scripts/check-python-suite.py
       # Every offline scripts/test-*.mjs; the same rule with docs/testing/node-failure-triage-20261012.jsonl.
       - run: npm run test:all
