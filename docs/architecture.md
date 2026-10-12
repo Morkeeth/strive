@@ -30,7 +30,7 @@ A migration, a deployed client and an observed user action are separate checks. 
 
 ## Access and test boundaries
 
-Run audience is enforced through database policies and server checks. Photo access follows the live run audience and explicit personal-photo selection. The browser's hidden controls are not an access boundary. Readers cannot select `profiles.auth_uid` (`041_private_auth_uid.sql`); the signed-in owner reads their own row through `strava.my_profile()`. Preserve owner/other-account/anonymous cases and revocation when changing these paths.
+Run audience is enforced through database policies and server checks. Photo access follows the live run audience and explicit personal-photo selection. The browser's hidden controls are not an access boundary. Readers cannot select `profiles.auth_uid` (`042_private_auth_uid.sql`); the signed-in owner reads their own row through `strava.my_profile()`. Preserve owner/other-account/anonymous cases and revocation when changing these paths.
 
 Fork CI uses repository fixtures and disposable data without production credentials. It verifies local behavior and builds; it does not prove hosted sign-in or real participation. Browser tests must state whether they used a fixture, a disposable database or the hosted service. See [security](../SECURITY.md), [contributor setup](../CONTRIBUTING.md) and [card rules](design/CARD-SYSTEM.md).
 

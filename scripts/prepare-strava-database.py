@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[1]
-LAST = ('038_share_handle_reservations.sql', '041_private_auth_uid.sql')
+LAST = ('038_share_handle_reservations.sql', '042_private_auth_uid.sql')
 
 
 def namespaced(sql):

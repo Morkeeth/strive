@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {bootDisposable,seedJourneyActors,CASEY,RILEY} from './disposable-supabase.mjs';
 
-// Migration 041: no reader can list Auth user ids; profiles, runs, XUDOS and owner writes still work.
+// Migration 042: no reader can list Auth user ids; profiles, runs, XUDOS and owner writes still work.
 const {db,as,anonymous,denied}=await bootDisposable();
 await seedJourneyActors(db);
 await db.exec('reset role');
@@ -39,4 +39,4 @@ await denied(`insert into acks(from_profile,to_profile,run_id,reason) values($1,
 assert.deepEqual((await db.query(`update runs set caption='x' where id=$1 returning id`,[riley])).rows,[],'another builder cannot edit a run');
 assert.deepEqual((await db.query(`update runs set caption='TEST DATA owner caption' where id=$1 returning id`,[casey])).rows,[{id:casey}],'the owner edits their run');
 await db.close();
-console.log('PASS 041: anon and other builders cannot read auth_uid; profiles, runs, XUDOS and owner edits work; my_profile() is owner-only');
+console.log('PASS 042: anon and other builders cannot read auth_uid; profiles, runs, XUDOS and owner edits work; my_profile() is owner-only');

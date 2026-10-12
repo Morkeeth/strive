@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 
-// The site can ship before migration 041: a missing my_profile() falls back to the old owner read.
+// The site can ship before migration 042: a missing my_profile() falls back to the old owner read.
 const GrinderAuth=createRequire(import.meta.url)('../site/auth.js');
 const user={id:'u-1',identities:[]};
 function client(rpcResult){
@@ -13,10 +13,10 @@ function client(rpcResult){
 }
 const after=client({data:{id:'p-1',auth_uid:'u-1',handle:'my-profile'},error:null});
 assert.equal((await GrinderAuth.create({client:after}).current()).profile.handle,'my-profile');
-assert.deepEqual(after.calls,[['rpc','my_profile']],'with 041 applied, auth_uid is read only through my_profile()');
+assert.deepEqual(after.calls,[['rpc','my_profile']],'with 042 applied, auth_uid is read only through my_profile()');
 const before=client({data:null,error:{code:'PGRST202',message:'Could not find the function strava.my_profile'}});
 assert.equal((await GrinderAuth.create({client:before}).current()).profile.handle,'old-path');
-assert.deepEqual(before.calls,[['rpc','my_profile'],['select','profiles','*'],['filters',[['auth_uid','u-1']]]],'before 041, the old owner read is used');
+assert.deepEqual(before.calls,[['rpc','my_profile'],['select','profiles','*'],['filters',[['auth_uid','u-1']]]],'before 042, the old owner read is used');
 const plainPostgres=client({data:null,error:{code:'42883',message:'function strava.my_profile() does not exist'}});
 assert.equal((await GrinderAuth.create({client:plainPostgres}).current()).profile.handle,'old-path','a PostgREST-less stand-in reports the same miss as 42883');
 const broken=client({data:null,error:{code:'42501',message:'permission denied'}});

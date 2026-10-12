@@ -254,7 +254,7 @@
       const u = await user();
       if (!u) return null;
       let { data, error } = await client.rpc("my_profile").maybeSingle();
-      // Until 041 is applied the function does not exist and the owner can still read auth_uid.
+      // Until 042 is applied the function does not exist and the owner can still read auth_uid.
       if (error && (error.code === "PGRST202" || error.code === "42883"))
         ({ data, error } = await client.from("profiles").select("*").eq("auth_uid", u.id).maybeSingle());
       if (error) throw fail(error);
