@@ -86,5 +86,9 @@ button.act.follow-button:focus-visible{outline:2px solid var(--blue);outline-off
 #app>.head:not(:first-child):not(.my-runs-tabs+.head) .meta,.profile-project-list .head .meta{flex-basis:auto;font-size:13px}
 #app>#grind-thread.thread-compact::before{font-size:20px;letter-spacing:-.3px;margin:0 0 12px}
 
+/* Text needs 4.5:1. A given XUDOS reads in a deeper orange; its heart keeps the brand orange. */
+:root{--strive-orange-text:#c73d00}
+.fc-act.kudo.on{color:var(--strive-orange-text)}
+
 /* The footer follows the same content edge, and wrapped links stay close on a phone. */
 .site-foot{max-width:1180px;row-gap:0}

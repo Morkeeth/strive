@@ -41,7 +41,7 @@
 .dc-audience{margin:0 0 8px;font-size:11px;color:var(--soft);padding:5px 8px;background:var(--paper);border-radius:3px;width:max-content;max-width:100%}.dc-compact:has(.dc-comments:not([hidden])) .dc-more-link{display:none}
 
 /* Shared reading surfaces: fewer outlines, softer controls, one comfortable content column. */
-:root{--surface-radius:12px;--control-radius:8px;--paper:#f7f8fa;--bg:#f7f8fa;--rule:#e8ebf0;--ink:#232733;--soft:#6d7482}
+:root{--surface-radius:12px;--control-radius:8px;--paper:#f7f8fa;--bg:#f7f8fa;--rule:#e8ebf0;--ink:#232733;--soft:#646b79;--dim:#697080}
 body{line-height:1.5}.bar{background:#fff}.shell .main{min-height:52vh}
 button,.act,input,select,textarea{border-radius:var(--control-radius)}button,.act{font-weight:500;min-height:40px}button,.act.primary,.act.blue{transition:background .15s,box-shadow .15s}
 button:not(.ghost):not(.fc-act):not(.dc-arrow):not(.icon-button),.act.blue{background:var(--blue);border-color:var(--blue);color:#fff}
