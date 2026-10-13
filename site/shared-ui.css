@@ -17,6 +17,9 @@
 .home-around .fc-builder.strive-person{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:10px;margin:0;padding:12px 0}
 .home-around .fc-builder .card-follow{grid-column:3;grid-row:1;white-space:nowrap}
 .home-around .fc-builder .fc-who{grid-column:2;grid-row:1}
+/* Rules separate the column's rows; none sits directly under a heading. */
+#home-builders>.fc-builder:first-child{border-top:0}
+.home-around .wk{border-top:0;padding-top:0}
 
 /* One size and one state language for person actions. The menu stays beside Follow. */
 .strive-person .people-card-actions,.strive-person .people-follow,.strive-person .card-follow,
@@ -87,7 +90,9 @@ button.act.follow-button:focus-visible{outline:2px solid var(--blue);outline-off
 /* A page has one title. Later .head rows are sections in one smaller size, count beside the heading. */
 #app>.head:not(:first-child):not(.my-runs-tabs+.head) h2,.profile-project-list .head h2,.run-detail-card .head h2,.people-section .head h2{font-size:20px;letter-spacing:-.3px}
 #app>.head:not(:first-child):not(.my-runs-tabs+.head),.profile-project-list .head{justify-content:flex-start;flex-wrap:nowrap;gap:8px}
-#app>.head:not(:first-child):not(.my-runs-tabs+.head){margin-top:28px}
+#app>.head:not(:first-child):not(.my-runs-tabs+.head):not(:has(>h1)){margin-top:28px}
+/* A page title sits on the head's own spacing, not on the browser's heading margins. */
+.head>h1{margin:0}
 #app>.head:not(:first-child):not(.my-runs-tabs+.head) .meta,.profile-project-list .head .meta{flex-basis:auto;font-size:13px}
 #app>#grind-thread.thread-compact::before{font-size:20px;letter-spacing:-.3px;margin:0 0 12px}
 
@@ -148,11 +153,26 @@ a.act{display:inline-flex;align-items:center;justify-content:center}
 .run-detail-card>.runtop small a{white-space:nowrap}
 .run-detail-card .post-trail svg{height:auto}
 
+/* Feed lists space their cards with the list gap only, and a run card is padded the same on
+   Following as on the feed. */
+.strive-overview>.activity-post,#social-body .strive-overview>.activity-post{margin:0}
+/* Project groups are spaced by the list too, a little wider than the cards inside a group. */
+.strive-overview>.project-overview{margin:0}
+.strive-overview:has(>.project-overview){row-gap:32px}
+#social-body .card.dc-compact{padding:18px var(--card-pad) 0}
+
 /* Close friends: the page already names the list and says it is private. */
 .close-friends-settings>summary,.close-friends-settings>.panel>.hint:first-child{display:none}
 /* An optional field says so on its label line. */
 .post-flow-fields label:has(>span.hint){grid-template-columns:auto 1fr;column-gap:6px;align-items:baseline}
 .post-flow-fields label:has(>span.hint)>:is(input,textarea,select){grid-column:1/-1}
+
+/* A feed card's View full run keeps its arrow beside the words. */
+.post-open a{gap:6px}
+
+/* Find friends on GitHub is a section like the others on People. */
+.people-networks{background:var(--box);border:1px solid var(--rule);border-radius:var(--surface-radius,12px);padding:20px;margin-top:16px}
+.people-networks h3{margin:0 0 8px;font-size:18px;letter-spacing:-.02em;line-height:1.25}
 
 /* Fields share the 8px control radius, and a one-line field is as tall as the button beside it. */
 #app input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),#app select,#app textarea{border-radius:var(--control-radius,8px)}
@@ -161,6 +181,24 @@ a.act{display:inline-flex;align-items:center;justify-content:center}
 .account-state:empty{display:none}
 /* My runs: the search button lines up with the fields beside it. */
 .history-filters label,.history-filters input,.history-filters select{margin:0}
+/* A card ends at its own padding; buttons at the bottom add no extra space under themselves. */
+:is(.card,.panel)>.cta:last-child{margin-bottom:0}
+/* My runs' empty state reads as one block: title, one line under it, then the actions. */
+#history-list>.panel{gap:8px}
+#history-list>.panel>:is(h2,p){margin:0}
+#history-list>.panel>.cta{margin-top:8px}
+
+/* Notifications: the person leads the line, and the 44px links keep the card's padding even
+   above and below. Both links stay on one row on a phone. */
+.response-item-copy>a:first-child{font-weight:600}
+.response-item-actions{margin:4px 0 -12px}
+@media(max-width:600px){
+  .response-item-actions{flex-direction:row;align-items:center}
+  .response-sep{display:inline}
+}
+
+/* Days without a run recede, so the days with runs read first. */
+.heatmap rect[fill="var(--rule)"]{fill:#f0f2f5}
 
 /* The account menu is a surface like the others; Sign out is one of its items, not a button. */
 .account-panel{border-radius:var(--surface-radius,12px);box-shadow:0 8px 24px #18213c1f;padding:6px}
