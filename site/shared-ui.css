@@ -130,7 +130,7 @@ a.act{display:inline-flex;align-items:center;justify-content:center}
    drop panel's link to the laptop. */
 .thread-compact .reply button.ghost:not(.fc-act):not(.dc-arrow):not([role=menuitem]){min-height:0;padding:0;border-radius:0;font-size:11px;font-weight:inherit;line-height:inherit}
 .run-photos .photo-undo button:not(.fc-act):not(.dc-arrow):not([role=menuitem]){padding:4px;font-size:inherit;font-weight:700}
-.post-file-entry .drop-send .act.primary:not(.fc-act):not(.dc-arrow):not([role=menuitem]){padding:0;font-size:13px;font-weight:500;line-height:1}
+.post-file-entry .drop-send .act.primary:not(.fc-act):not(.dc-arrow):not([role=menuitem]){padding:0;border:0;background:none;color:var(--blue);font-size:13px;font-weight:500;line-height:1}
 /* Step tabs keep the pill and the height, with a tab's padding so three fit across a phone. */
 .post-flow-nav button:not(.fc-act):not(.dc-arrow):not([role=menuitem]){min-width:0;padding:0 12px}
 /* Import setup's tabs are the same switch as My runs: a framed row with the open tab filled. */
