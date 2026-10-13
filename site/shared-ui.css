@@ -152,6 +152,11 @@ a.act{display:inline-flex;align-items:center;justify-content:center}
 .run-detail-card:has(>.run-social-actions .profile-more)>.runtop{padding-right:calc(var(--detail-pad) + 160px)}
 .run-detail-card>.runtop small a{white-space:nowrap}
 .run-detail-card .post-trail svg{height:auto}
+/* Receipts and measurements starts at the card's content edge like everything above it. */
+.run-detail-card .run-explore{padding:0}
+/* Every disclosure in a card shows the same open and closed marker. */
+.post-measurement-note>summary::before{content:'▸';margin-right:6px;font-size:10px}
+.post-measurement-note[open]>summary::before{content:'▾'}
 
 /* Feed lists space their cards with the list gap only, and a run card is padded the same on
    Following as on the feed. */
@@ -166,6 +171,13 @@ a.act{display:inline-flex;align-items:center;justify-content:center}
 /* An optional field says so on its label line. */
 .post-flow-fields label:has(>span.hint){grid-template-columns:auto 1fr;column-gap:6px;align-items:baseline}
 .post-flow-fields label:has(>span.hint)>:is(input,textarea,select){grid-column:1/-1}
+
+/* Profile's Projects & tools opens like Import setup, with the same plus and minus. */
+.profile-project-list>summary{list-style:none;font-weight:600}
+.profile-project-list>summary::-webkit-details-marker{display:none}
+.profile-project-list>summary::after{content:'+';margin-left:auto;font-size:20px;font-weight:400;color:var(--soft)}
+.profile-project-list[open]>summary::after{content:'−'}
+.profile-project-list[open]>summary{margin-bottom:16px}
 
 /* A feed card's View full run keeps its arrow beside the words. */
 .post-open a{gap:6px}
