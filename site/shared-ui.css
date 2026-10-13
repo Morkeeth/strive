@@ -150,6 +150,17 @@ a.act{display:inline-flex;align-items:center;justify-content:center}
 
 /* Close friends: the page already names the list and says it is private. */
 .close-friends-settings>summary,.close-friends-settings>.panel>.hint:first-child{display:none}
+/* An optional field says so on its label line. */
+.post-flow-fields label:has(>span.hint){grid-template-columns:auto 1fr;column-gap:6px;align-items:baseline}
+.post-flow-fields label:has(>span.hint)>:is(input,textarea,select){grid-column:1/-1}
+
+/* Fields share the 8px control radius, and a one-line field is as tall as the button beside it. */
+#app input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),#app select,#app textarea{border-radius:var(--control-radius,8px)}
+#app input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),#app select{box-sizing:border-box;min-height:var(--button-height)}
+.thread-compact .reply-form textarea{height:var(--button-height);min-height:var(--button-height);margin:0;padding:11px 14px}
+.account-state:empty{display:none}
+/* My runs: the search button lines up with the fields beside it. */
+.history-filters label,.history-filters input,.history-filters select{margin:0}
 
 /* The account menu is a surface like the others; Sign out is one of its items, not a button. */
 .account-panel{border-radius:var(--surface-radius,12px);box-shadow:0 8px 24px #18213c1f;padding:6px}
