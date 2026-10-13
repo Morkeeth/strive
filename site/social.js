@@ -310,7 +310,7 @@ window.GrinderSocial = function ({
         const href = n.kind === "reply" ? notificationHref(withRun) : notificationPrimary(withRun), who = actor.href ? `<a href="${actor.href}" data-notification-open="1"><b>${esc(actor.label)}</b></a>` : `<b>${esc(actor.label)}</b>`;
         return `<article class="notice-item ${n.read_at ? "read" : "unread"}" data-notification-id="${esc(n.id)}">
           <span class="notice-dot" aria-hidden="true"></span><div><p class="notice-copy">${who} ${kind}</p>
-          <p class="notice-meta">${esc(new Date(n.created_at).toLocaleString())}</p><div class="notice-links">
+          <p class="notice-meta">${esc(new Date(n.created_at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}</p><div class="notice-links">
           ${href ? `<a href="${href}" data-notification-open="1">${n.kind === "reply" ? "Open exact reply" : "Open profile"}</a>` : ""}
 
           ${!n.read_at ? '<button type="button" data-notification-read="1">Mark read</button>' : ""}</div></div></article>`;
@@ -1294,7 +1294,7 @@ window.GrinderSocial = function ({
             return `<article class="card response-item${!n.read_at ? " unread" : " read"}" data-notification-id="${esc(n.id)}" data-read="${n.read_at ? "1" : "0"}">
               <div class="response-item-top">
                 <p class="response-item-copy">${actorHtml} ${kind}${about}${!n.read_at ? ' <span class="response-new">New</span>' : ""}</p>
-                <small>${esc(new Date(n.created_at).toLocaleString())}</small>
+                <small>${esc(new Date(n.created_at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}</small>
               </div>
               ${stateNote}
               <p class="response-item-actions">${returnLinks || "<span class=\"meta\">Nothing to open</span>"}</p>

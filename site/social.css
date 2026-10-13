@@ -28,7 +28,7 @@
 .response-item{position:relative;padding:18px 18px 18px 20px}
 .response-item.unread{border-left:3px solid var(--blue)}
 .response-item.read{opacity:.92}
-.response-item-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 16px;align-items:baseline}
+.response-item-top{display:grid;justify-items:start;gap:4px}
 .response-item-copy{margin:0;line-height:1.4;overflow-wrap:anywhere}
 .response-item-actions{margin:12px 0 0;display:flex;flex-wrap:wrap;gap:8px 12px}
 .response-item-actions a{min-height:44px;display:inline-flex;align-items:center}
