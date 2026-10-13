@@ -190,6 +190,8 @@ a.act{display:inline-flex;align-items:center;justify-content:center}
 #app input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),#app select,#app textarea{border-radius:var(--control-radius,8px)}
 #app input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),#app select{box-sizing:border-box;min-height:var(--button-height)}
 .thread-compact .reply-form textarea{height:var(--button-height);min-height:var(--button-height);margin:0;padding:11px 14px}
+.roadmap-feedback textarea,.roadmap-feedback select{border-radius:var(--control-radius,8px)}
+.roadmap-feedback textarea:not(:focus),.roadmap-feedback select:not(:focus){border-color:var(--rule)}
 .account-state:empty{display:none}
 /* My runs: the search button lines up with the fields beside it. */
 .history-filters label,.history-filters input,.history-filters select{margin:0}
