@@ -1,9 +1,14 @@
 /* Shared interaction and spacing rules for feed, people, profile and activity. */
 :root{--strive-control-height:40px;--strive-media-gap:10px}
 
-/* The feed and its right column keep a full card-width breathing space. Every route shares the
-   header's content edge, so a page starts where the logo and the feed start. */
-#shell.home-shell,.shell,.shell.noside,.shell.norail{max-width:1180px}
+/* Pages sit in the middle of the screen. The header, home's feed and community column, and the footer
+   share one frame; a single-column route centres its 640px column, the width its cards and forms are
+   built for, inside it. */
+:root{--page-max:1048px;--column-max:640px}
+.bar-in,#shell.home-shell{max-width:var(--page-max)}
+.shell,.shell.noside,.shell.norail{max-width:var(--page-max);grid-template-columns:minmax(0,var(--column-max));justify-content:center}
+.shell.wide{grid-template-columns:minmax(0,1fr)}
+.shell .main,.shell.noside .main,.shell.norail.noside .main,.shell.solo .main{max-width:var(--column-max);margin:0 auto}
 .shell>.side{max-width:300px}
 @container(min-width:890px){
   .home-layout{grid-template-columns:minmax(0,1fr) 300px;gap:56px}
@@ -90,5 +95,9 @@ button.act.follow-button:focus-visible{outline:2px solid var(--blue);outline-off
 :root{--strive-orange-text:#c73d00}
 .fc-act.kudo.on{color:var(--strive-orange-text)}
 
-/* The footer follows the same content edge, and wrapped links stay close on a phone. */
-.site-foot{max-width:1180px;row-gap:0}
+/* The footer shares the header's frame, and wrapped links stay close on a phone. */
+.site-foot{max-width:var(--page-max);row-gap:0}
+
+/* On a phone the page keeps the header's 16px side margin. */
+@media(max-width:700px){.shell,.shell.noside,.shell.norail,.shell.norail.noside,.shell.solo,#shell.home-shell{padding:0 16px}}
+@media(max-width:360px){.shell,.shell.noside,.shell.norail,.shell.norail.noside,.shell.solo,#shell.home-shell{padding:0 8px}}

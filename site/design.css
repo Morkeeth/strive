@@ -21,7 +21,7 @@ button,summary{touch-action:manipulation}
 /* Static pages use the app's palette and header, so leaving the feed does not look like another site. */
 .reading-page{--paper:#f7f8fa;--bg:#f7f8fa;--rule:#e8ebf0;--ink:#232733;--soft:#646b79;--dim:#697080;margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 .reading-page *{box-sizing:border-box}
-.reading-page header{background:#fff;border-bottom:1px solid var(--rule);height:64px;padding:0 max(24px,calc((100% - 1180px) / 2 + 24px));display:flex;align-items:center;gap:22px}
+.reading-page header{background:#fff;border-bottom:1px solid var(--rule);height:64px;padding:0 max(24px,calc((100% - 1048px) / 2 + 24px));display:flex;align-items:center;gap:22px}
 .reading-page header a{color:var(--ink);text-decoration:none;font-size:14px;font-weight:500;display:inline-flex;align-items:center;min-height:44px}
 .reading-page header>a:first-child{font-size:24px;font-weight:600;letter-spacing:-1.2px;color:var(--blue)}
 .reading-page header .alpha-label{font-size:10px;padding:0 5px;border-radius:3px;min-height:18px}
