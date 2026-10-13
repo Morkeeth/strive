@@ -25,7 +25,7 @@ button,summary{touch-action:manipulation}
 .reading-page header a{color:var(--ink);text-decoration:none;font-size:14px;font-weight:500;display:inline-flex;align-items:center;min-height:44px}
 .reading-page header>a:first-child{font-size:24px;font-weight:600;letter-spacing:-1.2px;color:var(--blue)}
 .reading-page header .alpha-label{font-size:10px;padding:0 5px;border-radius:3px;min-height:18px}
-.reading-page header>a:last-child{margin-left:auto;min-height:40px;padding:0 16px;border-radius:22px;background:var(--blue);color:#fff;font-size:13px;font-weight:600}
+.reading-page header>a:last-child{margin-left:auto;min-height:44px;padding:0 20px;border-radius:999px;background:var(--blue);color:#fff;font-size:14px;font-weight:600}
 .alpha-label{display:inline-flex;align-items:center;align-self:center;min-height:22px;padding:0 7px;border:1px solid var(--rule);color:var(--soft);font-size:11px;font-weight:500;white-space:nowrap}
 .reading-page main{max-width:740px;margin:auto;padding:44px 24px 80px;overflow-wrap:anywhere}
 .reading-page h1{font-size:28px;line-height:1.15;letter-spacing:-.04em;font-weight:600}

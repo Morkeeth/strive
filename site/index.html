@@ -670,9 +670,9 @@ const REAL_RUN='/r/3afa89e7-aff5-488d-bec3-da36196b8c5e';
 const RETIRED=['crews','crew','join','event','community','forum','challenges','challenge','practices','practice','experiments','experiment','rigs','rigversion','progress','comparison','pitch','claim'];
 function menuLinks(kind){
   if(!ME) return AUTH_USER
-    ? `<a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" data-signout role="menuitem">Sign out</button>`
+    ? `<a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" class="ghost" data-signout role="menuitem">Sign out</button>`
     : `<a href="/?connect" role="menuitem">Connect your agent</a><div class="menu-sep"></div><button type="button" class="menu-signin" data-signin role="menuitem">${signInLabel()}</button>`;
-  return `<a href="${esc(StriveLinks.profileHref(profileHandle(ME)))}" role="menuitem">Profile</a><a href="/?inbox" role="menuitem" data-responses-link>Responses</a><a href="/?account" role="menuitem">Settings</a><a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" data-signout role="menuitem">Sign out</button>`;
+  return `<a href="${esc(StriveLinks.profileHref(profileHandle(ME)))}" role="menuitem">Profile</a><a href="/?inbox" role="menuitem" data-responses-link>Responses</a><a href="/?account" role="menuitem">Settings</a><a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" class="ghost" data-signout role="menuitem">Sign out</button>`;
 }
 function syncAuthNav(){
   document.querySelectorAll('[data-auth="1"]').forEach(el=>{el.hidden=!ME});

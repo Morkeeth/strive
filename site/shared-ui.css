@@ -101,3 +101,39 @@ button.act.follow-button:focus-visible{outline:2px solid var(--blue);outline-off
 /* On a phone the page keeps the header's 16px side margin. */
 @media(max-width:700px){.shell,.shell.noside,.shell.norail,.shell.norail.noside,.shell.solo,#shell.home-shell{padding:0 16px}}
 @media(max-width:360px){.shell,.shell.noside,.shell.norail,.shell.norail.noside,.shell.solo,#shell.home-shell{padding:0 8px}}
+
+/* One button. Every filled or outlined button is a 44px pill with 20px side padding and 14px
+   semibold text, the same as the shared page's buttons; icon-only buttons are 44px circles.
+   Fields keep the 8px control radius. Card actions, carousel arrows and the Add run tiles are
+   not buttons in this sense. */
+:root{--button-radius:999px;--button-height:44px;--button-pad:20px;--strive-control-height:var(--button-height)}
+:where(button,.act):not(.fc-act):not(.dc-arrow):not(.post-source-grid button):not([role=menuitem]){box-sizing:border-box;min-height:var(--button-height);padding:0 var(--button-pad);border-radius:var(--button-radius);font-size:14px;font-weight:600;line-height:1.2}
+a.act{display:inline-flex;align-items:center;justify-content:center}
+.run-primary-actions .cta>.act{white-space:nowrap}
+@media(max-width:700px){.run-primary-actions .cta>.act{flex:1 1 auto}}
+/* A form's button is as wide as its label, as on Settings; a phone still gives it the full row. */
+.reply-form>:is(button,.act){justify-self:start}
+/* Roll another keeps the standard button size on a phone; it still fits beside the heading. */
+.people-meet #people-roll{padding:0 var(--button-pad);font-size:14px}
+.strive-person .profile-more>summary,.profile-header .profile-more>summary,.strive-person .profile-more>button,.profile-header .profile-more>button{border-radius:var(--button-radius)}
+/* The run card's builder menu is the same circle as on People and the home column. */
+.run-social-actions .card-follow{display:flex;align-items:center;gap:8px}
+.run-social-actions .profile-more{position:relative;flex:none}
+.run-social-actions .profile-more>summary{box-sizing:border-box;display:grid;place-items:center;width:var(--button-height);height:var(--button-height);padding:0;border:1px solid var(--rule);border-radius:var(--button-radius);background:#fff;font-size:20px;line-height:1}
+.roadmap-feedback button.feedback-close.ghost:not([role=menuitem]){width:var(--button-height);padding:0;color:var(--ink);font-size:20px;font-weight:400}
+/* Text actions stay text: a comment's Edit, Delete and Report, a removed photo's Undo, and the
+   drop panel's link to the laptop. */
+.thread-compact .reply button.ghost:not(.fc-act):not(.dc-arrow):not([role=menuitem]){min-height:0;padding:0;border-radius:0;font-size:11px;font-weight:inherit;line-height:inherit}
+.run-photos .photo-undo button:not(.fc-act):not(.dc-arrow):not([role=menuitem]){padding:4px;font-size:inherit;font-weight:700}
+.post-file-entry .drop-send .act.primary:not(.fc-act):not(.dc-arrow):not([role=menuitem]){padding:0;font-size:13px;font-weight:500;line-height:1}
+/* Step tabs keep the pill and the height, with a tab's padding so three fit across a phone. */
+.post-flow-nav button:not(.fc-act):not(.dc-arrow):not([role=menuitem]){min-width:0;padding:0 12px}
+/* Import setup's tabs are the same switch as My runs: a framed row with the open tab filled. */
+.post-setup-tabs{gap:4px;padding:4px;border:1px solid var(--rule);border-radius:24px;background:#fff}
+.post-setup-tabs button:not(.fc-act):not(.dc-arrow):not([role=menuitem]){flex:1 1 auto;min-height:38px;padding:0 16px;border-radius:20px;font-size:13px;font-weight:400}
+.post-setup-tabs button[aria-selected=true]{background:var(--blue)!important;color:#fff!important;font-weight:600;box-shadow:none}
+
+/* The account menu is a surface like the others; Sign out is one of its items, not a button. */
+.account-panel{border-radius:var(--surface-radius,12px);box-shadow:0 8px 24px #18213c1f;padding:6px}
+.account-panel a,.account-panel button{border-radius:var(--control-radius,8px)}
+.account-panel>button[data-signout]{color:var(--ink)}
