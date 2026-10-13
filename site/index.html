@@ -581,6 +581,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
 <script src="/navigation.js"></script>
+<script src="/run-queue.js"></script>
 <script src="/run-links.js"></script>
 <script src="/activity-order.js"></script>
 <script src="/activity-post.js"></script>
@@ -1817,6 +1818,7 @@ async function viewLanding(){
   setPrimarySection('feed');
   if(!app.querySelector('.home[data-boot-skeleton]'))app.innerHTML=feedTabs('home')+landingHTML();
   app.querySelector('.home')?.removeAttribute('data-boot-skeleton');
+  void StriveRunQueue.mount({client:sb,owner:ME?.id,slot:app,esc,current,open:true});
   const H=window.GrinderHome, now=Date.now();
   const data=H&&sb?await H.readRuns(sb):{runs:null};
   if(!current())return;
@@ -1988,6 +1990,17 @@ async function viewRun(id){
     if(['#run-edit','#run-photos','#run-audience'].includes(location.hash))showEditor(location.hash==='#run-audience'?'run-audience':'run-title');
     void StriveSavedRuns({client:sb,slot:controls,current:()=>current()&&controls.isConnected});
     $('run-save').onclick=async()=>{const title=$('run-title').value.trim(),project=$('run-project').value.trim(),caption=$('run-caption').value.trim(),output=$('run-output-url').value.trim(),audience=$('run-audience').value,heroVisual=controls.querySelector('input[name="run-hero-visual"]:checked')?.value||suggestedVisual||null;if(!title){status('Add a title.',true);$('run-title').focus();return}if(output&&!safeOutputUrl(output)){status('The output link must start with http:// or https://.',true);return}if(!(await requireCloseFriendsForSave(audience)))return;const saveButton=$('run-save');saveButton.disabled=true;try{await photoEditor?.save?.()}catch(error){saveButton.disabled=false;status(error.message,true);return}const pin=$('run-pin').checked;const {error}=await sb.from('runs').update({...StriveStory.read(controls),title,project:project||null,hero_visual:heroVisual,caption:caption||null,output_url:output||null,visibility:audience,pinned_at:pin?(r.pinned_at||new Date().toISOString()):null}).eq('id',r.id);if(error){saveButton.disabled=false;status(error.message,true);return}history.replaceState(null,'','/?run='+r.id);await viewRun(r.id)};
+    if(StriveRunQueue.pending(r,ME?.id)){
+      const review=document.createElement('section');review.className='card pad';review.innerHTML='<h2>Approve this agent run?</h2><p>Review the card and saved data above. Approve and post puts this run on your public profile and Feed. Discard deletes this private run.</p><div class="cta"><button type="button" data-approve>Approve and post</button><button type="button" data-discard>Discard</button></div><a href="/?queue">Back to review queue</a>';
+      controls.before(review);
+      const approve=review.querySelector('[data-approve]');approve.disabled=true;
+      const actor=await sb.from('grinder_agents').select('visibility').eq('id',r.source_actor_id).eq('owner_id',ME.id).single();
+      if(!current())return;
+      if(!actor.error&&actor.data?.visibility==='public')approve.disabled=false;
+      else review.insertAdjacentHTML('beforeend','<p>Before posting, make this agent profile public in <a href="/?connect=auto">Connect</a>, then return here. This shares the agent profile as well. The run stays private until you approve it.</p>');
+      review.querySelector('[data-approve]').onclick=()=>{if(!current())return;showEditor('run-audience');$('run-audience').value='public';$('run-audience').dispatchEvent(new Event('change'));$('run-save').textContent='Approve and post';};
+      review.querySelector('[data-discard]').onclick=async()=>{if(!current()||!confirm('Discard this private agent run? It will be deleted and never posted.'))return;const button=review.querySelector('[data-discard]');button.disabled=true;try{await StriveRunQueue.discard(sb,r,ME.id);if(current()){history.replaceState(null,'','/?queue');await route()}}catch(error){if(current()){button.disabled=false;status(error.message,true)}}};
+    }
     $('run-delete').onclick=async()=>{if(!confirm('Delete this run and its discussion?'))return;const {error}=await sb.from('runs').delete().eq('id',r.id);if(error){status(error.message,true);return}history.replaceState(null,'','/?mine');viewMe()};
   }
   wireKudos(); if(openAck){ const button=$('card-'+id)?.querySelector('.kudo'); if(button)button.click(); }
@@ -2938,6 +2951,7 @@ async function route(){ setPrimarySection(); RUN_VIEW_GENERATION++;window.Strive
     return GrinderExample.view();
   }
   if(RETIRED.some(k=>q.has(k))){history.replaceState(null,'','/');return viewLanding();}
+  if(q.has('queue')){frame(railHtml('mine'),null);const owner=ME?.id,generation=AUTH_GENERATION,viewGeneration=RUN_VIEW_GENERATION;const slot=$('app');slot.innerHTML='<h1>Run review queue</h1><p>Pending agent runs stay Only me until you approve them.</p>';if(!owner){showSignIn();return}return StriveRunQueue.mount({client:sb,owner,slot,esc,current:()=>generation===AUTH_GENERATION&&viewGeneration===RUN_VIEW_GENERATION&&owner===ME?.id,open:false});}
   if(q.has('boards'))return viewBoards();
   if(q.has('projects'))return viewProjects();
   if(q.has('day'))return viewDay(q.get('day'));

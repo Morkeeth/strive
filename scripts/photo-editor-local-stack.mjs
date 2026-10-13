@@ -14,6 +14,19 @@ const SITE=join(fileURLToPath(new URL('..',import.meta.url)),'site');
 const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.json':'application/json','.png':'image/png','.webp':'image/webp','.webmanifest':'application/manifest+json'};
 const {db}=await bootDisposable();
 await seedJourneyActors(db);
+if(process.env.STRIVE_TEST_RUN_QUEUE==='1'){
+  const actor='a1000000-0000-0000-0000-000000000099';
+  await db.query("insert into strava.grinder_agents(id,owner_id,name,visibility) values($1,$2,'TEST DATA Agent','public')",[actor,CASEY]);
+  await db.query("insert into strava.grinder_agents(id,owner_id,name) values('a1000000-0000-0000-0000-000000000098',$1,'TEST DATA Private Agent'),('a1000000-0000-0000-0000-000000000097',$2,'TEST DATA Other Agent')",[CASEY,RILEY]);
+  for(const [id,title,owner,visibility,source] of [
+    ['a2000000-0000-0000-0000-000000000001','TEST DATA approve',CASEY,'private',actor],
+    ['a2000000-0000-0000-0000-000000000002','TEST DATA discard',CASEY,'private',actor],
+    ['a2000000-0000-0000-0000-000000000003','TEST DATA other owner',RILEY,'private','a1000000-0000-0000-0000-000000000097'],
+    ['a2000000-0000-0000-0000-000000000004','TEST DATA manual',CASEY,'private',null],
+    ['a2000000-0000-0000-0000-000000000005','TEST DATA private agent',CASEY,'private','a1000000-0000-0000-0000-000000000098']]){
+    await db.query("insert into strava.runs(id,profile_id,title,visibility,source_actor_id,agent_name,started_at,harness,schema_version,trace_basis,prompts,rhythm,measurement_revision) values($1,$2,$3,$4,$5,'TEST DATA Agent',now(),'Claude Code',1,'elapsed-agent-tool-calls',1,'[1]'::jsonb,repeat(md5(($1::uuid)::text),2))",[id,owner,title,visibility,source]);
+  }
+}
 const shim=await startDisposableServer(db);
 const bucket=new Map();
 const objectKey=url=>decodeURIComponent(new URL(url).pathname.replace(/^\/storage\/v1\/object\/(authenticated\/)?strive-run-photos\/?/,''));
