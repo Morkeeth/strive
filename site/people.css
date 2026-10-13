@@ -1,10 +1,10 @@
 /* Friends / people lane — white cards, blue traces, phone + keyboard first. */
 .people-lead{max-width:40rem;color:var(--soft);margin:0 0 18px}
-.people-search{margin:0 0 24px;padding:18px;background:var(--box);border:1px solid var(--rule)}
+.people-search{margin:0 0 24px;padding:18px;background:var(--box);border:1px solid var(--rule);border-radius:var(--surface-radius,12px)}
 .people-search label{display:block;font-size:12px;color:var(--soft);margin-bottom:8px}
 .people-search-row{display:flex;gap:10px;align-items:stretch}
-.people-search input[type=search]{flex:1;min-width:0;min-height:44px;padding:10px 12px;border:1px solid var(--rule);border-radius:2px;background:var(--paper);color:var(--ink);font:inherit}
-.people-search button{min-height:44px;padding:10px 18px;border:1px solid var(--ink);background:var(--ink);color:var(--box);border-radius:2px;cursor:pointer}
+.people-search input[type=search]{flex:1;min-width:0;min-height:44px;padding:10px 12px;border:1px solid #dfe3eb;border-radius:var(--control-radius,8px);background:#fff;color:var(--ink);font:inherit}
+.people-search button{box-sizing:border-box;min-height:44px;padding:0 18px;border:1px solid var(--blue);background:var(--blue);color:#fff;border-radius:var(--control-radius,8px);cursor:pointer}
 .people-search button:focus-visible,.people-card a:focus-visible,#people-copy-link:focus-visible,#people-share:focus-visible,#people-signin:focus-visible,#people-retry:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
 .people-body{display:grid;gap:16px}
 .people-section{display:grid;gap:12px}
