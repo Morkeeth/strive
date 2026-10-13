@@ -79,5 +79,12 @@ button.act.follow-button:focus-visible{outline:2px solid var(--blue);outline-off
 
 .feed-more-row{text-align:center;margin:16px 0 8px}
 
+/* A page has one title. Later .head rows are sections in one smaller size, count beside the heading. */
+#app>.head:not(:first-child):not(.my-runs-tabs+.head) h2,.profile-project-list .head h2,.run-detail-card .head h2,.people-section .head h2{font-size:20px;letter-spacing:-.3px}
+#app>.head:not(:first-child):not(.my-runs-tabs+.head),.profile-project-list .head{justify-content:flex-start;flex-wrap:nowrap;gap:8px}
+#app>.head:not(:first-child):not(.my-runs-tabs+.head){margin-top:28px}
+#app>.head:not(:first-child):not(.my-runs-tabs+.head) .meta,.profile-project-list .head .meta{flex-basis:auto;font-size:13px}
+#app>#grind-thread.thread-compact::before{font-size:20px;letter-spacing:-.3px;margin:0 0 12px}
+
 /* The footer follows the same content edge, and wrapped links stay close on a phone. */
 .site-foot{max-width:1180px;row-gap:0}
