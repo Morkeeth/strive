@@ -133,6 +133,24 @@ a.act{display:inline-flex;align-items:center;justify-content:center}
 .post-setup-tabs button:not(.fc-act):not(.dc-arrow):not([role=menuitem]){flex:1 1 auto;min-height:38px;padding:0 16px;border-radius:20px;font-size:13px;font-weight:400}
 .post-setup-tabs button[aria-selected=true]{background:var(--blue)!important;color:#fff!important;font-weight:600;box-shadow:none}
 
+/* A card whose picture is the author's description does not print the same words above it.
+   The line stays available to screen readers. */
+.activity-post:has(.run-media-slot .story-tile[aria-label="Author description"]) .post-caption{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
+/* A reader already sees the description, the agent and the model in the run card. */
+#run-photos .run-detail-story:has(.story-tile[aria-label="Author description"],.story-tile[aria-label="Agent and model"]){display:none}
+
+/* Run card: Follow sits in the author row instead of a row of its own, and the activity strip
+   spans the card at the chart's own proportions. */
+.run-detail-card{position:relative}
+.run-detail-card>.run-social-actions:not(:has(.card-follow:empty)){position:absolute;top:var(--run-follow-top,12px);right:var(--detail-pad);margin:0;padding:0;border:0;min-height:0}
+.run-detail-card:has(>.run-social-actions .card-follow:not(:empty))>.runtop{padding-right:calc(var(--detail-pad) + 100px)}
+.run-detail-card:has(>.run-social-actions .profile-more)>.runtop{padding-right:calc(var(--detail-pad) + 160px)}
+.run-detail-card>.runtop small a{white-space:nowrap}
+.run-detail-card .post-trail svg{height:auto}
+
+/* Close friends: the page already names the list and says it is private. */
+.close-friends-settings>summary,.close-friends-settings>.panel>.hint:first-child{display:none}
+
 /* The account menu is a surface like the others; Sign out is one of its items, not a button. */
 .account-panel{border-radius:var(--surface-radius,12px);box-shadow:0 8px 24px #18213c1f;padding:6px}
 .account-panel a,.account-panel button{border-radius:var(--control-radius,8px)}
