@@ -1,8 +1,10 @@
 /* Shared interaction and spacing rules for feed, people, profile and activity. */
 :root{--strive-control-height:40px;--strive-media-gap:10px}
 
-/* The feed and its right column keep a full card-width breathing space. */
-#shell.home-shell{max-width:1180px}
+/* The feed and its right column keep a full card-width breathing space. Every route shares the
+   header's content edge, so a page starts where the logo and the feed start. */
+#shell.home-shell,.shell,.shell.noside,.shell.norail{max-width:1180px}
+.shell>.side{max-width:300px}
 @container(min-width:890px){
   .home-layout{grid-template-columns:minmax(0,1fr) 300px;gap:56px}
   .home-around{padding-left:28px}
@@ -76,3 +78,6 @@ button.act.follow-button:focus-visible{outline:2px solid var(--blue);outline-off
 #app:focus{outline:none}
 
 .feed-more-row{text-align:center;margin:16px 0 8px}
+
+/* The footer follows the same content edge, and wrapped links stay close on a phone. */
+.site-foot{max-width:1180px;row-gap:0}
