@@ -80,7 +80,7 @@ window.GrinderAccount = function ({
       const who = i.provider === "email" ? i.email || "email link" : i.handle ? "@" + i.handle : i.name || "connected";
       const unlink = only
         ? `<span class="account-hint">Your only way to sign in. Link another before removing it.</span>`
-        : `<button type="button" class="act" data-unlink="${esc(i.id)}" aria-label="Unlink ${esc(label(i.provider))}">Unlink</button>`;
+        : `<button type="button" class="act ghost" data-unlink="${esc(i.id)}" aria-label="Unlink ${esc(label(i.provider))}">Unlink</button>`;
       return `<li class="account-identity"><div><strong>${esc(label(i.provider))}</strong> <span class="account-hint">${esc(who)}</span></div>${unlink}</li>`;
     });
     const linked = new Set(ids.map((i) => i.provider === "twitter" ? "x" : i.provider));
