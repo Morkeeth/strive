@@ -29,13 +29,13 @@ const wire=(method,query={},body,owner=false)=>runPhotos({method,query,body,head
 async function openEditor(){
  const w=new JSDOM('<div id="photos"></div>',{url:'https://strive.test',runScripts:'outside-only'}).window;w.URL.createObjectURL=()=> 'blob:test';w.URL.revokeObjectURL=()=>{};
  w.fetch=async(path,options={})=>{const u=new URL(path,'https://strive.test');const r=await wire(options.method||'GET',Object.fromEntries(u.searchParams),options.body?JSON.parse(options.body):undefined,true);return new Response(Buffer.isBuffer(r.body)?r.body:JSON.stringify(r.body),{status:r.status,headers:r.headers});};
- w.eval(await readFile('site/run-photos.js','utf8'));
+ for(const name of ['photo-grid.js','run-photos.js'])w.eval(await readFile('site/'+name,'utf8'));
  const editor=await w.StriveRunPhotos.mount({client:{auth:{getSession:async()=>({data:{session:{access_token:ownerToken}}})}},run:{id:run,visibility:'public'},slot:w.document.querySelector('#photos'),owner:true,staged:true,status(){}});
- return {w,editor,button:()=>w.document.querySelector('[data-photo-selected="'+project.id+'"]')};
+ return {w,editor,button:()=>w.document.querySelector('[data-photo-remove="'+project.id+'"]')};
 }
 let editor=await openEditor();await editor.button().onclick();assert.equal((await wire('GET',{run_id:run,id:project.id})).status,200,'staging Hide does not change reader access');await editor.editor.save();editor.editor();
 assert.equal((await wire('GET',{run_id:run,id:project.id})).status,404,'saved Hide removes known-id reader access');
-editor=await openEditor();assert.equal(editor.w.document.querySelectorAll('[data-photo-selected="'+project.id+'"]').length,0,'removed image stays out of the simple grid');editor.editor();
+editor=await openEditor();assert.equal(editor.w.document.querySelectorAll('[data-photo-remove="'+project.id+'"]').length,0,'removed image stays out of the simple grid');editor.editor();
 assert.equal((await wire('GET',{run_id:run,id:project.id},undefined,true)).status,200,'owner still has the stored image');
 assert.equal((await wire('PATCH',{}, {run_id:run,photo_id:project.id,is_selected:true},true)).status,200,'owner can restore the same record');
 const restored=await wire('GET',{run_id:run,id:project.id});assert.equal(restored.status,200);assert.deepEqual(restored.body,storedBytes,'Show restores the same stored image bytes');
