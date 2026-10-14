@@ -1,8 +1,15 @@
 /* Shared interaction and spacing rules for feed, people, profile and activity. */
 :root{--strive-control-height:40px;--strive-media-gap:10px}
 
-/* The feed and its right column keep a full card-width breathing space. */
-#shell.home-shell{max-width:1180px}
+/* Pages sit in the middle of the screen. The header, home's feed and community column, and the footer
+   share one frame; a single-column route centres its 640px column, the width its cards and forms are
+   built for, inside it. */
+:root{--page-max:1048px;--column-max:640px}
+.bar-in,#shell.home-shell{max-width:var(--page-max)}
+.shell,.shell.noside,.shell.norail{max-width:var(--page-max);grid-template-columns:minmax(0,var(--column-max));justify-content:center}
+.shell.wide{grid-template-columns:minmax(0,1fr)}
+.shell .main,.shell.noside .main,.shell.norail.noside .main,.shell.solo .main{max-width:var(--column-max);margin:0 auto}
+.shell>.side{max-width:300px}
 @container(min-width:890px){
   .home-layout{grid-template-columns:minmax(0,1fr) 300px;gap:56px}
   .home-around{padding-left:28px}
@@ -10,6 +17,9 @@
 .home-around .fc-builder.strive-person{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:10px;margin:0;padding:12px 0}
 .home-around .fc-builder .card-follow{grid-column:3;grid-row:1;white-space:nowrap}
 .home-around .fc-builder .fc-who{grid-column:2;grid-row:1}
+/* Rules separate the column's rows; none sits directly under a heading. */
+#home-builders>.fc-builder:first-child{border-top:0}
+.home-around .wk{border-top:0;padding-top:0}
 
 /* One size and one state language for person actions. The menu stays beside Follow. */
 .strive-person .people-card-actions,.strive-person .people-follow,.strive-person .card-follow,
@@ -19,16 +29,16 @@
 .strive-person .people-card-main{align-items:center;min-width:0}
 .strive-person .people-card-copy h3,.strive-person .people-card-copy p{margin:0}
 .strive-person .people-card-copy{display:grid;gap:3px}
-.strive-person .follow-button,.profile-header .follow-button{box-sizing:border-box;min-height:var(--strive-control-height);height:var(--strive-control-height);padding:0 14px;border-radius:7px;font-size:13px;line-height:1;white-space:nowrap}
+.strive-person .follow-button,.profile-header .follow-button{box-sizing:border-box;min-height:var(--strive-control-height);height:var(--strive-control-height);padding:0 14px;border-radius:var(--control-radius);font-size:13px;line-height:1;white-space:nowrap}
 /* Outrank the global primary-button rule, including its :not() specificity. */
 button.act.follow-button{min-width:calc(9ch + 30px);background:var(--blue);border:1px solid var(--blue);color:#fff}
 button.act.follow-button.is-following[aria-pressed="true"]{background:#fff;border:1px solid var(--rule);color:var(--ink)}
 button.act.follow-button.is-following[aria-pressed="true"]:hover,button.act.follow-button.is-following[aria-pressed="true"]:focus{background:#fff;border-color:var(--ink);color:var(--ink)}
 button.act.follow-button:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
-.strive-person .people-card-actions>.act{box-sizing:border-box;min-height:var(--strive-control-height);height:var(--strive-control-height);display:inline-flex;align-items:center;justify-content:center;padding:0 14px;border-radius:7px;white-space:nowrap}
+.strive-person .people-card-actions>.act{box-sizing:border-box;min-height:var(--strive-control-height);height:var(--strive-control-height);display:inline-flex;align-items:center;justify-content:center;padding:0 14px;border-radius:var(--control-radius);white-space:nowrap}
 .strive-person .profile-more,.profile-header .profile-more{position:relative;flex:none}
-.strive-person .profile-more>summary,.profile-header .profile-more>summary{box-sizing:border-box;display:grid;place-items:center;width:var(--strive-control-height);height:var(--strive-control-height);border:1px solid var(--rule);border-radius:7px;font-size:20px;line-height:1;background:#fff}
-.strive-person .profile-more>button,.profile-header .profile-more>button{position:absolute;right:0;top:calc(100% + 4px);z-index:8;min-height:var(--strive-control-height);padding:0 14px;background:#fff;box-shadow:0 8px 24px #18213c20;border-radius:7px}
+.strive-person .profile-more>summary,.profile-header .profile-more>summary{box-sizing:border-box;display:grid;place-items:center;width:var(--strive-control-height);height:var(--strive-control-height);border:1px solid var(--rule);border-radius:var(--control-radius);font-size:20px;line-height:1;background:#fff}
+.strive-person .profile-more>button,.profile-header .profile-more>button{position:absolute;right:0;top:calc(100% + 4px);z-index:8;min-height:var(--strive-control-height);padding:0 14px;background:#fff;box-shadow:0 8px 24px #18213c20;border-radius:var(--control-radius)}
 .people-meet #people-spotlight .people-card{padding-top:14px}
 .people-card{display:flex;align-items:center;gap:16px}
 .people-card-main{flex:1}
@@ -71,8 +81,140 @@ button.act.follow-button:focus-visible{outline:2px solid var(--blue);outline-off
   .day-nav>a:last-child{grid-column:2}
 }
 
-.skip-link{position:absolute;left:12px;top:-120px;z-index:1000;padding:10px 16px;background:var(--blue,#0047ff);color:#fff;font-weight:600;border-radius:4px;text-decoration:none}
+.skip-link{position:absolute;left:12px;top:-120px;z-index:1000;padding:10px 16px;background:var(--blue,#0047ff);color:#fff;font-weight:600;border-radius:var(--control-radius,8px);text-decoration:none}
 .skip-link:focus{top:12px;outline:2px solid #fff;outline-offset:2px}
 #app:focus{outline:none}
 
 .feed-more-row{text-align:center;margin:16px 0 8px}
+
+/* A page has one title. Later .head rows are sections in one smaller size, count beside the heading. */
+#app>.head:not(:first-child):not(.my-runs-tabs+.head) h2,.profile-project-list .head h2,.run-detail-card .head h2,.people-section .head h2{font-size:20px;letter-spacing:-.3px}
+#app>.head:not(:first-child):not(.my-runs-tabs+.head),.profile-project-list .head{justify-content:flex-start;flex-wrap:nowrap;gap:8px}
+#app>.head:not(:first-child):not(.my-runs-tabs+.head):not(:has(>h1)){margin-top:28px}
+/* A page title sits on the head's own spacing, not on the browser's heading margins. */
+.head>h1{margin:0}
+#app>.head:not(:first-child):not(.my-runs-tabs+.head) .meta,.profile-project-list .head .meta{flex-basis:auto;font-size:13px}
+#app>#grind-thread.thread-compact::before{font-size:20px;letter-spacing:-.3px;margin:0 0 12px}
+
+/* Text needs 4.5:1. A given XUDOS reads in a deeper orange; its heart keeps the brand orange. */
+:root{--strive-orange-text:#c73d00}
+.fc-act.kudo.on{color:var(--strive-orange-text)}
+
+/* The footer shares the header's frame, and wrapped links stay close on a phone. */
+.site-foot{max-width:var(--page-max);row-gap:0}
+
+/* On a phone the page keeps the header's 16px side margin. */
+@media(max-width:700px){.shell,.shell.noside,.shell.norail,.shell.norail.noside,.shell.solo,#shell.home-shell{padding:0 16px}}
+@media(max-width:360px){.shell,.shell.noside,.shell.norail,.shell.norail.noside,.shell.solo,#shell.home-shell{padding:0 8px}}
+
+/* One button. Every filled or outlined button is a 44px pill with 20px side padding and 14px
+   semibold text, the same as the shared page's buttons; icon-only buttons are 44px circles.
+   Fields keep the 8px control radius. Card actions, carousel arrows and the Add run tiles are
+   not buttons in this sense. */
+:root{--button-radius:999px;--button-height:44px;--button-pad:20px;--strive-control-height:var(--button-height)}
+:where(button,.act):not(.fc-act):not(.dc-arrow):not(.post-source-grid button):not([role=menuitem]){box-sizing:border-box;min-height:var(--button-height);padding:0 var(--button-pad);border-radius:var(--button-radius);font-size:14px;font-weight:600;line-height:1.2}
+a.act{display:inline-flex;align-items:center;justify-content:center}
+.run-primary-actions .cta>.act{white-space:nowrap}
+@media(max-width:700px){.run-primary-actions .cta>.act{flex:1 1 auto}}
+/* A form's button is as wide as its label, as on Settings; a phone still gives it the full row. */
+.reply-form>:is(button,.act){justify-self:start}
+/* Roll another keeps the standard button size on a phone; it still fits beside the heading. */
+.people-meet #people-roll{padding:0 var(--button-pad);font-size:14px}
+.strive-person .profile-more>summary,.profile-header .profile-more>summary,.strive-person .profile-more>button,.profile-header .profile-more>button{border-radius:var(--button-radius)}
+/* The run card's builder menu is the same circle as on People and the home column. */
+.run-social-actions .card-follow{display:flex;align-items:center;gap:8px}
+.run-social-actions .profile-more{position:relative;flex:none}
+.run-social-actions .profile-more>summary{box-sizing:border-box;display:grid;place-items:center;width:var(--button-height);height:var(--button-height);padding:0;border:1px solid var(--rule);border-radius:var(--button-radius);background:#fff;font-size:20px;line-height:1}
+.roadmap-feedback button.feedback-close.ghost:not([role=menuitem]){width:var(--button-height);padding:0;color:var(--ink);font-size:20px;font-weight:400}
+/* Text actions stay text: a comment's Edit, Delete and Report, a removed photo's Undo, and the
+   drop panel's link to the laptop. */
+.thread-compact .reply button.ghost:not(.fc-act):not(.dc-arrow):not([role=menuitem]){min-height:0;padding:0;border-radius:0;font-size:11px;font-weight:inherit;line-height:inherit}
+.run-photos .photo-undo button:not(.fc-act):not(.dc-arrow):not([role=menuitem]){padding:4px;font-size:inherit;font-weight:700}
+.post-file-entry .drop-send .act.primary:not(.fc-act):not(.dc-arrow):not([role=menuitem]){padding:0;border:0;background:none;color:var(--blue);font-size:13px;font-weight:500;line-height:1}
+/* Step tabs keep the pill and the height, with a tab's padding so three fit across a phone. */
+.post-flow-nav button:not(.fc-act):not(.dc-arrow):not([role=menuitem]){min-width:0;padding:0 12px}
+/* Import setup's tabs are the same switch as My runs: a framed row with the open tab filled. */
+.post-setup-tabs{gap:4px;padding:4px;border:1px solid var(--rule);border-radius:24px;background:#fff}
+.post-setup-tabs button:not(.fc-act):not(.dc-arrow):not([role=menuitem]){flex:1 1 auto;min-height:38px;padding:0 16px;border-radius:20px;font-size:13px;font-weight:400}
+.post-setup-tabs button[aria-selected=true]{background:var(--blue)!important;color:#fff!important;font-weight:600;box-shadow:none}
+
+/* A card whose picture is the author's description does not print the same words above it.
+   The line stays available to screen readers. */
+.activity-post:has(.run-media-slot .story-tile[aria-label="Author description"]) .post-caption{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
+/* A reader already sees the description, the agent and the model in the run card. */
+#run-photos .run-detail-story:has(.story-tile[aria-label="Author description"],.story-tile[aria-label="Agent and model"]){display:none}
+
+/* Run card: Follow sits in the author row instead of a row of its own, and the activity strip
+   spans the card at the chart's own proportions. */
+.run-detail-card{position:relative}
+.run-detail-card>.run-social-actions:not(:has(.card-follow:empty)){position:absolute;top:var(--run-follow-top,12px);right:var(--detail-pad);margin:0;padding:0;border:0;min-height:0}
+.run-detail-card:has(>.run-social-actions .card-follow:not(:empty))>.runtop{padding-right:calc(var(--detail-pad) + 100px)}
+.run-detail-card:has(>.run-social-actions .profile-more)>.runtop{padding-right:calc(var(--detail-pad) + 160px)}
+.run-detail-card>.runtop small a{white-space:nowrap}
+.run-detail-card .post-trail svg{height:auto}
+/* Receipts and measurements starts at the card's content edge like everything above it. */
+.run-detail-card .run-explore{padding:0}
+/* Every disclosure in a card shows the same open and closed marker. */
+.post-measurement-note>summary::before{content:'▸';margin-right:6px;font-size:10px}
+.post-measurement-note[open]>summary::before{content:'▾'}
+
+/* Feed lists space their cards with the list gap only, and a run card is padded the same on
+   Following as on the feed. */
+.strive-overview>.activity-post,#social-body .strive-overview>.activity-post{margin:0}
+/* Project groups are spaced by the list too, a little wider than the cards inside a group. */
+.strive-overview>.project-overview{margin:0}
+.strive-overview:has(>.project-overview){row-gap:32px}
+#social-body .card.dc-compact{padding:18px var(--card-pad) 0}
+
+/* Close friends: the page already names the list and says it is private. */
+.close-friends-settings>summary,.close-friends-settings>.panel>.hint:first-child{display:none}
+/* An optional field says so on its label line. */
+.post-flow-fields label:has(>span.hint){grid-template-columns:auto 1fr;column-gap:6px;align-items:baseline}
+.post-flow-fields label:has(>span.hint)>:is(input,textarea,select){grid-column:1/-1}
+
+/* Profile's Projects & tools opens like Import setup, with the same plus and minus. */
+.profile-project-list>summary{list-style:none;font-weight:600}
+.profile-project-list>summary::-webkit-details-marker{display:none}
+.profile-project-list>summary::after{content:'+';margin-left:auto;font-size:20px;font-weight:400;color:var(--soft)}
+.profile-project-list[open]>summary::after{content:'−'}
+.profile-project-list[open]>summary{margin-bottom:16px}
+
+/* A feed card's View full run keeps its arrow beside the words. */
+.post-open a{gap:6px}
+
+/* Find friends on GitHub is a section like the others on People. */
+.people-networks{background:var(--box);border:1px solid var(--rule);border-radius:var(--surface-radius,12px);padding:20px;margin-top:16px}
+.people-networks h3{margin:0 0 8px;font-size:18px;letter-spacing:-.02em;line-height:1.25}
+
+/* Fields share the 8px control radius, and a one-line field is as tall as the button beside it. */
+#app input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),#app select,#app textarea{border-radius:var(--control-radius,8px)}
+#app input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),#app select{box-sizing:border-box;min-height:var(--button-height)}
+.thread-compact .reply-form textarea{height:var(--button-height);min-height:var(--button-height);margin:0;padding:11px 14px}
+.roadmap-feedback textarea,.roadmap-feedback select{border-radius:var(--control-radius,8px)}
+.roadmap-feedback textarea:not(:focus),.roadmap-feedback select:not(:focus){border-color:var(--rule)}
+.account-state:empty{display:none}
+/* My runs: the search button lines up with the fields beside it. */
+.history-filters label,.history-filters input,.history-filters select{margin:0}
+/* A card ends at its own padding; buttons at the bottom add no extra space under themselves. */
+:is(.card,.panel)>.cta:last-child{margin-bottom:0}
+/* My runs' empty state reads as one block: title, one line under it, then the actions. */
+#history-list>.panel{gap:8px}
+#history-list>.panel>:is(h2,p){margin:0}
+#history-list>.panel>.cta{margin-top:8px}
+
+/* Notifications: the person leads the line, and the 44px links keep the card's padding even
+   above and below. Both links stay on one row on a phone. */
+.response-item-copy>a:first-child{font-weight:600}
+.response-item-actions{margin:4px 0 -12px}
+@media(max-width:600px){
+  .response-item-actions{flex-direction:row;align-items:center}
+  .response-sep{display:inline}
+}
+
+/* Days without a run recede, so the days with runs read first. */
+.heatmap rect[fill="var(--rule)"]{fill:#f0f2f5}
+
+/* The account menu is a surface like the others; Sign out is one of its items, not a button. */
+.account-panel{border-radius:var(--surface-radius,12px);box-shadow:0 8px 24px #18213c1f;padding:6px}
+.account-panel a,.account-panel button{border-radius:var(--control-radius,8px)}
+.account-panel>button[data-signout]{color:var(--ink)}

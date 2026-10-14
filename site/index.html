@@ -346,7 +346,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 .tool-chip{display:inline-flex;align-items:center;gap:7px;padding:6px 9px;border:1px solid var(--rule);background:var(--box);font-size:12px;color:var(--soft)}
 .tool-mark{width:19px;height:19px;border:1px solid currentColor;border-radius:5px;display:grid;place-items:center;color:var(--ink);font-size:9px;font-weight:600;letter-spacing:-.02em}
 .profile-projects{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 24px}
-.profile-project{border:1px solid var(--rule);background:var(--box);padding:14px;min-width:0;transition:transform .16s ease,border-color .16s ease}
+.profile-project{border:1px solid var(--rule);border-radius:var(--surface-radius,12px);background:var(--box);padding:14px;min-width:0;transition:transform .16s ease,border-color .16s ease}
 .profile-project:hover{transform:translateY(-1px);border-color:var(--blue-soft)}
 .profile-project h3{font-size:14px;margin:0 0 8px;overflow-wrap:anywhere}.profile-project .project-facts{display:flex;gap:10px;flex-wrap:wrap;color:var(--soft);font-size:12px}.project-load{height:2px;background:var(--rule-2);margin:13px 0 0;overflow:hidden}.project-load span{display:block;height:100%;background:var(--blue);transform-origin:left;animation:project-in .5s ease both}@keyframes project-in{from{transform:scaleX(0)}}
 .profile-actions{margin-left:auto;display:flex;gap:8px}.profile-edit-dialog{width:min(430px,calc(100vw - 28px));border:1px solid var(--rule);padding:0;background:var(--paper);color:var(--ink)}.profile-edit-dialog::backdrop{background:rgba(0,0,0,.24)}.profile-edit-dialog .dialog-head{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--rule)}.profile-edit-dialog .dialog-head h2{margin:0;font-size:15px}.profile-edit-dialog .dialog-head button{margin-left:auto}.profile-edit-dialog .dialog-body{padding:16px}.profile-photo-choice{display:flex;align-items:center;gap:12px;padding:10px 0 16px}.profile-photo-choice img{width:48px;height:48px;border-radius:50%;object-fit:cover;border:1px solid var(--rule)}
@@ -671,9 +671,9 @@ const REAL_RUN='/r/3afa89e7-aff5-488d-bec3-da36196b8c5e';
 const RETIRED=['crews','crew','join','event','community','forum','challenges','challenge','practices','practice','experiments','experiment','rigs','rigversion','progress','comparison','pitch','claim'];
 function menuLinks(kind){
   if(!ME) return AUTH_USER
-    ? `<a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" data-signout role="menuitem">Sign out</button>`
+    ? `<a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" class="ghost" data-signout role="menuitem">Sign out</button>`
     : `<a href="/?connect" role="menuitem">Connect your agent</a><div class="menu-sep"></div><button type="button" class="menu-signin" data-signin role="menuitem">${signInLabel()}</button>`;
-  return `<a href="${esc(StriveLinks.profileHref(profileHandle(ME)))}" role="menuitem">Profile</a><a href="/?inbox" role="menuitem" data-responses-link>Responses</a><a href="/?account" role="menuitem">Settings</a><a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" data-signout role="menuitem">Sign out</button>`;
+  return `<a href="${esc(StriveLinks.profileHref(profileHandle(ME)))}" role="menuitem">Profile</a><a href="/?inbox" role="menuitem" data-responses-link>Responses</a><a href="/?account" role="menuitem">Settings</a><a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" class="ghost" data-signout role="menuitem">Sign out</button>`;
 }
 function syncAuthNav(){
   document.querySelectorAll('[data-auth="1"]').forEach(el=>{el.hidden=!ME});

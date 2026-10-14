@@ -12,7 +12,7 @@
 .media-frame--photo{width:min(100%,var(--image-width,1600px));padding:7px;border-color:#ddd}
 .media-frame--photo img{max-height:360px;max-width:100%;width:auto;object-fit:contain}
 .media-caption{padding:10px 14px;font-size:11px;line-height:1.4;color:#666;background:#fff;margin:0}
-.strive-empty{border:1px solid #dedede;background:#fff;min-width:0;padding:24px;color:#111;display:flex;flex-direction:column;justify-content:space-between;aspect-ratio:4/3;overflow:hidden}
+.strive-empty{border:1px solid #dedede;border-radius:10px;background:#fff;min-width:0;padding:24px;color:#111;display:flex;flex-direction:column;justify-content:space-between;aspect-ratio:4/3;overflow:hidden}
 .strive-empty .empty-kicker{font-size:10px;letter-spacing:.07em;color:#0047ff;font-weight:700;text-transform:uppercase}
 .strive-empty .empty-icon{color:#0047ff;width:72px;height:58px;margin:12px 0}
 .strive-empty h3{font-size:clamp(19px,3vw,27px);letter-spacing:-.8px;line-height:1.08;margin:0 0 8px;color:#111;max-width:17ch}

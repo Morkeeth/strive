@@ -18,10 +18,14 @@
 :focus-visible{outline:2px solid var(--blue);outline-offset:3px}
 button,input,textarea,select{font:inherit}
 button,summary{touch-action:manipulation}
-.reading-page{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+/* Static pages use the app's palette and header, so leaving the feed does not look like another site. */
+.reading-page{--paper:#f7f8fa;--bg:#f7f8fa;--rule:#e8ebf0;--ink:#232733;--soft:#646b79;--dim:#697080;margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 .reading-page *{box-sizing:border-box}
-.reading-page header{border-bottom:1px solid var(--rule);padding:6px 24px;display:flex;justify-content:space-between;gap:20px}
+.reading-page header{background:#fff;border-bottom:1px solid var(--rule);height:64px;padding:0 max(24px,calc((100% - 1048px) / 2 + 24px));display:flex;align-items:center;gap:22px}
 .reading-page header a{color:var(--ink);text-decoration:none;font-size:14px;font-weight:500;display:inline-flex;align-items:center;min-height:44px}
+.reading-page header>a:first-child{font-size:24px;font-weight:600;letter-spacing:-1.2px;color:var(--blue)}
+.reading-page header .alpha-label{font-size:10px;padding:0 5px;border-radius:3px;min-height:18px}
+.reading-page header>a:last-child{margin-left:auto;min-height:44px;padding:0 20px;border-radius:999px;background:var(--blue);color:#fff;font-size:14px;font-weight:600}
 .alpha-label{display:inline-flex;align-items:center;align-self:center;min-height:22px;padding:0 7px;border:1px solid var(--rule);color:var(--soft);font-size:11px;font-weight:500;white-space:nowrap}
 .reading-page main{max-width:740px;margin:auto;padding:44px 24px 80px;overflow-wrap:anywhere}
 .reading-page h1{font-size:28px;line-height:1.15;letter-spacing:-.04em;font-weight:600}
@@ -32,9 +36,9 @@ button,summary{touch-action:manipulation}
 .reading-page td{border-top:1px solid var(--rule);padding:12px 8px;vertical-align:top;min-width:64px}
 .reading-page code,.reading-page .mono{font:inherit;font-variant-numeric:tabular-nums}
 .reading-page code{background:var(--blue-wash);padding:2px 4px}
-.reading-page details{border:1px solid var(--rule);padding:16px;margin:24px 0;background:var(--box)}
+.reading-page details{border:1px solid var(--rule);border-radius:12px;padding:16px;margin:24px 0;background:var(--box)}
 .reading-page summary{cursor:pointer;font-weight:500}
-@media(max-width:600px){button,.act{min-height:44px}.reading-page main{padding:28px 18px 60px}.reading-page header{padding:18px}}
+@media(max-width:600px){button,.act{min-height:44px}.reading-page main{padding:28px 18px 60px}.reading-page header{height:56px;padding:0 16px}.reading-page header>a:first-child{font-size:22px}}
 /* A returning builder's runs and private comparisons. */
 #progress-body{min-width:0;overflow-wrap:anywhere}
 #progress-body h2{font-size:18px;line-height:1.3;margin:0 0 8px;letter-spacing:-.02em}
@@ -449,7 +453,7 @@ button,summary{touch-action:manipulation}
 .pc-item input{position:absolute;top:6px;left:6px;width:auto;min-height:0;margin:0}.pc-item img{max-width:132px;max-height:132px;width:auto;height:auto;display:block}.pc-item:has(input:checked){border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue);color:var(--ink)}.pc-none{justify-content:center;min-height:60px}
 .dc-draft{display:block;font-size:12px;font-weight:400;color:var(--muted);margin-top:4px;letter-spacing:0}.dc-draft-row{margin:0}.cs-title{width:100%;font:inherit;padding:9px 10px;border:1px solid var(--rule);background:var(--card)}
 .day-comments{max-width:540px;margin:14px 0}.day-comments .head{margin:0 0 6px}.day-comments .head h2{font-size:14px}.day-comments .head .meta{font-size:12px}
-.thread-signin{appearance:none;border:0;background:none;padding:10px 0;min-height:44px;font:inherit;font-weight:600;color:var(--blue);cursor:pointer}.thread-signin:hover{text-decoration:underline}
+.thread-signin{appearance:none;border:0;background:none;padding:10px 16px;min-height:44px;font:inherit;font-weight:600;color:var(--blue);cursor:pointer}.thread-signin:hover{text-decoration:underline}
 .thread-compact .thread-items{font-size:14px}.thread-compact .thread-empty{margin:0 0 8px;font-size:13px;color:var(--muted)}
 .thread-compact .reply{position:relative;padding:8px 0 8px 38px;margin:0;border:0;border-top:1px solid var(--rule);background:none;box-shadow:none}.thread-compact .reply:first-child{border-top:0}
 .thread-compact .c-av{position:absolute;left:0;top:9px;width:28px;height:28px;border-radius:50%;background:var(--rule);color:var(--ink);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;object-fit:cover}
