@@ -662,7 +662,7 @@ function projectStats(runs){
 // Compatibility hooks for view modules: navigation is rendered once in the shared header.
 function railHtml(){ return ''; }
 function setPrimarySection(){ window.StriveNavigation.sync({handle:typeof ME==='object'&&ME?profileHandle(ME):null}); void updateReviewCount(); }
-async function updateReviewCount(){const badge=document.querySelector('[data-review-count]');if(!badge)return;badge.hidden=true;badge.textContent='';const owner=ME?.id,generation=AUTH_GENERATION;if(!owner)return;try{const rows=await StriveRunQueue.read(sb,owner);if(generation!==AUTH_GENERATION||owner!==ME?.id)return;badge.textContent=String(rows.length);badge.hidden=!rows.length;}catch(_){}}
+async function updateReviewCount(){const badge=document.querySelector('[data-review-count]');if(!badge)return;badge.hidden=true;badge.textContent='';const owner=ME?.id;if(!owner)return;const generation=AUTH_GENERATION;try{const rows=await StriveRunQueue.read(sb,owner);if(generation!==AUTH_GENERATION||owner!==ME?.id)return;badge.textContent=String(rows.length);badge.hidden=!rows.length;}catch(_){}}
 // A real public run, posted from a real session, for anyone who wants to see a card before making
 // one. It replaced the bundled sample on 25 Sep 2026: a stranger should meet a real run first.
 const REAL_RUN='/r/3afa89e7-aff5-488d-bec3-da36196b8c5e';

@@ -125,7 +125,7 @@ def test_signed_out_feed_keeps_the_desktop_and_phone_navigation():
     assert out["add"] == [{"href": "/?post", "gated": False}]
     # The home frame keeps the shared menu and marks Feed as the current page.
     assert out["shell"] == "shell norail noside wide"
-    assert [l["current"] for l in out["links"]] == ["page", None]
+    assert [l["current"] for l in out["links"]] == ["page", None, None]
     view = INDEX[INDEX.index("async function viewLanding()") : INDEX.index("async function mountCoachExperiment(")]
     assert "frame(null,null,true);" in view and "setPrimarySection('feed');" in view
     menu = INDEX[INDEX.index('<nav id="product-nav"'):INDEX.index("</nav>", INDEX.index('<nav id="product-nav"'))]
