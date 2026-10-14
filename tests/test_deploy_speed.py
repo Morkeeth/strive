@@ -95,3 +95,15 @@ def test_history_prunes_oldest_and_keeps_latest_under_cap(tmp_path):
     assert sum((out / name).stat().st_size for name in ['history.json', 'history.csv']) <= S.HISTORY_LIMIT
     S.store(tmp_path / 'later', {'sha': 'd' * 40, 'status': 'measured'}, out / 'history.json')
     assert json.loads((tmp_path / 'later/history.json').read_text())[-1]['sha'] == 'd' * 40
+
+
+def test_oversized_input_rejected_before_json_parse(tmp_path, monkeypatch):
+    previous = tmp_path / 'oversized.json'
+    previous.write_bytes(b'x' * 1025)
+    monkeypatch.setattr(S, 'HISTORY_INPUT_LIMIT', 1024)
+    def must_not_parse(*args, **kwargs):
+        pytest.fail('Oversized history reached the JSON parser')
+    monkeypatch.setattr(S.json, 'loads', must_not_parse)
+    with pytest.raises(ValueError, match='bounded input size'):
+        S.store(tmp_path / 'out', {'status': 'failed'}, previous)
+    assert not (tmp_path / 'out').exists()

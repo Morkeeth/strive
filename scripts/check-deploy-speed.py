@@ -16,6 +16,7 @@ from pathlib import Path
 
 PROFILES = [('desktop', 1440, 900, False), ('phone-4g', 390, 844, True)]
 HISTORY_LIMIT = 10_000_000
+HISTORY_INPUT_LIMIT = 2 * HISTORY_LIMIT
 METHOD = 'feed-cold-v2-3-samples-phone150ms-200000Bps-4xcpu'
 
 
@@ -76,7 +77,14 @@ def store(out, record, previous=None):
     rows = []
     restored = previous and Path(previous).exists()
     if restored:
-        rows = json.loads(Path(previous).read_text())
+        path = Path(previous)
+        if path.stat().st_size > HISTORY_INPUT_LIMIT:
+            raise ValueError('Previous history exceeds the bounded input size.')
+        with path.open('rb') as file:
+            payload = file.read(HISTORY_INPUT_LIMIT + 1)
+        if len(payload) > HISTORY_INPUT_LIMIT:
+            raise ValueError('Previous history exceeds the bounded input size.')
+        rows = json.loads(payload)
         if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
             raise ValueError('Previous history is invalid.')
     record['prior_entries'] = len(rows)
