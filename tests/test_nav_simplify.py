@@ -129,7 +129,8 @@ def test_signed_out_feed_keeps_the_desktop_and_phone_navigation():
     view = INDEX[INDEX.index("async function viewLanding()") : INDEX.index("async function mountCoachExperiment(")]
     assert "frame(null,null,true);" in view and "setPrimarySection('feed');" in view
     menu = INDEX[INDEX.index('<nav id="product-nav"'):INDEX.index("</nav>", INDEX.index('<nav id="product-nav"'))]
-    assert "data-auth" not in menu and " hidden" not in menu
+    assert "data-auth" not in menu
+    assert all(not link["gated"] for link in out["links"])  # a hidden count is not a hidden destination
 
 
 def test_posting_defaults_private_and_names_each_audience():
