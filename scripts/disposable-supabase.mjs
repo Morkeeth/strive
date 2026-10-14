@@ -11,6 +11,7 @@ export const CASEY = "11000000-0000-0000-0000-000000000001";
 export const RILEY = "11000000-0000-0000-0000-000000000002";
 const TABLES = new Set([
   "profiles",
+  "grinder_agents",
   "project_follows",
   "runs",
   "run_photos",

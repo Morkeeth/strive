@@ -245,7 +245,7 @@ a.act{display:inline-block;text-decoration:none}
 .c-foot .acts,.foot .acts{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px}
 .run-continuation{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px 0}
 .run-continuation .acts{display:flex;flex-wrap:wrap;gap:8px}
-.run-primary-actions{border-left:2px solid var(--blue);padding:14px 16px;margin:0 0 24px;background:var(--box)}
+.private-run-marker{border:2px solid var(--blue);background:var(--box);padding:16px;font-size:18px;line-height:1.5}.run-primary-actions{border-left:2px solid var(--blue);padding:14px 16px;margin:0 0 24px;background:var(--box)}
 .run-primary-actions p{margin:0 0 10px}
 .run-primary-actions .cta{margin:0}
 .run-primary-actions .hint{margin:10px 0 0}
@@ -558,6 +558,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
   <span class="alpha-label">Alpha</span>
   <nav id="product-nav" class="product-nav" aria-label="Primary">
     <a class="product-nav-link" href="/" data-nav-page="feed">Feed</a>
+    <a class="product-nav-link" href="/?queue" data-nav-page="queue">Review queue <span data-review-count hidden></span></a>
     <a class="product-nav-link product-nav-add" href="/?post" data-nav-page="post">Add run</a>
   </nav>
   <div class="right">
@@ -581,6 +582,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
 <script src="/navigation.js"></script>
+<script src="/run-queue.js"></script>
 <script src="/run-links.js"></script>
 <script src="/activity-order.js"></script>
 <script src="/activity-post.js"></script>
@@ -659,7 +661,8 @@ function projectStats(runs){
 }
 // Compatibility hooks for view modules: navigation is rendered once in the shared header.
 function railHtml(){ return ''; }
-function setPrimarySection(){ window.StriveNavigation.sync({handle:typeof ME==='object'&&ME?profileHandle(ME):null}); }
+function setPrimarySection(){ window.StriveNavigation.sync({handle:typeof ME==='object'&&ME?profileHandle(ME):null}); void updateReviewCount(); }
+async function updateReviewCount(){const badge=document.querySelector('[data-review-count]');if(!badge)return;badge.hidden=true;badge.textContent='';const owner=ME?.id;if(!owner)return;const generation=AUTH_GENERATION;try{const rows=await StriveRunQueue.read(sb,owner);if(generation!==AUTH_GENERATION||owner!==ME?.id)return;badge.textContent=String(rows.length);badge.hidden=!rows.length;}catch(_){}}
 // A real public run, posted from a real session, for anyone who wants to see a card before making
 // one. It replaced the bundled sample on 25 Sep 2026: a stranger should meet a real run first.
 const REAL_RUN='/r/3afa89e7-aff5-488d-bec3-da36196b8c5e';
@@ -791,6 +794,7 @@ const roadmapFeedback=StriveFeedback({client:sb,me:()=>ME,signIn:()=>showSignIn(
 let AUTH_GENERATION=0, RUN_VIEW_GENERATION=0;
 // Invalidate synchronously, before any queued auth refresh or pending private request.
 function invalidatePrivateView(){
+  const reviewBadge=document.querySelector('[data-review-count]');if(reviewBadge){reviewBadge.hidden=true;reviewBadge.textContent='';}
   AUTH_GENERATION++;RUN_VIEW_GENERATION++;
   document.querySelector('dialog.run-share-dialog')?.close();
   ME=null;AUTH_USER=null;IDENTITY_SETUP=null;
@@ -1342,6 +1346,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
   const detailLink='';
   const ownerActions=opts.ownerActions&&!opts.preview?`<span class="run-owner-actions"><a href="#run-edit">Edit run</a><a href="#run-photos">Add photos</a></span>`:'';
   return `<div class="card run-detail-card" id="card-${r.id}" data-run-id="${esc(r.id)}" data-run-visibility="${esc(r.visibility||'')}" data-media-story="${esc(r.caption||r.title)}" data-photo-layout="${esc(r.photo_layout||'cover')}"${r.photo_layout==='result'&&r.capture_metadata?.estimates?.v===1?' data-project-gallery':''}>
+    ${GrinderFeed.privateMarker(r)}
     <div class="runtop">${!att.ghost&&GrinderFeed.face?GrinderFeed.face(r,40):avatar(h,{rhythm:r.rhythm,ghost:att.ghost})}
       <div class="who">${whoLink}${anonTag}<small>${att.ghost?'metrics only ·':`@${esc(h)} ·`} ${opts.preview?esc(date):`<a href="${esc(StriveLinks.runHref(r))}">${esc(date)}</a>`}</small></div></div>
 
@@ -1817,6 +1822,7 @@ async function viewLanding(){
   setPrimarySection('feed');
   if(!app.querySelector('.home[data-boot-skeleton]'))app.innerHTML=feedTabs('home')+landingHTML();
   app.querySelector('.home')?.removeAttribute('data-boot-skeleton');
+
   const H=window.GrinderHome, now=Date.now();
   const data=H&&sb?await H.readRuns(sb):{runs:null};
   if(!current())return;
@@ -1949,7 +1955,7 @@ async function viewRun(id){
   const shareable=r.visibility==='public'||r.visibility==='link'||r.visibility==='close_friends';
   const profileUrl=StriveLinks.profileHref(profileHandle(r.profiles)||'');
   const nextAction=owner
-    ? `<section class="run-primary-actions"><p><b>${r.visibility==='public'?'Saved to Public feed and profile':r.visibility==='link'?'Saved for Followers':r.visibility==='close_friends'?'Saved for Close friends':'Saved for Only me'}</b></p>
+    ? `<section class="run-primary-actions"><p><b>${r.visibility==='public'?'Saved to Public feed and profile':r.visibility==='link'?'Saved for Followers':r.visibility==='close_friends'?'Saved for Close friends':'Saved for Only me. Not public. Only you can see this run.'}</b></p>
         <div class="cta">${shareable?`<button id="run-copy-link" class="act blue">${r.visibility==='public'?'Copy public link':'Copy link'}</button>`:`<a class="act blue" href="#run-audience">Choose who can see this</a>`}${shareable?`<a class="act" href="/?share=1&run=${r.id}">Open shared post</a>`:''}</div>
         <p class="hint">${r.visibility==='public'?'This public run also has a shared post.':r.visibility==='link'?'Followers means signed-in followers and close friends. This run stays off Feed and the public profile.':r.visibility==='close_friends'?'Only people on your Close friends list can open this run. Manage the list in People → Close friends.':'Private uploads stay in My runs until you deliberately choose Followers or Public below.'}</p></section>`
     : `<section class="run-primary-actions"><p class="meta">FROM THIS RUN</p><div class="cta">${shareable?`<a class="act blue" href="/?share=1&run=${r.id}">Share this run</a>`:''}<a class="act" href="${profileUrl}">Open builder profile</a></div><p class="hint">${r.visibility==='link'?'Followers. This run stays off the public profile. Follow from the card above.':'Follow, send XUDOS or share from the card above.'}</p></section>`;
@@ -1988,6 +1994,17 @@ async function viewRun(id){
     if(['#run-edit','#run-photos','#run-audience'].includes(location.hash))showEditor(location.hash==='#run-audience'?'run-audience':'run-title');
     void StriveSavedRuns({client:sb,slot:controls,current:()=>current()&&controls.isConnected});
     $('run-save').onclick=async()=>{const title=$('run-title').value.trim(),project=$('run-project').value.trim(),caption=$('run-caption').value.trim(),output=$('run-output-url').value.trim(),audience=$('run-audience').value,heroVisual=controls.querySelector('input[name="run-hero-visual"]:checked')?.value||suggestedVisual||null;if(!title){status('Add a title.',true);$('run-title').focus();return}if(output&&!safeOutputUrl(output)){status('The output link must start with http:// or https://.',true);return}if(!(await requireCloseFriendsForSave(audience)))return;const saveButton=$('run-save');saveButton.disabled=true;try{await photoEditor?.save?.()}catch(error){saveButton.disabled=false;status(error.message,true);return}const pin=$('run-pin').checked;const {error}=await sb.from('runs').update({...StriveStory.read(controls),title,project:project||null,hero_visual:heroVisual,caption:caption||null,output_url:output||null,visibility:audience,pinned_at:pin?(r.pinned_at||new Date().toISOString()):null}).eq('id',r.id);if(error){saveButton.disabled=false;status(error.message,true);return}history.replaceState(null,'','/?run='+r.id);await viewRun(r.id)};
+    if(StriveRunQueue.pending(r,ME?.id)){
+      const review=document.createElement('section');review.className='card pad';review.innerHTML='<h2>Review this private run</h2><p class="private-run-marker"><strong>Only me. Not public</strong><br>Only you can see this run. Opening this review does not publish it.</p><p>Review the card and saved data above. Approve and post puts this run on your public profile and Feed. Discard deletes this private run.</p><div class="cta"><button type="button" data-approve>Approve and post</button><button type="button" data-discard>Discard</button></div><a href="/?queue">Back to review queue</a>';
+      controls.before(review);
+      const approve=review.querySelector('[data-approve]');approve.disabled=true;
+      const actor=r.source_actor_id?await sb.from('grinder_agents').select('visibility').eq('id',r.source_actor_id).eq('owner_id',ME.id).single():{data:{visibility:'public'},error:null};
+      if(!current())return;
+      if(!actor.error&&actor.data?.visibility==='public')approve.disabled=false;
+      else review.insertAdjacentHTML('beforeend','<p>Before posting, make this agent profile public in <a href="/?connect=auto">Connect</a>, then return here. This shares the agent profile as well. The run stays private until you approve it.</p>');
+      review.querySelector('[data-approve]').onclick=()=>{if(!current())return;showEditor('run-audience');$('run-audience').value='public';$('run-audience').dispatchEvent(new Event('change'));$('run-save').textContent='Approve and post';};
+      review.querySelector('[data-discard]').onclick=async()=>{if(!current()||!confirm('Discard this private agent run? It will be deleted and never posted.'))return;const button=review.querySelector('[data-discard]');button.disabled=true;try{await StriveRunQueue.discard(sb,r,ME.id);if(current()){history.replaceState(null,'','/?queue');await route()}}catch(error){if(current()){button.disabled=false;status(error.message,true)}}};
+    }
     $('run-delete').onclick=async()=>{if(!confirm('Delete this run and its discussion?'))return;const {error}=await sb.from('runs').delete().eq('id',r.id);if(error){status(error.message,true);return}history.replaceState(null,'','/?mine');viewMe()};
   }
   wireKudos(); if(openAck){ const button=$('card-'+id)?.querySelector('.kudo'); if(button)button.click(); }
@@ -2938,6 +2955,7 @@ async function route(){ setPrimarySection(); RUN_VIEW_GENERATION++;window.Strive
     return GrinderExample.view();
   }
   if(RETIRED.some(k=>q.has(k))){history.replaceState(null,'','/');return viewLanding();}
+  if(q.has('queue')){frame(railHtml('mine'),null);const owner=ME?.id,generation=AUTH_GENERATION,viewGeneration=RUN_VIEW_GENERATION;const slot=$('app');slot.innerHTML='<h1>Run review queue</h1><p><strong>Only me. Not public.</strong> These runs are visible only to you. Review before posting.</p>';if(!owner){showSignIn();return}return StriveRunQueue.mount({client:sb,owner,slot,esc,current:()=>generation===AUTH_GENERATION&&viewGeneration===RUN_VIEW_GENERATION&&owner===ME?.id,open:false});}
   if(q.has('boards'))return viewBoards();
   if(q.has('projects'))return viewProjects();
   if(q.has('day'))return viewDay(q.get('day'));

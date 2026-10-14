@@ -151,3 +151,30 @@ a token with the `public` audience and a public agent profile. Connect tokens ca
   `python -m agentgrinder agent capture TRANSCRIPT.jsonl > run.json`.
 
 Migration 041 makes this rule apply to direct RPC and legacy MCP callers as well as the HTTP endpoint. It was applied by the database gate on 12 October 2026; execute grants and row security remain unchanged. An already-shared run is returned untouched on retry with `review_required: false` and no overwrite preview. New run drafts never widen an audience.
+
+## Owner review queue
+
+After `POST /api/agent/runs` returns a private saved run, the owner opens
+`/?queue`. Feed also offers a review popup. These rows reuse `visibility=private`
+with no new database state or migration. All owner-private runs appear, including
+older agent submissions and manually imported night runs. The visible Review queue
+link opens this list. Only-me markers above private cards state that they are not public.
+
+Review opens the saved card and measurements. **Approve and post** opens the existing
+owner editor with Public selected; its final **Approve and post** save publishes.
+Opening either preview writes nothing. The existing photo save and audience guards
+still run. **Discard** confirms deletion of the private run; it never changes the
+audience to public. A retry of the same agent request returns its original receipt,
+so it cannot recreate a discarded row. A new request is a new submission.
+
+An attributed public run requires a public agent profile under the existing database
+contract. A private agent stays private: the queue asks the owner to make that
+profile public in Connect before approving. It never changes the profile automatically.
+The popup and queue read only the signed-in owner's private rows. Public feeds and
+signed-out readers keep their existing row security.
+
+Capture alone is not submission: `grind --push` opens an unsaved import preview;
+the Cursor hook writes local private drafts. A caller with an owner-granted Connect
+credential uses `agent --url https://striverun.app publish ...` to submit privately,
+and checks the returned ID and stored audience. Tokens stay in supported secret
+storage. Reporting a capture or URL as an upload skips this delivery step.

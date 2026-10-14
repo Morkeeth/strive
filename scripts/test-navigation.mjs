@@ -9,7 +9,7 @@ const {window}=dom,{document}=window;
 window.eval(navigation);
 const nav=document.getElementById('product-nav');
 assert.equal(document.querySelectorAll('nav[aria-label="Primary"]').length,1);
-assert.deepEqual([...nav.querySelectorAll('[data-nav-page]')].map(a=>a.dataset.navPage),['feed','post']);
+assert.deepEqual([...nav.querySelectorAll('[data-nav-page]')].map(a=>a.dataset.navPage),['feed','queue','post']);
 assert.equal(nav.querySelectorAll('details').length,0);
 assert.equal(document.querySelectorAll('.site-foot a[href="/?feedback"]').length,1);
 assert.equal(document.querySelectorAll('.site-foot a[href="/privacy#deletion"]').length,1);
@@ -17,7 +17,7 @@ const privacy=new JSDOM(readFileSync(new URL('../site/privacy.html',import.meta.
 assert.ok(privacy.getElementById('deletion'));assert.ok(privacy.querySelector('a[href="/?account#danger"]'),'footer deletion link reaches the Settings deletion control');
 assert.equal(document.querySelectorAll('a[href="/?explore"]').length,0);
 for(const [path,page] of [
- ['/', 'feed'],['/?mine',null],['/?explore','feed'],['/?post','post'],
+ ['/', 'feed'],['/?queue','queue'],['/?mine',null],['/?explore','feed'],['/?post','post'],
  ['/?following','feed'],['/?people',null],['/?boards',null],
  ['/?day=2026-10-01',null],['/?friends',null],
  ['/?projects&scope=public',null],['/?projects',null],
