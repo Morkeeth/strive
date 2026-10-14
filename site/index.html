@@ -1955,13 +1955,12 @@ async function viewRun(id){
   const shareable=r.visibility==='public'||r.visibility==='link'||r.visibility==='close_friends';
   const profileUrl=StriveLinks.profileHref(profileHandle(r.profiles)||'');
   const nextAction=owner
-    ? `<section class="run-primary-actions"><p><b>${r.visibility==='public'?'Saved to Public feed and profile':r.visibility==='link'?'Saved for Followers':r.visibility==='close_friends'?'Saved for Close friends':'Only me. Not public. Only you can see this run.'}</b></p>
+    ? `<section class="run-primary-actions"><p><b>${r.visibility==='public'?'Saved to Public feed and profile':r.visibility==='link'?'Saved for Followers':r.visibility==='close_friends'?'Saved for Close friends':'Saved for Only me. Not public. Only you can see this run.'}</b></p>
         <div class="cta">${shareable?`<button id="run-copy-link" class="act blue">${r.visibility==='public'?'Copy public link':'Copy link'}</button>`:`<a class="act blue" href="#run-audience">Choose who can see this</a>`}${shareable?`<a class="act" href="/?share=1&run=${r.id}">Open shared post</a>`:''}</div>
         <p class="hint">${r.visibility==='public'?'This public run also has a shared post.':r.visibility==='link'?'Followers means signed-in followers and close friends. This run stays off Feed and the public profile.':r.visibility==='close_friends'?'Only people on your Close friends list can open this run. Manage the list in People → Close friends.':'Private uploads stay in My runs until you deliberately choose Followers or Public below.'}</p></section>`
     : `<section class="run-primary-actions"><p class="meta">FROM THIS RUN</p><div class="cta">${shareable?`<a class="act blue" href="/?share=1&run=${r.id}">Share this run</a>`:''}<a class="act" href="${profileUrl}">Open builder profile</a></div><p class="hint">${r.visibility==='link'?'Followers. This run stays off the public profile. Follow from the card above.':'Follow, send XUDOS or share from the card above.'}</p></section>`;
   frame(typeof railHtml==='function'?railHtml(null):null,null);app.classList.remove('is-editing-run');
   app.innerHTML=`<div class="head"><h2>Behind the run</h2><span class="meta">${esc(audienceLabel(r.visibility))}</span></div>`
-    +(owner&&r.visibility==='private'?'<aside class="private-run-marker" aria-label="Private run"><strong>Only me. Not public</strong><br>Only you can see this run. <a href="/?queue">Review queue</a></aside>':'')
     +runCard(r,ad.mine.has(r.id),ad.countsKnown===false?null:ad.counts[r.id]||0,{ownerActions:owner,detail:true})
     +nextAction
     +`<section id="run-photos"></section>`

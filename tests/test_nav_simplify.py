@@ -49,9 +49,9 @@ def test_primary_nav_has_the_product_loop():
     # dropdown left it, and Add run joined it. d233531 had already replaced the rail with one menu.
     seen = node(SHELL)
     assert seen["primaries"] == 1 and seen["navs"] == 1
-    assert [(l["label"], l["href"], l["page"]) for l in seen["signedOut"]["links"]] == [("Feed", "/", "feed"), ("Add run", "/?post", "post")]
+    assert [(l["label"], l["href"], l["page"]) for l in seen["signedOut"]["links"]] == [("Feed", "/", "feed"), ("Review queue", "/?queue", "queue"), ("Add run", "/?post", "post")]
     same = lambda who: [(l["label"], l["href"], l["gated"]) for l in seen[who]["links"]]
-    assert same("signedIn") == same("signedOut") == [("Feed", "/", False), ("Add run", "/?post", False)]
+    assert same("signedIn") == same("signedOut") == [("Feed", "/", False), ("Review queue", "/?queue", False), ("Add run", "/?post", False)]
     assert seen["rail"] == "" and seen["signedOut"]["railBox"] == ""  # the rail is a compatibility hook only
     assert seen["details"] == 0
     for gone in ("Projects", "More", "Responses", "Privacy", "Discover", "My runs"):
@@ -73,11 +73,11 @@ def test_mobile_nav_is_four_or_fewer_destinations():
     # d233531 (8 Oct 2026) removed the separate phone menu. The one menu becomes the bottom bar.
     assert seen["oldMobile"] is False and seen["primaries"] == 1
     labels = [l["label"] for l in seen["signedOut"]["links"]]
-    assert labels == ["Feed", "Add run"]
+    assert labels == ["Feed", "Review queue", "Add run"]
     assert len(labels) <= 4
     assert all(not l["gated"] for l in seen["signedOut"]["links"])
     wide, phone = NAV_CSS.split("@media(max-width:800px){", 1)
-    assert ".bar .product-nav{position:fixed;z-index:100;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));" in phone
+    assert ".bar .product-nav{position:fixed;z-index:100;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));" in phone
     # One Add run per screen size: the header pill when wide, the menu item on a phone.
     assert ".product-nav-add{display:none}" in wide
     assert " .product-nav-add{display:flex}.global-add{display:none!important}" in phone
@@ -119,8 +119,8 @@ def test_signed_out_feed_keeps_the_desktop_and_phone_navigation():
     """Run the actual frame and menu with no profile; Feed never collapses to a landing-only shell."""
     seen = node(SHELL)
     out = seen["signedOut"]
-    assert len(out["links"]) == 2
-    assert [l["label"] for l in out["links"]] == ["Feed", "Add run"]
+    assert len(out["links"]) == 3
+    assert [l["label"] for l in out["links"]] == ["Feed", "Review queue", "Add run"]
     assert all(not l["gated"] for l in out["links"])
     assert out["add"] == [{"href": "/?post", "gated": False}]
     # The home frame keeps the shared menu and marks Feed as the current page.
