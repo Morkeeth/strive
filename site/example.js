@@ -162,7 +162,7 @@
       <h1>One sitting. One experiment.</h1>
       <p>A stranger can finish this labelled fixture without an account. Your own run stays private until you say otherwise.</p></section>
       ${modeBanner(data)}
-      <div class="card"><div class="runtop"><div class="who"><span>${esc(run.title)}</span><small>${esc(data.label)} · ${esc(run.harness)} · private fixture</small></div>
+      <div class="card"><div class="runtop"><div class="who"><span>${esc(run.title)}</span><small>${esc(data.label)} · ${esc(globalThis.StriveAgents?.agentName(run.harness)||run.harness)} · private fixture</small></div>
         <span class="state" title="${esc(data.not)}">Demo coach</span></div>
         ${counts(run)}
         <p class="para">${esc(run.coach_verdict)}</p>

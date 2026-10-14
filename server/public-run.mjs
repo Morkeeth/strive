@@ -172,7 +172,7 @@ const pageCodeRoute=run=>{
  const route=run&&run.code_route;
  if(!route||route.v!==1)return '';
  if(route.unavailable){
-  const harness=route.harnesses?`<p class="code-route-harnesses">Harness populations · basis ${esc(route.harnesses.basis)} · observed: ${(route.harnesses.observed||[]).map(esc).join(', ')||'none'} · absent: ${(route.harnesses.absent||[]).map(esc).join(', ')||'none'}</p>`:'';
+  const harness=route.harnesses?`<p class="code-route-harnesses">Harness populations · basis ${esc(route.harnesses.basis)} · observed: ${(route.harnesses.observed||[]).map(h=>esc(Agents.agentName(h)||h)).join(', ')||'none'} · absent: ${(route.harnesses.absent||[]).map(h=>esc(Agents.agentName(h)||h)).join(', ')||'none'}</p>`:'';
   return `<section class="code-route"><h2>Code Route</h2><p class="code-route-why">${esc(route.unavailable.why||'')}</p>${harness}</section>`;
  }
  const projects=Array.isArray(route.projects)?route.projects:[];
@@ -195,7 +195,7 @@ const pageCodeRoute=run=>{
  const measured=stops.filter(s=>s.basis==='measured').length,declared=stops.filter(s=>s.basis==='declared').length;
  const aria=`Code Route across ${projects.length} projects: ${names}. ${stops.length} ordered checkpoints · ${measured} measured · ${declared} declared${insight?' · '+insight:''}`;
  const stopList=stops.map(stop=>{const project=projects.find(p=>p.id===stop.project);const lane=project?(idx[project.id]??0)+1:null;const evidence=Array.isArray(stop.evidence)&&stop.evidence.length?`<ul>${stop.evidence.map(line=>`<li>${esc(line)}</li>`).join('')}</ul>`:'';return `<details class="code-route-point"${stop.id===finishId?' data-finish="1"':''}><summary><span class="code-route-kind">${esc(stop.kind)}</span><span class="code-route-stop-label">${esc(stop.label)}</span><span class="code-route-basis">${esc(stop.basis)}</span>${project?`<span class="code-route-stop-project">${lane!=null?`${lane} · `:''}${esc(project.label)}</span>`:''}</summary>${evidence}</details>`;}).join('');
- const harness=route.harnesses?`<p class="code-route-harnesses">Harness populations · basis ${esc(route.harnesses.basis)} · observed: ${(route.harnesses.observed||[]).map(esc).join(', ')||'none'} · absent: ${(route.harnesses.absent||[]).map(esc).join(', ')||'none'}</p>`:'';
+ const harness=route.harnesses?`<p class="code-route-harnesses">Harness populations · basis ${esc(route.harnesses.basis)} · observed: ${(route.harnesses.observed||[]).map(h=>esc(Agents.agentName(h)||h)).join(', ')||'none'} · absent: ${(route.harnesses.absent||[]).map(h=>esc(Agents.agentName(h)||h)).join(', ')||'none'}</p>`:'';
  return `<section class="code-route" aria-label="${esc(aria)}"><h2>Code Route</h2><svg viewBox="0 0 ${width} ${height}" role="img" aria-hidden="true"><path class="code-route-line" pathLength="1" d="${line}" fill="none" stroke="#123cff" stroke-width="2.5"/>${dots}${lanes}</svg><ol class="code-route-projects">${projectList}</ol>${insight?`<p class="code-route-insight">${esc(insight)}</p>`:''}<div class="code-route-stops">${stopList}</div>${harness}</section>`;
 };
 

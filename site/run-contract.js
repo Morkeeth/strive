@@ -883,8 +883,8 @@
   }
   function harnessHtml(route) {
     if (!route || !route.harnesses) return "";
-    const observed = (route.harnesses.observed || []).map((h) => esc(h));
-    const absent = (route.harnesses.absent || []).map((h) => esc(h));
+    const observed = (route.harnesses.observed || []).map((h) => esc(globalThis.StriveAgents?.agentName(h) || h));
+    const absent = (route.harnesses.absent || []).map((h) => esc(globalThis.StriveAgents?.agentName(h) || h));
     return (
       `<p class="code-route-harnesses">Harness populations · basis ${esc(route.harnesses.basis)}` +
       ` · observed: ${observed.length ? observed.join(", ") : "none"}` +

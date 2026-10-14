@@ -777,7 +777,7 @@ async function viewCommunity(){
     const slot=$('community-techniques');
     if(!slot) return;
     slot.innerHTML=list.length
-      ? `<div class="head"><h2>Techniques to try</h2><span class="meta">${list.length} public</span></div>`+list.map(p=>`<article class="card"><small>${esc(p.harness||'Any harness')}</small><h3><a href="/?practice=${p.id}">${esc(p.title)}</a></h3><p>${esc(p.instruction)}</p><p class="hint">Expected: ${esc(p.expected)}</p><a class="act" href="/?practice=${p.id}">Try this on your own baseline</a></article>`).join('')
+      ? `<div class="head"><h2>Techniques to try</h2><span class="meta">${list.length} public</span></div>`+list.map(p=>`<article class="card"><small>${esc(globalThis.StriveAgents?.agentName(p.harness)||p.harness||'Any harness')}</small><h3><a href="/?practice=${p.id}">${esc(p.title)}</a></h3><p>${esc(p.instruction)}</p><p class="hint">Expected: ${esc(p.expected)}</p><a class="act" href="/?practice=${p.id}">Try this on your own baseline</a></article>`).join('')
       : `<p class="hint">No public techniques on this deployment yet. A <a href="${REAL_RUN}">real public run</a> shows what a card holds.</p>`;
   }catch(_){
     const slot=$('community-techniques');
