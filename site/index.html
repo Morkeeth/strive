@@ -2147,7 +2147,7 @@ function postComposerHtml({first=false}={}){
 async function viewPost(){
   setPrimarySection('post');
   frame(railHtml('post'),null);
-  $('app').innerHTML=`<div class="head post-page-head"><h1>Add a run</h1></div>
+  $('app').innerHTML=`<div class="head post-page-head"><h1>Add a run</h1><span class="meta">Connect your agent: choose it below. New here? <a href="/install">Read the install guide</a></span></div>
     ${connectBodyHtml()}
     ${ME?'':'<div class="panel pad auth-empty"><h3>Sign in to save</h3><p>Sign in to save the run and choose who can read it.</p><button id="post-signin" class="act blue">'+signInLabel()+'</button></div>'}`;
   if(window.GrinderDropinUI) GrinderDropinUI.mount({privateFirst:true,post:token=>{history.pushState(null,'','/#import='+token);route();}});
