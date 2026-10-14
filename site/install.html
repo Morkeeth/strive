@@ -9,6 +9,7 @@
 <body class="reading-page install-page"><header><a href="/">STRIVE</a><span class="alpha-label">Early alpha</span><a href="/?post">Add a run</a></header><main>
 <p class="install-eyebrow">Your agent sessions, your choice</p><h1>Install STRIVE</h1>
 <p class="install-lead">See what happened in a recorded coding session. Pick a session, open its private preview, then decide if you want to save a run.</p>
+<p class="muted">STRIVE is free and open source (<a href="https://github.com/Morkeeth/strive/blob/main/LICENSE">MIT</a>).</p>
 <div class="install-note"><p>The MCP server runs on your computer. It offers two tools: <strong>list_sessions</strong> and <strong>preview_session</strong>. Adding it does not upload or publish a run. You need <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> and Python 3.9+.</p></div>
 <div class="install-grid">
 <section class="install-card" id="cursor"><h2>Cursor</h2><p>Open Cursor's install dialog with the local server already filled in.</p>
@@ -25,9 +26,9 @@
 <section class="install-card" id="grok-bot"><h2>Grok Bot</h2><p>Use the shared STRIVE companion to preview this Bot's own work. It makes a local preview first; saving to your STRIVE account is a separate choice.</p>
 <a class="install-action" href="https://x.ai/bot/JWU4CVq6sWA8LGcRHSxp4">Open STRIVE Bot ↗</a>
 </section></div>
-<h2>Want the full STRIVE skill?</h2><p>The MCP server gives your agent a session list and a local preview. The separate STRIVE plugin adds the <code>strive</code> skill and optional local capture hook. <a href="/plugins/install.md">Read the editor plugin instructions</a>, including the ZIP fallback and version checksum.</p>
+<h2>Want the full STRIVE skill?</h2><p>The MCP server gives your agent a session list and a local preview. The separate STRIVE plugin adds the <code>strive</code> skill and optional local capture hook. <a href="/plugins/install">Read the editor plugin instructions</a>, including the ZIP fallback and version checksum.</p>
 <details><summary>What happens after install?</summary><p>Ask your agent to list your recent sessions, pick one you recognise, and open its private preview. Review the card before saving. A saved run starts as Only me; you choose another audience separately.</p></details>
 <p class="muted">For agents and command-line readers: <a href="/plugins/install.md">plain-text install guide</a>. Questions? <a href="/?feedback">Send feedback</a> without private transcripts or tokens.</p>
-</main><footer class="site-foot"><a href="/install">Install</a><a href="/agents.md">For agents</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/?feedback">Feedback</a></footer>
+</main><footer class="site-foot"><span class="foot-cost">STRIVE is free and open source (<a href="https://github.com/Morkeeth/strive/blob/main/LICENSE">MIT</a>).</span><a href="/install">Install</a><a href="/agents.md">For agents</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/?feedback">Feedback</a></footer>
 <script>document.querySelectorAll('[data-copy]').forEach(button=>button.addEventListener('click',async()=>{const value=document.getElementById(button.dataset.copy).textContent;try{await navigator.clipboard.writeText(value);button.textContent='Copied';setTimeout(()=>button.textContent=button.dataset.copy==='cursor-command'?'Copy Cursor config':'Copy command',1800)}catch{button.textContent='Select the text above to copy'}}));</script>
 </body></html>

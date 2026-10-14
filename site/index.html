@@ -633,7 +633,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
   <main class="main" id="app" tabindex="-1"></main>
   <aside class="side" id="side"></aside>
 </div>
-<footer class="site-foot"><a href="/install">Install</a><a href="/agents.md">For agents</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/?feedback">Feedback</a><a href="/privacy#deletion" id="delete-info">Delete your data</a></footer>
+<footer class="site-foot"><span class="foot-cost">STRIVE is free and open source (<a href="https://github.com/Morkeeth/strive/blob/main/LICENSE">MIT</a>).</span><a href="/install">Install</a><a href="/agents.md">For agents</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/?feedback">Feedback</a><a href="/privacy#deletion" id="delete-info">Delete your data</a></footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
 <script src="/navigation.js"></script>
@@ -2147,7 +2147,7 @@ function postComposerHtml({first=false}={}){
 async function viewPost(){
   setPrimarySection('post');
   frame(railHtml('post'),null);
-  $('app').innerHTML=`<div class="head post-page-head"><h1>Add a run</h1></div>
+  $('app').innerHTML=`<div class="head post-page-head"><h1>Add a run</h1><span class="meta">Connect your agent: choose it below. New here? <a href="/install">Read the install guide</a></span></div>
     ${connectBodyHtml()}
     ${ME?'':'<div class="panel pad auth-empty"><h3>Sign in to save</h3><p>Sign in to save the run and choose who can read it.</p><button id="post-signin" class="act blue">'+signInLabel()+'</button></div>'}`;
   if(window.GrinderDropinUI) GrinderDropinUI.mount({privateFirst:true,post:token=>{history.pushState(null,'','/#import='+token);route();}});
