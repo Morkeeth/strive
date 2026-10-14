@@ -345,6 +345,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 .profile-tools{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 20px}
 .tool-chip{display:inline-flex;align-items:center;gap:7px;padding:6px 9px;border:1px solid var(--rule);background:var(--box);font-size:12px;color:var(--soft)}
 .tool-mark{width:19px;height:19px;border:1px solid currentColor;border-radius:5px;display:grid;place-items:center;color:var(--ink);font-size:9px;font-weight:600;letter-spacing:-.02em}
+.tool-mark.has-logo{border-color:var(--rule);background:#fff}
 .profile-projects{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 24px}
 .profile-project{border:1px solid var(--rule);border-radius:var(--surface-radius,12px);background:var(--box);padding:14px;min-width:0;transition:transform .16s ease,border-color .16s ease}
 .profile-project:hover{transform:translateY(-1px);border-color:var(--blue-soft)}
@@ -638,6 +639,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
 <script src="/navigation.js"></script>
 <script src="/run-queue.js"></script>
+<script src="/agent-names.js"></script>
 <script src="/run-links.js"></script>
 <script src="/activity-order.js"></script>
 <script src="/activity-post.js"></script>
@@ -964,6 +966,9 @@ function avatar(handle,opts){
 }
 
 const esc=s=>String(s??'').replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
+// The agent and model names a person reads (site/agent-names.js), else the recorded value.
+function agentDisplay(h){return window.StriveAgents?.agentName(h)||h||''}
+function modelDisplay(m){return window.StriveAgents?.modelName(m)||m||''}
 function runAttribution(r){
   if(r.visibility==='anonymous') return {handle:'anonymous',name:'Anonymous builder',ghost:true,link:null};
   const p=r.profiles||{}, h=profileHandle(p)||'someone';
@@ -1255,7 +1260,7 @@ function runContinuation(r,opts={}){
   const prompt=StriveFork.buildPrompt(r);
   if(!prompt)return '';
   const link=StriveFork.harnessLink(r);
-  return `<div class="run-continuation"><span class="meta">Captured from ${esc(r.harness||'an unknown harness')}</span><span class="acts">
+  return `<div class="run-continuation"><span class="meta">Captured from ${esc(agentDisplay(r.harness)||'an unknown harness')}</span><span class="acts">
     ${link?`<a class="act blue continue-run" href="${esc(link.href)}">${esc(link.label)}</a>`:''}
     <button class="act copy-run-prompt" type="button" data-prompt="${esc(prompt)}">Copy prompt</button></span></div>`;
 }
@@ -1268,10 +1273,10 @@ function runUploadIdentity(r){
   if(!r.source_actor_id) return '';
   const agentHref='/?agent='+encodeURIComponent(r.source_actor_id);
   if(connectWrapperName(r.agent_name)){
-    const session=r.harness?`<span class="card-harness">${esc(r.harness)}</span>`:'session';
+    const session=r.harness?`<span class="card-harness">${esc(agentDisplay(r.harness))}</span>`:'session';
     return `<div class="sub run-upload-identity">Session: ${session} · uploaded via Connect · <a href="${agentHref}">agent profile</a> · authorised by the owner</div>`;
   }
-  return `<div class="sub run-upload-identity">Agent contribution: <a href="${agentHref}">${esc(r.agent_name)}</a>${r.harness?` · <span class="card-harness">${esc(r.harness)}</span>`:''} · authorised by the owner</div>`;
+  return `<div class="sub run-upload-identity">Agent contribution: <a href="${agentHref}">${esc(r.agent_name)}</a>${r.harness?` · <span class="card-harness">${esc(agentDisplay(r.harness))}</span>`:''} · authorised by the owner</div>`;
 }
 
 // The project a run is SAVED with. Capture reads the folder the session ran in - Claude Code
@@ -1386,7 +1391,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
   const recorded=StriveEvidence.detail(r);
   const audienceNote=r.visibility==='link'?'<p class="meta run-audience-note">Followers. Signed-in followers and close friends can open it; it does not appear on the public profile or Feed.</p>':'';
   const agentChip=(!opts.preview&&r.source_actor_id&&!connectWrapperName(r.agent_name))
-    ?`<div class="run-agent-chip">with <a href="/?agent=${encodeURIComponent(r.source_actor_id)}">${esc(r.agent_name)}</a>${r.harness?` · <span class="card-harness">${esc(r.harness)}</span>`:''}</div>`
+    ?`<div class="run-agent-chip">with <a href="/?agent=${encodeURIComponent(r.source_actor_id)}">${esc(r.agent_name)}</a>${r.harness?` · <span class="card-harness">${esc(agentDisplay(r.harness))}</span>`:''}</div>`
     :'';
   const exploreInner=[
     opts.detail?StriveContext.context(r,{shownText:r.caption||r.note||''}):'',
@@ -1395,7 +1400,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     StriveEvidence.summary(r),
     runUploadIdentity(r),
     StriveContext.setup(r),
-    `<div class="sub run-effort-context"><span class="card-harness">${esc(r.harness||'Coding agent')}</span>${r.harness==='Grok Bot'?' · bot activity':''} · ${esc(started)}</div>`,
+    `<div class="sub run-effort-context"><span class="card-harness">${esc(agentDisplay(r.harness)||'Coding agent')}</span>${r.harness==='Grok Bot'?' · bot activity':''} · ${esc(started)}</div>`,
     codeRoute?codeRouteDetail:'<p class="run-route-source">No work route was captured for this run. Activity bins do not identify which files, tasks or build steps happened.</p>',
     codeRoute&&ridge?ridge:'',
     fiveRow(r),
@@ -1722,7 +1727,7 @@ function featuredCard(r){
     <div class="title">${esc(r.title||'A run')}</div>
     ${r.caption?`<div class="note">${esc(r.caption)}</div>`:''}
     ${r.output_url&&safeOutputUrl(r.output_url)?`<div class="note"><a class="primary-output" href="${esc(r.output_url)}" target="_blank" rel="noopener noreferrer">Open what was built →</a></div>`:''}
-    <div class="sub"><span class="card-harness">${esc(r.harness||'agent')}</span>${r.project?' · '+esc(r.project):''}</div>
+    <div class="sub"><span class="card-harness">${esc(agentDisplay(r.harness)||'agent')}</span>${r.project?' · '+esc(r.project):''}</div>
     ${curve(r.rhythm)}
     <div class="stats num">
       <div class="stat"><div class="v">${r.prompts??'-'}</div><div class="k">Typed turns</div></div>
@@ -1781,7 +1786,7 @@ function coachStrip(r){
     ['git_evidence', r.commits!=null?`${r.commits} commits inside the sitting`:'every file tested against git'],
     ['write_verdict', r.coach_tool_calls?`verdict written, ${r.coach_tool_calls} tool calls`:'verdict written']];
   const dm=r.duration_s?Math.round(r.duration_s/60):0;
-  const head=[dm?fmtDur(dm):'',r.harness].filter(Boolean).join(' · ');
+  const head=[dm?fmtDur(dm):'',agentDisplay(r.harness)].filter(Boolean).join(' · ');
   return `<div class="check" id="check">
     <div class="check-top">${avatar(profileHandle(r.profiles),{rhythm:r.rhythm})}
       <span class="t">${esc(head||'a real sitting')}</span><span class="s" id="st">reading</span></div>
@@ -2294,7 +2299,7 @@ function weekStart(now=new Date()){const d=new Date(now);d.setHours(0,0,0,0);d.s
 
 // Public activity rankings. Every row links to its measured source run.
 const MARATHON_SECS=3*3600;
-function boardRow(r,i,value){const h=profileHandle(r.profiles||{});return `<div class="board-row"><span class="board-rank num">${i+1}</span><span class="board-what"><a href="${esc(StriveLinks.runHref(r))}">${esc(GrinderFeed.titleOf(r))}</a><small>${h?`<a href="${esc(StriveLinks.profileHref(h))}">@${esc(h)}</a>`:'metrics only'} · ${esc(r.harness||'agent')}</small></span><span class="board-value num">${esc(value)}</span></div>`}
+function boardRow(r,i,value){const h=profileHandle(r.profiles||{});return `<div class="board-row"><span class="board-rank num">${i+1}</span><span class="board-what"><a href="${esc(StriveLinks.runHref(r))}">${esc(GrinderFeed.titleOf(r))}</a><small>${h?`<a href="${esc(StriveLinks.profileHref(h))}">@${esc(h)}</a>`:'metrics only'} · ${esc(agentDisplay(r.harness)||'agent')}</small></span><span class="board-value num">${esc(value)}</span></div>`}
 function boardHtml(title,note,rows,empty){return `<section class="card board"><div class="board-head"><h3>${esc(title)}</h3><small>${esc(note)}</small></div>${rows.length?rows.map(([r,v],i)=>boardRow(r,i,v)).join(''):`<p class="board-empty">${esc(empty)}</p>`}</section>`}
 async function viewBoards(){
   const app=$('app'); frame(railHtml('boards'),null); setPrimarySection('discover'); app.innerHTML=feedTabs('boards')+skeletonCard()+skeletonCard();
@@ -2496,10 +2501,11 @@ async function viewProjects(){
 
 }
 function toolLogoHtml(name){
-  const raw=String(name||''), key=raw.toLowerCase();
-  const label=key.includes('cursor')?'Cursor':key.includes('claude')?'Claude Code':key.includes('codex')?'Codex':key.includes('grok')?'Grok Bot':key.includes('astra')?'Astra':raw;
-  const mark=label==='Cursor'?'◩':label==='Claude Code'?'✳':label==='Codex'?'◎':label==='Grok Bot'?'𝕏':label==='Astra'?'✦':'•';
-  return `<span class="tool-chip"><span class="tool-mark" aria-hidden="true">${mark}</span>${esc(label)}</span>`;
+  const raw=String(name||''), key=raw.toLowerCase(), known=window.StriveAgents?.agent(raw);
+  const label=known?.maker?known.name:key.includes('cursor')?'Cursor':key.includes('claude')?'Claude Code':key.includes('codex')?'Codex':key.includes('grok')?'Grok Bot':key.includes('astra')?'Astra':raw;
+  const logo=known?.maker?window.StriveAgents.markSvg(known.maker,{size:13}):'';
+  const mark=logo||(label==='Cursor'?'◩':label==='Claude Code'?'✳':label==='Codex'?'◎':label==='Grok Bot'?'𝕏':label==='Astra'?'✦':'•');
+  return `<span class="tool-chip"><span class="tool-mark${logo?' has-logo':''}" aria-hidden="true">${mark}</span>${esc(label)}</span>`;
 }
 function profileProjectsHtml(runs,mine=false){
   const groups=new Map();
@@ -2534,7 +2540,7 @@ async function viewProfile(handle){
   const T={runs:R.length,prompts:R.reduce((a,r)=>a+(r.prompts||0),0),
     hours:Math.round(R.reduce((a,r)=>a+(r.duration_s||0),0)/360)/10, commits:R.reduce((a,r)=>a+(r.commits||0),0),
     ...vptTotals(R)};
-  const harnesses=[...new Set(R.map(r=>r.harness).filter(Boolean))];
+  const harnesses=[...new Set(R.map(r=>agentDisplay(r.harness)).filter(Boolean))];
   const rg=prof.rig||{};
   const setup=mine?harnesses.map(toolLogoHtml).join(''):'';
   const projects=profileProjectsHtml(R,mine);
@@ -2698,10 +2704,10 @@ async function importRun(){
       ? String(run.shipped[0]||'').trim().slice(0,120):'';
     if(receiptBacked) return receiptBacked;
     if(capturedProject) return `${capturedProject} session`;
-    return `${run.activity_label||run.harness||'Work'} session`;
+    return `${run.activity_label||agentDisplay(run.harness)||'Work'} session`;
   };
   const app=$('app');
-  const rows=[['harness',run.harness],['model',run.model],['project',importedProject],['typed turns',run.turns_typed],
+  const rows=[['harness',agentDisplay(run.harness)||null],['model',modelDisplay(run.model)||null],['project',importedProject],['typed turns',run.turns_typed],
     ['minutes',run.duration_s==null?null:Math.round(run.duration_s/60)],[run.trace_basis==='observed native events; timestamps unavailable'?'observed calls (minimum)':'tool calls',run.tool_calls],
     ['shell calls',run.shell_calls],['files',run.files_touched],['commits',run.commits],
     ['verified claims',run.claims_verified!=null&&run.claims!=null?`${run.claims_verified}/${run.claims}`:null],
@@ -2902,7 +2908,7 @@ async function viewShareRig(handle){
   if(prof)handle=profileHandle(prof);
   if(!prof){ app.innerHTML='<div class="card"><div class="empty">Profile not found.</div></div>'; return; }
   const {data:runs}=await sb.from('runs').select('harness').eq('profile_id',prof.id).eq('visibility','public');
-  const harnesses=[...new Set((runs||[]).map(r=>r.harness).filter(Boolean))];
+  const harnesses=[...new Set((runs||[]).map(r=>agentDisplay(r.harness)).filter(Boolean))];
   const rg=prof.rig||{};
   const names=(rg.share_names&&rg.mcp_names&&rg.mcp_names.length)?esc(rg.mcp_names.join(' · ')):'';
   app.innerHTML=`<div class="head"><h2>@${esc(handle)}&#39;s rig</h2><span class="meta">${esc(harnesses.join(' · ')||'harness to be detected')}</span></div>
@@ -2930,7 +2936,7 @@ async function viewShareProfile(handle){
   const T={runs:R.length,prompts:R.reduce((a,r)=>a+(r.prompts||0),0),
     hours:Math.round(R.reduce((a,r)=>a+(r.duration_s||0),0)/360)/10,
     commits:R.reduce((a,r)=>a+(r.commits||0),0)};
-  const harnesses=[...new Set(R.map(r=>r.harness).filter(Boolean))];
+  const harnesses=[...new Set(R.map(r=>agentDisplay(r.harness)).filter(Boolean))];
   app.innerHTML=shareCardHtml({
     handle, stamp:'Claimed', lead:`@${handle}`, sub:'Where I post my real runs.',
     heroN:T.runs, heroK:'public runs', stats:shareStatsProfile(R,T,harnesses),

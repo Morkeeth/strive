@@ -28,7 +28,7 @@
   }
   function collect(model){
     const items=[];
-    for(const i of model.items)items.push({id:i.run.id,project:i.label||'',git:false,commits:i.commits,visibility:i.run.visibility,result:i.result,title:i.run.title||'',at:i.start,seconds:i.seconds,harness:i.run.harness||''});
+    for(const i of model.items)items.push({id:i.run.id,project:i.label||'',git:false,commits:i.commits,visibility:i.run.visibility,result:i.result,title:i.run.title||'',at:i.start,seconds:i.seconds,harness:(root.StriveAgents?.agentName(i.run.harness))||i.run.harness||''});
     for(const g of model.recovered)items.push({id:g.run.id,project:g.label||'',git:true,visibility:g.run.visibility,result:g.result,title:g.run.title||'',at:g.from,until:g.until,commits:g.commits});
     return items;
   }

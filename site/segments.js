@@ -75,7 +75,7 @@
           <div class="segment-place num" aria-label="Rank ${run.rank}">${run.rank}</div>
           <div class="segment-run">
             <h2><a href="/?run=${encodeURIComponent(run.id)}">${esc(run.title || "Untitled run")}</a></h2>
-            <p class="segment-context"><span>Model</span> ${esc(run.model || "Unknown")} <span>Project</span> ${esc(run.project || "Unknown")}</p>
+            <p class="segment-context"><span>Model</span> ${esc((run.model && globalThis.StriveAgents ? globalThis.StriveAgents.modelName(run.model) : run.model) || "Unknown")} <span>Project</span> ${esc(run.project || "Unknown")}</p>
             <div class="segment-trace" aria-hidden="true">${trace(run)}</div>
           </div>
           <dl class="segment-metrics">

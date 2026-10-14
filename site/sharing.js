@@ -164,7 +164,7 @@ function mount({run,slot,status,moment=null,review=null}){
  const form=slot.querySelector('form'),canvas=slot.querySelector('canvas'),ctx=canvas.getContext('2d');
  let contributionText=(()=>{
   const facts=storyFacts(run);
-  const bits=[run.harness?String(run.harness)+' session':'Agent session'];
+  const bits=[run.harness?String(root.StriveAgents?.agentName(run.harness)||run.harness)+' session':'Agent session'];
   if(facts.code) bits.push(facts.code);
   if(facts.project) bits.push('project '+facts.project);
   return bits.join(' · ');
@@ -176,7 +176,7 @@ function mount({run,slot,status,moment=null,review=null}){
  ctx.fillStyle='#123cff';ctx.font='600 16px sans-serif';ctx.fillText('ACHIEVED',64,124);
  ctx.fillStyle='#111';clipped=lines(f.title||'Your run',64,172,952,'600 46px sans-serif',54,2)||clipped;
  ctx.fillStyle='#444';clipped=lines(f.result||'Achievement caption unknown',64,275,952,'24px sans-serif',31,2)||clipped;
- ctx.fillStyle='#666';const identity=f.identity&&handle?'@'+handle:'Identity not included';const agentLabel=(()=>{const n=String(run.agent_name||'').trim();if(!n||/^connect$/i.test(n))return run.source_actor_id?'via Connect':'';return n;})();clipped=lines(identity+' · '+(run.harness||'Harness unknown')+(f.identity&&agentLabel?' · '+agentLabel:''),64,330,952,'19px sans-serif',24,1)||clipped;
+ ctx.fillStyle='#666';const identity=f.identity&&handle?'@'+handle:'Identity not included';const agentLabel=(()=>{const n=String(run.agent_name||'').trim();if(!n||/^connect$/i.test(n))return run.source_actor_id?'via Connect':'';return n;})();clipped=lines(identity+' · '+(root.StriveAgents?.agentName(run.harness)||run.harness||'Harness unknown')+(f.identity&&agentLabel?' · '+agentLabel:''),64,330,952,'19px sans-serif',24,1)||clipped;
  const facts=storyFacts(run),story=[['OUTPUT',facts.output],['PROJECT',facts.project],['CODE ACTIVITY',facts.code]].filter(([,value])=>value);story.forEach(([label,value],i)=>{const x=64+i*317;ctx.fillStyle='#666';ctx.font='15px sans-serif';ctx.fillText(label,x,378);ctx.fillStyle=value==='Unknown'?'#666':'#111';ctx.font=value==='Unknown'?'19px sans-serif':'600 20px sans-serif';clipped=lines(value,x,408,285,'600 20px sans-serif',24,1)||clipped;});
  const route=run.code_route&&run.code_route.v===1?run.code_route:null;
  if(route&&!route.unavailable&&Array.isArray(route.projects)&&Array.isArray(route.stops)&&route.projects.length&&route.stops.length){
