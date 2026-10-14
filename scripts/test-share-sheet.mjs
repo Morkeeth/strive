@@ -23,7 +23,14 @@ for(const viewer of ['author','reader']){
   assert.equal(dialog.querySelector('.share-more'),null);assert.equal(native,0);
   await dialog.querySelector('.share-copy-link').onclick();assert.equal(clipboard,'https://striverun.app'+path);
   assert.equal(dialog.querySelector('.share-copy-link').textContent,'Copied');
-  assert.match(dialog.querySelector('img').src,/v=4$/);
+  assert.match(dialog.querySelector('img').src,/\/api\/og\?run=7b44e8ca-1111-4111-8111-111111111111&format=square&v=5$/,'desktop opens on the square image');
+  assert.equal(dialog.querySelector('.share-image'),null,'no Share image where the browser cannot share a file');
+  assert.equal(dialog.querySelector('.share-download').getAttribute('download'),'strive-7b44e8ca-square.png');
+  dialog.querySelector('[data-format="story"]').click();
+  assert.match(dialog.querySelector('img').src,/format=story&v=5$/);assert.equal(dialog.querySelector('img').getAttribute('height'),'1920');
+  assert.match(dialog.querySelector('.share-download').href,/format=story&v=5$/);assert.equal(dialog.querySelector('[data-format="story"]').getAttribute('aria-checked'),'true');
+  dialog.querySelector('[data-format="story"]').dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+  assert.equal(dialog.querySelector('[aria-checked="true"]').dataset.format,'square','arrow keys move through the formats');
   for(const link of dialog.querySelectorAll('nav a'))assert.ok(decodeURIComponent(link.href).includes(clipboard));
   dialog.close();assert.equal(w.document.activeElement.id,'entry');assert.equal(w.document.querySelector('dialog'),null);
  }
@@ -32,6 +39,16 @@ for(const viewer of ['author','reader']){
  w.document.querySelector('dialog').close();
  assert.equal(w.GrinderSharing.openPublic({...run,visibility:'private'}),false);
  w.matchMedia=()=>({matches:true});w.GrinderSharing.openPublic(run);assert.equal(native,0);await w.document.querySelector('.share-more').onclick();assert.equal(native,1);
+ w.document.querySelector('dialog').close();
+ // A phone that can share files gets Share image: the story PNG goes to the system sheet.
+ let shared=null,fetched=[];w.navigator.canShare=({files})=>files?.length===1;w.navigator.share=async data=>{shared=data};
+ w.fetch=async src=>{fetched.push(String(src));return {ok:true,blob:async()=>new w.Blob(['png'],{type:'image/png'})}};
+ w.GrinderSharing.openPublic(run);const sheet=w.document.querySelector('dialog');
+ assert.match(sheet.querySelector('img').src,/format=story&v=5$/,'a phone opens on the story image');
+ assert.equal(sheet.querySelector('.share-image-actions').firstElementChild.className,'share-image','Share image leads where it works');
+ await sheet.querySelector('.share-image').onclick();
+ assert.equal(shared.files.length,1);assert.equal(shared.files[0].name,'strive-7b44e8ca-story.png');assert.equal(shared.files[0].type,'image/png');
+ assert.equal(shared.text,'https://striverun.app'+path);assert.deepEqual(fetched,['/api/og?run='+run.id+'&format=story&v=5']);
  w.close();
 }
 console.log('PASS shared Feed/detail handlers: author/reader fixtures, canonical clipboard, neutral copy, desktop/mobile menu, denied clipboard fallback, private exclusion, focus return');

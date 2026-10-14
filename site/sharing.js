@@ -118,13 +118,40 @@ function traceSeries(run){
  }
  return null;
 }
+// The images a public run travels as (api/og.js draws each from the public run only): a story,
+// a square post and the preview a pasted link unfurls with.
+const SHARE_FORMATS=[['story','Story',1080,1920,'For stories'],['square','Square',1080,1080,'For posts'],['link','Link preview',1200,630,'What a pasted link shows']];
 function mountPublic({run,slot}){
  const url=location.origin+(cleanRunPath(run)||'/r/'+encodeURIComponent(run.id));
- const imageUrl='/api/og?run='+encodeURIComponent(run.id)+'&v=4';
+ const imageUrl=format=>'/api/og?run='+encodeURIComponent(run.id)+'&format='+format+'&v=5';
+ const fileName=format=>'strive-'+String(run.id).slice(0,8)+'-'+format+'.png';
  const text=run.title||'STRIVE run', encoded=encodeURIComponent(url);
  const mobile=typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches&&matchMedia('(max-width: 767px)').matches;
- slot.innerHTML=`<section class="run-share-sheet"><h2 id="run-share-title">Share this run</h2><img class="share-image-preview" src="${esc(imageUrl)}" alt="Share card for ${esc(text)}" width="1200" height="630"><button type="button" class="share-copy-link">Copy link</button><nav aria-label="Share destinations"><a target="_blank" rel="noopener noreferrer" href="https://twitter.com/intent/tweet?url=${encoded}&text=${encodeURIComponent(text)}">X</a><a href="sms:?&body=${encoded}">Messages</a><a target="_blank" rel="noopener noreferrer" href="https://wa.me/?text=${encoded}">WhatsApp</a><a target="_blank" rel="noopener noreferrer" href="https://www.linkedin.com/sharing/share-offsite/?url=${encoded}">LinkedIn</a></nav>${mobile&&navigator.share?'<button type="button" class="ghost share-more">More…</button>':''}<p class="share-copy-status" role="status"></p><input class="share-link-fallback" aria-label="Public run link" readonly hidden value="${esc(url)}"></section>`;
+ // Offer Share image only where this browser can hand an image file to the system share sheet.
+ const fileShare=typeof navigator.canShare==='function'&&typeof File==='function'&&(()=>{try{return navigator.canShare({files:[new File([''],'run.png',{type:'image/png'})]})}catch(_){return false}})();
+ let format=mobile?'story':'square';
+ const [,,width,height,use]=SHARE_FORMATS.find(([key])=>key===format);
+ slot.innerHTML=`<section class="run-share-sheet"><h2 id="run-share-title">Share this run</h2><div class="share-formats" role="radiogroup" aria-label="Image format">${SHARE_FORMATS.map(([key,label])=>`<button type="button" role="radio" data-format="${key}" aria-checked="${key===format}" tabindex="${key===format?0:-1}">${label}</button>`).join('')}</div><figure class="share-image-figure"><div class="share-image-frame" data-format="${format}" aria-busy="true"><img class="share-image-preview" src="${esc(imageUrl(format))}" alt="${esc(SHARE_FORMATS.find(([key])=>key===format)[1])} image for ${esc(text)}" width="${width}" height="${height}"><p class="share-image-error" hidden>The image could not be built.</p></div><figcaption class="share-image-note">${width} × ${height} · ${use}</figcaption></figure><div class="share-image-actions">${fileShare?'<button type="button" class="share-image">Share image</button>':''}<a class="act share-download" href="${esc(imageUrl(format))}" download="${fileName(format)}">Download</a><button type="button" class="share-copy-link">Copy link</button></div><nav aria-label="Share destinations"><a target="_blank" rel="noopener noreferrer" href="https://twitter.com/intent/tweet?url=${encoded}&text=${encodeURIComponent(text)}">X</a><a href="sms:?&body=${encoded}">Messages</a><a target="_blank" rel="noopener noreferrer" href="https://wa.me/?text=${encoded}">WhatsApp</a><a target="_blank" rel="noopener noreferrer" href="https://www.linkedin.com/sharing/share-offsite/?url=${encoded}">LinkedIn</a></nav>${mobile&&navigator.share?'<button type="button" class="ghost share-more">More…</button>':''}<p class="share-copy-status" role="status"></p><input class="share-link-fallback" aria-label="Public run link" readonly hidden value="${esc(url)}"><p class="share-sheet-note">Public runs only. Each image shows what the public run page already shows.</p></section>`;
  const button=slot.querySelector('.share-copy-link'),message=slot.querySelector('.share-copy-status');
+ const frame=slot.querySelector('.share-image-frame'),preview=frame.querySelector('img'),note=slot.querySelector('.share-image-note'),download=slot.querySelector('.share-download');
+ const radios=[...slot.querySelectorAll('.share-formats [role=radio]')],files=new Map();
+ // The image file is fetched ahead of a tap, so the share sheet opens inside the tap itself.
+ const prepare=key=>{if(!files.has(key))files.set(key,fetch(imageUrl(key)).then(response=>{if(!response.ok)throw new Error('image');return response.blob()}).then(blob=>new File([blob],fileName(key),{type:'image/png'})));return files.get(key)};
+ preview.addEventListener('load',()=>{frame.removeAttribute('aria-busy');if(fileShare)prepare(format).catch(()=>files.delete(format));});
+ preview.addEventListener('error',()=>{frame.removeAttribute('aria-busy');frame.classList.add('is-error');frame.querySelector('.share-image-error').hidden=false;message.textContent='The image could not be built. Copy the link instead.';});
+ const choose=key=>{
+  const [,label,w,h,purpose]=SHARE_FORMATS.find(([name])=>name===key);format=key;
+  for(const radio of radios){const on=radio.dataset.format===key;radio.setAttribute('aria-checked',String(on));radio.tabIndex=on?0:-1;}
+  frame.dataset.format=key;frame.setAttribute('aria-busy','true');frame.classList.remove('is-error');frame.querySelector('.share-image-error').hidden=true;message.textContent='';
+  preview.width=w;preview.height=h;preview.alt=label+' image for '+text;preview.src=imageUrl(key);note.textContent=`${w} × ${h} · ${purpose}`;
+  download.href=imageUrl(key);download.setAttribute('download',fileName(key));
+ };
+ for(const radio of radios){
+  radio.onclick=()=>choose(radio.dataset.format);
+  radio.onkeydown=event=>{const step={ArrowRight:1,ArrowDown:1,ArrowLeft:-1,ArrowUp:-1}[event.key];if(!step)return;event.preventDefault();const next=radios[(radios.indexOf(radio)+step+radios.length)%radios.length];choose(next.dataset.format);next.focus();};
+ }
+ const share=slot.querySelector('.share-image');
+ if(share)share.onclick=async()=>{try{const file=await prepare(format);await navigator.share({files:[file],title:text,text:url});message.textContent='';}catch(error){files.delete(format);if(error?.name!=='AbortError')message.textContent='Sharing the image is unavailable here. Download it instead.';}};
  button.onclick=async()=>{try{await navigator.clipboard.writeText(url);button.textContent='Copied';message.textContent='Public link copied.';}catch(_){message.textContent='Select and copy the link.';const input=slot.querySelector('.share-link-fallback');input.hidden=false;input.focus();input.select();}};
  const more=slot.querySelector('.share-more');if(more)more.onclick=async()=>{try{await navigator.share({title:text,url})}catch(error){if(error?.name!=='AbortError')message.textContent='Sharing is unavailable. Copy the link instead.'}};
 }
