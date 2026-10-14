@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url), Q=require('../site/run-queue.js');
-const run={id:'run',profile_id:'owner',source_actor_id:'agent',visibility:'private'};
+const run={id:'run',profile_id:'owner',source_actor_id:'agent',visibility:'private',created_at:'2026-10-14T12:00:00Z'};
 assert.equal(Q.pending(run,'owner'),true);
 for(const changed of [{visibility:'public'},{visibility:'link'},{profile_id:'other'}])assert.equal(Q.pending({...run,...changed},'owner'),false);
 assert.equal(Q.pending(run,null),false);
@@ -19,7 +19,7 @@ const dom=new JSDOM('<main></main>');globalThis.document=dom.window.document;
 dom.window.HTMLDialogElement.prototype.showModal=function(){this.open=true};
 dom.window.HTMLDialogElement.prototype.close=function(){this.open=false};
 const slot=document.querySelector('main');let reads=[];
-function reader(result){return {from(table){reads.push(table);const q={select(){return q},eq(k,v){reads.push([k,v]);return q},not(k,op,v){reads.push([k,op,v]);return q},order(){return result}};return q}}}
+function reader(result){return {from(table){reads.push(table);const q={select(){return q},eq(k,v){reads.push([k,v]);return q},not(k,op,v){reads.push([k,op,v]);return q},or(){return q},order(){return result}};return q}}}
 let resolve;const deferred=new Promise(r=>resolve=r);let current=true;
 const loading=Q.mount({client:reader(deferred),owner:'owner',slot,esc:s=>s,current:()=>current,open:true});
 current=false;resolve({data:[run],error:null});await loading;assert.equal(slot.children.length,0,'logout or navigation must cancel the pending mount');
@@ -39,3 +39,7 @@ const F=require('../site/feed-card.js');
 assert.match(F.privateMarker(run),/Only you can see this/);
 assert.equal(F.privateMarker({...run,visibility:'public'}),'');
 assert.equal(F.privateMarker({...run,visibility:'link'}),'');
+
+assert.equal(Q.waiting({...run,created_at:'2026-10-13T12:00:00Z'},'owner'),false);
+assert.equal(Q.waiting({...run,id:'2ceceeb1-65bf-4ff9-bfd1-8ee179823e05',created_at:'2026-10-13T12:00:00Z'},'owner'),true);
+assert.equal(Q.waiting(run,'other'),false);

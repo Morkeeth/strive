@@ -550,6 +550,62 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <link rel="stylesheet" href="/navigation.css"><link rel="stylesheet" href="/shared-ui.css">
 <script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};</script>
 <script defer src="/_vercel/insights/script.js"></script>
+<link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" crossorigin="anonymous">
+<link rel="preload" as="script" href="/navigation.js">
+<link rel="preload" as="script" href="/run-queue.js">
+<link rel="preload" as="script" href="/run-links.js">
+<link rel="preload" as="script" href="/activity-order.js">
+<link rel="preload" as="script" href="/activity-post.js">
+<link rel="preload" as="script" href="/card-motion.js">
+<link rel="preload" as="script" href="/run-contract.js">
+<link rel="preload" as="script" href="/code-route-view.js">
+<link rel="preload" as="script" href="/historical-import.js">
+<link rel="preload" as="script" href="/run-evidence.js">
+<link rel="preload" as="script" href="/run-story.js">
+<link rel="preload" as="script" href="/run-estimates.js">
+<link rel="preload" as="script" href="/run-context.js">
+<link rel="preload" as="script" href="/feed-card.js">
+<link rel="preload" as="script" href="/day.js">
+<link rel="preload" as="script" href="/journey.js">
+<link rel="preload" as="script" href="/link-preview-card.js">
+<link rel="preload" as="script" href="/sharing-link-image.js">
+<link rel="preload" as="script" href="/import-row.js">
+<link rel="preload" as="script" href="/sharing-review.js">
+<link rel="preload" as="script" href="/day-drafts.js">
+<link rel="preload" as="script" href="/day-share.js">
+<link rel="preload" as="script" href="/day-card.js">
+<link rel="preload" as="script" href="/project-follow.js">
+<link rel="preload" as="script" href="/capture-prices.js">
+<link rel="preload" as="script" href="/capture-estimates.js">
+<link rel="preload" as="script" href="/dropin-parse.js">
+<link rel="preload" as="script" href="/fair.js">
+<link rel="preload" as="script" href="/home.js">
+<link rel="preload" as="script" href="/dropin.js">
+<link rel="preload" as="script" href="/photo-grid.js">
+<link rel="preload" as="script" href="/photo-draft.js">
+<link rel="preload" as="script" href="/post-flow.js">
+<link rel="preload" as="script" href="/run-access.js">
+<link rel="preload" as="script" href="/fork-run.js">
+<link rel="preload" as="script" href="/auth.js">
+<link rel="preload" as="script" href="/segments.js">
+<link rel="preload" as="script" href="/social.js">
+<link rel="preload" as="script" href="/people.js">
+<link rel="preload" as="script" href="/origin.js">
+<link rel="preload" as="script" href="/account.js">
+<link rel="preload" as="script" href="/connect.js">
+<link rel="preload" as="script" href="/feedback-wake.js">
+<link rel="preload" as="script" href="/roadmap-feedback.js">
+<link rel="preload" as="script" href="/challenges.js">
+<link rel="preload" as="script" href="/practice-eligibility.js">
+<link rel="preload" as="script" href="/practices.js">
+<link rel="preload" as="script" href="/progress.js">
+<link rel="preload" as="script" href="/sharing.js">
+<link rel="preload" as="script" href="/moments.js">
+<link rel="preload" as="script" href="/story-tile.js">
+<link rel="preload" as="script" href="/run-placeholders.js">
+<link rel="preload" as="script" href="/run-photos.js">
+<link rel="preload" as="script" href="/example.js">
+<link rel="preload" as="script" href="/forum.js">
 </head>
 <body>
 <a class="skip-link" href="#app">Skip to content</a>
@@ -558,13 +614,12 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
   <span class="alpha-label">Alpha</span>
   <nav id="product-nav" class="product-nav" aria-label="Primary">
     <a class="product-nav-link" href="/" data-nav-page="feed">Feed</a>
-    <a class="product-nav-link" href="/?queue" data-nav-page="queue">Review queue <span data-review-count hidden></span></a>
     <a class="product-nav-link product-nav-add" href="/?post" data-nav-page="post">Add run</a>
   </nav>
   <div class="right">
     <a class="global-add" href="/?post"><span aria-hidden="true">+</span> Add run</a>
     <details id="account-menu" class="account-menu" hidden>
-      <summary class="profile-trigger" aria-label="Profile and settings" aria-haspopup="menu"><span id="nav-avatar" class="profile-fallback"><img src="/favicon.svg" alt="" width="30" height="30"></span></summary>
+      <summary class="profile-trigger" aria-label="Profile and settings" aria-haspopup="menu"><span id="nav-avatar" class="profile-fallback"><img src="/favicon.svg" alt="" width="30" height="30"></span><span class="review-avatar-badge" data-review-count hidden></span></summary>
       <div class="account-panel" role="menu" data-you-links></div>
     </details>
     <span id="me" class="you" hidden></span>
@@ -662,7 +717,21 @@ function projectStats(runs){
 // Compatibility hooks for view modules: navigation is rendered once in the shared header.
 function railHtml(){ return ''; }
 function setPrimarySection(){ window.StriveNavigation.sync({handle:typeof ME==='object'&&ME?profileHandle(ME):null}); void updateReviewCount(); }
-async function updateReviewCount(){const badge=document.querySelector('[data-review-count]');if(!badge)return;badge.hidden=true;badge.textContent='';const owner=ME?.id;if(!owner)return;const generation=AUTH_GENERATION;try{const rows=await StriveRunQueue.read(sb,owner);if(generation!==AUTH_GENERATION||owner!==ME?.id)return;badge.textContent=String(rows.length);badge.hidden=!rows.length;}catch(_){}}
+let reviewRead=null;
+async function updateReviewCount(){
+  const badges=[...document.querySelectorAll('[data-review-count]')];badges.forEach(b=>{b.hidden=true;b.textContent=''});$('review-strip')?.remove();
+  const owner=ME?.id;if(!owner)return;const generation=AUTH_GENERATION;
+  try{
+    // Share an in-flight read across the header and Feed render. Never retain private rows.
+    if(!reviewRead||reviewRead.owner!==owner)reviewRead={owner,job:StriveRunQueue.read(sb,owner)};
+    const request=reviewRead;let rows;try{rows=await request.job}finally{if(reviewRead===request)reviewRead=null}
+    if(generation!==AUTH_GENERATION||owner!==ME?.id)return;
+    badges.forEach(b=>{b.textContent=String(rows.length);b.hidden=!rows.length});
+    const q=new URLSearchParams(location.search),feed=![...q.keys()].length||q.has('following')||q.has('explore');
+    if(feed&&rows.length&&!$('review-strip'))$('app')?.insertAdjacentHTML('afterbegin','<a id="review-strip" class="review-strip" href="/?queue"><strong>'+rows.length+' run'+(rows.length===1?'':'s')+' waiting for your review</strong><span>Only you can see these. Review →</span></a>');
+  }catch(_){}
+}
+
 // A real public run, posted from a real session, for anyone who wants to see a card before making
 // one. It replaced the bundled sample on 25 Sep 2026: a stranger should meet a real run first.
 const REAL_RUN='/r/3afa89e7-aff5-488d-bec3-da36196b8c5e';
@@ -676,7 +745,7 @@ function menuLinks(kind){
   if(!ME) return AUTH_USER
     ? `<a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" class="ghost" data-signout role="menuitem">Sign out</button>`
     : `<a href="/?connect" role="menuitem">Connect your agent</a><div class="menu-sep"></div><button type="button" class="menu-signin" data-signin role="menuitem">${signInLabel()}</button>`;
-  return `<a href="${esc(StriveLinks.profileHref(profileHandle(ME)))}" role="menuitem">Profile</a><a href="/?inbox" role="menuitem" data-responses-link>Responses</a><a href="/?account" role="menuitem">Settings</a><a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" class="ghost" data-signout role="menuitem">Sign out</button>`;
+  return `<a href="${esc(StriveLinks.profileHref(profileHandle(ME)))}" role="menuitem">Profile</a><a href="/?inbox" role="menuitem" data-responses-link>Responses</a><a href="/?queue" role="menuitem">Review queue <span data-review-count hidden></span></a><a href="/?account" role="menuitem">Settings</a><a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" class="ghost" data-signout role="menuitem">Sign out</button>`;
 }
 function syncAuthNav(){
   document.querySelectorAll('[data-auth="1"]').forEach(el=>{el.hidden=!ME});
@@ -794,7 +863,7 @@ const roadmapFeedback=StriveFeedback({client:sb,me:()=>ME,signIn:()=>showSignIn(
 let AUTH_GENERATION=0, RUN_VIEW_GENERATION=0;
 // Invalidate synchronously, before any queued auth refresh or pending private request.
 function invalidatePrivateView(){
-  const reviewBadge=document.querySelector('[data-review-count]');if(reviewBadge){reviewBadge.hidden=true;reviewBadge.textContent='';}
+  document.querySelectorAll('[data-review-count]').forEach(b=>{b.hidden=true;b.textContent=''});$('review-strip')?.remove();reviewRead=null;
   AUTH_GENERATION++;RUN_VIEW_GENERATION++;
   document.querySelector('dialog.run-share-dialog')?.close();
   ME=null;AUTH_USER=null;IDENTITY_SETUP=null;
@@ -1858,6 +1927,7 @@ async function viewLanding(){
     body.innerHTML=runsFailed?failed:'<p class="home-none">No public run yet.</p>';
   }
   wireKudos();
+  void updateReviewCount();
   if(ME||location.search||location.hash) return;
   const line=$('public-run-count');
   if(!line) return;

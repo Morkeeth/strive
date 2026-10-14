@@ -20,7 +20,7 @@ try:
   for width in [390,1440]:
    context=browser.new_context(viewport={'width':width,'height':900});page=context.new_page();page.add_init_script(helper.session_script(stack['casey'],'test-casey'))
    if width==390:
-    page.goto(stack['site']+'/');page.locator('[data-review-count]:not([hidden])').wait_for();assert page.get_by_role('dialog',name='Runs waiting for your review').count()==0;assert page.locator('[data-review-count]').inner_text()=='4';page.screenshot(path=str(out/'header-phone.png'),full_page=True)
+    page.goto(stack['site']+'/');page.locator('.review-avatar-badge:not([hidden])').wait_for();assert page.get_by_role('dialog',name='Runs waiting for your review').count()==0;assert page.locator('#review-strip').is_visible();assert page.locator('#product-nav a[href="/?queue"]').count()==0;assert page.locator('.review-avatar-badge').inner_text()=='4';page.screenshot(path=str(out/'header-phone.png'),full_page=True)
    page.goto(stack['site']+'/?queue');page.get_by_role('heading',name='Ready for your review').wait_for()
    assert page.get_by_role('link',name='Review TEST DATA manual',exact=True).count()==1
    assert page.get_by_role('link',name='Review TEST DATA other owner').count()==0
