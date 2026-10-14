@@ -276,7 +276,8 @@ const squareCard=(run,urls=[],opts={})=>posterCard(run,urls,opts,'square');
 
 // THE LINK PREVIEW, 1200x630: built for the 500px card a message or a post shows. Words on the
 // left, the run's picture on the right: its selected images, else its trace, else its caption.
-const LINK={width:1200,height:630,pad:40,top:26,bottom:34,head:46,brandSize:34,metaSize:22,gap:18,cardPad:40,radius:28};
+// X lays its domain label over the image's bottom-left corner, so the card ends above it.
+const LINK={width:1200,height:630,pad:40,top:26,bottom:76,head:46,brandSize:34,metaSize:22,gap:18,cardPad:36,radius:28};
 function linkLayout(run,count,opts){
  const p=parts(run,opts),inner=LINK.width-2*LINK.pad-2*LINK.cardPad,innerHeight=LINK.height-LINK.top-LINK.bottom-LINK.head-LINK.gap-2*LINK.cardPad;
  const visual=count?'images':p.bins?'trace':p.caption?'quote':null,side=visual?440:0,left=visual?inner-side-40:inner;
