@@ -550,7 +550,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <link rel="stylesheet" href="/navigation.css"><link rel="stylesheet" href="/shared-ui.css">
 <script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};</script>
 <script defer src="/_vercel/insights/script.js"></script>
-<link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" crossorigin="anonymous">
+<link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" crossorigin="anonymous" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R">
 <link rel="preload" as="script" href="/navigation.js">
 <link rel="preload" as="script" href="/run-queue.js">
 <link rel="preload" as="script" href="/run-links.js">
@@ -720,12 +720,12 @@ function setPrimarySection(){ window.StriveNavigation.sync({handle:typeof ME==='
 let reviewRead=null;
 async function updateReviewCount(){
   const badges=[...document.querySelectorAll('[data-review-count]')];badges.forEach(b=>{b.hidden=true;b.textContent=''});$('review-strip')?.remove();
-  const owner=ME?.id;if(!owner)return;const generation=AUTH_GENERATION;
+  const owner=ME?.id;if(!owner)return;const generation=AUTH_GENERATION,viewGeneration=RUN_VIEW_GENERATION;
   try{
     // Share an in-flight read across the header and Feed render. Never retain private rows.
     if(!reviewRead||reviewRead.owner!==owner)reviewRead={owner,job:StriveRunQueue.read(sb,owner)};
     const request=reviewRead;let rows;try{rows=await request.job}finally{if(reviewRead===request)reviewRead=null}
-    if(generation!==AUTH_GENERATION||owner!==ME?.id)return;
+    if(generation!==AUTH_GENERATION||viewGeneration!==RUN_VIEW_GENERATION||owner!==ME?.id)return;
     badges.forEach(b=>{b.textContent=String(rows.length);b.hidden=!rows.length});
     const q=new URLSearchParams(location.search),feed=![...q.keys()].length||q.has('following')||q.has('explore');
     if(feed&&rows.length&&!$('review-strip'))$('app')?.insertAdjacentHTML('afterbegin','<a id="review-strip" class="review-strip" href="/?queue"><strong>'+rows.length+' run'+(rows.length===1?'':'s')+' waiting for your review</strong><span>Only you can see these. Review →</span></a>');

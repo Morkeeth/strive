@@ -19,12 +19,12 @@ const dom=new JSDOM('<main></main>');globalThis.document=dom.window.document;
 dom.window.HTMLDialogElement.prototype.showModal=function(){this.open=true};
 dom.window.HTMLDialogElement.prototype.close=function(){this.open=false};
 const slot=document.querySelector('main');let reads=[];
-function reader(result){return {from(table){reads.push(table);const q={select(){return q},eq(k,v){reads.push([k,v]);return q},not(k,op,v){reads.push([k,op,v]);return q},or(){return q},order(){return result}};return q}}}
+function reader(result){return {from(table){reads.push(table);const q={select(){return q},eq(k,v){reads.push([k,v]);return q},not(k,op,v){reads.push([k,op,v]);return q},gte(k,v){reads.push([k,'gte',v]);return q},order(){return result}};return q}}}
 let resolve;const deferred=new Promise(r=>resolve=r);let current=true;
 const loading=Q.mount({client:reader(deferred),owner:'owner',slot,esc:s=>s,current:()=>current,open:true});
 current=false;resolve({data:[run],error:null});await loading;assert.equal(slot.children.length,0,'logout or navigation must cancel the pending mount');
 reads=[];await Q.read(reader(Promise.resolve({data:[run,{...run,profile_id:'other'}],error:null})),'owner');
-assert.deepEqual(reads,['runs',['profile_id','owner'],['visibility','private']]);
+assert.deepEqual(reads,['runs',['profile_id','owner'],['visibility','private'],['created_at','gte','2026-10-13T16:00:00Z']]);
 await Q.mount({client:reader(Promise.resolve({data:null,error:new Error('TEST DATA read failure')})),owner:'owner',slot,esc:s=>s,current:()=>true,open:false});
 assert.match(slot.textContent,/could not load/);assert.doesNotMatch(slot.textContent,/No agent runs/);
 console.log('PASS query is scoped to owner and private rows; logout/navigation cancels mounting; failure is not an empty queue');
@@ -41,5 +41,9 @@ assert.equal(F.privateMarker({...run,visibility:'public'}),'');
 assert.equal(F.privateMarker({...run,visibility:'link'}),'');
 
 assert.equal(Q.waiting({...run,created_at:'2026-10-13T12:00:00Z'},'owner'),false);
-assert.equal(Q.waiting({...run,id:'2ceceeb1-65bf-4ff9-bfd1-8ee179823e05',created_at:'2026-10-13T12:00:00Z'},'owner'),true);
+assert.equal(Q.waiting({...run,id:'night-parent',created_at:'2026-10-14T05:00:00Z'},'owner'),true);
 assert.equal(Q.waiting(run,'other'),false);
+
+assert.equal(Q.waiting({...run,created_at:'2026-10-13T15:59:59Z'},'owner'),false);
+assert.equal(Q.waiting({...run,created_at:'2026-10-13T16:00:00Z'},'owner'),true);
+assert.equal(Q.waiting({...run,created_at:'2026-10-13T18:00:00Z'},'owner'),true);
