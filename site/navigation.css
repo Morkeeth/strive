@@ -10,7 +10,7 @@
 @media(hover:hover){.product-nav-link:hover{color:var(--blue);background:var(--blue-wash)}.global-add:hover{background:#0035ca}}
 @media(min-width:801px) and (max-width:1080px){.bar .alpha-label{display:none}.bar-in{gap:10px}.product-nav-link{padding:0 10px}.bar .product-nav{margin-left:0}}
 @media(max-width:800px){
- .bar .product-nav{position:fixed;z-index:100;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:0;padding:0 4px env(safe-area-inset-bottom);background:#fff;border-top:1px solid var(--rule);box-shadow:0 -2px 12px #24242805;font-size:12px}
+ .bar .product-nav{position:fixed;z-index:100;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;margin:0;padding:0 4px env(safe-area-inset-bottom);background:#fff;border-top:1px solid var(--rule);box-shadow:0 -2px 12px #24242805;font-size:12px}
  .product-nav-link{min-height:60px;padding:6px 2px;border-bottom:0;border-top:3px solid transparent}
  .product-nav-link[aria-current=page]{border-top-color:var(--blue)}
  .product-nav-add{display:flex}.global-add{display:none!important}
@@ -23,3 +23,7 @@
 .my-runs-tabs a[aria-current=page]{color:#fff;background:var(--blue);font-weight:600}
 @media(max-width:500px){.my-runs-tabs{width:100%;gap:0}.my-runs-tabs a{flex:1;padding:0 8px;font-size:12px}}
 #notifications-toggle[hidden]{display:none!important}
+
+.review-strip{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;margin:0 0 20px;border:1px solid #bacbff;border-radius:12px;background:#edf3ff;color:#143ba7;text-decoration:none;font-size:14px}.review-strip span{font-size:12px}.profile-trigger{position:relative}.review-avatar-badge{position:absolute;top:0;right:-5px;min-width:18px;height:18px;padding:1px 4px;border-radius:10px;background:var(--blue);color:white;font-size:11px;line-height:16px}.review-avatar-badge[hidden]{display:none}@media(max-width:500px){.review-strip{align-items:flex-start;flex-direction:column;gap:3px}}
+
+.queue-preview{border:1px solid var(--rule);border-radius:12px;padding:16px;margin-top:12px;background:var(--card,#fff)}.queue-preview h3{margin:0 0 8px}.queue-preview .meta{margin:0 0 12px}.queue-preview button{margin-left:12px}
