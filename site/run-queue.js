@@ -16,7 +16,7 @@
     let rows;try{rows=await read(client,owner)}catch(_){if(current())slot.insertAdjacentHTML('afterbegin','<p role="alert">Your review queue could not load. <a href="/?queue">Try again</a></p>');return}
     if(!current())return;if(!rows.length){if(!open)slot.insertAdjacentHTML('beforeend','<p>No private runs are waiting for review.</p>');return;}
     const box=document.createElement('section');box.className='card pad';box.setAttribute('aria-label','Runs waiting for your review');
-    box.innerHTML='<h2>Ready for your review</h2><p><strong>Only me — not public.</strong> Only you can see these runs. Review the card before you approve and post, or discard it.</p>'+rows.map(run=>'<p><a class="act" href="/?run='+encodeURIComponent(run.id)+'&review=1">Review '+esc(run.title||'Untitled run')+'</a></p>').join('')+'<button type="button">Review now</button>';
+    box.innerHTML='<h2>Ready for your review</h2><p><strong>Only me. Not public.</strong> Only you can see these runs. Review the card before you approve and post, or discard it.</p>'+rows.map(run=>'<p><a class="act" href="/?run='+encodeURIComponent(run.id)+'&review=1">Review '+esc(run.title||'Untitled run')+'</a></p>').join('')+'<button type="button">Review now</button>';
     slot[open?'prepend':'append'](box);
     const dialog=document.createElement('dialog');dialog.className='run-share-dialog';dialog.setAttribute('aria-label','Runs waiting for your review');dialog.innerHTML=box.innerHTML+'<button type="button" data-close>Later</button>';
     dialog.querySelector('button:not([data-close])').remove();box.querySelector('button').onclick=()=>dialog.showModal();dialog.querySelector('[data-close]').onclick=()=>dialog.close();box.append(dialog);

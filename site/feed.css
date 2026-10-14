@@ -142,3 +142,7 @@ button.fc-act:hover,a.fc-act:hover{background:var(--blue-wash);color:var(--blue)
   .bar .right{gap:10px}
 }
 .bar nav .account-menu.on>summary{color:var(--ink);font-weight:500}
+
+.private-run-marker{border:2px solid var(--blue,#1649ff);background:#eef3ff;color:#102d80;padding:16px;margin:12px;font-size:16px;line-height:1.5}
+[data-review-count]{border-radius:999px;background:var(--blue,#1649ff);color:#fff;padding:2px 7px;margin-left:5px;font-size:12px}
+[data-review-count][hidden]{display:none}

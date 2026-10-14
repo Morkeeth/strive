@@ -466,6 +466,7 @@
     ${checkpoints||preview?'':`<p class="fc-open">Open the story →</p>`}
   `;
     return `<article class="card fc${preview?' fc-preview':''}"${preview ? "" : ` id="card-${id}" data-run-id="${id}" data-run-visibility="${esc(r.visibility||'')}" data-photo-layout="${esc(r.photo_layout||'cover')}"${r.photo_layout==='result'&&r.capture_metadata?.estimates?.v===1?' data-project-gallery':''}`}>
+  ${privateMarker(r)}
   <header class="fc-top">${faceHtml}<div class="fc-who">${who}<small>${meta}</small></div>${shipped}</header>
   ${preview||page ? `<div class="fc-body">${body}</div>` : `<a class="fc-body" href="${esc(links.runHref(r))}">${body}</a>`}
   ${page||checkpoints||r.capture_metadata?context?.measurementDetails?.(r,{preview})||'':''}
@@ -488,7 +489,8 @@
     return `<div class="fc-builder strive-person">${face(r, 44)}<div class="fc-who"><a class="fc-name" href="${esc(links.profileHref(p.handle))}">${esc(p.name)}</a><small>Recent: <a href="${esc(links.runHref(r))}">${esc(titleOf(r))}</a></small></div><span class="card-follow" data-profile="${esc(r.profile_id)}" data-handle="${esc(p.handle)}" data-label="Follow"></span></div>`;
   }
 
-  const api = { card, cardSummary, actions, face, headline, stats, achievement, harnessName, badge, spark, settle, routeGeometry, routeMap, proofRoute, changeAtlas, resultVisual, photoVisual, heroChoices, heroVisual, strideBars, strideText, strideHtml, stride, wireStride, nextSlot, builderRow, profileOf, durationLabel, when, titleOf };
+  function privateMarker(r){return r?.visibility==='private'?'<aside class="private-run-marker" aria-label="Private run"><strong>Only me. Not public.</strong><br>Only you can see this.</aside>':'';}
+  const api = { privateMarker, card, cardSummary, actions, face, headline, stats, achievement, harnessName, badge, spark, settle, routeGeometry, routeMap, proofRoute, changeAtlas, resultVisual, photoVisual, heroChoices, heroVisual, strideBars, strideText, strideHtml, stride, wireStride, nextSlot, builderRow, profileOf, durationLabel, when, titleOf };
   root.GrinderFeed = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

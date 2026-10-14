@@ -31,6 +31,11 @@ console.log('PASS query is scoped to owner and private rows; logout/navigation c
 
 slot.innerHTML='';
 await Q.mount({client:reader(Promise.resolve({data:[{...run,source_actor_id:null,title:'TEST DATA manual'}],error:null})),owner:'owner',slot,esc:s=>s,current:()=>true,open:false});
-assert.match(slot.textContent,/Only me — not public/);
+assert.match(slot.textContent,/Only me. Not public/);
 assert.equal(slot.querySelector('a').getAttribute('href'),'/?run=run&review=1');
 console.log('PASS existing private manual import has review entry and explicit private marker');
+
+const F=require('../site/feed-card.js');
+assert.match(F.privateMarker(run),/Only you can see this/);
+assert.equal(F.privateMarker({...run,visibility:'public'}),'');
+assert.equal(F.privateMarker({...run,visibility:'link'}),'');
