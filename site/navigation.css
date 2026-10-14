@@ -10,7 +10,7 @@
 @media(hover:hover){.product-nav-link:hover{color:var(--blue);background:var(--blue-wash)}.global-add:hover{background:#0035ca}}
 @media(min-width:801px) and (max-width:1080px){.bar .alpha-label{display:none}.bar-in{gap:10px}.product-nav-link{padding:0 10px}.bar .product-nav{margin-left:0}}
 @media(max-width:800px){
- .bar .product-nav{position:fixed;z-index:100;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;margin:0;padding:0 4px env(safe-area-inset-bottom);background:#fff;border-top:1px solid var(--rule);box-shadow:0 -2px 12px #24242805;font-size:12px}
+ .bar .product-nav{position:fixed;z-index:100;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:0;padding:0 4px env(safe-area-inset-bottom);background:#fff;border-top:1px solid var(--rule);box-shadow:0 -2px 12px #24242805;font-size:12px}
  .product-nav-link{min-height:60px;padding:6px 2px;border-bottom:0;border-top:3px solid transparent}
  .product-nav-link[aria-current=page]{border-top-color:var(--blue)}
  .product-nav-add{display:flex}.global-add{display:none!important}

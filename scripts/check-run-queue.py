@@ -22,9 +22,10 @@ try:
    if width==390:
     page.goto(stack['site']+'/');page.get_by_role('dialog',name='Runs waiting for your review').wait_for();page.screenshot(path=str(out/'popup-phone.png'),full_page=True);page.get_by_role('button',name='Later',exact=True).click()
    page.goto(stack['site']+'/?queue');page.get_by_role('heading',name='Ready for your review').wait_for()
-   assert page.get_by_role('link',name='Review TEST DATA manual').count()==0
+   assert page.get_by_role('link',name='Review TEST DATA manual',exact=True).count()==1
    assert page.get_by_role('link',name='Review TEST DATA other owner').count()==0
    if width==390:
+    page.get_by_role('link',name='Review TEST DATA manual',exact=True).click();page.get_by_role('heading',name='Review this private run').wait_for();assert page.locator('[aria-label="Private run"]').is_visible();assert page.get_by_role('button',name='Approve and post',exact=True).is_enabled();assert helper.rest(stack,'runs?select=visibility&id=eq.a2000000-0000-0000-0000-000000000004',helper.mint(stack['casey'],'test-casey'))[0]['visibility']=='private';assert page.evaluate('document.documentElement.scrollWidth<=innerWidth');page.goto(stack['site']+'/?queue');page.get_by_role('heading',name='Ready for your review').wait_for()
     page.get_by_role('link',name='Review TEST DATA private agent',exact=True).click();page.get_by_role('link',name='Connect',exact=True).wait_for();assert not page.get_by_role('button',name='Approve and post',exact=True).is_enabled();page.goto(stack['site']+'/?queue');page.get_by_role('heading',name='Ready for your review').wait_for()
     page.screenshot(path=str(out/'queue-phone.png'),full_page=True)
     page.get_by_role('link',name='Review TEST DATA approve',exact=True).click()
@@ -43,6 +44,6 @@ try:
     assert helper.rest(stack,'runs?select=id&id=eq.a2000000-0000-0000-0000-000000000002')==[]
    context.close()
   anonymous=browser.new_context();page=anonymous.new_page();page.goto(stack['site']+'/?queue');page.get_by_role('button',name='Continue with GitHub',exact=True).wait_for();assert page.get_by_text('TEST DATA discard',exact=False).count()==0;anonymous.close();browser.close()
- (out/'browser-result.json').write_text(json.dumps({'pass':True,'viewports':[390,1440],'preview_stays_private':True,'explicit_approval_public':True,'discard_deleted':True,'other_owner_excluded':True,'manual_excluded':True,'anonymous_excluded':True,'private_agent_requires_owner_profile_choice':True,'other_owner_delete_refused':True},indent=2)+'\n')
+ (out/'browser-result.json').write_text(json.dumps({'pass':True,'viewports':[390,1440],'preview_stays_private':True,'explicit_approval_public':True,'discard_deleted':True,'other_owner_excluded':True,'manual_private_included':True,'anonymous_excluded':True,'private_agent_requires_owner_profile_choice':True,'other_owner_delete_refused':True},indent=2)+'\n')
 finally:
  proc.terminate();proc.wait(timeout=10)

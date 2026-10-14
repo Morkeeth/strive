@@ -156,9 +156,9 @@ Migration 041 makes this rule apply to direct RPC and legacy MCP callers as well
 
 After `POST /api/agent/runs` returns a private saved run, the owner opens
 `/?queue`. Feed also offers a review popup. These rows reuse `visibility=private`
-and `source_actor_id`; no new database state or migration is needed. Private runs
-with an agent attribution appear in the queue, including older private submissions.
-Owner-imported runs without agent attribution remain in My runs.
+with no new database state or migration. All owner-private runs appear, including
+older agent submissions and manually imported night runs. The visible Review queue
+link opens this list. Only-me markers above private cards state that they are not public.
 
 Review opens the saved card and measurements. **Approve and post** opens the existing
 owner editor with Public selected; its final **Approve and post** save publishes.
