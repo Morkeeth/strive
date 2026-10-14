@@ -1,0 +1,18 @@
+{
+ "viewport": "width=device-width,initial-scale=1",
+ "description": "Public runs by TEST DATA Casey on STRIVE.",
+ "og:type": "profile",
+ "og:site_name": "STRIVE",
+ "og:title": "TEST DATA Casey \u00b7 STRIVE",
+ "og:description": "Public runs by TEST DATA Casey on STRIVE.",
+ "og:url": "https://striverun.app/test-casey",
+ "og:image": "https://striverun.app/api/og?profile=test-casey&v=3",
+ "og:image:width": "1200",
+ "og:image:height": "630",
+ "og:image:alt": "STRIVE profile card: TEST DATA Casey (@test-casey) \u00b7 3 public runs",
+ "twitter:card": "summary_large_image",
+ "twitter:title": "TEST DATA Casey \u00b7 STRIVE",
+ "twitter:description": "Public runs by TEST DATA Casey on STRIVE.",
+ "twitter:image": "https://striverun.app/api/og?profile=test-casey&v=3",
+ "twitter:image:alt": "STRIVE profile card: TEST DATA Casey (@test-casey) \u00b7 3 public runs"
+}
