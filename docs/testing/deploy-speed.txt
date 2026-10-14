@@ -1,0 +1,15 @@
+Deployed Feed speed history
+
+Trigger: each successful Production deployment_status event, plus manual workflow_dispatch. The GitHub deployment object currently exists for Vercel Production (verified14Oct). The check must be merged before future deploy events can use it. This local candidate has not activated a hosted workflow.
+
+Measurement: public signed-out Feed only, Chromium, a fresh context and disabled network cache for each sample. Desktop1440x900 unthrottled; phone390x844,150ms latency,200000download bytes/s,93750upload bytes/s and4xCPU slowdown. Three samples per profile, medians plus raw observations. This is a repeatable lab observation, not real-user monitoring or a physical phone claim. Method ID changes when settings change; compare within a method and account for runner variation.
+
+Object binding: expected full deployment SHA, live /api/health SHA and rendered page meta SHA must agree. Health is read again after sampling. If a later deploy supersedes the target or a paint is missing, save a failed record, never a zero or a timing attributed to the wrong version. No synthetic data is sent to production; no sign-in, upload or browser credentials used.
+
+Storage: each run produces measurement.json, rolling history.json and history.csv as the strive-speed-history GitHub artifact, retained90days, plus the workflow summary. Each run restores the latest retained snapshot, including failed measurements. Serial workflow concurrency prevents two deployments racing to append. A snapshot carries earlier observations forward; a gap over artifact retention can reset history, explicitly marked new-no-retained-snapshot. Never claim indefinite storage. A failure restoring an existing artifact stops the job rather than silently resetting it. The check has no regression budget yet; it records speed and fails on invalid/missing measurements, not on a guessed speed threshold.
+
+No sampling browser install is performed on Oscar's Mac. Existing local Playwright/browser cache is reused. GitHub's isolated runner installs pinned Playwright1.60.0 and its Chromium when this workflow is activated.
+
+Read at the object:
+https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#deployment_status
+https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
