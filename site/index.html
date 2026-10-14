@@ -1924,7 +1924,7 @@ async function viewLanding(){
     }
     put('public-run-count','Newest activity first · '+runs.length+' public runs'+(runs.some(r=>StriveActivity.time(r)===null)?' · undated activity follows dated runs':''));
   }else if(body){
-    body.innerHTML=runsFailed?failed:'<p class="home-none">No public run yet.</p>';
+    body.innerHTML=runsFailed?failed:'<p class="home-none">No public run yet. <a href="/?post">Connect your agent and add the first one</a>.</p>';
   }
   wireKudos();
   void updateReviewCount();

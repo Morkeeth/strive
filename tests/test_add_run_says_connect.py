@@ -27,3 +27,9 @@ def test_sign_in_panel_says_it_is_not_needed_to_start():
     panel = body.split('<div class="panel pad auth-empty">', 1)[1].split("</div>", 1)[0]
     assert "No account needed to start" in panel
     assert panel.index("No account needed to start") < panel.index("Sign in to save the run")
+
+
+def test_empty_feed_points_to_add_run():
+    # Run 3 (15 Oct): with no public runs, a visitor stopped on the home page and never opened Add run.
+    empty = INDEX.split("body.innerHTML=runsFailed?failed:", 1)[1].split(";", 1)[0]
+    assert 'href="/?post"' in empty and "Connect your agent" in empty
