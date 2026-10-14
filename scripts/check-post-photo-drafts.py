@@ -32,24 +32,22 @@ def main():
   results=[]
   with sync_playwright() as p:
    browser=p.chromium.launch()
-   for case in ['no-photo','normal','insert-response','photo-response','role-failure','audience-response','account-change','existing-session','auth-expiry']:
+   for case in ['no-photo','normal','insert-response','photo-response','order-failure','audience-response','account-change','existing-session','auth-expiry']:
     ctx=browser.new_context(viewport={'width':390,'height':900});ctx.add_init_script(mock)
     if case=='auth-expiry':ctx.add_init_script("const originalFetch=window.fetch;window.fetch=async(...args)=>{const response=await originalFetch(...args);if(String(args[0]).includes('/api/run-photos')&&args[1]?.method==='POST'&&!localStorage.getItem('auth-expiry-fired')){localStorage.setItem('auth-expiry-fired','1');window.fixtureExpired=true}return response}")
     photos={};calls=[];fault={'name':case};errors=[]
     def route(r):
      if r.request.url.startswith(origin+'/api/run-photos'):
-      method=r.request.method;body=r.request.post_data_json if method in ['POST','PATCH'] else {};calls.append({'method':method,'role':body.get('role'),'run_id':body.get('run_id')})
+      method=r.request.method;body=r.request.post_data_json if method in ['POST','PATCH'] else {};calls.append({'method':method,'role':body.get('role'),'order':body.get('photo_order'),'run_id':body.get('run_id')})
       if method=='POST':
        digest=hashlib.sha256(base64.b64decode(body['image_base64'])).hexdigest();photo=next((i for i in photos.values() if i['digest']==digest and i['run_id']==body['run_id']),None);duplicate=photo is not None
        if not photo:photo={'id':'30000000-0000-0000-0000-'+str(len(photos)+1).zfill(12),'run_id':body['run_id'],'role':'photo','is_cover':False,'digest':digest,'width':60,'height':40};photos[photo['id']]=photo
        if fault['name']=='photo-response':fault['name']='';r.abort('failed');return
        r.fulfill(status=200,content_type='application/json',body=json.dumps({'photo':photo,'duplicate':duplicate}));return
       if method=='PATCH':
-       if fault['name']=='role-failure' and body.get('role'):fault['name']='';r.fulfill(status=503,content_type='application/json',body=json.dumps({'error':'Injected role failure'}));return
-       photo=photos[body['photo_id']]
-       if body.get('role'):photo['role']=body['role']
-       else:
-        for image in photos.values():image['is_cover']=image['id']==photo['id']
+       if fault['name']=='order-failure' and body.get('photo_order'):fault['name']='';r.fulfill(status=503,content_type='application/json',body=json.dumps({'error':'Injected order failure'}));return
+       # The shared grid stores order only: the first photo in the order is the cover.
+       for image in photos.values():image['is_cover']=bool(body.get('photo_order')) and image['id']==body['photo_order'][0] or (not body.get('photo_order') and image['is_cover'])
        r.fulfill(status=200,content_type='application/json',body='{}');return
       r.fulfill(status=200,content_type='application/json',body=json.dumps({'photos':list(photos.values())}));return
      if r.request.url.startswith(origin):r.continue_()
@@ -60,11 +58,15 @@ def main():
     def png(color):
      return base64.b64decode(page.evaluate("color=>{const c=document.createElement('canvas');c.width=60;c.height=40;const x=c.getContext('2d');x.fillStyle=color;x.fillRect(0,0,60,40);return c.toDataURL('image/png').split(',')[1]}",color))
     if case!='no-photo':
-     page.locator('[data-draft-personal]').set_input_files({'name':'personal.png','mimeType':'image/png','buffer':png('#b66138')});page.locator('.post-photo-grid figure').wait_for();assert page.locator('[data-draft-personal]').is_disabled();assert not page.locator('[data-draft-cover]').is_checked()
-     page.locator('[data-draft-cover]').check();page.wait_for_function("document.querySelector('[data-draft-cover]').checked")
-     page.locator('[data-draft-support]').set_input_files({'name':'result.png','mimeType':'image/png','buffer':png('#2367ce')});page.wait_for_function("document.querySelectorAll('.post-photo-grid figure').length===2")
+     tiles='.post-photo-slot .photo-editor-grid .photo-tile[data-photo-id]'
+     page.locator('.photo-add-tile [data-photo-file]').set_input_files({'name':'first.png','mimeType':'image/png','buffer':png('#b66138')});page.locator(tiles).first.wait_for()
+     page.locator('.photo-add-tile [data-photo-file]').set_input_files({'name':'second.png','mimeType':'image/png','buffer':png('#2367ce')});page.wait_for_function("sel=>document.querySelectorAll(sel).length===2",arg=tiles)
+     assert page.locator('.post-photo-slot select, .post-photo-slot [data-draft-cover]').count()==0
+     # The second photo moves to first place by keyboard and becomes the cover.
+     second=page.locator(tiles).nth(1).get_attribute('data-photo-id');page.locator(f'[data-photo-move="{second}"]').focus();page.keyboard.press('Home')
+     page.wait_for_function("([sel,id])=>document.querySelector(sel)?.dataset.photoId===id",arg=[tiles,second]);assert page.locator(tiles).first.locator('.photo-cover-tag').count()==1
      assert len(page.evaluate('fixtureTables.runs'))==3 and not calls
-     page.reload();page.locator('.post-photo-grid figure').first.wait_for();assert page.locator('.post-photo-grid figure').count()==2;assert page.locator('[data-draft-cover]').first.is_checked()
+     page.reload();page.locator(tiles).first.wait_for();assert page.locator(tiles).count()==2;assert page.locator(tiles).first.get_attribute('data-photo-id')==second
      if case=='normal':page.screenshot(path=str(OUT/'post-photo-story-390.png'),full_page=True)
     page.get_by_role('button',name='Choose audience',exact=True).click();assert page.locator('#i_vis').input_value()=='private'
     if case!='no-photo':page.locator('#i_vis').select_option('public')
@@ -73,7 +75,7 @@ def main():
      message=page.evaluate("async token=>{try{await StrivePhotoDraft.save({token,profileId:'another-profile',client:null,buildRow:()=>({}),isCurrent:()=>true});return 'wrong'}catch(e){return e.message}}",token);assert 'different signed-in account' in message;assert len(page.evaluate('fixtureTables.runs'))==3 and not calls;results.append({'case':case,'passed':True,'network_mutations':0});ctx.close();continue
     if case in ['insert-response','audience-response']:page.evaluate('fault=>window.fixtureFault=fault',case)
     page.locator('#i_pub').click()
-    if case in ['insert-response','photo-response','role-failure','audience-response','existing-session','auth-expiry']:
+    if case in ['insert-response','photo-response','order-failure','audience-response','existing-session','auth-expiry']:
      page.locator('[data-photo-retry]').wait_for();runs=page.evaluate('fixtureTables.runs');assert len(runs)==4,runs
      expected='public' if case=='audience-response' else 'private';assert runs[-1]['visibility']==expected
      if case=='existing-session':assert not calls;results.append({'case':case,'passed':True,'attached_to_existing':False});ctx.close();continue
@@ -82,7 +84,7 @@ def main():
     saved=page.evaluate('fixtureTables.runs.at(-1)');assert saved['visibility']==('private' if case=='no-photo' else 'public')
     assert len(photos)==(0 if case=='no-photo' else 2),photos
     if photos:
-     assert sum(i['role']=='personal' for i in photos.values())==1;assert sum(i['is_cover'] for i in photos.values())==1;assert next(i for i in photos.values() if i['is_cover'])['role']=='personal'
+     assert all(i['role']=='photo' for i in photos.values());assert sum(i['is_cover'] for i in photos.values())==1;assert next(i for i in photos.values() if i['is_cover'])['id'].endswith('1'),'the first tile is uploaded first and is the cover'
     assert not errors,errors
     results.append({'case':case,'passed':True,'saved_runs':1,'saved_images':len(photos),'api_calls':len(calls),'final_visibility':saved['visibility']});ctx.close()
    browser.close()

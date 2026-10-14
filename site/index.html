@@ -603,6 +603,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/fair.js"></script>
 <script src="/home.js"></script>
 <script src="/dropin.js"></script>
+<script src="/photo-grid.js"></script>
 <script src="/photo-draft.js"></script>
 <script src="/post-flow.js"></script>
 <script src="/run-access.js"></script>
@@ -1960,7 +1961,7 @@ async function viewRun(id){
     +`<section id="grind-thread"></section><div class="head"><h2>XUDOS</h2><span class="meta">${acks===null?'Unavailable':acks.length}</span></div><div class="panel">`+ackListHtml(acks)+`</div>`
 ;
   const copyLink=$('run-copy-link');if(copyLink)copyLink.onclick=async()=>{try{const sharePath=GrinderSharing.cleanRunPath(r)||(r.visibility==='public'?'/r/'+r.id:'/?run='+r.id);await navigator.clipboard.writeText(location.origin+sharePath);copyLink.textContent='Link copied'}catch(_){status('Copy this page address to share your run.')}};
-  const photoEditor=window.StriveRunPhotos?await StriveRunPhotos.mount({client:sb,run:r,slot:$('run-photos'),owner,staged:owner,status,isCurrent:current,onChanged:async()=>{if(!current())return;const card=document.querySelector('[data-run-id="'+r.id+'"]');if(card){card.querySelectorAll('.run-media, .run-personal-photo, .run-photo-cover').forEach(image=>image.remove());delete card.dataset.photoChecked;await StriveRunPhotos.mountCovers({client:sb,root:document});}}}):null;
+  const photoEditor=window.StriveRunPhotos?await StriveRunPhotos.mount({client:sb,run:r,slot:$('run-photos'),owner,staged:owner,status,isCurrent:current,audience:()=>$('run-audience')?.value||r.visibility,onChanged:async()=>{if(!current())return;const card=document.querySelector('[data-run-id="'+r.id+'"]');if(card){card.querySelectorAll('.run-media, .run-personal-photo, .run-photo-cover').forEach(image=>image.remove());delete card.dataset.photoChecked;await StriveRunPhotos.mountCovers({client:sb,root:document});}}}):null;
   if(!current())return;
   if(ME?.id===r.profile_id){
     const controls=document.createElement('div');controls.className='panel run-editor';
@@ -1971,6 +1972,8 @@ async function viewRun(id){
 
     controls.querySelector('.run-story-fields').insertAdjacentHTML('afterend','<details class="run-extra-story"><summary>More story and questions</summary>'+StriveStory.editor(r)+'</details>');
     $('grind-thread').before(controls);$('run-editor-photos').append($('run-photos'));$('run-title').value=r.title||'';$('run-pin').checked=!!r.pinned_at;$('run-project').value=r.project||'';$('run-caption').value=r.caption||r.note||'';$('run-output-url').value=r.output_url||'';$('run-audience').value=r.visibility==='anonymous'?'private':r.visibility;
+    // Each photo is labelled with the audience chosen here, before and after Save.
+    $('run-audience').addEventListener('change',()=>window.StrivePhotoGrid?.refreshAudience());window.StrivePhotoGrid?.refreshAudience();
     // A focused edit surface. Read mode stays intact; Cancel discards text edits.
     const textColumn=document.createElement('div');textColumn.className='run-edit-copy';
     const mediaColumn=document.createElement('div');mediaColumn.className='run-edit-media';

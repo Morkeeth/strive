@@ -150,7 +150,7 @@
     };
     const move=step=>{index=(index+step+gallery.length)%gallery.length;void show()};dialog.querySelector('[data-image-prev]').onclick=()=>move(-1);dialog.querySelector('[data-image-next]').onclick=()=>move(1);dialog.onkeydown=e=>{if(gallery.length>1&&['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();move(e.key==='ArrowLeft'?-1:1)}};await show();
   }
-  async function mount({client,run,slot,owner,status,isCurrent=()=>true,onChanged=()=>{},staged=false}){
+  async function mount({client,run,slot,owner,status,isCurrent=()=>true,onChanged=()=>{},staged=false,audience=null}){
     if(!slot||!run?.id)return;
     let active=true,cropDispose=null,placeholderDispose=null,draftPhotos=null,originalPhotos=[],lastRemoved=null;
     const controller=new AbortController(),objectUrls=[],imageBlobs=new Map();
@@ -179,19 +179,17 @@
       const displayed=owner?[...photos].filter(p=>p.is_selected!==false).sort((a,b)=>(a.sort_position??100)-(b.sort_position??100)||Number(b.is_cover)-Number(a.is_cover)):projectFirst?cardPhotos(photos,'result',true):photos.filter(p=>p.is_selected!==false&&p.is_private!==true&&(p.role!=='personal'||p.id===selectedPersonal?.id));
       if(!owner&&!displayed.length){slot.innerHTML=root.StrivePlaceholders?`<div class="run-detail-story">${root.StrivePlaceholders.render('image',{story:run.caption||run.title,harness:run.harness,model:run.model||(run.capture_metadata?.models||[]).join(', '),seed:run.id,width:640,height:280})}</div>`:'';placeholderDispose=root.StrivePlaceholders?.fit?.(slot);return;}
       const canAdd=owner&&displayed.length<6&&photos.length<12;
-      const countNote=owner?`${displayed.length} of 6 shown`:displayed.length+' image'+(displayed.length===1?'':'s');
-      slot.innerHTML=`<section class="run-photos" aria-labelledby="run-photos-title"><div class="head"><h2 id="run-photos-title">Photos</h2><span class="meta">${countNote}</span></div>${owner?'<p class="photo-help">Drag to reorder. The first public photo is the cover.</p>':''}<div class="run-photo-grid" ${owner?'aria-label="Drag photos to reorder"':''}></div>${owner&&lastRemoved?'<div class="photo-undo" role="status">Photo removed from this run. <button type="button" data-photo-undo>Undo</button></div>':''}${owner&&!canAdd?'<p class="hint photo-limit">'+(photos.length>=12?'Twelve images are saved for this run.':'Remove a photo to add another.')+'</p>':''}</section>`;
-      const grid=slot.querySelector('.run-photo-grid');grid.dataset.photoCount=displayed.length;if(!owner)grid.classList.add('run-photo-grid--reader');
-      for(const photo of displayed){
-        try{const path=photoPath(photo);if(!path&&!photo.draftBlob)continue;const cached=photo.draftBlob||imageBlobs.get(path);const imageRes=cached?{ok:true,blob:async()=>cached}:await get(path,{headers:await headers(client),signal:controller.signal},480);if(!current())return;if(!imageRes?.ok)continue;const blob=await imageRes.blob();if(!current())return;if(path)imageBlobs.set(path,blob);const url=URL.createObjectURL(blob);objectUrls.push(url);const item=document.createElement('figure');item.classList.toggle('photo-hidden',photo.is_selected===false);if(owner){item.draggable=true;item.dataset.photoId=photo.id;}item.innerHTML=owner?`<img src="${url}" alt="${esc(roles[photo.role]||'Photo')}" loading="lazy"><button type="button" class="photo-drag-handle" aria-label="Move image. Use arrow keys to reorder">⠿</button><span class="photo-cover-tag" ${photo.is_cover?'':'hidden'}>Cover</span><button type="button" class="photo-remove" data-photo-selected="${esc(photo.id)}" aria-label="Remove image">×</button><button type="button" class="photo-lock" data-photo-private="${esc(photo.id)}" aria-pressed="${photo.is_private===true}" aria-label="${photo.is_private===true?'Make image public':'Make image private'}" title="${photo.is_private===true?'Private · only you':'Visible to run readers'}">${photo.is_private===true?'Private':'Public'}</button>`:`<img src="${url}" alt="${esc(roles[photo.role]||'Run image')}" loading="lazy">${visibleCaption(photo.role)?`<figcaption>${visibleCaption(photo.role)}</figcaption>`:''}`;if(owner)item.querySelectorAll('button:not([disabled])').forEach(button=>{button.disabled=true;button.dataset.photoLoading='1'});if(!owner){
-          const image=item.querySelector('img'),button=document.createElement('button');button.type='button';button.className='photo-open ghost';button.setAttribute('aria-label','Open '+(roles[photo.role]||'image')+' at full size');button.append(image);const hint=document.createElement('span');hint.textContent='Open full image';button.append(hint);button.onclick=()=>void openImage({path,client,label:roles[photo.role]||'Run image',gallery:displayed});item.prepend(button);
-        }grid.append(item);}catch(_){}
-      }
-      if(!current())return;
-      if(canAdd){
-        grid.insertAdjacentHTML('beforeend','<label class="photo-add-tile"><span aria-hidden="true">＋</span><span>Add photos</span><input data-photo-file type="file" accept="image/jpeg,image/png,image/webp" multiple></label>');
-        slot.querySelector('[data-photo-file]').onchange=async e=>{
-          const files=[...(e.target.files||[])];if(!files.length)return;
+      if(owner){
+        // The owner's editor is the shared grid in site/photo-grid.js, the same one the import step
+        // draws. Order is the only cover control: the first photo readers can see is the cover.
+        const items=[];
+        for(const photo of displayed){
+          try{const path=photoPath(photo);if(!path&&!photo.draftBlob)continue;const cached=photo.draftBlob||imageBlobs.get(path);const imageRes=cached?{ok:true,blob:async()=>cached}:await get(path,{headers:await headers(client),signal:controller.signal},480);if(!current())return;if(!imageRes?.ok)continue;const blob=await imageRes.blob();if(!current())return;if(path)imageBlobs.set(path,blob);const url=URL.createObjectURL(blob);objectUrls.push(url);
+            items.push({id:photo.id,src:url,hidden:photo.is_private===true||(photo.role==='personal'&&photo.personal_public_selected!==true)});}catch(_){}
+        }
+        if(!current())return;
+        const patch=body=>request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,...body})});
+        const addFiles=async files=>{
           let added=0;
           for(const file of files){
             if(displayed.length+added>=6||photos.length+added>=12)break;
@@ -199,81 +197,52 @@
             try{
               const blob=await compressPhoto(file);
               if(blob.size>3*1024*1024){status('One image is still larger than 3 MB.',true);continue;}
-              if(staged){draftPhotos.push({id:'draft-'+Date.now()+'-'+added,role:'photo',is_selected:true,is_private:false,is_cover:false,sort_position:photos.length+added,draftBlob:blob});added++;continue;}
+              if(staged){draftPhotos.push({id:'draft-'+Date.now()+'-'+added,role:'photo',is_selected:true,is_private:false,is_cover:false,sort_position:Math.max(-1,...draftPhotos.map(p=>p.sort_position??-1))+1,draftBlob:blob});added++;continue;}
               const image_base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob)});
               const upload=await request('/api/run-photos',true,{method:'POST',body:JSON.stringify({run_id:run.id,image_base64})});
               if(!current()||!upload)return;
               if(!upload.ok){status(await responseMessage(upload),true);break;}
               const saved=await upload.json();if(!saved.duplicate)added++;
-            }catch(_){status('Photo upload could not reach STRIVE. Try again.',true);break;}
+            }catch(_){status(staged?'This image could not be opened.':'Photo upload could not reach STRIVE. Try again.',true);if(!staged)break;}
           }
           if(!current())return;
           if(added)status(added+' photo'+(added===1?'':'s')+' added.');
           await load();if(added&&!staged)await onChanged();
         };
+        const select=async(id,selected)=>{
+          try{
+            if(selected&&displayed.length>=6){status('Six photos are shown. Remove one before restoring this photo.',true);return;}
+            if(staged){draftPhotos.find(p=>p.id===id).is_selected=selected;lastRemoved=selected?null:id;await load();return;}
+            const res=await patch({photo_id:id,is_selected:selected});
+            if(!res?.ok){status(await responseMessage(res),true);return;}
+            lastRemoved=selected?null:id;await load();await onChanged();
+          }catch(_){status(selected?'Could not restore this photo. Try again.':'Could not remove this photo. Try again.',true);}
+        };
+        const hide=async(id,privateNow)=>{
+          try{
+            if(staged){const photo=draftPhotos.find(p=>p.id===id);photo.is_private=privateNow;if(!privateNow&&photo.role==='personal'){photo.role='photo';photo.personal_public_selected=false;}await load();return;}
+            const res=await patch({photo_id:id,is_private:privateNow});
+            if(!res?.ok){status(await responseMessage(res),true);return;}
+            await load();await onChanged();
+          }catch(_){status('Could not change who sees this photo. Try again.',true);}
+        };
+        const reorder=async ids=>{
+          const all=[...ids,...photos.filter(p=>!ids.includes(p.id)).map(p=>p.id)];
+          if(staged){draftPhotos=all.map((id,index)=>({...draftPhotos.find(p=>p.id===id),sort_position:index,is_cover:index===0}));await load();return;}
+          const res=await patch({photo_order:all});if(!res?.ok){status(await responseMessage(res),true);return;}await load();await onChanged();
+        };
+        root.StrivePhotoGrid.render({slot,title:'Photos',headingLevel:2,items,limit:6,canAdd,removed:!!lastRemoved,audience:()=>audience?.()||run.visibility,
+          note:canAdd?'':(photos.length>=12?'Twelve images are saved for this run.':'Remove a photo to add another.'),
+          onAdd:addFiles,onReorder:reorder,onRemove:id=>select(id,false),onUndo:()=>select(lastRemoved,true),onToggleHidden:hide});
+        return;
       }
-      if(owner)slot.querySelectorAll('[data-photo-selected]').forEach(button=>button.onclick=async()=>{
-        const id=button.dataset.photoSelected;button.disabled=true;
-        try{
-          if(staged){draftPhotos.find(p=>p.id===id).is_selected=false;lastRemoved=id;await load();return;}
-          const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:id,is_selected:false})});
-          if(!res?.ok){status(await responseMessage(res),true);return;}
-          lastRemoved=id;await load();await onChanged();
-        }catch(_){status('Could not remove this photo. Try again.',true);}
-      });
-      if(owner&&lastRemoved){const undo=slot.querySelector('[data-photo-undo]');undo.onclick=async()=>{
-        const id=lastRemoved;
-        try{
-          if(staged){draftPhotos.find(p=>p.id===id).is_selected=true;lastRemoved=null;await load();return;}
-          const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:id,is_selected:true})});
-          if(!res?.ok){status(await responseMessage(res),true);return;}
-          lastRemoved=null;await load();await onChanged();
-        }catch(_){status('Could not restore this photo. Try again.',true);}
-      };}
-      if(owner)slot.querySelectorAll('[data-photo-private]').forEach(button=>button.onclick=async()=>{
-        const id=button.dataset.photoPrivate,privateNow=button.getAttribute('aria-pressed')!=='true';button.disabled=true;
-        try{
-          if(staged){const photo=draftPhotos.find(p=>p.id===id);photo.is_private=privateNow;if(!privateNow&&photo.role==='personal'){photo.role='photo';photo.personal_public_selected=false;}await load();return;}
-          const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:id,is_private:privateNow})});
-          if(!res?.ok){status(await responseMessage(res),true);return;}
-          await load();await onChanged();
-        }catch(_){status('Could not change photo privacy. Try again.',true);}
-      });
-      if(owner)slot.querySelectorAll('[data-photo-personal]').forEach(button=>button.onclick=async()=>{
-        const photo=photos.find(p=>p.id===button.dataset.photoPersonal),role=photo.role==='personal'?(photo.previousProjectRole||'photo'):'personal';
-        if(staged){const draft=draftPhotos.find(p=>p.id===photo.id);if(draft.role!=='personal')draft.previousProjectRole=draft.role;draft.role=role;if(role!=='personal')draft.personal_public_selected=false;await load();return;}
-        const target=[...slot.querySelectorAll('[data-photo-role]')].find(b=>b.dataset.photoRole===photo.id&&b.dataset.role===role);if(target)await target.onclick();
-      });
-      if(owner)slot.querySelectorAll('[data-photo-role]').forEach(select=>select.onclick=async()=>{if(select.getAttribute('aria-pressed')==='true')return;select.disabled=true;try{if(staged){const draft=draftPhotos.find(p=>p.id===select.dataset.photoRole);draft.role=select.dataset.role;if(draft.role!=='personal')draft.personal_public_selected=false;await load();return;}const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:select.dataset.photoRole,role:select.dataset.role})});if(!current()||!res)return;if(!res.ok){status(await responseMessage(res),true);await load();return;}status('Image role saved.');await load();await onChanged();}catch(_){if(current())status('Image role could not be saved. Reload and try again.',true);}finally{if(select.isConnected)select.disabled=false;}});
-      async function reorder(ids){
-        const all=[...ids,...photos.filter(p=>!ids.includes(p.id)).map(p=>p.id)];
-        if(staged){draftPhotos=all.map((id,index)=>({...draftPhotos.find(p=>p.id===id),sort_position:index,is_cover:index===0}));await load();return;}
-        const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_order:all})});if(!res?.ok){status(await responseMessage(res),true);return;}await load();await onChanged();
+      slot.innerHTML=`<section class="run-photos" aria-labelledby="run-photos-title"><div class="head"><h2 id="run-photos-title">Photos</h2><span class="meta">${displayed.length+' image'+(displayed.length===1?'':'s')}</span></div><div class="run-photo-grid run-photo-grid--reader"></div></section>`;
+      const grid=slot.querySelector('.run-photo-grid');grid.dataset.photoCount=displayed.length;
+      for(const photo of displayed){
+        try{const path=photoPath(photo);if(!path)continue;const cached=imageBlobs.get(path);const imageRes=cached?{ok:true,blob:async()=>cached}:await get(path,{headers:await headers(client),signal:controller.signal},480);if(!current())return;if(!imageRes?.ok)continue;const blob=await imageRes.blob();if(!current())return;imageBlobs.set(path,blob);const url=URL.createObjectURL(blob);objectUrls.push(url);const item=document.createElement('figure');item.innerHTML=`<img src="${url}" alt="${esc(roles[photo.role]||'Run image')}" loading="lazy">${visibleCaption(photo.role)?`<figcaption>${visibleCaption(photo.role)}</figcaption>`:''}`;
+          const image=item.querySelector('img'),button=document.createElement('button');button.type='button';button.className='photo-open ghost';button.setAttribute('aria-label','Open '+(roles[photo.role]||'image')+' at full size');button.append(image);const hint=document.createElement('span');hint.textContent='Open full image';button.append(hint);button.onclick=()=>void openImage({path,client,label:roles[photo.role]||'Run image',gallery:displayed});item.prepend(button);
+          grid.append(item);}catch(_){}
       }
-      if(owner){
-        slot.querySelectorAll('[data-photo-move]').forEach(button=>button.onclick=async()=>{const ids=displayed.map(p=>p.id),i=ids.indexOf(button.dataset.photoMove),j=i+Number(button.dataset.direction);if(j<0||j>=ids.length)return;[ids[i],ids[j]]=[ids[j],ids[i]];await reorder(ids);});
-        const moveBefore=async(source,target)=>{if(!source||!target||source===target)return;const ids=displayed.map(p=>p.id).filter(id=>id!==source);ids.splice(ids.indexOf(target),0,source);await reorder(ids)};
-        let dragging=null;slot.querySelectorAll('[data-photo-id]').forEach(item=>{item.ondragstart=e=>{dragging=item.dataset.photoId;e.dataTransfer?.setData('text/plain',dragging)};item.ondragover=e=>e.preventDefault();item.ondrop=async e=>{e.preventDefault();const source=dragging;dragging=null;await moveBefore(source,item.dataset.photoId)};});
-        let touchSource=null,touchTarget=null,touchTimer=null;
-        const clearTouch=()=>{clearTimeout(touchTimer);touchTimer=null;touchSource?.classList.remove('photo-dragging');touchTarget?.classList.remove('photo-drop-target');touchSource=null;touchTarget=null};
-        slot.querySelectorAll('[data-photo-id] .photo-drag-handle').forEach(handle=>{
-          handle.onpointerdown=e=>{if(e.pointerType!=='touch')return;const item=handle.closest('[data-photo-id]');touchTimer=setTimeout(()=>{touchSource=item;item.classList.add('photo-dragging');handle.setPointerCapture(e.pointerId)},180)};
-          handle.onpointermove=e=>{if(!touchSource)return;e.preventDefault();const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-photo-id]');touchTarget?.classList.remove('photo-drop-target');touchTarget=target&&target!==touchSource?target:null;touchTarget?.classList.add('photo-drop-target')};
-          handle.onpointerup=async()=>{const source=touchSource?.dataset.photoId,target=touchTarget?.dataset.photoId;clearTouch();await moveBefore(source,target)};
-          handle.onpointercancel=clearTouch;
-          handle.oncontextmenu=e=>e.preventDefault();
-          handle.onkeydown=async e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();const item=handle.closest('[data-photo-id]'),items=[...slot.querySelectorAll('[data-photo-id]')],index=items.indexOf(item),step=e.key==='ArrowLeft'||e.key==='ArrowUp'?-1:1,target=items[index+step];if(!target)return;const ids=items.map(el=>el.dataset.photoId);[ids[index],ids[index+step]]=[ids[index+step],ids[index]];await reorder(ids);slot.querySelector(`[data-photo-id="${CSS.escape(item.dataset.photoId)}"] .photo-drag-handle`)?.focus()};
-        });
-        slot.querySelectorAll('[data-photo-public]').forEach(button=>button.onclick=async()=>{const photo=photos.find(p=>p.id===button.dataset.photoPublic),selected=photo.personal_public_selected!==true;if(staged){if(selected)draftPhotos.forEach(p=>p.personal_public_selected=false);draftPhotos.find(p=>p.id===photo.id).personal_public_selected=selected;await load();return;}const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:photo.id,personal_public_selected:selected})});if(!res?.ok){status(await responseMessage(res),true);return;}await load();await onChanged();});
-      }
-      if(owner)slot.querySelectorAll('[data-photo-cover]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{if(staged){await reorder([button.dataset.photoCover,...displayed.map(p=>p.id).filter(id=>id!==button.dataset.photoCover)]);return;}const res=await request('/api/run-photos',true,{method:'PATCH',body:JSON.stringify({run_id:run.id,photo_id:button.dataset.photoCover})});if(!current()||!res)return;if(!res.ok){status(await responseMessage(res),true);return;}status('Cover selected. Your other photos stay in the gallery.');await load();await onChanged();}catch(_){if(current())status('Cover could not be saved. Try again.',true);}finally{if(button.isConnected)button.disabled=false;}});
-      if(owner)slot.querySelectorAll('[data-photo-cover]').forEach(button=>button.onkeydown=async event=>{
-        if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key))return;
-        event.preventDefault();const choices=[...slot.querySelectorAll('[data-photo-cover]')],at=choices.indexOf(button),next=event.key==='Home'?0:event.key==='End'?choices.length-1:(at+(['ArrowLeft','ArrowUp'].includes(event.key)?-1:1)+choices.length)%choices.length,id=choices[next].dataset.photoCover;
-        await choices[next].onclick();[...slot.querySelectorAll('[data-photo-cover]')].find(b=>b.dataset.photoCover===id)?.focus();
-      });
-      if(owner)slot.querySelectorAll('[data-photo-delete]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{if(staged){draftPhotos=draftPhotos.filter(p=>(photoPath(p)||p.id)!==button.dataset.photoDelete);await load();return;}const res=await request(button.dataset.photoDelete,false,{method:'DELETE'});if(!current()||!res)return;if(!res.ok){const message=await responseMessage(res);if(current())status(message,true);return;}status('Photo removed.');await load();await onChanged();}catch(_){if(current())status('Photo removal could not reach STRIVE. Try again.',true);}finally{if(button.isConnected)button.disabled=false;}});
-      slot.querySelectorAll('[data-photo-loading]').forEach(button=>{button.disabled=false;delete button.dataset.photoLoading});
     }
     dispose.save=async()=>{
       if(!staged||!current()||!draftPhotos)return;

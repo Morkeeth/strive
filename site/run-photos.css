@@ -17,30 +17,32 @@
 .run-photo-grid--reader{min-width:0}.run-photo-grid--reader figure{min-width:0}.run-photo-grid--reader .photo-open{display:block;width:100%;padding:0;margin:0;border:1px solid var(--rule);background:var(--rule-2);color:var(--blue);cursor:zoom-in;overflow:hidden}.run-photo-grid--reader .photo-open img{width:100%;height:auto;aspect-ratio:1;object-fit:contain;object-position:center}.run-photo-grid--reader .photo-open span{display:block;padding:8px;font-size:11px;background:white}
 .photo-move{display:flex;gap:4px}.photo-move button{min-height:32px;min-width:40px;padding:3px 8px;background:#fff;color:#0047ff;border:1px solid #ccd7f6}.photo-move button:disabled{opacity:.3}.photo-public{width:100%;padding:5px;font-size:11px;background:#f1f5ff;border:1px solid #b8caff;color:#0047ff}.photo-consent-note{font-size:10px;line-height:1.3;color:#666;display:block;padding:4px 0}.run-photo-grid figure[draggable=true]{cursor:grab}
 #run-edit .photo-public[aria-pressed=false]{background:#fff;color:#0047ff;border:1px solid #b8caff}#run-edit .photo-public[aria-pressed=true]{background:#0047ff;color:#fff}#run-edit .photo-move button{background:#fff;color:#0047ff;border:1px solid #ccd7f6}#run-edit .photo-consent-note{padding:4px 0;line-height:1.3;font-size:10px}
-/* Edit run photo grid */
-.run-photos .head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:4px}
-.run-photos .head h2{margin:0;font-size:19px;line-height:1.3}
-.run-photos .head .meta{font-size:13px;color:#727d92}
-.run-photos .photo-help{margin:0 0 14px;color:#727d92;font-size:13px}
-.run-photos .run-photo-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.run-photos .run-photo-grid figure{position:relative;overflow:hidden;border-radius:10px;background:#f0f3f8;min-width:0;aspect-ratio:1}
-.run-photos .run-photo-grid figure>img{width:100%;height:100%;aspect-ratio:1;object-fit:cover}
-.run-photos .run-photo-grid figure button{position:absolute;display:grid;place-items:center;width:34px;height:34px;min-height:34px;margin:0;padding:0;border:1px solid #dce3ee;border-radius:50%;background:#fff;color:#273956;font-size:18px;box-shadow:0 2px 8px #1b2c4d22}
-.run-photos .run-photo-grid figure .photo-remove{top:8px;right:8px}
-.run-photos .run-photo-grid figure .photo-drag-handle{top:8px;left:8px;touch-action:none;cursor:grab;font-size:20px;line-height:1}
-.run-photos .run-photo-grid figure .photo-drag-handle:active{cursor:grabbing}
-.run-photos .run-photo-grid figure .photo-lock{bottom:8px;right:8px;display:block;width:auto;height:30px;min-height:30px;padding:0 9px;border-radius:999px;font-size:11px;font-weight:700}
-.run-photos .run-photo-grid figure .photo-lock[aria-pressed="true"]{background:#24364e;color:#fff;border-color:#24364e}
-.run-photos .photo-cover-tag{position:absolute;left:8px;bottom:8px;border-radius:999px;background:#fff;color:#1258f4;padding:4px 10px;font-size:11px;font-weight:700;box-shadow:0 2px 8px #1b2c4d22}
-.run-photos .photo-add-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0;aspect-ratio:1;border:2px dashed #bdcdee;border-radius:10px;background:#f6f9ff;color:#1258f4;font-size:13px;font-weight:700;cursor:pointer}
-.run-photos .photo-add-tile span:first-child{font-size:28px;font-weight:400;line-height:1}
-.run-photos .photo-add-tile input{position:absolute;width:1px;height:1px;opacity:0}
-.run-photos .photo-add-tile:focus-within{outline:3px solid #1258f4;outline-offset:3px}
-.run-photos .photo-undo{display:flex;align-items:center;gap:10px;margin-top:12px;color:#45536b;font-size:13px}
-.run-photos .photo-undo button{border:0;background:transparent;color:#1258f4;font-weight:700;cursor:pointer;padding:4px}
-@media(max-width:600px){.run-photos .run-photo-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.run-photos .photo-help{font-size:12px}}
-.run-photos .run-photo-grid .photo-dragging{opacity:.68;box-shadow:0 8px 24px #1b2c4d33}.run-photos .run-photo-grid .photo-drop-target{outline:3px solid #1258f4;outline-offset:-3px}
-
-/* Owner editor thumbnails fill their square frame beneath the existing controls.
-   Absolute positioning avoids intrinsic-size/flex shrink from the editor layout. */
-#run-edit .run-photo-grid:not(.run-photo-grid--reader) figure>img{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:none;max-height:none;object-fit:cover}
+/* Photo editor: one grid for the import step and the saved-run editor (site/photo-grid.js). */
+.photo-editor{margin:0;min-width:0}
+.photo-editor-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 10px}
+.photo-editor-head h2,.photo-editor-head h3{margin:0;font-size:17px;line-height:1.3}
+.photo-editor-head .meta{font-size:13px;color:var(--soft,#727d92)}
+.photo-editor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:10px;list-style:none;margin:0;padding:0}
+.photo-editor-grid>li{position:relative;box-sizing:border-box;min-width:0;margin:0;padding:0;aspect-ratio:1/1;border-radius:10px;overflow:hidden}
+.photo-editor .photo-tile{background:var(--rule-2,#f0f3f8);cursor:grab}
+.photo-editor .photo-tile>img{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:none;max-height:none;margin:0;border-radius:0;object-fit:cover;aspect-ratio:auto;-webkit-user-drag:none;user-select:none}
+.photo-editor .photo-tile>button{position:absolute;box-sizing:border-box;display:grid;place-items:center;width:32px;height:32px;min-width:0;min-height:0;margin:0;padding:0;border:1px solid #dce3ee;border-radius:50%;background:#fffffff0;color:#273956;font:400 17px/1 system-ui,sans-serif;box-shadow:0 1px 4px #1b2c4d33;cursor:pointer}
+.photo-editor .photo-tile>button:hover{background:#fff;color:#0b1730;border-color:#b9c6da}
+.photo-editor .photo-tile>button:focus-visible{outline:3px solid var(--blue,#1258f4);outline-offset:2px}
+.photo-editor .photo-tile>.photo-drag-handle{top:6px;left:6px;cursor:grab;touch-action:none}
+.photo-editor .photo-tile>.photo-remove{top:6px;right:6px}
+.photo-editor .photo-tile>.photo-audience{position:absolute;right:6px;bottom:6px;box-sizing:border-box;display:block;width:auto;max-width:calc(100% - 12px);height:24px;min-height:0;margin:0;padding:0 9px;border:1px solid #dce3ee;border-radius:999px;background:#fffffff0;color:#273956;font:600 11px/22px system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 4px #1b2c4d33}
+.photo-editor .photo-tile>.photo-audience[data-hidden="true"]{background:#24364e;color:#fff;border-color:#24364e}
+.photo-editor .photo-cover-tag{position:absolute;left:50%;top:10px;transform:translateX(-50%);height:24px;padding:0 8px;border-radius:999px;background:var(--blue,#1258f4);color:#fff;font:600 11px/24px system-ui,sans-serif;box-shadow:0 1px 4px #1b2c4d33}
+.photo-editor .photo-add-tile{border:2px dashed #bdcdee;background:#f6f9ff}
+.photo-editor .photo-add-tile label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;margin:0;color:var(--blue,#1258f4);font:600 13px/1.3 system-ui,sans-serif;cursor:pointer}
+.photo-editor .photo-add-tile label span:first-child{font-size:28px;font-weight:400;line-height:1}
+.photo-editor .photo-add-tile input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.photo-editor .photo-add-tile:focus-within{outline:3px solid var(--blue,#1258f4);outline-offset:2px}
+.photo-editor.photo-drop-ready .photo-add-tile{background:#e6eeff;border-color:var(--blue,#1258f4)}
+.photo-editor .photo-dragging{opacity:.55}
+.photo-editor .photo-drop-target{outline:3px solid var(--blue,#1258f4);outline-offset:-3px}
+.photo-editor .photo-undo{display:flex;align-items:center;gap:8px;margin:10px 0 0;color:#45536b;font-size:13px}
+.photo-editor .photo-undo button{width:auto;min-height:32px;margin:0;padding:4px 6px;border:0;background:transparent;color:var(--blue,#1258f4);font-weight:700;box-shadow:none;cursor:pointer}
+.photo-editor .photo-limit,.photo-editor .photo-editor-message{margin:10px 0 0;font-size:13px;color:var(--soft,#727d92)}
+@media(prefers-reduced-motion:no-preference){.photo-editor .photo-tile{transition:opacity .12s}}

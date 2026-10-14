@@ -35,28 +35,36 @@
   }
   function enqueue(key,fn){const operation=(work.get(key)||Promise.resolve()).catch(()=>{}).then(fn);work.set(key,operation);operation.finally(()=>{if(work.get(key)===operation)work.delete(key)}).catch(()=>{});return operation;}
   async function hasDraft(token){const key=await keyFor(token);await work.get(key);const draft=await read(key);return !!draft&&draft.phase!=='complete'&&(draft.items.length>0||!!draft.runId);}
-  async function mount({slot,token,profileId=null,eligible=true,isCurrent=()=>true}){
+  // A draft made before the shared grid kept a role and a main-image flag per image. Order now
+  // carries the cover, so an old main image moves to first place. An old personal photo stays
+  // hidden from readers, which is what the database does with it.
+  function ordered(items){const lead=items.find(item=>item.cover);return (lead?[lead,...items.filter(item=>item!==lead)]:[...items]);}
+  const hidden=item=>item.is_private===true||item.role==='personal';
+  async function mount({slot,token,profileId=null,eligible=true,isCurrent=()=>true,audience=()=> 'private'}){
     if(!slot)return;
     if(!eligible){slot.innerHTML='<p class="hint">Images can be added to a recorded session with a capture reference.</p>';return;}
-    const key=await keyFor(token);let active=true,urls=[];
+    const key=await keyFor(token);let active=true,urls=[],grid=null,lastRemoved=null;
     const clear=()=>{urls.forEach(url=>URL.revokeObjectURL(url));urls=[]};
     const current=()=>active&&slot.isConnected&&isCurrent();
-    function message(text){if(current()){const el=slot.querySelector('[data-draft-message]');if(el){el.textContent=text;el.hidden=!text}}}
+    function message(text){if(current())grid?.message(text)}
+    async function alter(fn){try{await enqueue(key,()=>change(key,d=>{bound(d,profileId);editable(d);d.items=ordered(d.items).map(({cover,...item})=>item);fn(d);return d}));}catch(error){await paint();message(error.message)}}
+    function add(files){
+      message('Preparing '+(files.length===1?'the photo':files.length+' photos')+' on this device…');
+      for(const file of files)enqueue(key,async()=>{const image=await imageBlob(file);await change(key,d=>{bound(d,profileId);editable(d);if(d.items.length>=6)throw new Error('Six photos selected. Remove one before adding another.');if(d.items.some(i=>i.contentKey===image.contentKey))throw new Error('This photo is already selected.');if(profileId)d.profileId=profileId;d.items=ordered(d.items).map(({cover,...item})=>item);d.items.push({id:crypto.randomUUID(),role:'photo',...image});return d;});}).catch(error=>message(error.message));
+    }
     async function paint(){
-      const draft=await read(key);if(!current())return;clear();
+      const draft=await read(key);if(!current())return;clear();grid=null;
       if(draft?.profileId&&draft.profileId!==profileId){slot.innerHTML='<p role="alert">These images belong to a different signed-in account. Sign back in to that account to continue.</p>';return;}
       if(draft?.phase==='complete'){slot.innerHTML='<p class="hint">These images are on your saved run. <a href="/?run='+encodeURIComponent(draft.runId)+'">Open the run</a> to change them.</p>';return;}
-      const items=draft?.items||[],locked=!!draft?.runId;
-      slot.innerHTML=`<section class="post-photo-draft" aria-labelledby="post-photo-title"><h3 id="post-photo-title">Images <span>Optional</span></h3><p class="hint">One personal photo, with screenshots or results alongside it. Choose each image yourself. Images stay on this device until you save.</p><div class="post-photo-grid"></div>${locked?'<p class="hint">This save has started. Your selected images are kept for retry. You can change them on the saved run.</p>':`<div class="post-photo-pickers"><label class="act">${items.some(item=>item.role==='personal')?'Personal photo selected':'Choose a personal photo'}<input data-draft-personal type="file" accept="image/jpeg,image/png,image/webp" ${items.some(item=>item.role==='personal')||items.length>=6?'disabled':''}></label><label class="act">Add a screenshot or result<input data-draft-support type="file" accept="image/jpeg,image/png,image/webp" ${items.length>=6?'disabled':''}></label></div><p class="hint">Up to six images total. The full image is kept, resized for the web.</p>`}<p data-draft-message role="status" hidden></p></section>`;
-      const grid=slot.querySelector('.post-photo-grid');
-      for(const item of items){const url=URL.createObjectURL(item.blob);urls.push(url);const figure=document.createElement('figure');figure.innerHTML=`<img src="${url}" alt="${escape(roles[item.role])} selected for this run"><figcaption>${escape(roles[item.role])}</figcaption>${item.role==='personal'?'':`<label>Image role<select data-draft-role="${item.id}" ${locked?'disabled':''}>${Object.entries(roles).filter(([role])=>role!=='personal').map(([role,label])=>`<option value="${role}" ${role===item.role?'selected':''}>${label}</option>`).join('')}</select></label>`}<label class="post-photo-cover"><input type="checkbox" data-draft-cover="${item.id}" ${item.cover?'checked':''} ${locked?'disabled':''}> Use as main image</label>${item.role==='personal'?'<p class="hint">Select as the main image to show this personal photo on your post.</p>':''}${locked?'':`<button type="button" class="act" data-draft-remove="${item.id}">Remove</button>`}`;grid.append(figure);}
-      async function alter(fn){try{await enqueue(key,()=>change(key,d=>{bound(d,profileId);editable(d);fn(d);return d}));}catch(error){await paint();message(error.message)}}
-      for(const [selector,role] of [['[data-draft-personal]','personal'],['[data-draft-support]','result']]){
-        const input=slot.querySelector(selector);if(!input)continue;input.onchange=()=>{const file=input.files?.[0];if(!file)return;message('Preparing the image on this device…');enqueue(key,async()=>{const image=await imageBlob(file);await change(key,d=>{bound(d,profileId);editable(d);if(d.items.length>=6)throw new Error('Six images selected. Remove one before choosing another.');if(role==='personal'&&d.items.some(i=>i.role==='personal'))throw new Error('Only one personal photo can be selected. Remove it before choosing another.');if(d.items.some(i=>i.contentKey===image.contentKey))throw new Error('This image is already selected.');if(profileId)d.profileId=profileId;d.items.push({id:crypto.randomUUID(),role,cover:false,...image});return d;});}).catch(error=>message(error.message));};
-      }
-      slot.querySelectorAll('[data-draft-remove]').forEach(button=>button.onclick=()=>alter(d=>{d.items=d.items.filter(i=>i.id!==button.dataset.draftRemove)}));
-      slot.querySelectorAll('[data-draft-cover]').forEach(input=>input.onchange=()=>{const checked=input.checked;alter(d=>{d.items.forEach(i=>{i.cover=i.id===input.dataset.draftCover&&checked})})});
-      slot.querySelectorAll('[data-draft-role]').forEach(select=>select.onchange=()=>{const role=select.value;alter(d=>{if(['before','after'].includes(role)&&d.items.some(i=>i.id!==select.dataset.draftRole&&i.role===role))throw new Error('Choose only one '+role+' image.');d.items.find(i=>i.id===select.dataset.draftRole).role=role})});
+      const items=ordered(draft?.items||[]),locked=!!draft?.runId;
+      grid=root.StrivePhotoGrid.render({slot,title:'Photos',headingLevel:3,limit:6,locked,canAdd:items.length<6,removed:!!lastRemoved,audience,
+        items:items.map(item=>{const url=URL.createObjectURL(item.blob);urls.push(url);return {id:item.id,src:url,hidden:hidden(item)}}),
+        note:locked?'This save has started. Your photos are kept for retry. Change them on the saved run.':items.length>=6?'Remove a photo to add another.':'',
+        onAdd:add,
+        onReorder:ids=>alter(d=>{d.items=[...ids.map(id=>d.items.find(i=>i.id===id)).filter(Boolean),...d.items.filter(i=>!ids.includes(i.id))]}),
+        onRemove:id=>alter(d=>{const at=d.items.findIndex(i=>i.id===id);if(at<0)return;lastRemoved={item:d.items[at],at};d.items.splice(at,1)}),
+        onUndo:()=>{const back=lastRemoved;lastRemoved=null;return alter(d=>{if(!back||d.items.some(i=>i.id===back.item.id))return;if(d.items.length>=6)throw new Error('Six photos selected. Remove one before restoring this photo.');d.items.splice(Math.min(back.at,d.items.length),0,back.item)})},
+        onToggleHidden:(id,hide)=>alter(d=>{const item=d.items.find(i=>i.id===id);if(!item)return;item.is_private=hide;if(!hide&&item.role==='personal')item.role='photo'})});
     }
     const repaint=()=>paint().catch(error=>message(error.message));listeners.set(key,repaint);
     const observer=new MutationObserver(()=>{if(!slot.isConnected)dispose()});observer.observe(document.documentElement,{childList:true,subtree:true});
@@ -89,13 +97,16 @@
         if(draft.phase==='audience_pending'&&existing.visibility===draft.requestedAudience&&draft.items.every(i=>i.ready))return await finish(existing.visibility);
         throw new Error('The saved run is no longer private. Open it to manage these images; this draft will not change its audience.');
       }
+      if(draft.items.some(item=>item.cover))draft=await change(key,d=>{d.items=ordered(d.items).map(({cover,...item})=>item);return d});
       for(let at=0;at<draft.items.length;at++){
         let item=draft.items[at];onProgress('Saving image '+(at+1)+' of '+draft.items.length+'…');
         if(!item.photoId){const base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=()=>reject(new Error('The selected image could not be read.'));reader.readAsDataURL(item.blob)});const result=await request('POST',{run_id:runId,image_base64:base64});if(!result.photo?.id)throw new Error('The image save was not confirmed. Retry to check it.');draft=await change(key,d=>{d.items.find(i=>i.id===item.id).photoId=result.photo.id;return d});item=draft.items[at];}
-        await request('PATCH',{run_id:runId,photo_id:item.photoId,role:item.role});
+        if(item.role&&item.role!=='photo')await request('PATCH',{run_id:runId,photo_id:item.photoId,role:item.role});
+        if(item.is_private===true)await request('PATCH',{run_id:runId,photo_id:item.photoId,is_private:true});
         draft=await change(key,d=>{d.items.find(i=>i.id===item.id).ready=true;return d});
       }
-      const cover=draft.items.find(item=>item.cover);if(cover){onProgress('Saving your main image choice…');await request('PATCH',{run_id:runId,photo_id:cover.photoId});}
+      // Order is the cover choice: the database makes the first photo readers can see the cover.
+      const order=[...new Set(draft.items.map(item=>item.photoId))];if(order.length>1){onProgress('Saving the photo order…');await request('PATCH',{run_id:runId,photo_order:order});}
       assertCurrent();
       if(audience!=='private'){
         if(!['close_friends','link','public'].includes(audience))throw new Error('Choose a supported audience.');
