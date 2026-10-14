@@ -5,10 +5,14 @@ import {runPath,profilePath,shareOrigin} from './share-routes.mjs';
 import Feed from '../site/feed-card.js';
 import Agents from '../site/agent-names.js';
 import LinkPreview from '../site/link-preview-card.js';
-const {previewStats,series,toolCallCount,wholeWords,shareDuration}=LinkPreview;
+const {series,toolCallCount,wholeWords,shareDuration}=LinkPreview;
 export {toolCallCount};
+export const {photoSlots,profileSlots,FORMATS:SHARE_FORMATS}=LinkPreview;
 export const linkPreviewCard=(run,opts={})=>LinkPreview.linkPreviewCard(run,{...opts,brand:BRAND});
 export const photoCard=(run,urls,opts={})=>LinkPreview.photoCard(run,urls,{...opts,brand:BRAND});
+// The story (1080x1920) and square (1080x1080) images carry the run's short address.
+export const shareCard=(run,urls,opts={})=>LinkPreview.shareCard(run,urls,{...opts,brand:BRAND,address:opts.address??shareAddress(run)});
+export const shareAddress=run=>{const path=runPath(run);return new URL(shareOrigin).host+(path?path.replace(/^(\/[^/]+\/[0-9a-f]{8}).*$/,'$1'):'');};
 import Evidence from '../site/run-evidence.js';
 import Story from '../site/run-story.js';
 import Context from '../site/run-context.js';
@@ -213,7 +217,10 @@ const shareMore=run=>{
 };
 // A stranger who opened a shared run has no way in except this. Same words as the README.
 const makeYourOwn=`<aside class="share-make" aria-labelledby="share-make-title"><h2 id="share-make-title">Make a card like this</h2><p>Turn a Claude Code, Cursor or Codex session on your own computer into a private run. The capture stays on your machine until you deliberately save it.</p><a class="open" href="/?post">Add your run</a></aside>`;
-export function html(run,opts={}){const title=esc(Feed.titleOf(run)),insight=Checkpoints.claimed(run)?'':routeInsight(run&&run.code_route),summary=String(run.caption||'').split(/\r?\n/).find(Boolean)||Feed.cardSummary(run)||insight||'See the work and its recorded activity.',description=esc(wholeWords(summary.match(/^[^.!?]+[.!?]/)?.[0]||summary,105)),shareTitle=esc(wholeWords(Feed.titleOf(run),70)),id=encodeURIComponent(run.id),image=shareOrigin+'/api/og?run='+id+'&v=4',url=shareOrigin+(runPath(run)||'/r/'+id);
+// What the link image shows, for readers who cannot see it: title, builder, facts and agent.
+const imageAlt=run=>{const who=Feed.profileOf(run),facts=LinkPreview.previewMetrics(run).map(([label,value])=>`${value} ${label.toLowerCase()}`),agent=run.harness?Agents.agentName(run.harness):'';
+ return `${BRAND} run card: ${wholeWords(Feed.titleOf(run),90)} by ${who.name||'a builder'}${facts.length?' · '+facts.join(' · '):''}${agent?' · '+agent:''}`;};
+export function html(run,opts={}){const title=esc(Feed.titleOf(run)),insight=Checkpoints.claimed(run)?'':routeInsight(run&&run.code_route),summary=String(run.caption||'').split(/\r?\n/).find(Boolean)||Feed.cardSummary(run)||insight||'See the work and its recorded activity.',description=esc(wholeWords(summary.match(/^[^.!?]+[.!?]/)?.[0]||summary,105)),shareTitle=esc(wholeWords(Feed.titleOf(run),70)),id=encodeURIComponent(run.id),image=shareOrigin+'/api/og?run='+id+'&v=5',url=shareOrigin+(runPath(run)||'/r/'+id),alt=esc(imageAlt(run));
  const handle=run.profiles?.handle||run.profiles?.github_handle;
  const profileHref=profilePath(handle)||'';
  // opts.kudos is the count readKudos returned: a number, or null when it could not be read.
@@ -240,7 +247,7 @@ export function html(run,opts={}){const title=esc(Feed.titleOf(run)),insight=Che
  const sourceNote=sourceText?`<section class="share-source-note"><h2>Builder’s note</h2><p>${esc(sourceText)}</p></section>`:'';
  const kudos=Number.isInteger(opts.kudos)&&opts.kudos>=0?` ${opts.kudos}`:'';
  const more=shareMore(opts.moreRuns);
- return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · ${BRAND}</title><meta property="og:type" content="article"><meta property="og:title" content="${shareTitle}"><meta property="og:description" content="${description}"><meta property="og:url" content="${url}"><meta property="og:image" content="${image}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${shareTitle}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${image}"><link rel="canonical" href="${url}">${pageHead}</head><body class="share-page"><main><nav class="public-nav" aria-label="STRIVE"><a class="home" href="/" aria-label="${BRAND} home">${BRAND}</a><a class="open" href="${appRun}">Open in STRIVE →</a></nav><div class="share-shell"><article class="share-main"><header class="share-author"><span class="share-avatar" aria-hidden="true">${avatar}</span><div><div class="share-name">${profileHref?`<a href="${esc(profileHref)}">${esc(name)}</a>`:esc(name)}</div><div class="share-meta">${esc(day)}${run.harness?` · ${esc(Agents.agentName(run.harness))}`:''}</div></div></header>${hero}<div class="share-copy"><span class="share-type">Agent run${run.project?` · ${esc(run.project)}`:''}</span><h1>${title}</h1>${displayDescription&&hasPhotos?`<p class="share-caption">${esc(displayDescription)}</p>`:''}${shareStats(run)}${shareRoute(run)}${uniqueChips.length?`<div class="share-chips" aria-label="Tools and models">${uniqueChips.map(chip=>`<span${chip.id&&chip.id!==chip.name?` title="${esc(chip.id)}"`:''}>${Agents.markSvg(chip.maker,{size:14})}${esc(chip.name)}</span>`).join('')}</div>`:''}${storySection}<div class="share-actions"><a class="share-social" href="${appRun}#grind-thread">♥ XUDOS${kudos}</a><a class="share-social" href="${appRun}#grind-thread">Comments</a><a class="open" href="${appRun}">Open in STRIVE →</a></div></div><details class="share-extra"><summary>Recorded details and sources</summary><div class="share-extra-inner">${sourceNote}${pageCodeRoute(run)}${pageOutcome(run)}${output}${Context.headlineHtml(run)}${Context.measurementDetails(run)}${Context.setup(run)}${Context.metrics(run)}${Evidence.detail(run)}</div></details></article>${more}${makeYourOwn}</div></main>${shareFoot}</body></html>`;
+ return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · ${BRAND}</title><meta property="og:type" content="article"><meta property="og:site_name" content="${BRAND}"><meta property="og:title" content="${shareTitle}"><meta property="og:description" content="${description}"><meta property="og:url" content="${url}"><meta property="og:image" content="${image}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="${alt}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${shareTitle}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${image}"><meta name="twitter:image:alt" content="${alt}"><link rel="canonical" href="${url}">${pageHead}</head><body class="share-page"><main><nav class="public-nav" aria-label="STRIVE"><a class="home" href="/" aria-label="${BRAND} home">${BRAND}</a><a class="open" href="${appRun}">Open in STRIVE →</a></nav><div class="share-shell"><article class="share-main"><header class="share-author"><span class="share-avatar" aria-hidden="true">${avatar}</span><div><div class="share-name">${profileHref?`<a href="${esc(profileHref)}">${esc(name)}</a>`:esc(name)}</div><div class="share-meta">${esc(day)}${run.harness?` · ${esc(Agents.agentName(run.harness))}`:''}</div></div></header>${hero}<div class="share-copy"><span class="share-type">Agent run${run.project?` · ${esc(run.project)}`:''}</span><h1>${title}</h1>${displayDescription&&hasPhotos?`<p class="share-caption">${esc(displayDescription)}</p>`:''}${shareStats(run)}${shareRoute(run)}${uniqueChips.length?`<div class="share-chips" aria-label="Tools and models">${uniqueChips.map(chip=>`<span${chip.id&&chip.id!==chip.name?` title="${esc(chip.id)}"`:''}>${Agents.markSvg(chip.maker,{size:14})}${esc(chip.name)}</span>`).join('')}</div>`:''}${storySection}<div class="share-actions"><a class="share-social" href="${appRun}#grind-thread">♥ XUDOS${kudos}</a><a class="share-social" href="${appRun}#grind-thread">Comments</a><a class="open" href="${appRun}">Open in STRIVE →</a></div></div><details class="share-extra"><summary>Recorded details and sources</summary><div class="share-extra-inner">${sourceNote}${pageCodeRoute(run)}${pageOutcome(run)}${output}${Context.headlineHtml(run)}${Context.measurementDetails(run)}${Context.setup(run)}${Context.metrics(run)}${Evidence.detail(run)}</div></details></article>${more}${makeYourOwn}</div></main>${shareFoot}</body></html>`;
 }
 // The page for a run that is missing or not public. Same words as privateCard, same neutral
 // image, and nothing from a row, because there is no row: the public-only query returns
@@ -437,39 +444,11 @@ export function homeCard(run=null){
    el('div',{style:{display:'flex',fontSize:25,color:'#666',marginTop:'auto'}},bins?'Recorded activity · one public run on STRIVE':'Real sessions. The work behind them. The people building next.')));
 }
 
-export function profileCard(profile,opts={}){
- const name=wholeWords(profile.display_name||profile.handle||profile.github_handle||'Builder',28);
- const activities=(Array.isArray(opts.activities)?opts.activities:[]).filter(run=>run?.visibility==='public'&&validId(run.id)&&run.profile_id===profile.id).slice(0,50);
- const projects=new Set(activities.map(run=>String(run.project||'').trim().toLowerCase()).filter(Boolean));
- const measuredCommits=activities.some(run=>Number.isInteger(run.commits)&&run.commits>=0);
- const commits=activities.reduce((sum,run)=>sum+(Number.isInteger(run.commits)&&run.commits>=0?run.commits:0),0);
- const metrics=[['Public runs',activities.length===50?'50+':String(activities.length)],['Projects',String(projects.size)],['Commits',measuredCommits?commits.toLocaleString('en-US'):'—']];
- const avatar=typeof opts.avatar==='string'&&/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(opts.avatar)?opts.avatar:null;
- const face=avatar?el('img',{src:avatar,width:52,height:52,style:{width:52,height:52,borderRadius:26,objectFit:'cover'}}):
-  el('div',{style:{display:'flex',width:52,height:52,borderRadius:26,alignItems:'center',justifyContent:'center',background:'#e3eaff',color:BLUE,fontSize:29,fontWeight:800}},String(name).trim().charAt(0).toUpperCase()||'S');
- const tiles=(Array.isArray(opts.tiles)?opts.tiles:[]).slice(0,3).filter(tile=>tile&&typeof tile.title==='string');
- const tileWidth=Math.floor((1112-12*(tiles.length-1))/Math.max(1,tiles.length));
- const media=tiles.length?el('div',{style:{display:'flex',width:'100%',height:248,gap:12}},
-  ...tiles.map((tile,index)=>tile.url&&/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(tile.url)
-   ?el('img',{src:tile.url,width:tileWidth,height:248,style:{width:tileWidth,height:248,objectFit:'cover',objectPosition:'center top',borderRadius:15}})
-   :el('div',{style:{display:'flex',width:tileWidth,height:248,borderRadius:15,background:index%2?'#2458ff':BLUE,color:'#fff',padding:22,alignItems:'flex-end',fontSize:32,fontWeight:700,lineHeight:1.12}},wholeWords(tile.title,58)))):
-  el('div',{style:{display:'flex',width:'100%',height:248,borderRadius:15,background:BLUE,color:'#fff',padding:34,alignItems:'flex-end',fontSize:42,fontWeight:700}},'The work behind the run.');
- return el('div',{style:{display:'flex',width:1200,height:630,background:'#fff',color:INK,fontFamily:'sans-serif',padding:'28px 44px 24px',flexDirection:'column'}},
-  el('div',{style:{display:'flex',alignItems:'center',width:'100%',height:60}},
-   el('div',{style:{display:'flex',alignItems:'center',gap:14}},
-    el('div',{style:{display:'flex',width:35,height:35,borderRadius:9,background:BLUE,alignItems:'center',justifyContent:'center',color:'#fff',fontSize:25,fontWeight:800}},'S'),
-    el('div',{style:{display:'flex',fontSize:35,fontWeight:800,letterSpacing:-1,color:BLUE}},BRAND)),
-   el('div',{style:{display:'flex',alignItems:'center',marginLeft:'auto',gap:12}},face,
-    el('div',{style:{display:'flex',fontSize:28,fontWeight:700,color:INK}},name))),
-  el('div',{style:{display:'flex',alignItems:'center',fontSize:56,fontWeight:800,lineHeight:1.04,letterSpacing:-1.6,height:116,marginTop:18}},'Public work'),
-  el('div',{style:{display:'flex',width:'100%',height:100,marginTop:18}},previewStats(metrics)),
-  el('div',{style:{display:'flex',width:'100%',height:248,marginTop:18}},media));
-}
+// A profile link unfurls in the run cards' design (site/link-preview-card.js): the builder, their
+// public totals, the agents they post with and their latest public runs.
+export const profileCard=(profile,opts={})=>LinkPreview.profileLinkCard(profile,{...opts,brand:BRAND});
 
-export function privateCard(){
- return el('div',{style:{width:'100%',height:'100%',background:'#f5f7fb',display:'flex',padding:'30px',fontFamily:'sans-serif',color:'#111'}},
-  el('div',{style:{width:'100%',height:'100%',background:'#fff',border:'1px solid #d9deea',borderRadius:22,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}},
-   el('div',{style:{display:'flex',color:'#123cff',fontSize:28,fontWeight:800}},BRAND),
-   el('div',{style:{display:'flex',fontSize:42,fontWeight:700,marginTop:34}},`This run is private on ${BRAND}`),
-   el('div',{style:{display:'flex',fontSize:21,color:'#687083',marginTop:18}},'Sign in and open the shared run link to check your access')));
+// The neutral image for a run that is missing or not public, in any share format.
+export function privateCard(format='link'){
+ return LinkPreview.privateLinkCard({brand:BRAND,title:`This run is private on ${BRAND}`,detail:'Sign in and open the shared run link to check your access',format});
 }

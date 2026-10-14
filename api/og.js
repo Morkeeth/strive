@@ -1,13 +1,19 @@
 // The home page's share image. /r/<id> has had one since it shipped; the address people
 // actually post - the root - had none, so an X post of it was a bare link. Same pipeline,
 // same size. One currently-public recorded trail is read through the public visibility guard.
+// A run also renders as the story and square images its share sheet offers (?format=).
+const SIZES={link:{width:1200,height:630},square:{width:1080,height:1080},story:{width:1080,height:1920}};
 module.exports=async function handler(req,res){
  res.setHeader('X-Content-Type-Options','nosniff');
  res.setHeader('Cache-Control','private, no-store, max-age=0');
  try{
-  const {homeCard,readPublic,readPublicPhotos,readAvatar,privateCard,linkPreviewCard,photoCard,profileCard,SHARE_IMAGE_CACHE}=await import('../server/public-run.mjs');
+  const {homeCard,readPublic,readPublicPhotos,readAvatar,privateCard,photoCard,shareCard,photoSlots,profileSlots,profileCard,SHARE_IMAGE_CACHE}=await import('../server/public-run.mjs');
   const {readProfile,readProfileActivities,shareOrigin}=await import('../server/share-routes.mjs');
-  const photoData=async(run,chosen,tileWidth)=>{try{
+  const {shareFonts}=await import('../server/share-fonts.mjs');
+  const format=req.query.run&&Object.hasOwn(SIZES,req.query.format)?req.query.format:'link';
+  // Each selected image is cropped to the slot the card gives it.
+  const photoData=async(run,chosen,slot)=>{try{
+   if(!slot)return null;
    let bytes=null;
    if(process.env.STRIVE_STORAGE_SERVICE_ROLE_KEY){
     const {runPhotos}=await import('../server/run-photos.mjs');
@@ -27,10 +33,10 @@ module.exports=async function handler(req,res){
    if(bytes&&bytes.length<=3_000_000){
     const sharp=(await import('sharp')).default;
     const image=sharp(bytes),meta=await image.metadata();
-    const cropHeight=Math.min(meta.height,Math.round(meta.width*248/tileWidth));
+    const cropHeight=Math.min(meta.height,Math.round(meta.width*slot.height/slot.width));
     const tallScreenshot=chosen.role!=='personal'&&meta.height/meta.width>1.5&&cropHeight<meta.height;
     const framed=tallScreenshot?image.extract({left:0,top:Math.round((meta.height-cropHeight)*0.28),width:meta.width,height:cropHeight}):image;
-    bytes=await framed.resize(tileWidth,248,{fit:'cover',position:chosen.role==='personal'?'attention':'north'}).jpeg({quality:82}).toBuffer();
+    bytes=await framed.resize(slot.width,slot.height,{fit:'cover',position:chosen.role==='personal'?'attention':'north'}).jpeg({quality:82}).toBuffer();
     return 'data:image/jpeg;base64,'+bytes.toString('base64');
    }
   }catch(_){/* A missing public image leaves the card truthful. */}
@@ -39,14 +45,14 @@ module.exports=async function handler(req,res){
   let tree;
   if(req.query.run){
    const run=await readPublic(String(req.query.run));
-   if(!run)tree=privateCard();
+   if(!run)tree=privateCard(format);
    else {
     const [photos,avatar]=await Promise.all([readPublicPhotos(run),readAvatar(run)]);
     const screenshots=photos.filter(photo=>photo.role!=='personal');
     const selected=(screenshots.length?screenshots:photos).slice(0,3);
-    const tileWidth=Math.floor((1112-12*(selected.length-1))/Math.max(1,selected.length));
-    const photoUrls=await Promise.all(selected.map(chosen=>photoData(run,chosen,tileWidth)));
-    tree=photoCard(run,photoUrls.filter(Boolean),{avatar});
+    const slots=photoSlots(run,format,selected.length);
+    const photoUrls=(await Promise.all(selected.map((chosen,index)=>photoData(run,chosen,slots[index])))).filter(Boolean);
+    tree=format==='link'?photoCard(run,photoUrls,{avatar}):shareCard(run,photoUrls,{avatar,format});
    }
   }else if(req.query.profile){
    const profile=await readProfile(String(req.query.profile));
@@ -62,8 +68,8 @@ module.exports=async function handler(req,res){
      const chosen=photos.find(photo=>photo.role!=='personal')||photos[0];
      return chosen?[{run,photo:chosen}]:[];
     }).sort((a,b)=>(a.photo.role==='personal')-(b.photo.role==='personal')).slice(0,3);
-    const tileWidth=Math.floor((1112-24)/3);
-    const photos=await Promise.all(withPhotos.map(async({run,photo})=>({title:run.title,url:await photoData(run,photo,tileWidth)})));
+    const slots=profileSlots(Math.min(3,Math.max(withPhotos.length,activities.length)));
+    const photos=await Promise.all(withPhotos.map(async({run,photo},index)=>({title:run.title,url:await photoData(run,photo,slots[index])})));
     const tiles=photos.filter(tile=>tile.url);
     for(const run of activities){
      if(tiles.length>=3)break;
@@ -77,7 +83,7 @@ module.exports=async function handler(req,res){
    tree=homeCard(run);
   }
   const {ImageResponse}=await import('@vercel/og');
-  const image=new ImageResponse(tree,{width:1200,height:630});
+  const image=new ImageResponse(tree,{...SIZES[format],fonts:await shareFonts()});
   const png=Buffer.from(await image.arrayBuffer());
   res.statusCode=200;
   res.setHeader('Content-Type','image/png');
