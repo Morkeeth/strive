@@ -211,3 +211,5 @@ html[data-auth-boot="pending"] #app{min-height:100vh}
 
 /* Unsaved import facts are plain labels; definitions remain in the one disclosure. */
 .fc-preview .agent-fact{font-size:12px;color:var(--soft);font-weight:400}
+/* The same measurement panel is used by the preliminary and posted cards. */
+.activity-post .post-share-facts{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 0}.activity-post .post-share-facts>div:nth-child(n){grid-column:auto;padding:0 12px;border-left:1px solid var(--rule)}.activity-post .post-share-facts>div:nth-child(2n+1){padding-left:0;border:0}.activity-post .post-share-facts dd{font-size:18px;letter-spacing:-.3px}.activity-post .post-share-facts>div:last-child dd{font-size:13px;line-height:1.4;letter-spacing:0}.activity-post .post-share-facts .post-fact-missing dd{font-size:12px}

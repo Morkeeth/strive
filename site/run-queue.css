@@ -5,3 +5,5 @@
 @media(prefers-reduced-motion:reduce){.queue-chevron{transition:none}}
 /* navigation.css also styles the older preview card; keep this list flat. */
 .queue-list .queue-preview{border:0;border-top:1px solid var(--rule,#e1e4e8);border-radius:0;padding:0;margin:0;background:transparent}.queue-list .queue-actions button{margin-left:0}.queue-list .queue-actions button:last-child{margin-left:auto}
+.queue-list .queue-expanded{margin-left:0}.queue-list [data-queue-card] .activity-post{margin:8px 0 12px;width:100%;box-sizing:border-box}.queue-list .queue-actions{padding:0 0 10px}.queue-list .queue-actions .act.blue{color:#fff;background:var(--blue)}.queue-list .queue-actions [disabled]{opacity:.5;cursor:wait}.queue-list .queue-measurements{display:none}
+.queue-list .queue-preview[open]>summary .queue-facts{display:none}

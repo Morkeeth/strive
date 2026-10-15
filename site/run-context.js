@@ -43,6 +43,16 @@ function cardFacts(r){
   ['You typed',count(typed)?number(typed):'Not recorded','Recorded human messages, not words or keystrokes.']
  ];
 }
+  function shareFacts(run){
+    const recorded=cardFacts(run)||[],find=label=>recorded.find(r=>r[0]===label);
+    let m;try{m=validate(run.capture_metadata)}catch{}
+    const source=m?.estimates?.source;
+    const span=source?(Date.parse(source.ended_at)-Date.parse(source.started_at))/1000:null;
+    const seconds=[span,run.ridge_basis==='wall-time'?run.ridge_wall_seconds:null,run.wall_time_s,run.duration_s].find(v=>Number.isFinite(v)&&v>=0);
+    const duration=seconds==null?'Not recorded':seconds<60?Math.floor(seconds)+' sec':seconds<3600?Math.floor(seconds/60)+' min':Math.floor(seconds/3600)+' hr '+Math.floor(seconds%3600/60)+' min';
+    return [find('Recorded tokens')||['Recorded tokens','Not recorded','Complete usage is absent.'],find('Est. dollars')||['Est. dollars','Not recorded','No complete stored model usage and prices. This is not your subscription bill.'],['Elapsed',duration,'Captured elapsed span, including waiting.'],find('Model')||['Model','Not recorded','No captured model names.']];
+  }
+function shareHtml(run){return '<dl class="post-facts post-share-facts" aria-label="Share card measurements">'+shareFacts(run).map(([label,value,why])=>'<div'+(value==='Not recorded'?' class="post-fact-missing"':'')+'><dt>'+esc(label)+'</dt><dd title="'+esc(why)+'">'+esc(value)+'</dd></div>').join('')+'</dl>';}
 // Three headline facts from the same run; elapsed span is never active time.
 const meanings={'Recorded tokens':'Text the model read and wrote.','Typed turns':'Messages you wrote.','Tool calls':'Actions the agent took.','Files touched':'Files the capture says it changed.','Commits':'Git commits recorded in this capture.','Est. dollars':'List-price cost of the recorded model usage.','Tool-active time · proxy':'Minutes with at least one recorded agent tool action.','Elapsed':'Time between the first and last captured event, including waiting.'};
 function headlineFacts(r,{preview=false}={}){
@@ -98,5 +108,5 @@ function profileFacts(runs){
  <div><dt>You typed</dt><dd>${typedRuns?typed.toLocaleString('en-US'):'Not recorded'}</dd><small>${scope(typedRuns)} have human message counts</small></div>
  </dl><p class="profile-models">Recorded models: ${models.size?[...models].map(esc).join(', '):'Not recorded'}</p><p class="profile-stats-scope">Recorded usage only; missing captures are not counted as zero. Cached input is already included.</p></section>`;
 }
-const api={context,setup,metrics,validate,cardFacts,headlineFacts,headlineHtml,profileFacts,cardSecondary,factLabel,measurementNotes,measurementDetails,prepareForStorage};root.StriveContext=api;if(typeof module!=='undefined')module.exports=api;
+const api={shareFacts,shareHtml,context,setup,metrics,validate,cardFacts,headlineFacts,headlineHtml,profileFacts,cardSecondary,factLabel,measurementNotes,measurementDetails,prepareForStorage};root.StriveContext=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
