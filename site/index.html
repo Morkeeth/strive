@@ -546,7 +546,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 @media(prefers-reduced-motion:no-preference){.capture-welcome{animation:welcome-in .32s ease both}@keyframes welcome-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.fade{opacity:1}.capture-actions .act:hover{transform:none}}
 
-</style><link rel="stylesheet" href="/social.css"><link rel="stylesheet" href="/people.css"><link rel="stylesheet" href="/account.css"><link rel="stylesheet" href="/feed.css"><link rel="stylesheet" href="/dropin.css"><link rel="stylesheet" href="/home.css"><link rel="stylesheet" href="/run-photos.css"><link rel="stylesheet" href="/run-media-frame.css"><link rel="stylesheet" href="/activity.css">
+</style><link rel="stylesheet" href="/social.css"><link rel="stylesheet" href="/people.css"><link rel="stylesheet" href="/account.css"><link rel="stylesheet" href="/feed.css"><link rel="stylesheet" href="/dropin.css"><link rel="stylesheet" href="/home.css"><link rel="stylesheet" href="/run-photos.css"><link rel="stylesheet" href="/run-media-frame.css"><link rel="stylesheet" href="/activity.css"><link rel="stylesheet" href="/run-queue.css">
 <link rel="stylesheet" href="/navigation.css"><link rel="stylesheet" href="/shared-ui.css">
 <script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};</script>
 <script defer src="/_vercel/insights/script.js"></script>
@@ -1860,7 +1860,7 @@ function bindCompactCard(card,deck,ad,{onChange=()=>{},shareHref=null}={}){
   };
   const pager=StriveDayCard.wire(card,{onChange:(...args)=>{bindActions();onChange(...args)}});bindActions();return pager;
 }
-async function feedCards(runs,ad,{ownerView=false,decorate=html=>html}={}){
+async function feedCards(runs,ad,{ownerView=false,preview=false,decorate=html=>html}={}){
   const rows=StriveActivity.sort(runs),media=window.StriveRunPhotos?.prepareCards?.(runs,sb),choices=new Map(),mounts=[],cards=[],timezone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
   for(const run of rows){const t=StriveActivity.time(run);if(t===null)continue;const day=StriveDay.localDay(new Date(t)),key=run.profile_id+'|'+day;
     if(!choices.has(key))choices.set(key,sb.rpc('read_day_card',{owner_id:run.profile_id,card_key:day+'_'+day,viewer_timezone:timezone}));}
@@ -1869,11 +1869,11 @@ async function feedCards(runs,ad,{ownerView=false,decorate=html=>html}={}){
   for(const source of rows){
     const run=readyMedia?.get(source.id)||source;
     const t=StriveActivity.time(run),day=t===null?null:StriveDay.localDay(new Date(t)),saved=day?choices.get(run.profile_id+'|'+day):{data:null},own=ownerView&&typeof ME==='object'&&ME?.id===run.profile_id;
-    if(saved?.error){cards.push('<article class="card"><p>Card choices could not load. Refresh to try again.</p></article>');continue;}
-    const project=GrinderContract.projectLabel(run.project),token=project&&day?await StriveDayCard.token(run.profile_id,day+'_'+day,project):'',cardId='post-'+run.id;
-    cards.push(decorate(StrivePost.render(run,{choices:saved?.data,token,owner:own,cardId,actions:' ',dateLabel:StriveActivity.label(run)}),run));
+    if(saved?.error){if(preview)throw Error('Card choices could not load.');cards.push('<article class="card"><p>Card choices could not load. Refresh to try again.</p></article>');continue;}
+    const project=GrinderContract.projectLabel(run.project),token=project&&day?await StriveDayCard.token(run.profile_id,day+'_'+day,project):'',cardId=(preview?'queue-post-':'post-')+run.id;
+    cards.push(decorate(StrivePost.render(run,{choices:saved?.data,token,owner:own,review:preview,cardId,actions:' ',dateLabel:StriveActivity.label(run)}),run));
     mounts.push(()=>{const card=document.getElementById(cardId);if(!card)return;
-      bindCompactCard(card,{slides:[{key:run.id,name:project||GrinderFeed.titleOf(run),open:run}]},ad);
+      if(!preview)bindCompactCard(card,{slides:[{key:run.id,name:project||GrinderFeed.titleOf(run),open:run}]},ad);
       void StriveRunPhotos.mountVisuals({client:sb,root:card});
       void StriveRunPhotos.mountCovers({client:sb,root:card.parentElement});});
   }
@@ -3025,7 +3025,7 @@ async function route(){ setPrimarySection(); RUN_VIEW_GENERATION++;window.Strive
     return GrinderExample.view();
   }
   if(RETIRED.some(k=>q.has(k))){history.replaceState(null,'','/');return viewLanding();}
-  if(q.has('queue')){frame(railHtml('mine'),null);const owner=ME?.id,generation=AUTH_GENERATION,viewGeneration=RUN_VIEW_GENERATION;const slot=$('app');slot.innerHTML='<h1>Run review queue</h1><p><strong>Only me. Not public.</strong> These runs are visible only to you. Review before posting.</p>';if(!owner){showSignIn();return}return StriveRunQueue.mount({client:sb,owner,slot,esc,current:()=>generation===AUTH_GENERATION&&viewGeneration===RUN_VIEW_GENERATION&&owner===ME?.id,open:false});}
+  if(q.has('queue')){frame(railHtml('mine'),null);const owner=ME?.id,generation=AUTH_GENERATION,viewGeneration=RUN_VIEW_GENERATION;const slot=$('app');slot.innerHTML='<h1>Run review queue</h1><p><strong>Only me. Not public.</strong> These runs are visible only to you. Review before posting.</p>';if(!owner){showSignIn();return}return StriveRunQueue.mount({client:sb,owner,slot,esc,current:()=>generation===AUTH_GENERATION&&viewGeneration===RUN_VIEW_GENERATION&&owner===ME?.id,open:false,renderCard:run=>feedCards([{...run,visibility:'public'}],{mine:new Set(),counts:{}},{preview:true})});}
   if(q.has('boards'))return viewBoards();
   if(q.has('projects'))return viewProjects();
   if(q.has('day'))return viewDay(q.get('day'));
