@@ -99,7 +99,7 @@ def test_public_link_preview_preserves_zero_and_omits_unrecorded_fields():
     # A link preview is the page a link opens plus the image it unfurls with. The page keeps a
     # recorded zero as a zero and draws nothing for a field the row did not record.
     result = render()
-    assert result["pageZero"]["image"].endswith("/api/og?run=r1&v=4")
+    assert result["pageZero"]["image"].endswith("/api/og?run=r1&v=5")
     assert result["pageZero"]["stats"] == [["Commits", "0"], ["Files changed", "0"], ["Typed turns", "0"]]
     assert result["pageZero"]["facts"] == [["Typed turns", "0"], ["Tool calls", "0"], ["Elapsed", "0 sec"]]
     assert result["pageUnknown"]["stats"] == []
@@ -130,12 +130,14 @@ def test_share_surfaces_tell_output_project_and_code_story_without_raw_data():
         "output": None,
         "code": "9 tool calls",
     }
-    # The link image: figure, then label. Exactly the recorded facts, and the author's caption.
+    # The link image: figure, then label. Exactly the recorded facts PRODUCT.md allows (commits,
+    # elapsed, files), and the author's caption on the blue tile when there is no image or trace.
+    # Tool-call totals are not hero facts, so 22 and 9 are not drawn.
     rich = result["ogRich"]
-    assert rich == ["S", "STRIVE", "S", "sample", "A real run", "2", "Commits", "7", "Files", "22", "Tool calls", "Human caption"]
-    assert rich[rich.index("Commits") - 1] == "2"
-    assert rich[rich.index("Tool calls") - 1] == "22" and rich[rich.index("Files") - 1] == "7"
-    assert result["ogGeneric"] == ["S", "STRIVE", "S", "sample", "A real run", "9", "Tool calls", ""]
+    assert rich == ["STRIVE", "sample", "A real run", "2", "Commits", "7", "Files", "\u201c", "Human caption"]
+    assert rich[rich.index("Commits") - 1] == "2" and rich[rich.index("Files") - 1] == "7"
+    assert "Tool calls" not in rich and "22" not in rich
+    assert result["ogGeneric"] == ["STRIVE", "sample", "A real run"]
     # The output: the page links it, and the run image says work is linked ("PR linked" became
     # "Work linked" with d442d80). A run with no output link says neither.
     assert result["pageRich"]["output"] == ('<a class="output" href="https://github.com/example/repo/pull/34" '

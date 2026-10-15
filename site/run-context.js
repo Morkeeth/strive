@@ -2,6 +2,9 @@
 (function(root){
 const esc=s=>String(s??'').replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
 const estimates=()=>root.StriveEstimates||(typeof require==='function'?require('./run-estimates.js'):null);
+const agents=()=>root.StriveAgents||(typeof require==='function'?require('./agent-names.js'):null);
+// The recorded models by the names a person reads; the raw identifiers when names are unavailable.
+const modelNames=(r,m)=>{const names=agents();return names?names.recordedModels(r).map(x=>x.name):[...new Set(m.models)]};
 const count=v=>Number.isSafeInteger(v)&&v>=0;
 function validate(m){
  if(m==null)return null;
@@ -21,9 +24,11 @@ if(result&&result===String(shownText).trim())return '';
 if(!result)return goal?'':'<p class="meta run-context-none">The author has not described this run. Activity alone cannot tell us what was achieved.</p>';
 return `<section class="run-context" aria-label="What changed"><h3>What changed</h3><p>${esc(result)}</p></section>`;}
 function setup(r){let m=null;try{m=validate(r.capture_metadata)}catch{}
- const models=m?.models?.length?[...new Set(m.models)].join(', '):'Unknown — not recorded';
+ const recorded=m?.models?.length?[...new Set(m.models)]:[];
+ const models=recorded.length?modelNames(r,m).join(', '):'Unknown — not recorded';
+ const harness=(agents()?.agentName(r.harness))||r.harness||'Unknown — not recorded';
  const total=m&&count(m.input_tokens)&&count(m.output_tokens)?(m.input_tokens+m.output_tokens).toLocaleString('en-US'):'Unknown — not recorded';
- return `<section class="run-setup" aria-label="Models and usage"><h3>Models and usage</h3><dl class="run-evidence-facts"><div><dt>Platform / harness</dt><dd>${esc(r.harness||'Unknown — not recorded')}</dd></div><div><dt>Recorded models</dt><dd>${esc(models)}</dd></div><div><dt>Recorded tokens</dt><dd>${esc(total)}</dd></div>${r.model?`<div><dt>Author’s model label</dt><dd>${esc(r.model)}</dd></div>`:''}</dl><details><summary>Where these numbers come from</summary><p>Model names and usage come from the imported capture. STRIVE has not verified them with the provider.${m?' Source: '+esc(m.basis)+'.':''}</p>${total.startsWith('Unknown')?'<p>This capture does not include complete input and output token counts.</p>':`<p>${m.input_tokens.toLocaleString('en-US')} input + ${m.output_tokens.toLocaleString('en-US')} output tokens. Cached input and reasoning tokens are already included, and are not added again. Only calls with recorded usage are included; missing usage remains unknown. This is not a bill or a measure of wasted work.</p>`}</details></section>`;
+ return `<section class="run-setup" aria-label="Models and usage"><h3>Models and usage</h3><dl class="run-evidence-facts"><div><dt>Platform / harness</dt><dd>${esc(harness)}</dd></div><div><dt>Recorded models</dt><dd>${esc(models)}</dd></div><div><dt>Recorded tokens</dt><dd>${esc(total)}</dd></div>${r.model?`<div><dt>Author’s model label</dt><dd title="${esc(r.model)}">${esc(agents()?.modelName(r.model)||r.model)}</dd></div>`:''}</dl><details><summary>Where these numbers come from</summary><p>Model names and usage come from the imported capture. STRIVE has not verified them with the provider.${m?' Source: '+esc(m.basis)+'.':''}${recorded.length?' Recorded as '+esc(recorded.join(', '))+'.':''}</p>${total.startsWith('Unknown')?'<p>This capture does not include complete input and output token counts.</p>':`<p>${m.input_tokens.toLocaleString('en-US')} input + ${m.output_tokens.toLocaleString('en-US')} output tokens. Cached input and reasoning tokens are already included, and are not added again. Only calls with recorded usage are included; missing usage remains unknown. This is not a bill or a measure of wasted work.</p>`}</details></section>`;
 }
 function metrics(r){const rows=[['Human messages',r.prompts??r.turns_typed,'Messages typed or queued by a person; excludes tool results and injected context.'],['Tool requests',r.tool_calls??r.ridge_tool_calls,'Requests the agent made to tools. A request does not prove a successful action.'],['Files present after writes',r.artifacts_produced,'Files the capture says were written and existed when checked. This does not prove they work.']].filter(x=>count(x[1]));
  if(count(r.claims_verified)&&count(r.claims))rows.push(['Claims with matching evidence',`${r.claims_verified} of ${r.claims}`,'An automatic rule found evidence in the same turn as a claim. It does not establish successful work or independently verify the claim.']);
@@ -35,7 +40,7 @@ function cardFacts(r){
  const total=m&&count(m.input_tokens)&&count(m.output_tokens)?m.input_tokens+m.output_tokens:null;
  const number=v=>v.toLocaleString('en-US');
  const typed=r.prompts??r.turns_typed;
- const models=m?.models?.length?[...new Set(m.models)].map(v=>v==='claude-opus-5-5'?'Claude Opus 5.5':v).join(', '):null;
+ const models=m?.models?.length?modelNames(r,m).join(', '):null;
  return [
   ['Recorded tokens',total===null?'Not recorded':total>=1000?new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:1}).format(total):number(total),total===null?(inconsistent?'Captured usage could not be interpreted consistently; no reliable token total is shown.':'Complete input and output counts are absent.'):number(m.input_tokens)+' input + '+number(m.output_tokens)+' output. Cached input is included; only calls with recorded usage are counted.'],
   ...(estimates()?.facts(m).rows||[]),
@@ -80,11 +85,15 @@ function headlineHtml(r,className='post-facts',{preview=false,omitUnknown=false}
 }
 function factLabel(label){return esc(label.replace(' · proxy',''))+(label==='Est. dollars'?'<sup aria-label="See measurement basis">*</sup>':'');}
 function cardSecondary(r,{commits=false,preview=false,omitUnknown=false}={}){
- const facts=cardFacts(r),model=facts.find(row=>row[0]==='Model');
- const harness=({codex:'Codex',claude:'Claude Code','claude code':'Claude Code',cursor:'Cursor','grok bot':'Grok Bot'})[String(r.harness||'').toLowerCase()]||r.harness||'Agent';
+ const facts=cardFacts(r),model=facts.find(row=>row[0]==='Model'),names=agents(),who=names?.agent(r.harness);
+ const harness=who?.name||({codex:'Codex',claude:'Claude Code','claude code':'Claude Code',cursor:'Cursor','grok bot':'Grok Bot'})[String(r.harness||'').toLowerCase()]||r.harness||'Agent';
  const glyph=({Codex:'M5 8l5 4-5 4m8 0h6',Cursor:'M6 4l13 9-7 1-3 6z','Claude Code':'M12 3v18M3 12h18M5 5l14 14M5 19L19 5'})[harness]||'M5 5h14v14H5z';
- const mark=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${glyph}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
- return `<div class="run-agent-identity"><span class="harness-mark" ${preview?'aria-hidden="true"':`aria-label="${esc(harness)}"`}>${mark}</span><span class="harness-name">${esc(harness)}</span>${omitUnknown&&(!model||model[1]==='Not recorded')?'':`<span class="${preview?'agent-fact':'model-chip'}">${esc(model&&model[1]!=='Not recorded'?model[1]:'Model not captured')}</span>`}${preview&&facts[0]?.[1]==='Not recorded'?'<span class="agent-fact preview-token-note">Tokens not recorded</span>':''}${commits&&count(r.commits)&&(!preview||r.commits>0||r.repo_url)?`<span${preview?' class="agent-fact"':''}>${r.commits} ${r.commits===1?'commit':'commits'}</span>`:''}</div>`;
+ const mark=(who?.maker&&names.markSvg(who.maker,{size:18}))||`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${glyph}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
+ // One chip per recorded model, with its maker's mark; the recorded identifier stays on hover.
+ const chipClass=preview?'agent-fact':'model-chip',recorded=names&&model&&model[1]!=='Not recorded'?names.recordedModels(r):[];
+ const modelChips=recorded.length?recorded.slice(0,2).map(x=>`<span class="${chipClass}" title="${esc(x.id)}">${x.maker?names.markSvg(x.maker,{size:14,className:'model-logo'}):''}${esc(x.name)}</span>`).join('')+(recorded.length>2?`<span class="${chipClass}">+${recorded.length-2}</span>`:'')
+  :`<span class="${chipClass}">${esc(model&&model[1]!=='Not recorded'?model[1]:'Model not captured')}</span>`;
+ return `<div class="run-agent-identity"><span class="harness-mark" ${preview?'aria-hidden="true"':`aria-label="${esc(harness)}"`}>${mark}</span><span class="harness-name">${esc(harness)}</span>${omitUnknown&&(!model||model[1]==='Not recorded')?'':modelChips}${preview&&facts[0]?.[1]==='Not recorded'?'<span class="agent-fact preview-token-note">Tokens not recorded</span>':''}${commits&&count(r.commits)&&(!preview||r.commits>0||r.repo_url)?`<span${preview?' class="agent-fact"':''}>${r.commits} ${r.commits===1?'commit':'commits'}</span>`:''}</div>`;
 }
 function measurementNotes(r){
  let m=null;try{m=validate(r.capture_metadata)}catch{}
@@ -99,7 +108,7 @@ function profileFacts(runs){
  let tokens=0,usageRuns=0,typed=0,typedRuns=0;const models=new Set();
  for(const r of rows){let m=null;try{m=validate(r.capture_metadata)}catch{}
   if(m&&count(m.input_tokens)&&count(m.output_tokens)&&count(tokens+m.input_tokens+m.output_tokens)){tokens+=m.input_tokens+m.output_tokens;usageRuns++}
-  for(const model of m?.models||[])models.add(model);
+  for(const model of m?.models||[])models.add(agents()?.modelName(model)||model);
   const n=r.prompts??r.turns_typed;if(count(n)&&count(typed+n)){typed+=n;typedRuns++}
  }
  const scope=n=>n+' of '+rows.length+' loaded runs';

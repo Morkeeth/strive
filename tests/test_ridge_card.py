@@ -176,10 +176,14 @@ def _og_truth():
 
 
 def test_og_card_uses_ridge_tool_calls_when_tool_calls_is_zero():
-    """A ridge drawn from 98 calls must not print 0 in the tool call slots."""
+    """A ridge drawn from 98 calls must not print 0 in the tool call slots.
+
+    The count still reads 98 wherever it is shown; the link image itself no longer prints a
+    tool-call total, because PRODUCT.md keeps tool-call totals off a card's facts."""
     rendered = _og_truth()
     assert rendered["toolCalls"] == 98
-    assert rendered["toolCallsEffortOnly"] == "98"
+    assert rendered["toolCallsEffortOnly"] is None
+    assert "Tool calls" not in rendered["joined"] and " 0 " not in f' {rendered["joined"]} '
     assert rendered["codeActivity"] is None
     assert "strava night review" not in rendered["joined"]
     assert rendered["titlePresent"] is True
@@ -194,4 +198,7 @@ def test_og_card_draws_no_flat_line_when_ridge_is_null():
     assert "not recorded" not in joined
     assert "unknown" not in joined
     assert "Session" not in rendered["nullTexts"]
-    assert "6" in rendered["nullTexts"] and "28" in rendered["nullTexts"]
+    # Six typed turns and 28 tool calls are single-run counts, not facts the image draws; the
+    # author's caption stands in for the missing trace.
+    assert "6" not in rendered["nullTexts"] and "28" not in rendered["nullTexts"]
+    assert "old row" in rendered["nullTexts"]

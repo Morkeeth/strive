@@ -107,7 +107,7 @@ window.GrinderPractices = function ({ client: db, me, app, frame, status }) {
           selected
             .map(
               (r) =>
-                `<article class="card"><small>${esc(r.harness || "Any harness")} · ${esc(r.visibility)}</small><h3><a href="/?practice=${r.id}">${esc(r.title)}</a></h3><p>${esc(r.task_context)}</p><p>Try: ${esc(r.instruction)}</p></article>`,
+                `<article class="card"><small>${esc(globalThis.StriveAgents?.agentName(r.harness) || r.harness || "Any harness")} · ${esc(r.visibility)}</small><h3><a href="/?practice=${r.id}">${esc(r.title)}</a></h3><p>${esc(r.task_context)}</p><p>Try: ${esc(r.instruction)}</p></article>`,
             )
             .join("") || "<p>No matching practices yet.</p>";
       }
@@ -195,7 +195,7 @@ window.GrinderPractices = function ({ client: db, me, app, frame, status }) {
       ? new Date(baseline.started_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })
       : "session time unknown";
     const later = eligibleOutcomeRuns(attempt, runs);
-    return `<section class="return-brief panel"><p class="meta">RETURN REVIEW</p><h3>${attempt.reviewed_at ? "This return is recorded" : "Your baseline is saved"}</h3><p>${attempt.reviewed_at ? "This attempt is fixed. Start another attempt for the next cycle." : "Come back after a later run. Choose that session below and record what changed; if the evidence is missing or unlike the baseline, keep the result incomparable."}</p><p><strong>Baseline:</strong> ${esc(baselineTime)} · ${esc(baseline.harness || "Harness unknown")}</p>${later.length || attempt.reviewed_at ? "" : "<p class=\"hint\">No later measured session is available yet. The outcome can stay unknown until you return.</p>"}</section>`;
+    return `<section class="return-brief panel"><p class="meta">RETURN REVIEW</p><h3>${attempt.reviewed_at ? "This return is recorded" : "Your baseline is saved"}</h3><p>${attempt.reviewed_at ? "This attempt is fixed. Start another attempt for the next cycle." : "Come back after a later run. Choose that session below and record what changed; if the evidence is missing or unlike the baseline, keep the result incomparable."}</p><p><strong>Baseline:</strong> ${esc(baselineTime)} · ${esc(globalThis.StriveAgents?.agentName(baseline.harness) || baseline.harness || "Harness unknown")}</p>${later.length || attempt.reviewed_at ? "" : "<p class=\"hint\">No later measured session is available yet. The outcome can stay unknown until you return.</p>"}</section>`;
   }
   async function detail(id) {
     start("Try, then tell us");
@@ -246,7 +246,7 @@ window.GrinderPractices = function ({ client: db, me, app, frame, status }) {
           }<p><small>Source measurement <code>${esc(String(kept.source_measurement_revision || "").slice(0, 12))}</code>${kept.source_measurement_stale ? " · that grind has been measured again since this moment was written" : ""}</small></p><p>Their counts are not shown here. The comparison below is your own baseline against your own later session, and it does not establish that this practice caused the difference.</p></section>`
         : "";
       $("practice-body").innerHTML =
-        `<article class="card"><small>${esc(p.visibility)} · ${esc(p.harness || "Any harness")}</small><h2>${esc(p.title)}</h2><p>${esc(p.task_context)}</p><h3>Try this</h3><p>${esc(p.instruction)}</p><p>Expected: ${esc(p.expected)}</p><small>A saved version. An outcome is an observation, not proof that this practice caused it.</small></article>` +
+        `<article class="card"><small>${esc(p.visibility)} · ${esc(globalThis.StriveAgents?.agentName(p.harness) || p.harness || "Any harness")}</small><h2>${esc(p.title)}</h2><p>${esc(p.task_context)}</p><h3>Try this</h3><p>${esc(p.instruction)}</p><p>Expected: ${esc(p.expected)}</p><small>A saved version. An outcome is an observation, not proof that this practice caused it.</small></article>` +
         keptHtml +
         (me()
           ? `<form id="start-attempt" class="panel reply-form"><h3>Start with a baseline</h3><label>Your earlier grind<select name="baseline" required>${options(runs, "title")}</select></label><label><input name="shared" type="checkbox"> Share my baseline counts, outcome counts and reflection with everyone who can read this practice</label><button ${runs.length ? "" : "disabled"}>Start attempt</button>${runs.length ? "" : "<p>Import a grind with a measurement revision first.</p>"}</form>`

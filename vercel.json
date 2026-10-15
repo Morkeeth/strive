@@ -102,6 +102,12 @@
     }
   ],
   "functions": {
+    "api/og.js": {
+      "includeFiles": "site/fonts/**"
+    },
+    "api/run.js": {
+      "includeFiles": "site/fonts/**"
+    },
     "api/feedback-notifications.js": {
       "maxDuration": 60
     },

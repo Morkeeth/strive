@@ -28,7 +28,7 @@
   }
   function collect(model){
     const items=[];
-    for(const i of model.items)items.push({id:i.run.id,project:i.label||'',git:false,commits:i.commits,visibility:i.run.visibility,result:i.result,title:i.run.title||'',at:i.start,seconds:i.seconds,harness:i.run.harness||''});
+    for(const i of model.items)items.push({id:i.run.id,project:i.label||'',git:false,commits:i.commits,visibility:i.run.visibility,result:i.result,title:i.run.title||'',at:i.start,seconds:i.seconds,harness:(root.StriveAgents?.agentName(i.run.harness))||i.run.harness||''});
     for(const g of model.recovered)items.push({id:g.run.id,project:g.label||'',git:true,visibility:g.run.visibility,result:g.result,title:g.run.title||'',at:g.from,until:g.until,commits:g.commits});
     return items;
   }
@@ -48,7 +48,7 @@
         return `<div class="dd-row" data-g="${esc(g.name)}"><label class="dd-pick"><input type="checkbox" data-all ${on===g.items.length?'checked':''} aria-label="Share all of ${esc(g.name)}"></label>
           <div class="dd-body"><b>${esc(g.name)}</b>${said?`<span class="ds-said">${esc(said.result)}</span>`:''}
           <span class="dd-facts">${runs.length?`${runs.length} run${runs.length===1?'':'s'}`:''}${runs.length&&git.length?' · ':''}${git.length?`${git.length} window${git.length===1?'':'s'} of git history, ${(n=>`${n} commit${n===1?'':'s'}`)(git.reduce((a,i)=>a+i.commits,0))}`:''}</span><span class="dd-facts"><b class="${on?'ds-on':''}">${on?`${on} of ${g.items.length} shared`:'Only you'}</b></span>
-          <details ${on?'open':''}><summary>Choose single items</summary>${g.items.map(i=>`<label class="ds-item"><input type="checkbox" data-id="${esc(i.id)}" ${wanted.has(i.id)?'checked':''}> <span>${i.git?`Git history, ${hm(i.at)} to ${hm(i.until)}, ${i.commits} commit${i.commits===1?'':'s'}`:`${esc(i.harness||'Run')}, ${hm(i.at)}${i.result?`. ${esc(i.result)}`:', no result written'}`}${failed.has(i.id)?` <em role="alert">Not changed: ${esc(failed.get(i.id))}</em>`:''}</span>
+          <details ${on?'open':''}><summary>Choose single items</summary>${g.items.map(i=>`<label class="ds-item"><input type="checkbox" data-id="${esc(i.id)}" ${wanted.has(i.id)?'checked':''}> <span>${i.git?`Git history, ${hm(i.at)} to ${hm(i.until)}, ${i.commits} commit${i.commits===1?'':'s'}`:`${esc(globalThis.StriveAgents?.agentName(i.harness)||i.harness||'Run')}, ${hm(i.at)}${i.result?`. ${esc(i.result)}`:', no result written'}`}${failed.has(i.id)?` <em role="alert">Not changed: ${esc(failed.get(i.id))}</em>`:''}</span>
             ${!i.git&&i.result&&wanted.has(i.id)?`<label class="ds-lead"><input type="radio" name="ds-lead" value="${esc(i.id)}" ${lead===i.id?'checked':''}> leads the day</label>`:''}</label>`).join('')}</details></div></div>`}).join('');
       const p=preview(items,wanted),d=plan(items,wanted);
       if(lead&&!wanted.has(lead))lead=null;

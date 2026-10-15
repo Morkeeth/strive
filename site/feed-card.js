@@ -61,11 +61,13 @@
     return `${harnessName(r) || "Agent"} session${day ? `, ${day}` : ""}`;
   }
 
-  // A run captured from a Claude Code subagent arrives with harness "claude-agent". On the card
-  // it is Claude Code; the row keeps the raw value.
+  // A run's agent by the name a person reads: "claude-agent" from a Claude Code subagent is Claude
+  // Code. The row keeps the raw value.
+  const agents = () => (typeof module !== "undefined" && module.exports ? require("./agent-names.js") : root.StriveAgents) || null;
   function harnessName(r) {
     const h = r.harness ? String(r.harness) : "";
-    return h === "claude-agent" ? "Claude Code" : h;
+    const names = agents();
+    return names ? names.agentName(h) : h === "claude-agent" ? "Claude Code" : h;
   }
 
   const observedProjection = r => r?.trace_basis === "observed native events; timestamps unavailable";
