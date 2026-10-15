@@ -47,3 +47,26 @@ assert.equal(Q.waiting(run,'other'),false);
 assert.equal(Q.waiting({...run,created_at:'2026-10-13T15:59:59Z'},'owner'),false);
 assert.equal(Q.waiting({...run,created_at:'2026-10-13T16:00:00Z'},'owner'),true);
 assert.equal(Q.waiting({...run,created_at:'2026-10-13T18:00:00Z'},'owner'),true);
+
+// Creation order wins even when an older recording was uploaded later.
+const newest={...run,id:'new-upload',created_at:'2026-10-15T08:00:00Z',started_at:'2026-10-13T20:00:00Z',title:'Newest upload'},older={...run,id:'older-upload',created_at:'2026-10-14T08:00:00Z',started_at:'2026-10-15T07:00:00Z',title:'Older upload'};
+assert.deepEqual((await Q.read(reader(Promise.resolve({data:[older,newest],error:null})),'owner')).map(r=>r.id),['new-upload','older-upload']);
+const {full}=await import('../tests/fixtures/estimate-capture.mjs');
+assert.equal(Q.facts({capture_metadata:full}).find(r=>r[0]==='Est. dollars')[1],'$1.89');
+assert.equal(Q.facts({}).filter(r=>r[1]==='Not recorded').length,4);
+const bad=structuredClone(full);bad.input_tokens++;
+assert.equal(Q.facts({capture_metadata:bad}).find(r=>r[0]==='Est. dollars')[1],'Not recorded');
+assert.equal(Q.facts({duration_s:0})[2][1],'0 sec');
+assert.equal(Q.facts({duration_s:13260})[2][1],'3 hr 41 min');
+slot.innerHTML='';
+const escape=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
+await Q.mount({client:reader(Promise.resolve({data:[older,{...newest,title:'<img src=x onerror=alert(1)>',caption:'<script>private</script>'}],error:null})),owner:'owner',slot,esc:escape,current:()=>true,open:true});
+assert.equal(slot.querySelectorAll('img,script').length,0,'untrusted run text must be escaped');
+const cards=slot.querySelectorAll('.queue-preview');assert.equal(cards.length,2);
+assert.equal([...cards].filter(c=>c.open).length,0,'cards start collapsed');
+cards[0].open=true;slot.querySelector('[data-next]').click();
+assert.equal(cards[0].open,false);assert.equal(cards[1].open,true);
+assert.equal(document.activeElement,cards[1].querySelector('summary'));
+assert.equal(writes.length,4,'opening and next must not write to runs');
+slot.querySelector('[data-collapse]').click();assert.equal([...cards].some(c=>c.open),false);
+console.log('PASS newest upload first despite older capture date; stored cache-aware costs only; missing/invalid facts unknown; escaping; collapse/next keyboard focus without writes');
