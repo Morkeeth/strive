@@ -154,7 +154,8 @@ def test_landing_points_to_a_real_run_not_the_bundled_sample():
     assert "const sorted=StriveActivity.sort(runs);let shown=0;" in view
     assert "const page=sorted.slice(shown,shown+FEED_PAGE);shown+=page.length;" in view
     assert re.search(r"await feedCards\(page,await ackData\(page\),\{current,onCard:", view)
-    assert "if(current()){body.querySelector('.home-intro')?.remove();body.insertAdjacentHTML('beforeend',html)}" in view
+    assert "if(current()){body.querySelector('.home-intro')?.remove();" in view
+    assert "deck.insertAdjacentHTML('beforeend',html)" in view
     assert "wireKudos();return true;" in view
     # The one sample a newcomer is offered, on Add a run, is a real public run address.
     assert re.fullmatch(r"/r/[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}", node(RENDER_CONNECT)["sample"])

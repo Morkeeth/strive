@@ -1873,7 +1873,7 @@ async function feedCards(runs,ad,{ownerView=false,preview=false,decorate=html=>h
     if(saved?.error){if(preview)throw Error('Card choices could not load.');const failure='<article class="card"><p>Card choices could not load. Refresh to try again.</p></article>';cards.push(failure);if(onCard)onCard(failure);continue;}
     const project=GrinderContract.projectLabel(run.project),token=project&&day?await StriveDayCard.token(run.profile_id,day+'_'+day,project):'',cardId=(preview?'queue-post-':'post-')+run.id;
     cards.push(decorate(StrivePost.render(run,{choices:saved?.data,token,owner:own,review:preview,cardId,actions:' ',dateLabel:StriveActivity.label(run)}),run));
-    if(onCard)onCard('<div class="strive-overview">'+cards[cards.length-1]+'</div>');
+    if(onCard)onCard(cards[cards.length-1]);
     const mount=()=>{if(!current())return;const card=document.getElementById(cardId);if(!card)return;
       if(!preview)bindCompactCard(card,{slides:[{key:run.id,name:project||GrinderFeed.titleOf(run),open:run}]},ad);
       void StriveRunPhotos.mountVisuals({client:sb,root:card});
@@ -1915,7 +1915,7 @@ async function viewLanding(){
     const sorted=StriveActivity.sort(runs);let shown=0;
     const more=async()=>{
       const page=sorted.slice(shown,shown+FEED_PAGE);shown+=page.length;
-      await feedCards(page,await ackData(page),{current,onCard:html=>{if(current()){body.querySelector('.home-intro')?.remove();body.insertAdjacentHTML('beforeend',html)}}});if(!current())return false;
+      await feedCards(page,await ackData(page),{current,onCard:html=>{if(current()){body.querySelector('.home-intro')?.remove();let deck=body.querySelector(':scope>.strive-overview');if(!deck){deck=document.createElement('div');deck.className='strive-overview';body.append(deck)}deck.insertAdjacentHTML('beforeend',html)}}});if(!current())return false;
       wireKudos();return true;
     };
     if(!body.querySelector('.home-intro'))body.innerHTML='';$('feed-more')?.closest('.feed-more-row')?.remove();
