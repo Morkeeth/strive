@@ -359,3 +359,7 @@ The import step and the saved-run editor draw the same grid, `render()` in `site
 Gap: role controls (Result, Before, After, Personal photo) are no longer offered in either place. Roles already saved are kept and still drive the reader's card. A personal photo saved before this change shows as `Hidden` until the author shows it.
 
 Checks: `scripts/test-photo-editor.mjs`, `scripts/test-compact-photo-editor.mjs`, and in a real browser at 390 and 1440 `scripts/check-photo-editor.py`.
+
+## 16 October — review identity before measurements
+
+Private review rows keep title, recorded run date, project/repository and exact authored result lines visible while collapsed. Captions are labelled Author note; absent results stay unknown. The preliminary card still uses the shared posted renderer. Feed text paints after saved display choices, independently of photo metadata; the existing authorized photo mount fills its reserved media area. No owner rows are cached for first paint.

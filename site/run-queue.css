@@ -7,3 +7,6 @@
 .queue-list .queue-preview{border:0;border-top:1px solid var(--rule,#e1e4e8);border-radius:0;padding:0;margin:0;background:transparent}.queue-list .queue-actions button{margin-left:0}.queue-list .queue-actions button:last-child{margin-left:auto}
 .queue-list .queue-expanded{margin-left:0}.queue-list [data-queue-card] .activity-post{margin:8px 0 12px;width:100%;box-sizing:border-box}.queue-list .queue-actions{padding:0 0 10px}.queue-list .queue-actions .act.blue{color:#fff;background:var(--blue)}.queue-list .queue-actions [disabled]{opacity:.5;cursor:wait}.queue-list .queue-measurements{display:none}
 .queue-list .queue-preview[open]>summary .queue-facts{display:none}
+
+/* Identity and authored results stay visible even when a card is collapsed. */
+.queue-project{display:block;font-size:12px;line-height:1.5;overflow-wrap:anywhere;color:var(--ink,#17212b);margin:0 0 7px}.queue-result{display:block;font-size:13px;line-height:1.5;white-space:pre-line;overflow-wrap:anywhere;margin:0 0 12px}.queue-result strong{display:block;font-size:10px;font-weight:600;color:var(--muted,#697481);text-transform:none}.queue-result{max-height:9em;overflow:auto}.queue-source{margin-bottom:4px}

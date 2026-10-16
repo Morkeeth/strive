@@ -630,11 +630,12 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <div id="status" role="status" aria-live="polite" aria-atomic="true"></div>
 <div class="shell solo" id="shell">
   <aside class="rail" id="rail"></aside>
-  <main class="main" id="app" tabindex="-1"></main>
+  <main class="main" id="app" tabindex="-1"><section class="card pad" data-first-paint><h1>Public runs</h1><p>Real agent sessions, shared by their builders. Open a run to see the work and its recorded activity.</p><p><a href="/?post">Add your run</a> · <a href="/install">Connect your agent</a></p></section></main>
   <aside class="side" id="side"></aside>
 </div>
 <footer class="site-foot"><span class="foot-cost">STRIVE is free and open source (<a href="https://github.com/Morkeeth/strive/blob/main/LICENSE">MIT</a>).</span><a href="/install">Install</a><a href="/agents.md">For agents</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/?feedback">Feedback</a><a href="/privacy#deletion" id="delete-info">Delete your data</a></footer>
 
+<script src="/first-paint.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
 <script src="/navigation.js"></script>
 <script src="/run-queue.js"></script>
@@ -1799,10 +1800,10 @@ function playStrip(){
 function landingHTML(){
   return `<div class="home ${ME?'home-member':''}">
     <div class="home-layout">
-      <section class="home-sec landing-feature" aria-labelledby="h-popular" id="landing-feature"><div class="land-head"><h2 id="h-popular">${ME||document.documentElement.dataset.authHint==='member'?'Your feed':'Public runs'}</h2></div><div id="landing-feature-body">${skeletonCard()}</div><p id="public-run-count" class="public-run-count" role="status"></p></section>
+      <section class="home-sec landing-feature" aria-labelledby="h-popular" id="landing-feature"><div class="land-head"><h2 id="h-popular">${ME||document.documentElement.dataset.authHint==='member'?'Your feed':'Public runs'}</h2></div><div id="landing-feature-body"><p class="home-intro">Real agent sessions, shared by their builders. Open a run to see the work and its recorded activity.</p></div><p id="public-run-count" class="public-run-count" role="status"></p></section>
       <aside class="home-around" id="home-people-clubs" aria-label="Around STRIVE" tabindex="-1">
         <section class="home-sec" aria-labelledby="h-builders"><div class="land-head"><h2 id="h-builders">People building</h2><a class="home-people-link" href="/?people">Find people</a></div><div id="home-builders"></div></section>
-        <section class="home-sec" id="home-week-section" aria-labelledby="h-week"><div class="land-head"><h2 id="h-week">This week</h2></div><div id="home-week"><div class="wk-skel"></div></div></section>
+        <section class="home-sec" id="home-week-section" aria-labelledby="h-week"><div class="land-head"><h2 id="h-week">This week</h2></div><div id="home-week"><p class="meta">Public activity from the last seven days.</p></div></section>
 
       </aside>
     </div>
@@ -1860,22 +1861,24 @@ function bindCompactCard(card,deck,ad,{onChange=()=>{},shareHref=null}={}){
   };
   const pager=StriveDayCard.wire(card,{onChange:(...args)=>{bindActions();onChange(...args)}});bindActions();return pager;
 }
-async function feedCards(runs,ad,{ownerView=false,preview=false,decorate=html=>html}={}){
-  const rows=StriveActivity.sort(runs),media=window.StriveRunPhotos?.prepareCards?.(runs,sb),choices=new Map(),mounts=[],cards=[],timezone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
+async function feedCards(runs,ad,{ownerView=false,preview=false,decorate=html=>html,onCard=null,current=()=>true}={}){
+  const rows=StriveActivity.sort(runs),choices=new Map(),mounts=[],cards=[],timezone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
   for(const run of rows){const t=StriveActivity.time(run);if(t===null)continue;const day=StriveDay.localDay(new Date(t)),key=run.profile_id+'|'+day;
-    if(!choices.has(key))choices.set(key,sb.rpc('read_day_card',{owner_id:run.profile_id,card_key:day+'_'+day,viewer_timezone:timezone}));}
-  await Promise.all([...choices].map(async([key,result])=>choices.set(key,await result)));
-  const readyMedia=media?new Map((await media).map(run=>[run.id,run])):null;
-  for(const source of rows){
-    const run=readyMedia?.get(source.id)||source;
-    const t=StriveActivity.time(run),day=t===null?null:StriveDay.localDay(new Date(t)),saved=day?choices.get(run.profile_id+'|'+day):{data:null},own=ownerView&&typeof ME==='object'&&ME?.id===run.profile_id;
-    if(saved?.error){if(preview)throw Error('Card choices could not load.');cards.push('<article class="card"><p>Card choices could not load. Refresh to try again.</p></article>');continue;}
+    if(!choices.has(key))choices.set(key,Promise.resolve(sb.rpc('read_day_card',{owner_id:run.profile_id,card_key:day+'_'+day,viewer_timezone:timezone})));}
+  // Photo metadata is not needed to paint recorded work. The existing media mount
+  // checks reader authorization and saved photo choices before adding any image.
+  for(const run of rows){
+    const t=StriveActivity.time(run),day=t===null?null:StriveDay.localDay(new Date(t)),saved=day?await choices.get(run.profile_id+'|'+day):{data:null},own=ownerView&&typeof ME==='object'&&ME?.id===run.profile_id;
+    if(!current())return '';
+    if(saved?.error){if(preview)throw Error('Card choices could not load.');const failure='<article class="card"><p>Card choices could not load. Refresh to try again.</p></article>';cards.push(failure);if(onCard)onCard(failure);continue;}
     const project=GrinderContract.projectLabel(run.project),token=project&&day?await StriveDayCard.token(run.profile_id,day+'_'+day,project):'',cardId=(preview?'queue-post-':'post-')+run.id;
     cards.push(decorate(StrivePost.render(run,{choices:saved?.data,token,owner:own,review:preview,cardId,actions:' ',dateLabel:StriveActivity.label(run)}),run));
-    mounts.push(()=>{const card=document.getElementById(cardId);if(!card)return;
+    if(onCard)onCard('<div class="strive-overview">'+cards[cards.length-1]+'</div>');
+    const mount=()=>{if(!current())return;const card=document.getElementById(cardId);if(!card)return;
       if(!preview)bindCompactCard(card,{slides:[{key:run.id,name:project||GrinderFeed.titleOf(run),open:run}]},ad);
       void StriveRunPhotos.mountVisuals({client:sb,root:card});
-      void StriveRunPhotos.mountCovers({client:sb,root:card.parentElement});});
+      void StriveRunPhotos.mountCovers({client:sb,root:card.parentElement});};
+    if(onCard)setTimeout(mount,0);else mounts.push(mount);
   }
   setTimeout(()=>mounts.forEach(mount=>mount()),0);
   return '<div class="strive-overview">'+cards.join('')+'</div>';
@@ -1912,8 +1915,8 @@ async function viewLanding(){
     const sorted=StriveActivity.sort(runs);let shown=0;
     const more=async()=>{
       const page=sorted.slice(shown,shown+FEED_PAGE);shown+=page.length;
-      const cards=await feedCards(page,await ackData(page));if(!current())return false;
-      body.insertAdjacentHTML('beforeend',cards);wireKudos();return true;
+      await feedCards(page,await ackData(page),{current,onCard:html=>{if(current())body.insertAdjacentHTML('beforeend',html)}});if(!current())return false;
+      wireKudos();return true;
     };
     body.innerHTML='';$('feed-more')?.closest('.feed-more-row')?.remove();
     if(!await more())return;
@@ -3074,7 +3077,7 @@ window.addEventListener('hashchange',event=>{
 
 document.addEventListener('DOMContentLoaded',()=>{
   const initialQuery=new URLSearchParams(location.search),homeStart=(!location.search||initialQuery.has('explore'))&&!location.hash.includes('import=');
-  if(homeStart){frame(null,null,true);$('shell').classList.add('home-shell');$('app').innerHTML=landingHTML();$('app').querySelector('.home').dataset.bootSkeleton='true';}else $('app').innerHTML=skeletonCard();
+  if(homeStart){frame(null,null,true);$('shell').classList.add('home-shell');$('app').innerHTML=landingHTML();$('app').querySelector('.home').dataset.bootSkeleton='true';}else if(initialQuery.has('queue')){$('app').innerHTML=StriveFirstPaint.queue();}else if(!$('app').querySelector('[data-first-paint]'))$('app').innerHTML='<p>Open a recorded run or <a href="/?post">add your own</a>.</p>';
   syncAuthNav();
   // The product menu and profile menu share dismissal and focus behavior.
   const menus=[...document.querySelectorAll('details.account-menu, details.product-nav-more')];
