@@ -26,6 +26,14 @@ w.dispatchEvent(new w.ErrorEvent('error',{message:'private prompt NEVER',filenam
 w.document.querySelector('#load-failure').hidden=true;w.dispatchEvent(new w.Event('unhandledrejection'));assert.equal(w.document.querySelector('#load-failure').hidden,false);
 w.document.querySelector('#load-failure').hidden=true;const core=w.document.createElement('script');core.src='/vendor/supabase-2.117.3.js';w.document.head.append(core);core.dispatchEvent(new w.Event('error'));assert.equal(w.document.querySelector('#load-failure').hidden,false,'failed core SDK still shows recovery');
 dom.window.close();
+// Execute the real profile-copy binding under denied clipboard permission.
+const pageSource=await readFile('site/index.html','utf8');
+const start=pageSource.indexOf("  const copy=$('share-copy');"),end=pageSource.indexOf('\n}\nfunction viewClaim',start);
+assert.ok(start>=0&&end>start);const binding=pageSource.slice(start,end);
+for(const navigator of [{clipboard:{writeText:()=>Promise.reject(Error('permission denied'))}},{}]){
+ let listener;const notices=[],unhandled=[];const onRejection=e=>unhandled.push(e);process.on('unhandledRejection',onRejection);
+ try{new Function('navigator','location','GrinderSharing','handle','status','$',binding)(navigator,{origin:'https://example.test'},{cleanProfilePath:()=>'/test'},'test',text=>notices.push(text),()=>({addEventListener:(_,fn)=>listener=fn}));await listener();await new Promise(ok=>setImmediate(ok));assert.ok(notices.some(n=>n.includes('Copy this page address')),'permission denial gives a useful local fallback');assert.equal(unhandled.length,0,'clipboard denial never becomes a global load error');}finally{process.removeListener('unhandledRejection',onRejection);}
+}
 const result=await checkBrowserCompat();assert.deepEqual(result.failures,[]);
 const html=await readFile('dist/index.html','utf8');assert.ok(html.indexOf('/load-guard.js')<html.indexOf('/startup.js'));assert.ok(html.indexOf('/browser-compat.js')<html.indexOf('/vendor/supabase-'));assert.match(html,/<main[^>]*>[\s\S]*?data-first-paint/);assert.match(html,/Something failed to load/);assert.match(html,/script src="\/vendor\/supabase-2\.117\.3\.js" integrity="sha384-/);
 const sdk=await readFile('dist/vendor/supabase-2.117.3.js');assert.ok(html.includes('integrity=\"sha384-'+createHash('sha384').update(sdk).digest('base64')+'\"'),'compiled SDK integrity matches served bytes');

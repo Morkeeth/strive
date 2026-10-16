@@ -2943,8 +2943,8 @@ async function viewShareProfile(handle){
     heroN:T.runs, heroK:'public runs', stats:shareStatsProfile(R,T,harnesses),
   });
   fitShareCard(); window.addEventListener('resize',fitShareCard);
-  const copy=$('share-copy'); if(copy) copy.addEventListener('click',()=>{
-    navigator.clipboard.writeText(location.origin+(GrinderSharing.cleanProfilePath(handle)||'/?u='+encodeURIComponent(handle))).then(()=>status('Link copied.'));
+  const copy=$('share-copy'); if(copy) copy.addEventListener('click',async()=>{
+    try{await navigator.clipboard.writeText(location.origin+(GrinderSharing.cleanProfilePath(handle)||'/?u='+encodeURIComponent(handle)));status('Link copied.');}catch(_){status('Copy this page address to share your profile.');}
   });
 }
 function viewClaim(){
