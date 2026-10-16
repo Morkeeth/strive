@@ -26,6 +26,8 @@
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
     "@supabase/supabase-js": "2.117.3",
+    "acorn": "8.15.0",
+    "esbuild": "0.25.12",
     "jsdom": "^26.1.0"
   },
   "dependencies": {

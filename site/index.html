@@ -3,6 +3,8 @@
 <link rel="alternate" type="text/markdown" href="/agents.md" title="STRIVE agent instructions">
 <link rel="describedby" type="application/json" href="/.well-known/agent-grinder.json">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="/load-guard.js"></script>
+<script src="/browser-compat.js"></script>
 <script src="/startup.js"></script>
 <title>__BRAND__ · __TAGLINE__</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -549,7 +551,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 </style><link rel="stylesheet" href="/social.css"><link rel="stylesheet" href="/people.css"><link rel="stylesheet" href="/account.css"><link rel="stylesheet" href="/feed.css"><link rel="stylesheet" href="/dropin.css"><link rel="stylesheet" href="/home.css"><link rel="stylesheet" href="/run-photos.css"><link rel="stylesheet" href="/run-media-frame.css"><link rel="stylesheet" href="/activity.css"><link rel="stylesheet" href="/run-queue.css">
 <link rel="stylesheet" href="/navigation.css"><link rel="stylesheet" href="/shared-ui.css">
 <script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};</script>
-<script defer src="/_vercel/insights/script.js"></script>
+<script defer data-optional src="/_vercel/insights/script.js"></script>
 <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" crossorigin="anonymous" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R">
 <link rel="preload" as="script" href="/navigation.js">
 <link rel="preload" as="script" href="/run-queue.js">
@@ -627,6 +629,8 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
   </div>
 </div></div>
 
+<section id="load-failure" role="alert" hidden style="margin:24px auto;padding:20px;max-width:640px;color:#18213c;background:white;border:1px solid #b8caff"><h1>Something failed to load.</h1><p>Update your browser or open in Chrome.</p><p><a href="/">Try again</a> · <a href="/install">Install instructions</a></p></section>
+<noscript><p style="padding:24px">STRIVE needs JavaScript to load runs. Enable JavaScript or open in Chrome.</p></noscript>
 <div id="status" role="status" aria-live="polite" aria-atomic="true"></div>
 <div class="shell solo" id="shell">
   <aside class="rail" id="rail"></aside>
@@ -2939,8 +2943,8 @@ async function viewShareProfile(handle){
     heroN:T.runs, heroK:'public runs', stats:shareStatsProfile(R,T,harnesses),
   });
   fitShareCard(); window.addEventListener('resize',fitShareCard);
-  const copy=$('share-copy'); if(copy) copy.addEventListener('click',()=>{
-    navigator.clipboard.writeText(location.origin+(GrinderSharing.cleanProfilePath(handle)||'/?u='+encodeURIComponent(handle))).then(()=>status('Link copied.'));
+  const copy=$('share-copy'); if(copy) copy.addEventListener('click',async()=>{
+    try{await navigator.clipboard.writeText(location.origin+(GrinderSharing.cleanProfilePath(handle)||'/?u='+encodeURIComponent(handle)));status('Link copied.');}catch(_){status('Copy this page address to share your profile.');}
   });
 }
 function viewClaim(){
