@@ -1915,10 +1915,10 @@ async function viewLanding(){
     const sorted=StriveActivity.sort(runs);let shown=0;
     const more=async()=>{
       const page=sorted.slice(shown,shown+FEED_PAGE);shown+=page.length;
-      await feedCards(page,await ackData(page),{current,onCard:html=>{if(current())body.insertAdjacentHTML('beforeend',html)}});if(!current())return false;
+      await feedCards(page,await ackData(page),{current,onCard:html=>{if(current()){body.querySelector('.home-intro')?.remove();body.insertAdjacentHTML('beforeend',html)}}});if(!current())return false;
       wireKudos();return true;
     };
-    body.innerHTML='';$('feed-more')?.closest('.feed-more-row')?.remove();
+    if(!body.querySelector('.home-intro'))body.innerHTML='';$('feed-more')?.closest('.feed-more-row')?.remove();
     if(!await more())return;
     if(shown<sorted.length){
       body.insertAdjacentHTML('afterend','<p class="feed-more-row"><button type="button" class="act ghost" id="feed-more">Show more runs</button></p>');
