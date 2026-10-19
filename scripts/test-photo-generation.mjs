@@ -17,7 +17,7 @@ vm.createContext(review);vm.runInContext(fs.readFileSync('site/run-photos.js','u
 await review.StriveRunPhotos.mountCovers({client:null,root:review.document});
 const [publicCard,privateCard]=review.document.querySelectorAll('.fc');
 assert.deepEqual([...publicCard.querySelectorAll('.run-project-gallery .run-photo-cover')].map(img=>img.getAttribute('src')),['/api/run-photos?id=chosen&run_id='+favour+'&w=320','/media/favour-public-page-20261010.webp','/media/favour-campaign-builder-20261010.webp'],'saved author cover leads, with project screenshots beside it');
-assert.equal(publicCard.querySelector('.run-photo-preview').getAttribute('src'),'/api/run-photos?id=chosen&run_id='+favour+'&w=64');
+assert.equal(publicCard.querySelector('.run-photo-preview'),null,'one image request per photo: no second low-size copy');
 assert.equal(publicCard.querySelector('.run-media a[aria-label^="Open "]').getAttribute('href'),favourHref+'#run-photos','public photo opens the same clean run URL as its card');
 assert.equal(publicCard.querySelectorAll('.run-media a[href*="?run="]').length,0,'loaded public photos expose no old-form run links');
 assert.ok(!publicCard.innerHTML.includes('not-chosen'));

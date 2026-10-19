@@ -10,3 +10,13 @@
 
 /* Identity and authored results stay visible even when a card is collapsed. */
 .queue-project{display:block;font-size:12px;line-height:1.5;overflow-wrap:anywhere;color:var(--ink,#17212b);margin:0 0 7px}.queue-result{display:block;font-size:13px;line-height:1.5;white-space:pre-line;overflow-wrap:anywhere;margin:0 0 12px}.queue-result strong{display:block;font-size:10px;font-weight:600;color:var(--muted,#697481);text-transform:none}.queue-result{max-height:9em;overflow:auto}.queue-source{margin-bottom:4px}
+/* Each queued run is its own block with clear space between, so two posts never read as one. */
+.queue-list .queue-preview{border:1px solid var(--rule,#e1e4e8);border-radius:12px;padding:0 16px;margin:0 0 20px;background:#fff}
+.queue-list .queue-preview[open]{padding-bottom:4px}
+.queue-list .queue-preview>summary{padding:16px 0}
+.queue-list [data-queue-card]{margin:8px 0 16px}
+.queue-list [data-queue-card]>p[role=status]{min-height:560px;margin:0;display:grid;place-items:center;border-radius:12px;background:#f4f6fa;color:var(--muted,#697481);font-size:12px}
+.queue-facts:empty{display:none}
+@media(max-width:540px){.queue-list .queue-preview{padding:0 12px;margin-bottom:16px}.queue-list .queue-expanded{margin-left:0}}
+/* One column per shown fact (at most three), so a lone fact keeps the full width. */
+.queue-list .queue-facts{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}

@@ -20,10 +20,10 @@ const fullCaption='Author '.repeat(40);assert.ok(P.render({...run,caption:fullCa
 const summary=C.profileFacts([run,run,{id:'missing',prompts:null,duration_s:400}]);assert.match(summary,/1,025/);assert.match(summary,/1 of 2 loaded runs have usage/);assert.match(summary,/1 of 2 loaded runs have human message counts/);assert.doesNotMatch(summary,/1,925|14m/);
 console.log('PASS Sunday card: no double-counted cache, recorded zero retained, missing bill and active time unknown, authored model kept separate, public profile coverage and saved visual choices preserved.');
 
-const missing=P.render({...run,duration_s:null,commits:null,files_touched:null,capture_metadata:null,caption:'',story_result:''});assert.doesNotMatch(missing,/Not captured/);assert.match(missing,/Recorded tokens/);assert.match(missing,/0 messages you wrote/);assert.equal(new JSDOM(missing).window.document.querySelectorAll('.post-fact-missing').length,4);assert.doesNotMatch(missing,/<dl class="post-facts"[^>]*><\/dl>/);console.log('PASS missing usage gets an honest card state without an empty facts row.');
+const missing=P.render({...run,duration_s:null,commits:null,files_touched:null,capture_metadata:null,caption:'',story_result:''});assert.doesNotMatch(missing,/Not captured/);assert.match(missing,/0 messages you wrote/);assert.equal(new JSDOM(missing).window.document.querySelectorAll('.post-fact-missing').length,0);assert.doesNotMatch(missing,/Not recorded<\/dd>/);assert.doesNotMatch(missing,/<dl class="post-facts"[^>]*><\/dl>/);console.log('PASS missing usage gets an honest card state without an empty facts row.');
 
 const inconsistent=P.render({...run,duration_s:null,commits:null,files_touched:null,capture_metadata:{...run.capture_metadata,cached_input_tokens:1001}});assert.match(inconsistent,/could not be interpreted consistently/);assert.doesNotMatch(inconsistent,/Usage not captured/);
-const cursor=P.render({...run,duration_s:null,commits:null,files_touched:null,capture_metadata:{basis:'cursor-model-info',models:[]}});assert.match(cursor,/Not recorded/);assert.doesNotMatch(cursor,/Usage needs review/);
+const cursor=P.render({...run,duration_s:null,commits:null,files_touched:null,capture_metadata:{basis:'cursor-model-info',models:[]}});assert.doesNotMatch(cursor,/Not recorded<\/dd>/);assert.doesNotMatch(cursor,/Usage needs review/);
 const zero=P.render({...run,capture_metadata:{basis:'codex-records',models:[],input_tokens:0,output_tokens:0}});assert.doesNotMatch(zero,/Usage needs review|Usage not captured/);assert.match(zero,/<dd[^>]*>0<\/dd>/);
 console.log('PASS captured inconsistent usage differs from missing usage; real zero remains a count.');
 
@@ -49,14 +49,14 @@ const costOnly=structuredClone(estimateCapture);delete costOnly.estimates.tool_a
 
 const nativeCursor={...run,harness:"cursor",duration_s:null,turns_typed:3,prompts:null,tool_calls:15,files_touched:2,capture_metadata:{basis:"cursor-model-info",models:["auto"]}};
 const cursorCard=new JSDOM(P.render(nativeCursor));
-assert.deepEqual([...cursorCard.window.document.querySelectorAll(".post-facts dt")].map(e=>e.textContent),["Recorded tokens","Est. dollars","Elapsed","Model"]);
-assert.deepEqual([...cursorCard.window.document.querySelectorAll(".post-facts dd")].map(e=>e.textContent),["Not recorded","Not recorded","Not recorded","auto"]);
+assert.deepEqual([...cursorCard.window.document.querySelectorAll(".post-share-facts dt")].map(e=>e.textContent),["You typed","Model","Files changed"]);
+assert.deepEqual([...cursorCard.window.document.querySelectorAll(".post-share-facts dd")].map(e=>e.textContent),["3","auto","2"]);
 assert.match(cursorCard.window.document.querySelector('.post-no-trace').textContent,/3 messages you wrote · 15 agent tool calls/,'known recorded activity remains visible when tokens and elapsed are absent');
 assert.deepEqual(JSON.parse(JSON.stringify(C.headlineFacts({...nativeCursor,capture_metadata:null,harness:"future"}))).map(x=>x[1]),["3","15","2"],'detail fallback contract remains intact');
 // Oscar's preliminary-card contract: the shared posted renderer carries the same four facts and measured chart.
 const timed={...run,prompts:9,tool_calls:30,ridge:[0,2,0,3,4,5,6,10,0,0],ridge_basis:'wall-time',ridge_wall_seconds:1200,capture_metadata:estimateCapture};
 const posted=new JSDOM(P.render(timed)).window.document,previewed=new JSDOM(P.render(timed,{review:true})).window.document;
-assert.equal(posted.querySelectorAll('.post-share-facts>div').length,4);
+assert.equal(posted.querySelectorAll('.post-share-facts>div').length,3);
 assert.equal(posted.querySelectorAll('.activity-bar').length,6,'actual timed windows appear on the posted card');
 assert.equal(posted.querySelector('.post-share-facts').textContent,previewed.querySelector('.post-share-facts').textContent);
 assert.equal(posted.querySelector('.post-trail').textContent,previewed.querySelector('.post-trail').textContent);

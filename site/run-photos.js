@@ -274,6 +274,16 @@
       return {...run,_readablePhotoCount:count};
     }catch(_){return run;}}));
   }
+  // A feed knows its runs before it paints them. Ask for their photo lists then, in parallel with
+  // the card reads, and hand each answer to the first mount that wants it. Same server access check;
+  // an answer is used once and dropped after 15 seconds.
+  const early=new Map();
+  async function prefetch({client,runIds}){
+    const h=await headers(client);
+    for(const id of runIds||[]){const key=`${h.Authorization||''} ${id}`;if(early.has(key))continue;
+      early.set(key,get(`/api/run-photos?run_id=${encodeURIComponent(id)}`,{headers:h}));setTimeout(()=>early.delete(key),15000);}
+  }
+  function takeEarly(h,id){const key=`${h.Authorization||''} ${id}`,job=early.get(key);early.delete(key);return job||null}
   async function mountCovers({client,root:host=document}){
     let active=true,stopTileFit=()=>{};const controller=new AbortController(),urls=new Set(),images=new Set();
     const dispose=()=>{active=false;controller.abort();for(const url of urls)URL.revokeObjectURL(url);urls.clear();for(const image of images)image.remove();stopTileFit();disposers.delete(dispose)};
@@ -289,7 +299,7 @@
         const runId=card.dataset.runId;
         const visuals=card.dataset.runVisibility==='public'?showcase[runId]||[]:[];
         const listHeaders=await headers(client);if(!current())return;
-        const list=await get(`/api/run-photos?run_id=${encodeURIComponent(runId)}`,{headers:listHeaders,signal:controller.signal});
+        const list=await (takeEarly(listHeaders,runId)||get(`/api/run-photos?run_id=${encodeURIComponent(runId)}`,{headers:listHeaders,signal:controller.signal}));
         if(!current())return;if(!list.ok){if(placeholder)placeholder.innerHTML='<p class="media-read-error">Images unavailable. Open the run to try again.</p>';return;}
         const payload=await list.json(), photos=payload?.photos||[];
         const mode=card.dataset.photoLayout||'cover';
@@ -325,12 +335,12 @@
             const blob=await imageRes.blob();if(!current())return;
             url=URL.createObjectURL(blob);objectUrl=true;urls.add(url);pendingUrls.add(url);
           }
-          const figure=document.createElement('figure'),image=document.createElement('img');let lowPreview=null;
+          const figure=document.createElement('figure'),image=document.createElement('img');
           figure.dataset.photoRole=photo.role||'photo';image.className='run-photo-cover';if(photo.width&&photo.height){image.width=photo.width;image.height=photo.height}image.decoding='async';image.alt=roles[photo.role]||'Run photo';image.loading=cardIndex===0?'eager':'lazy';image.fetchPriority=cardIndex===0?'high':'low';image.classList.add('image-reveal');image.src=url;images.add(image);if(cardIndex===0&&!objectUrl){const preload=document.createElement('link');preload.rel='preload';preload.as='image';preload.href=url;document.head.append(preload);}
           const release=()=>{if(objectUrl){URL.revokeObjectURL(url);urls.delete(url);pendingUrls.delete(url)}};
-          image.onload=()=>{image.classList.add('is-loaded');lowPreview?.remove();release()};image.onerror=()=>{release();figure.replaceChildren();figure.innerHTML=root.StrivePlaceholders?.render('screenshot',{story:card.dataset.mediaStory||'',owner:card.dataset.runOwner==='true',seed:card.dataset.mediaSeed,harness:card.dataset.mediaHarness,model:card.dataset.mediaModel})||''};
+          image.onload=()=>{image.classList.add('is-loaded');release()};image.onerror=()=>{release();figure.replaceChildren();figure.innerHTML=root.StrivePlaceholders?.render('screenshot',{story:card.dataset.mediaStory||'',owner:card.dataset.runOwner==='true',seed:card.dataset.mediaSeed,harness:card.dataset.mediaHarness,model:card.dataset.mediaModel})||''};
           const runHref=card.querySelector('.post-open a, .fc-body')?.getAttribute('href')||'/?run='+encodeURIComponent(runId);
-          const link=document.createElement('a');link.href=runHref+'#run-photos';link.setAttribute('aria-label','Open '+(roles[photo.role]||'run image')+' at full size');link.append(image);if(!objectUrl){const tiny=new URL(url,location.origin);tiny.searchParams.set('w','64');lowPreview=document.createElement('img');lowPreview.className='run-photo-preview';lowPreview.alt='';lowPreview.loading=image.loading;lowPreview.src=tiny.pathname+tiny.search;link.append(lowPreview);}
+          const link=document.createElement('a');link.href=runHref+'#run-photos';link.setAttribute('aria-label','Open '+(roles[photo.role]||'run image')+' at full size');link.append(image);
           link.onclick=event=>{event.preventDefault();void openImage({path,client,label:roles[photo.role]||'Run image',gallery:selected})};figure.append(link);
           const caption=visibleCaption(photo.role);if(caption){const label=document.createElement('figcaption');label.textContent=caption;figure.append(label)}group.append(figure);
         }
@@ -469,5 +479,5 @@
     })();
     return next=>{chosen=next||null;paint()};
   }
-  root.StriveRunPhotos={prepareCards,mount,mountCovers,mountPair,mountThumbs,mountVisuals,mountChooser,disposeAll,forget,lead,cardPhotos};
+  root.StriveRunPhotos={prefetch,prepareCards,mount,mountCovers,mountPair,mountThumbs,mountVisuals,mountChooser,disposeAll,forget,lead,cardPhotos};
 })(typeof window!=="undefined"?window:globalThis);

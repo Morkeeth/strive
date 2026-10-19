@@ -35,7 +35,7 @@ await new Promise(ok=>site.listen(0,'127.0.0.1',ok));
 const virtualConsole=new VirtualConsole();
 const dom=await JSDOM.fromURL(`http://127.0.0.1:${site.address().port}/`,{runScripts:'dangerously',resources:'usable',pretendToBeVisual:true,virtualConsole,
  beforeParse(w){
-  w.fetch=(input,init)=>fetch(typeof input==='string'?input:input.url,init);w.Headers=Headers;w.Request=Request;w.Response=Response;
+  w.fetch=(input,init)=>fetch(new URL(typeof input==='string'?input:input.url,w.location.href),init);w.Headers=Headers;w.Request=Request;w.Response=Response;
   Object.defineProperty(w,'crypto',{value:globalThis.crypto});w.TextEncoder=TextEncoder;w.TextDecoder=TextDecoder;
   w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};w.ResizeObserver=w.IntersectionObserver;
   w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){},addListener(){},removeListener(){}});w.scrollTo=()=>{};
