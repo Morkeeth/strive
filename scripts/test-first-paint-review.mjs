@@ -14,10 +14,10 @@ if(!process.argv.includes('--queue'))assert.match(source,/<main[^>]*id="app"[^>]
 let delivered=[];const slow=new Promise(()=>{});context.StriveActivity.time=r=>r.at;context.StriveDay.localDay=d=>String(d.getTime());context.StriveDayCard.token=async()=>'';context.sb.rpc=(_,args)=>args.owner_id==='slow'?slow:Promise.resolve({data:null});
 void context.render([{id:'fast',profile_id:'fast',at:1,title:'First recorded run'},{id:'slow',profile_id:'slow',at:2,title:'Slow later run'}],{},{onCard:html=>delivered.push(html)});
 await new Promise(r=>setTimeout(r,5));assert.equal(delivered.length,1);assert.match(delivered[0],/First recorded run/);assert.doesNotMatch(delivered[0],/strive-overview/,'stream emits bare cards into one shared grid');
-const gridDom=new JSDOM('<main><p class="home-intro">Useful copy</p></main>'),body=gridDom.window.document.querySelector('main');
+const gridDom=new JSDOM('<main><div class="feed-skeleton"></div><div class="feed-skeleton"></div></main>'),body=gridDom.window.document.querySelector('main');
 const start=source.indexOf('onCard:html=>',source.indexOf('async function viewLanding')),end=source.indexOf('});if(!current())return false;',start);assert.ok(start>=0&&end>start);
 const append=new Function('body','current','document','return ('+source.slice(start+7,end)+')')(body,()=>true,gridDom.window.document);
-append(delivered[0]);append('<article>Second run</article>');assert.equal(body.querySelectorAll('.strive-overview').length,1);assert.equal(body.querySelectorAll('.strive-overview>article').length,2);assert.equal(body.querySelector('.home-intro'),null);
+append(delivered[0]);append('<article>Second run</article>');assert.equal(body.querySelectorAll('.strive-overview').length,1);assert.equal(body.querySelectorAll('.strive-overview>article').length,2);assert.equal(body.querySelectorAll('.feed-skeleton').length,0,'each landed card takes one skeleton slot');assert.ok(body.firstElementChild.classList.contains('strive-overview'),'cards sit above the remaining skeletons');
 let choiceReads=0;context.sb.rpc=()=>({then:resolve=>{choiceReads++;resolve({data:null})}});
 await context.render([{id:'a',profile_id:'same',at:1},{id:'b',profile_id:'same',at:1}],{});
 assert.equal(choiceReads,1,'same owner/day choice read is started once and shared');

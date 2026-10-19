@@ -52,7 +52,16 @@ function cardFacts(r){
     const duration=seconds==null?'Not recorded':seconds<60?Math.floor(seconds)+' sec':seconds<3600?Math.floor(seconds/60)+' min':Math.floor(seconds/3600)+' hr '+Math.floor(seconds%3600/60)+' min';
     return [find('Recorded tokens')||['Recorded tokens','Not recorded','Complete usage is absent.'],find('Est. dollars')||['Est. dollars','Not recorded','No complete stored model usage and prices. This is not your subscription bill.'],['Elapsed',duration,'Captured elapsed span, including waiting.'],find('Model')||['Model','Not recorded','No captured model names.']];
   }
-function shareHtml(run){return '<dl class="post-facts post-share-facts" aria-label="Share card measurements">'+shareFacts(run).map(([label,value,why])=>'<div'+(value==='Not recorded'?' class="post-fact-missing"':'')+'><dt>'+esc(label)+'</dt><dd title="'+esc(why)+'">'+esc(value)+'</dd></div>').join('')+'</dl>';}
+// The three facts a card shows, the same pick as the share page: tokens, est. dollars, elapsed,
+// then you typed, model, files changed. A missing fact is left out, never shown as 'Not recorded'.
+function shownFacts(run){
+ const all=shareFacts(run),card=cardFacts(run)||[],get=(rows,label)=>rows.find(row=>row[0]===label),known=row=>row&&typeof row[1]==='string'&&row[1]&&row[1]!=='Not recorded';
+ const agents=root.StriveAgents||(typeof require==='function'?require('./agent-names.js'):null),names=agents?.recordedModels?.(run)?.map(m=>m.name).join(', ')||(run.model?agents?.modelName?.(run.model):'');
+ const model=names?['Model',names,'Model names from the capture.']:get(all,'Model');
+ const files=Number.isInteger(run.files_touched)&&run.files_touched>=0?['Files changed',run.files_touched.toLocaleString('en-US'),'Files the capture says it changed.']:null;
+ return [get(all,'Recorded tokens'),get(all,'Est. dollars'),get(all,'Elapsed'),get(card,'You typed'),model,files].filter(known).slice(0,3);
+}
+function shareHtml(run){const rows=shownFacts(run);return rows.length?'<dl class="post-facts post-share-facts" data-count="'+rows.length+'" aria-label="Recorded facts">'+rows.map(([label,value,why])=>'<div><dt>'+esc(label)+'</dt><dd title="'+esc(why)+'">'+esc(value)+'</dd></div>').join('')+'</dl>':'';}
 // Three headline facts from the same run; elapsed span is never active time.
 const meanings={'Recorded tokens':'Text the model read and wrote.','Typed turns':'Messages you wrote.','Tool calls':'Actions the agent took.','Files touched':'Files the capture says it changed.','Commits':'Git commits recorded in this capture.','Est. dollars':'List-price cost of the recorded model usage.','Tool-active time · proxy':'Minutes with at least one recorded agent tool action.','Elapsed':'Time between the first and last captured event, including waiting.'};
 function headlineFacts(r,{preview=false}={}){
@@ -108,5 +117,5 @@ function profileFacts(runs){
  <div><dt>You typed</dt><dd>${typedRuns?typed.toLocaleString('en-US'):'Not recorded'}</dd><small>${scope(typedRuns)} have human message counts</small></div>
  </dl><p class="profile-models">Recorded models: ${models.size?[...models].map(esc).join(', '):'Not recorded'}</p><p class="profile-stats-scope">Recorded usage only; missing captures are not counted as zero. Cached input is already included.</p></section>`;
 }
-const api={shareFacts,shareHtml,context,setup,metrics,validate,cardFacts,headlineFacts,headlineHtml,profileFacts,cardSecondary,factLabel,measurementNotes,measurementDetails,prepareForStorage};root.StriveContext=api;if(typeof module!=='undefined')module.exports=api;
+const api={shareFacts,shownFacts,shareHtml,context,setup,metrics,validate,cardFacts,headlineFacts,headlineHtml,profileFacts,cardSecondary,factLabel,measurementNotes,measurementDetails,prepareForStorage};root.StriveContext=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

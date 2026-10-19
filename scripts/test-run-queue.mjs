@@ -53,11 +53,12 @@ const newest={...run,id:'new-upload',created_at:'2026-10-15T08:00:00Z',started_a
 assert.deepEqual((await Q.read(reader(Promise.resolve({data:[older,newest],error:null})),'owner')).map(r=>r.id),['new-upload','older-upload']);
 const {full}=await import('../tests/fixtures/estimate-capture.mjs');
 assert.equal(Q.facts({capture_metadata:full}).find(r=>r[0]==='Est. dollars')[1],'$1.89');
-assert.equal(Q.facts({}).filter(r=>r[1]==='Not recorded').length,4);
+assert.equal(Q.facts({}).length,0,'a run with nothing recorded shows no fact cells');
+assert.ok(Q.facts({capture_metadata:full}).length<=3,'at most three facts');
 const bad=structuredClone(full);bad.input_tokens++;
-assert.equal(Q.facts({capture_metadata:bad}).find(r=>r[0]==='Est. dollars')[1],'Not recorded');
-assert.equal(Q.facts({duration_s:0})[2][1],'0 sec');
-assert.equal(Q.facts({duration_s:13260})[2][1],'3 hr 41 min');
+assert.equal(Q.facts({capture_metadata:bad}).find(r=>r[0]==='Est. dollars'),undefined,'uninterpretable usage hides dollars');
+assert.equal(Q.facts({duration_s:0}).find(r=>r[0]==='Elapsed')[1],'0 sec');
+assert.equal(Q.facts({duration_s:13260}).find(r=>r[0]==='Elapsed')[1],'3 hr 41 min');
 slot.innerHTML='';
 const escape=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 await Q.mount({client:reader(Promise.resolve({data:[older,{...newest,title:'<img src=x onerror=alert(1)>',caption:'<script>private</script>'}],error:null})),owner:'owner',slot,esc:escape,current:()=>true,open:true});
