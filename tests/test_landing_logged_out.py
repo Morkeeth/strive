@@ -40,7 +40,8 @@ const facts=html=>{const d=new JSDOM(html).window.document;return {html,
   primary:d.querySelectorAll('.act.primary').length,buttons:d.querySelectorAll('button').length,
   lists:d.querySelectorAll('ol,ul').length,inputs:d.querySelectorAll('input,#drop-zone,#drop-stage').length,
   intro:d.querySelector('.home-intro')?.textContent||'',
-  skeleton:!!d.querySelector('#landing-feature-body [data-skeleton]'),
+  skeletons:d.querySelectorAll('#landing-feature-body .feed-skeleton').length,
+  busy:d.getElementById('landing-feature-body').getAttribute('aria-busy'),
   labelledby:d.getElementById('landing-feature').getAttribute('aria-labelledby')}};
 const shell=new JSDOM(s,{url:'https://strive.test/',runScripts:'outside-only'}).window.document;
 const adds=[...shell.querySelectorAll('.bar a[href="/?post"]')].map(a=>({cls:a.className,text:a.textContent.replace(/\s+/g,' ').trim(),
@@ -145,8 +146,8 @@ def test_landing_points_to_a_real_run_not_the_bundled_sample():
     body = out["html"]
     assert "const REAL_RUN='/r/3afa89e7-aff5-488d-bec3-da36196b8c5e';" in HTML
     assert '/?example' not in HTML
-    assert out["skeleton"] is False and out["labelledby"] == "h-popular"
-    assert "Real agent sessions" in out["intro"] and "Open a run" in out["intro"]
+    assert out["skeletons"] == 2 and out["busy"] == "true" and out["labelledby"] == "h-popular"
+    assert out["intro"] == ""
     view = view_landing()
     assert "let runs=data.runs||[], runsFailed=data.runs===null;" in view
     # 58b3174 (12 Oct 2026): the same sorted real runs, drawn one page of 20 at a time.
@@ -154,7 +155,8 @@ def test_landing_points_to_a_real_run_not_the_bundled_sample():
     assert "const sorted=StriveActivity.sort(runs);let shown=0;" in view
     assert "const page=sorted.slice(shown,shown+FEED_PAGE);shown+=page.length;" in view
     assert re.search(r"await feedCards\(page,await ackData\(page\),\{current,onCard:", view)
-    assert "if(current()){body.querySelector('.home-intro')?.remove();" in view
+    assert "if(current()){body.querySelector('.feed-skeleton')?.remove();" in view
+    assert "body.prepend(deck)" in view
     assert "deck.insertAdjacentHTML('beforeend',html)" in view
     assert "wireKudos();return true;" in view
     # The one sample a newcomer is offered, on Add a run, is a real public run address.
