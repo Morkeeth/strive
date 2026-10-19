@@ -18,4 +18,5 @@
 .queue-list [data-queue-card]>p[role=status]{min-height:560px;margin:0;display:grid;place-items:center;border-radius:12px;background:#f4f6fa;color:var(--muted,#697481);font-size:12px}
 .queue-facts:empty{display:none}
 @media(max-width:540px){.queue-list .queue-preview{padding:0 12px;margin-bottom:16px}.queue-list .queue-expanded{margin-left:0}}
-.queue-list .queue-facts{grid-template-columns:repeat(3,minmax(0,1fr))}
+/* One column per shown fact (at most three), so a lone fact keeps the full width. */
+.queue-list .queue-facts{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
