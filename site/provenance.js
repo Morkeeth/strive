@@ -12,7 +12,7 @@ function claude(o){
  if(o.isSidechain)return result('agent-to-agent','high','claude-code',['isSidechain']);
  if(o.promptSource==='sdk'&&o.userType==='external'&&o.turnOrigin==='sdk'&&typeof o.promptId==='string'&&o.promptId.trim()&&['sdk-ts','sdk-cli','sdk-py'].includes(o.entrypoint)){
   const wrapper=['wrapper','wrapperName','clientName','sourceTool'].map(k=>o[k]).find(v=>typeof v==='string'&&v.trim());
-  return result('human-via-tool',wrapper?'high':'medium','claude-code',['promptSource','userType','turnOrigin','promptId','entrypoint',...(wrapper?['wrapper']:[])],wrapper||o.entrypoint);
+  return result('unknown','low','claude-code',['promptSource','userType','turnOrigin','promptId','entrypoint',...(wrapper?['wrapper']:[])]);
  }
  if(o.promptSource==='system')return result('automation','high','claude-code',['promptSource']);
  return result('unknown','low','claude-code',['promptSource','entrypoint'].filter(k=>k in o));
@@ -28,7 +28,7 @@ function bb(o){
  if(['item/started','item/completed'].includes(o.type)&&isObj(data.item)&&data.item.type==='userMessage')return result('unknown','low','bb',['type','data.item.type']);
  return null;
 }
-const CODEX_INJECTED=['<recommended_plugins>','<environment_context>','<turn_aborted>','# Files mentioned by the user:'];
+const CODEX_INJECTED=['<recommended_plugins>','<environment_context>','<turn_aborted>','# Files mentioned by the user:','# AGENTS.md instructions','<permissions instructions>','<collaboration_mode>','<apps_instructions>','<plugins_instructions>','<skills_instructions>'];
 function codex(o,ctx={}){
  const p=isObj(o.payload)?o.payload:{};let text=null;
  if(o.type==='event_msg'&&p.type==='user_message')text=String(p.message||'');

@@ -136,8 +136,8 @@
       },
       done() {
         if (!typed.length && !provenanceEvents.length) throw readError("no-turns");
-        const t0 = Math.min(...typed);
-        const ev = all.filter((t) => t >= t0).sort((a, b) => a - b);
+        const t0 = typed.length ? Math.min(...typed) : (all.length ? Math.min(...all) : null);
+        const ev = all.filter((t) => t0 != null && t >= t0).sort((a, b) => a - b);
         let span = 0;
         for (let i = 1; i < ev.length; i++) span += Math.min(ev[i] - ev[i - 1], 1200);
         let rhythm;
@@ -222,7 +222,7 @@
     };
   }
 
-  const CODEX_INJECTED = ["<recommended_plugins>", "<environment_context>", "<turn_aborted>", "# Files mentioned by the user:"];
+  const CODEX_INJECTED = ["<recommended_plugins>", "<environment_context>", "<turn_aborted>", "# Files mentioned by the user:", "# AGENTS.md instructions", "<permissions instructions>", "<collaboration_mode>", "<apps_instructions>", "<plugins_instructions>", "<skills_instructions>"];
   function codexCommand(blob) {
     if (typeof blob !== "string") return "";
     let parsed;
@@ -240,7 +240,7 @@
     // Typed turns come in two shapes (agentgrinder/native_trace.py says why): the CLI's
     // event_msg user_message, or the desktop app's response_item user message. The event form
     // wins when the file has it; `messages` is the fallback.
-    const users = [], messages = [], events = [], calls = new Set(), files = new Set(), stamps = [], touched = [], promptRows = [];
+    const users = [], messages = [], events = [], calls = new Set(), files = new Set(), stamps = [], touched = [];
     return {
       harness: "Codex",
       add(o) {
@@ -255,13 +255,11 @@
           // Whether the session is delegated is only known once every session_meta is read,
           // so each user message is held as (time, injected) and classified at the end.
           const text = String(p.message || "").replace(/^\s+/, "");
-          users.push({ t, injected: CODEX_INJECTED.some((m) => text.startsWith(m)) });
-          promptRows.push(o);
+          users.push({ t, injected: CODEX_INJECTED.some((m) => text.startsWith(m)), row:o });
           return;
         } else if (o.type === "response_item" && p.type === "message" && p.role === "user") {
           const text = (Array.isArray(p.content) ? p.content.filter(isObj).map((c) => c.text || "").join("") : String(p.content || "")).replace(/^\s+/, "");
-          messages.push({ t, injected: CODEX_INJECTED.some((m) => text.startsWith(m)) });
-          promptRows.push(o);
+          messages.push({ t, injected: CODEX_INJECTED.some((m) => text.startsWith(m)), row:o });
           return;
         } else if (p.type === "function_call" || p.type === "custom_tool_call") {
           const id = p.call_id || p.id || "record:" + index;
@@ -276,7 +274,7 @@
       done() {
         const typedIn = users.length ? users : messages;
         const human = delegated ? [] : typedIn.filter((u) => !u.injected);
-        const provenanceEvents = promptRows.map((o) => provenance.classify("codex", o, { delegated })).filter(Boolean);
+        const provenanceEvents = typedIn.map((u) => provenance.classify("codex", u.row, { delegated })).filter(Boolean);
         if (!human.length && !provenanceEvents.length) throw readError("no-turns");
         const all = events.concat(human.filter((u) => u.t != null).map((u) => u.t)).sort((a, b) => a - b);
         const start = all.length ? all[0] : 0;

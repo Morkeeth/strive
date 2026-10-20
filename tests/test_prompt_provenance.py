@@ -21,13 +21,12 @@ def test_every_kind_is_explicit(kind, adapter, row, context):
     assert event["fields"]
 
 
-def test_bb_driven_claude_entrypoint_is_relayed_not_harness():
+def test_sdk_entrypoint_without_authorship_evidence_stays_unknown():
     row = {"type": "user", "promptSource": "sdk", "userType": "external", "turnOrigin": "sdk",
            "promptId": "p1", "entrypoint": "sdk-ts", "wrapper": "bb", "message": {}}
     event = classify("claude-code", row)
-    assert event == {"kind": "human-via-tool", "confidence": "high", "adapter": "claude-code",
-                     "fields": ["promptSource", "userType", "turnOrigin", "promptId", "entrypoint", "wrapper"],
-                     "relayed_by": "bb"}
+    assert event == {"kind": "unknown", "confidence": "low", "adapter": "claude-code",
+                     "fields": ["promptSource", "userType", "turnOrigin", "promptId", "entrypoint", "wrapper"]}
 
 
 def test_summary_counts_human_relay_and_keeps_unknown_visible():

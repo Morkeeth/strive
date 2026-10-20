@@ -118,7 +118,8 @@ def prompt(row, harness, codex_events=False):
         value = None
         if row.get('type') == 'event_msg' and p.get('type') == 'user_message': value = str(p.get('message') or '')
         elif not codex_events and row.get('type') == 'response_item' and p.get('type') == 'message' and p.get('role') == 'user': value = text(p.get('content'))
-        if value is not None and value.lstrip().startswith(('<recommended_plugins>', '<environment_context>', '<turn_aborted>', '# Files mentioned by the user:')): return None
+        from .provenance import CODEX_INJECTED
+        if value is not None and value.lstrip().startswith(CODEX_INJECTED): return None
         return value
     from .ingest import _cursor_text
     value = _cursor_text(row.get('message') or {})

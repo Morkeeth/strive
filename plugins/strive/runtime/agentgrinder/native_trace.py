@@ -5,7 +5,7 @@ from datetime import datetime
 
 # Records with the user role that no person typed. The last one is the desktop app's attachment
 # record; its own prompt, when there was one, is a separate record.
-CODEX_INJECTED = ('<recommended_plugins>', '<environment_context>', '<turn_aborted>', '# Files mentioned by the user:')
+from .provenance import CODEX_INJECTED
 
 
 def codex_activity(path, records=None):

@@ -27,6 +27,7 @@ def export_run(run: dict) -> dict:
         "activity_label": "bot activity" if run.get("harness") == "Grok Bot" else None,
         "project": run.get("project") if run.get("project_proven") is not False else None,
         "turns_typed": run.get("turns_typed"),
+        "prompt_provenance": run.get("prompt_provenance"),
         "duration_s": run.get("duration_s"),
         "tool_calls": run.get("tool_calls"),
         "shell_calls": run.get("shell_calls"),

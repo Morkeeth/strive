@@ -151,7 +151,7 @@ def test_the_preview_names_what_the_export_carries_and_matches_the_allowlist():
     keys = set(re.findall(r'^\s+"([a-z_]+)":', PUSH, re.M))
     assert keys == {
         # capture_metadata (ce9b610): recorded model names and token counts, a closed set of keys.
-        "harness", "capture_metadata", "is_sample", "activity_label", "project", "turns_typed", "duration_s", "tool_calls",
+        "harness", "capture_metadata", "is_sample", "activity_label", "project", "turns_typed", "prompt_provenance", "duration_s", "tool_calls",
         "shell_calls", "files_touched", "commits", "claims", "claims_verified", "artifacts_produced", "reach",
         "reach_reason", "coach_verdict", "coach_plan", "coach_tool_calls", "coach_mode",
         "coach_experiment", "progress_verdict", "progress_delta", "started", "rhythm",

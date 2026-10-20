@@ -19,11 +19,11 @@ def sdk_row(entrypoint="sdk-ts"):
 
 
 @pytest.mark.parametrize("entrypoint", ["sdk-ts", "sdk-cli", "sdk-py"])
-def test_sdk_request_is_detected_as_tool_relayed_human(entrypoint):
+def test_sdk_request_is_detected_but_not_claimed_as_human(entrypoint):
     row = sdk_row(entrypoint)
     assert is_external_sdk_turn(row) is True
-    assert is_human_turn(row) is True
-    assert classify(row) == "human"
+    assert is_human_turn(row) is False
+    assert classify(row) == "harness"
 
 
 @pytest.mark.parametrize("field,value", [
@@ -36,12 +36,12 @@ def test_incomplete_or_injected_sdk_shapes_do_not_match(field, value):
     assert is_external_sdk_turn(row) is False
 
 
-def test_sdk_driven_claude_file_keeps_relay_provenance(tmp_path):
+def test_sdk_driven_claude_file_keeps_unknown_provenance_without_human_inflation(tmp_path):
     source = tmp_path / "1854c446.jsonl"
     source.write_text(json.dumps(sdk_row()) + "\n")
     run = parse_session(str(source))
-    assert run["turns_typed"] == 1
-    assert run["prompt_provenance"]["counts"]["human-via-tool"] == 1
+    assert run["turns_typed"] == 0
+    assert run["prompt_provenance"]["counts"]["unknown"] == 1
 
 
 def test_resumed_copies_stay_separate_and_earlier_copy_is_only_older(tmp_path):

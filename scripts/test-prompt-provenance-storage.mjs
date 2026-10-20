@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 import {bootDisposable,seedJourneyActors,CASEY} from './disposable-supabase.mjs';
 
 const {db}=await bootDisposable();
@@ -9,11 +10,13 @@ try{
  const saved=(await insert(valid)).rows[0];
  assert.deepEqual(saved.prompt_provenance,valid);
  await assert.rejects(insert({...valid,human_turns:44}),/Human provenance total mismatch/);
+ await assert.rejects(insert({...valid,relays:{bb:'3'}}),/Invalid relay count/);
  await assert.rejects(insert({...valid,raw_prompt:'secret'}),/Unsupported prompt provenance field/);
  const {unknown_turns,...missingTotal}=valid;
  await assert.rejects(insert(missingTotal),/Missing prompt provenance field/);
  const missingKind={...valid,counts:{...valid.counts}};delete missingKind.counts.unknown;
  await assert.rejects(insert(missingKind),/Missing prompt provenance kind/);
  await assert.rejects(db.query("update strava.runs set prompt_provenance=$2 where profile_id=$1",[CASEY,{...valid,counts:{...valid.counts,'human-typed':39},human_turns:42}]),/Prompt provenance cannot be edited/);
+ await db.exec(await readFile(new URL('../supabase/strava/051_prompt_provenance.sql',import.meta.url),'utf8'));
  console.log('PASS: bounded prompt provenance persists, rejects bad totals and hidden fields, and is immutable');
 }finally{await db.close();}

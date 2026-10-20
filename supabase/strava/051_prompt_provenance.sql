@@ -4,7 +4,7 @@ alter table strava.runs add column if not exists prompt_provenance jsonb;
 
 create or replace function strava.check_prompt_provenance(p jsonb) returns void
 language plpgsql set search_path=strava,pg_temp as $$
-declare k text; n numeric; relay_total numeric := 0;
+declare k text; relay_value jsonb; relay_total numeric := 0;
 begin
  if p is null then return; end if;
  if jsonb_typeof(p) is distinct from 'object' or octet_length(p::text)>2048 then raise exception 'Invalid prompt provenance'; end if;
@@ -23,9 +23,10 @@ begin
  if (p->>'known_autonomous_turns')::numeric <> (p->'counts'->>'agent-to-agent')::numeric+(p->'counts'->>'automation')::numeric then raise exception 'Autonomous provenance total mismatch'; end if;
  if (p->>'unknown_turns')::numeric <> (p->'counts'->>'unknown')::numeric then raise exception 'Unknown provenance total mismatch'; end if;
  if (select count(*) from jsonb_object_keys(p->'relays'))>16 then raise exception 'Too many relay names'; end if;
- for k,n in select key,(value#>>'{}')::numeric from jsonb_each(p->'relays') loop
-  if length(k) not between 1 and 40 or n<1 or n>1000000 or trunc(n)<>n then raise exception 'Invalid relay count'; end if;
-  relay_total := relay_total+n;
+ for k,relay_value in select key,value from jsonb_each(p->'relays') loop
+  if length(k) not between 1 and 40 or strava.grinder_is_safe_count(relay_value) is not true then raise exception 'Invalid relay count'; end if;
+  if (relay_value::text)::numeric>1000000 then raise exception 'Invalid relay count'; end if;
+  relay_total := relay_total+(relay_value::text)::numeric;
  end loop;
  if relay_total<>(p->'counts'->>'human-via-tool')::numeric then raise exception 'Relay total mismatch'; end if;
 end $$;
@@ -39,5 +40,6 @@ begin
  return new;
 end $$;
 revoke all on function strava.guard_prompt_provenance() from public,anon,authenticated;
+drop trigger if exists runs_prompt_provenance_guard on strava.runs;
 create trigger runs_prompt_provenance_guard before insert or update on strava.runs for each row execute function strava.guard_prompt_provenance();
 commit;

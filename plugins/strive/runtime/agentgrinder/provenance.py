@@ -11,6 +11,11 @@ from typing import Callable
 
 KINDS = ("human-typed", "human-via-tool", "agent-to-agent", "automation", "unknown")
 CONFIDENCE = ("high", "medium", "low")
+CODEX_INJECTED = (
+    "<recommended_plugins>", "<environment_context>", "<turn_aborted>",
+    "# Files mentioned by the user:", "# AGENTS.md instructions", "<permissions instructions>",
+    "<collaboration_mode>", "<apps_instructions>", "<plugins_instructions>", "<skills_instructions>",
+)
 
 
 def _blocks(record: dict):
@@ -46,11 +51,12 @@ def claude_code(record: dict, _context: dict | None = None):
             and record["promptId"].strip() and entrypoint in ("sdk-ts", "sdk-cli", "sdk-py")):
         wrapper = next((record.get(key) for key in ("wrapper", "wrapperName", "clientName", "sourceTool")
                         if isinstance(record.get(key), str) and record.get(key).strip()), None)
-        relay = wrapper or entrypoint
         fields = ["promptSource", "userType", "turnOrigin", "promptId", "entrypoint"]
         if wrapper:
             fields.append("wrapper")
-        return _result("human-via-tool", "high" if wrapper else "medium", "claude-code", fields, relay)
+        # An SDK entrypoint proves transport, not authorship. The driving tool's own export may
+        # carry an explicit human initiator; the Claude envelope alone must stay unknown.
+        return _result("unknown", "low", "claude-code", fields)
     if record.get("promptSource") == "system":
         return _result("automation", "high", "claude-code", ["promptSource"])
     return _result("unknown", "low", "claude-code", [key for key in ("promptSource", "entrypoint") if key in record])
@@ -83,7 +89,7 @@ def codex(record: dict, context: dict | None = None):
     if text is None:
         return None
     rendered = str(text)
-    if rendered.lstrip().startswith(("<recommended_plugins>", "<environment_context>", "<turn_aborted>", "# Files mentioned by the user:")):
+    if rendered.lstrip().startswith(CODEX_INJECTED):
         return None
     if context and context.get("delegated"):
         return _result("agent-to-agent", "high", "codex", ["session_meta.payload.source.subagent"])

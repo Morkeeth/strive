@@ -179,7 +179,9 @@ def parse_session(path: str, athlete: str = "you") -> dict:
                             commits += 1
 
     tracker.close()
-    if not typed_ts:
+    from .provenance import summary as provenance_summary
+    prompt_provenance = provenance_summary(provenance_events)
+    if not typed_ts and not sum(prompt_provenance["counts"].values()):
         raise ValueError(f"no typed human turns found in {path}")
     # v0 'artifacts produced': Edit/Write paths that exist on disk at PARSE time (not at the
     # session's close — a later delete or rename reads as not produced). 'promised' has no source
@@ -188,7 +190,8 @@ def parse_session(path: str, athlete: str = "you") -> dict:
 
     # moving time (Strava-style): sum gaps between events, but a gap over IDLE_CAP means you stepped away
     IDLE_CAP = 1200  # 20 min
-    ev = sorted(t for t in all_ts if t >= min(typed_ts))
+    start_ts = min(typed_ts) if typed_ts else (min(all_ts) if all_ts else None)
+    ev = sorted(t for t in all_ts if start_ts is not None and t >= start_ts)
     span = 0
     for a, b in zip(ev, ev[1:]):
         span += min((b - a).total_seconds(), IDLE_CAP)
@@ -196,7 +199,7 @@ def parse_session(path: str, athlete: str = "you") -> dict:
     buckets = 24
     rhythm = [0] * buckets
     if span > 0:
-        t0 = min(typed_ts)
+        t0 = start_ts
         for t in typed_ts:
             idx = min(buckets - 1, int((t - t0).total_seconds() / span * buckets))
             rhythm[idx] += 1
@@ -222,8 +225,11 @@ def parse_session(path: str, athlete: str = "you") -> dict:
     # REACH — did this cross to a person who is not the author? git is the witness, and the
     # answer is None whenever the machine cannot tell (agentgrinder/reach.py).
     repo = gitwork.repo_of(cwd) if cwd else None
-    reach_value, reach_reason = reachmod.reach_of(
-        repo[1] if repo else None, min(typed_ts), max(all_ts or typed_ts))
+    if typed_ts:
+        reach_value, reach_reason = reachmod.reach_of(
+            repo[1] if repo else None, min(typed_ts), max(all_ts or typed_ts))
+    else:
+        reach_value, reach_reason = None, reachmod.R_NO_WINDOW
     # real characteristic: does the project carry a rules/context file?
     rules = None; rules_lines = 0; has_plan = False
     if cwd:
@@ -241,16 +247,15 @@ def parse_session(path: str, athlete: str = "you") -> dict:
     title = (first_prompt[:60] + "…") if first_prompt and len(first_prompt) > 60 else (first_prompt or f"{proj_name} session")
     route_ix, route_names = folder_route(touched)
 
-    from .provenance import summary as provenance_summary
     return {
         "athlete": athlete,
         "title": title,
         "harness": "Claude Code",
         "project": proj_name,
-        "started": min(typed_ts).isoformat(),
+        "started": start_ts.isoformat() if start_ts else None,
         "duration_s": int(span),
         "turns_typed": len(typed_ts),
-        "prompt_provenance": provenance_summary(provenance_events),
+        "prompt_provenance": prompt_provenance,
         "tool_calls": tool_calls,
         "files_touched": len(files),
         "commits": commits,
@@ -784,7 +789,7 @@ def parse_grokbot_session(path: str, athlete: str = "you", records=None) -> dict
 # author's own machine that day: the shipped glob saw 16 files, the real tree held 64. A person
 # who has just started with Codex has no archived sessions at all, so every Codex command
 # returned "nothing to read" while their transcripts sat on disk.
-_INJECT_MARKERS = ("<recommended_plugins>", "<environment_context>", "<turn_aborted>")
+from .provenance import CODEX_INJECTED as _INJECT_MARKERS
 
 CODEX_GLOBS = (
     "~/.codex/sessions/**/*.jsonl",      # where live sessions land, nested by date

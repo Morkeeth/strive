@@ -73,9 +73,8 @@ def sittings(path, harness, gap=1800):
                 text = "".join(
                     part.get("text") or "" for part in content if isinstance(part, dict)
                 ) if isinstance(content, list) else str(content or "")
-            human = text is not None and not delegated and not text.lstrip().startswith(
-                ("<recommended_plugins>", "<environment_context>", "<turn_aborted>", "# Files mentioned by the user:")
-            )
+            from .provenance import CODEX_INJECTED
+            human = text is not None and not delegated and not text.lstrip().startswith(CODEX_INJECTED)
             try:
                 stamp = datetime.fromisoformat(row.get("timestamp", "").replace("Z", "+00:00"))
                 stamp = stamp.astimezone(timezone.utc) if stamp.tzinfo else None
