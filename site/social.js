@@ -212,7 +212,7 @@ window.GrinderSocial = function ({
         summary.textContent = `${count ? `${count} unread · ` : ""}${total} recent`;
       }
       const unreadFilter = document.querySelector(
-        '.response-filters a[href="/?inbox&filter=unread"]',
+        '.response-filters a[href="/?inbox"]',
       );
       if (unreadFilter) {
         unreadFilter.textContent = count ? `Unread · ${count}` : "Unread";
@@ -1179,10 +1179,8 @@ window.GrinderSocial = function ({
     resetUnreadMarks(me()?.id);
     clearResponseReturn();
     const body = byId("social-body");
-    const filter =
-      new URLSearchParams(location.search).get("filter") === "unread"
-        ? "unread"
-        : "all";
+    const filterParam = new URLSearchParams(location.search).get("filter");
+    const filter = filterParam === "all" ? "all" : "unread";
     try {
       const rows = await result(
         db
@@ -1201,8 +1199,8 @@ window.GrinderSocial = function ({
       );
 
       const filters = `<nav class="response-filters" aria-label="Response filters">
-        <a href="/?inbox" class="${filter === "all" ? "on" : ""}" ${filter === "all" ? 'aria-current="page"' : ""}>All</a>
-        <a href="/?inbox&filter=unread" class="${filter === "unread" ? "on" : ""}" ${filter === "unread" ? 'aria-current="page"' : ""}>Unread${unreadCount ? ` · ${unreadCount}` : ""}</a>
+        <a href="/?inbox&filter=all" class="${filter === "all" ? "on" : ""}" ${filter === "all" ? 'aria-current="page"' : ""}>All</a>
+        <a href="/?inbox" class="${filter === "unread" ? "on" : ""}" ${filter === "unread" ? 'aria-current="page"' : ""}>Unread${unreadCount ? ` · ${unreadCount}` : ""}</a>
       </nav>`;
 
       if (!rows.length) {
@@ -1221,7 +1219,7 @@ window.GrinderSocial = function ({
           filters +
           empty(
             "No unread notifications. Open All to browse earlier XUDOS and replies.",
-            `<div class="cta"><a class="act" href="/?inbox">Show all responses</a></div>`,
+            `<div class="cta"><a class="act" href="/?inbox&filter=all">Show all responses</a></div>`,
           );
         await refreshUnread();
         return;
