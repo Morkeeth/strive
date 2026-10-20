@@ -17,7 +17,7 @@ def validate_run(run: dict) -> dict:
     from .capture_metadata import validate as validate_metadata
     from .provenance import validate as validate_provenance
     validate_metadata(run.get("capture_metadata"))
-    validate_provenance(run.get("prompt_provenance"))
+    prompt_provenance = validate_provenance(run.get("prompt_provenance"))
     version = run.get("schema_version", 0)
     if type(version) is not int or version not in (0, SCHEMA_VERSION):
         raise ValueError("This grind uses an unsupported format. Update Agent Grinder to read it.")
@@ -25,6 +25,11 @@ def validate_run(run: dict) -> dict:
         value = run.get(name)
         if value is not None and (type(value) is not int or value < 0):
             raise ValueError(f"{name} must be a non-negative whole number or unknown.")
+    if prompt_provenance is not None:
+        turns = run.get("turns_typed")
+        expected = None if prompt_provenance["unknown_turns"] else prompt_provenance["human_turns"]
+        if turns != expected:
+            raise ValueError("turns_typed must match prompt provenance; unknown origins require an unknown count.")
     duration = run.get("duration_s")
     if duration is not None and (type(duration) not in (int, float) or not math.isfinite(duration) or duration < 0):
         raise ValueError("duration_s must be a finite non-negative number or unknown.")

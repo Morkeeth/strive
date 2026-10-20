@@ -33,6 +33,13 @@ def test_agent_capture_counts_requests_not_success_or_human_input(tmp_path):
     assert capture(write(tmp_path,data))['measurement_revision']!=run['measurement_revision']
 
 
+def test_sidechain_capture_records_known_zero_human_turns(tmp_path):
+    data=rows();data[0]['isSidechain']=True
+    run=capture(write(tmp_path,data))
+    assert run['turns_typed']==0
+    assert run['prompt_provenance']['counts']['agent-to-agent']==1
+
+
 @pytest.mark.parametrize('source',['typed','queued',None,'unknown'])
 def test_human_or_ambiguous_provenance_is_not_zero_human(tmp_path,source):
     data=rows();data[0]['promptSource']=source

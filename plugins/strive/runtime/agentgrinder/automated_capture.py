@@ -66,7 +66,8 @@ def capture(path: str) -> dict:
         rhythm[min(59, int((stamp-start).total_seconds()/max(span, 1)*60))] += 1
     revision = hashlib.sha256(b'grinder-claude-agent-v1\0' + raw).hexdigest()
     prompt_provenance = provenance_summary([classify_provenance('claude-code', row) for row in prompts])
-    result = dict(schema_version=1, harness='claude-agent', turns_typed=None,
+    turns_typed = None if prompt_provenance['unknown_turns'] else prompt_provenance['human_turns']
+    result = dict(schema_version=1, harness='claude-agent', turns_typed=turns_typed,
                   prompt_provenance=prompt_provenance,
                   started=start.isoformat(), duration_s=span, tool_calls=len(tools),
                   rhythm=rhythm, trace_basis='elapsed-agent-tool-calls',

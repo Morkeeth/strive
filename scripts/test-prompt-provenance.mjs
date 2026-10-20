@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import Provenance from '../site/provenance.js';
-const require=createRequire(import.meta.url),Feed=require('../site/feed-card.js'),Context=require('../site/run-context.js'),DropinForProvenance=require('../site/dropin-parse.js');
+const require=createRequire(import.meta.url),Feed=require('../site/feed-card.js'),Context=require('../site/run-context.js'),DropinForProvenance=require('../site/dropin-parse.js'),Contract=require('../site/run-contract.js');
 
 assert.deepEqual(Object.keys(Provenance.ADAPTERS).sort(),['bb','claude','codex','cursor']);
 const events=[
@@ -34,6 +34,9 @@ assert.equal(Provenance.classify('claude',{type:'user',isCompactSummary:true,mes
 assert.equal(Provenance.classify('claude',{type:'user',isVisibleInTranscriptOnly:true,message:{content:'echo'}}),null);
 assert.equal(Provenance.classify('claude',{type:'user',message:{content:'<bash-input>git status</bash-input>'}}),null);
 assert.throws(()=>Provenance.validate({...Provenance.summary([]),human_turns:1000001}),/Invalid prompt provenance total/);
+const unknownOnly=Provenance.summary([{kind:'unknown'}]);
+assert.throws(()=>Contract.validate({schema_version:1,turns_typed:0,prompt_provenance:unknownOnly}),/must match prompt provenance/);
+assert.equal(Contract.validate({schema_version:1,turns_typed:null,prompt_provenance:unknownOnly}).turns_typed,null);
 const uploaded=DropinForProvenance.uploadPayload({harness:'Claude Code',turns_typed:summary.human_turns,prompt_provenance:summary,rhythm:[1]},'Run');
 assert.deepEqual(uploaded.prompt_provenance,summary,'anonymous-link payload carries validated provenance');
 

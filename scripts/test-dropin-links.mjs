@@ -77,6 +77,7 @@ for (const role of ['anon', 'authenticated']) {
 
 const prompt_provenance={v:1,counts:{'human-typed':3,'human-via-tool':0,'agent-to-agent':0,automation:0,unknown:0},human_turns:3,known_autonomous_turns:0,unknown_turns:0,relays:{}};
 const agent_provenance={v:1,counts:{'human-typed':0,'human-via-tool':0,'agent-to-agent':1,automation:0,unknown:0},human_turns:0,known_autonomous_turns:1,unknown_turns:0,relays:{}};
+const unknown_provenance={v:1,counts:{'human-typed':0,'human-via-tool':0,'agent-to-agent':0,automation:0,unknown:1},human_turns:0,known_autonomous_turns:0,unknown_turns:1,relays:{}};
 const good = { title: 'Shipped the drop-in', harness: 'Claude Code', turns_typed: 3, tool_calls: 12, files_touched: 2, commits: 1, duration_s: 1800, started_hour: 23, rhythm: [1, 0, 2], route: [0, 1, 0, 2], prompt_provenance };
 const create = async (payload, bucket = 'ip-a') => (await db.query('select strava.dropin_create($1::jsonb,$2) r', [JSON.stringify(payload), bucket])).rows[0].r;
 const refuse = (payload, re, bucket) => assert.rejects(create(payload, bucket), re);
@@ -111,6 +112,10 @@ await refuse({ ...good, harness: 'Grok Bot' }, /out of range/);
 await refuse({ ...good, turns_typed: -1 }, /out of range/);
 await refuse({ ...good, turns_typed: 1.5 }, /whole numbers/);
 await refuse({ ...good, turns_typed: null, prompt_provenance: null }, /require prompt provenance/);
+await refuse({ ...good, turns_typed: 2 }, /does not match prompt provenance/);
+await refuse({ ...good, turns_typed: 0, prompt_provenance: unknown_provenance }, /require an unknown human count/);
+const unknownOnly=await create({...good,title:'Unknown-origin run',turns_typed:null,prompt_provenance:unknown_provenance},'ip-unknown-only');
+assert.equal((await db.query('select strava.dropin_read($1) r',[unknownOnly.id])).rows[0].r.turns_typed,null);
 await refuse({ ...good, rhythm: ['a'] }, /rhythm/);
 await refuse({ ...good, rhythm: 'text' }, /rhythm/);
 await refuse({ ...good, rhythm: Array(25).fill(1) }, /out of range/);

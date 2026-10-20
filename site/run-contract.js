@@ -45,6 +45,8 @@
       const provenance=typeof StriveProvenance!=="undefined"?StriveProvenance:typeof require==="function"?require("./provenance.js"):null;
       if(!provenance) throw Error("Prompt provenance validator unavailable");
       run.prompt_provenance=provenance.validate(run.prompt_provenance);
+      const expected=run.prompt_provenance.unknown_turns?null:run.prompt_provenance.human_turns;
+      if(run.turns_typed!==expected)throw new Error("turns_typed must match prompt provenance; unknown origins require an unknown count.");
     }
     const version = run.schema_version ?? 0;
     if (!Number.isInteger(version) || ![0, 1].includes(version))

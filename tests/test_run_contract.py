@@ -63,7 +63,9 @@ def test_export_preserves_prompt_provenance():
         'counts':{'human-typed':0,'human-via-tool':0,'agent-to-agent':0,'automation':0,'unknown':1},
         'human_turns':0,'known_autonomous_turns':0,'unknown_turns':1,'relays':{},
     }
-    assert export_run({'turns_typed':0,'prompt_provenance':provenance})['prompt_provenance']==provenance
+    assert export_run({'turns_typed':None,'prompt_provenance':provenance})['prompt_provenance']==provenance
+    with pytest.raises(ValueError, match='must match prompt provenance'):
+        export_run({'turns_typed':0,'prompt_provenance':provenance})
 
 
 def test_claude_grind_exports_measured_trace_basis_and_revision(tmp_path):

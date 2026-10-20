@@ -50,6 +50,10 @@ begin
  end if;
  if tg_op='UPDATE' and new.prompt_provenance is distinct from old.prompt_provenance then raise exception 'Prompt provenance cannot be edited'; end if;
  perform strava.check_prompt_provenance(new.prompt_provenance);
+ if new.prompt_provenance is not null then
+  if (new.prompt_provenance->>'unknown_turns')::numeric>0 and new.prompts is not null then raise exception 'Unknown prompt origins require an unknown human count'; end if;
+  if (new.prompt_provenance->>'unknown_turns')::numeric=0 and new.prompts is distinct from (new.prompt_provenance->>'human_turns')::integer then raise exception 'Human count does not match prompt provenance'; end if;
+ end if;
  return new;
 end $$;
 revoke all on function strava.guard_prompt_provenance() from public,anon,authenticated;
@@ -65,9 +69,15 @@ do $$ begin
 end $$;
 create or replace function strava.grinder_check_agent_payload(payload jsonb) returns void
 language plpgsql set search_path=strava,pg_temp as $$
+declare provenance jsonb:=nullif(payload->'prompt_provenance','null'::jsonb); turns integer;
 begin
  perform strava.grinder_check_agent_payload_without_prompt_provenance_051(payload-'prompt_provenance');
- perform strava.check_prompt_provenance(nullif(payload->'prompt_provenance','null'::jsonb));
+ perform strava.check_prompt_provenance(provenance);
+ if provenance is not null then
+  turns:=(payload->>'turns_typed')::integer;
+  if (provenance->>'unknown_turns')::numeric>0 and turns is not null then raise exception 'Unknown prompt origins require an unknown human count'; end if;
+  if (provenance->>'unknown_turns')::numeric=0 and turns is distinct from (provenance->>'human_turns')::integer then raise exception 'Human count does not match prompt provenance'; end if;
+ end if;
  perform set_config('strive.prompt_provenance',coalesce((payload->'prompt_provenance')::text,'null'),true);
 end $$;
 revoke all on function strava.grinder_check_agent_payload(jsonb) from public,anon,authenticated;
@@ -93,6 +103,10 @@ begin
   raise exception 'Unknown human turns require prompt provenance';
  end if;
  made:=strava.dropin_create_without_prompt_provenance_051(payload-'prompt_provenance',bucket);
+ if provenance is not null then
+  if (provenance->>'unknown_turns')::numeric>0 and nullif(payload->'turns_typed','null'::jsonb) is not null then raise exception 'Unknown prompt origins require an unknown human count'; end if;
+  if (provenance->>'unknown_turns')::numeric=0 and (payload->>'turns_typed')::integer is distinct from (provenance->>'human_turns')::integer then raise exception 'Human count does not match prompt provenance'; end if;
+ end if;
  update strava.dropin_links set prompt_provenance=provenance where id=(made->>'id')::uuid;
  return made;
 end $$;
