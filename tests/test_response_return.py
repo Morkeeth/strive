@@ -7,6 +7,14 @@ ROOT = Path(__file__).resolve().parents[1]
 SOCIAL = (ROOT / "site" / "social.js").read_text()
 SOCIAL_CSS = (ROOT / "site" / "social.css").read_text()
 PEOPLE = (ROOT / "site" / "people.js").read_text()
+PROGRESS = (ROOT / "site" / "progress.js").read_text()
+
+
+def test_my_runs_does_not_repeat_response_notifications():
+    """The account badge and Responses inbox are the one notification surface."""
+    history = PROGRESS[PROGRESS.index("async function historyView()") : PROGRESS.index("function snapshot(")]
+    assert "grinder_notifications" not in history
+    assert "Responses to your work" not in history
 
 
 def test_inbox_does_not_bulk_mark_all_unread_on_load():
