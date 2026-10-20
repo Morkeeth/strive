@@ -863,7 +863,7 @@ const providerLabel=p=>(p==='x'||p==='twitter')?'X':p==='github'?'GitHub':p;
 const signInLabel=()=>PROVIDERS_ENABLED.includes('email')?((PROVIDERS_ENABLED.includes('x')||PROVIDERS_ENABLED.includes('twitter'))?'Sign in with GitHub, X or email':'Sign in with GitHub or email'):((PROVIDERS_ENABLED.includes('x')||PROVIDERS_ENABLED.includes('twitter'))?'Sign in with GitHub or X':'Sign in with GitHub');
 const profileHandle=p=>GrinderAuth.present(p)?.handle||'';
 // A person who arrived from Responses keeps a way back even when the run is gone or private.
-function responseReturnLink(){try{return sessionStorage.getItem('ag_response_return')==='?inbox'?'<p class="response-return"><a class="act" href="/?inbox">Back to Notifications</a></p>':''}catch(_){return ''}}
+function responseReturnLink(){try{const p=sessionStorage.getItem('ag_response_return'),h=p==='?inbox&filter=all'?'/?inbox&filter=all':p==='?inbox'?'/?inbox':null;return h?`<p class="response-return"><a class="act" href="${h}">Back to Notifications</a></p>`:''}catch(_){return ''}}
 let ME=null, IDENTITY_SETUP=null, AUTH_USER=null;
 const roadmapFeedback=StriveFeedback({client:sb,me:()=>ME,signIn:()=>showSignIn()});
 let AUTH_GENERATION=0, RUN_VIEW_GENERATION=0;

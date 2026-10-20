@@ -462,9 +462,16 @@ window.GrinderPeople = function ({
       const mine = me?.() && me().id === person.id;
       let responseReturn = "";
       try {
-        if (sessionStorage.getItem("ag_response_return") === "?inbox") {
+        const pending = sessionStorage.getItem("ag_response_return");
+        const returnHref =
+          pending === "?inbox&filter=all"
+            ? "/?inbox&filter=all"
+            : pending === "?inbox"
+              ? "/?inbox"
+              : null;
+        if (returnHref) {
           responseReturn =
-            '<p class="response-return"><a class="act" href="/?inbox">Back to Notifications</a></p>';
+            `<p class="response-return"><a class="act" href="${returnHref}">Back to Notifications</a></p>`;
         }
       } catch (_) {}
       const { data: runs, error } = await db

@@ -25,9 +25,18 @@ def test_inbox_does_not_bulk_mark_all_unread_on_load():
     # Must not mark every unread row immediately after rendering the list.
     assert "rows.filter((r) => !r.read_at).map((r) => r.id)" not in inbox
     assert "Open exact reply" in inbox
-    assert "filter=unread" in inbox
+    assert 'filterParam === "all"' in inbox
     assert "This run was deleted or is no longer available." in inbox
     assert "That reply was removed" in inbox
+
+
+def test_inbox_defaults_to_unread_so_seen_items_do_not_return():
+    inbox = SOCIAL[SOCIAL.index("async function inbox()") : SOCIAL.index("async function shareControl(")]
+    assert 'const filterParam = new URLSearchParams(location.search).get("filter")' in inbox
+    assert 'const filter = filterParam === "all" ? "all" : "unread"' in inbox
+    assert 'href="/?inbox&filter=all"' in inbox
+    assert '.is("read_at", null)' in inbox
+    assert 'if (filter === "unread")' in inbox[inbox.index("if (!rows.length)") : inbox.index("body.innerHTML =", inbox.index("if (!rows.length)"))]
 
 
 def test_exact_reply_navigation_and_return_context():
@@ -62,7 +71,8 @@ const client={from(table){const c={table,ops:[]};calls.push(c);const q=new Proxy
   let data=[];
   if(table==='grinder_notifications'){
    if(op('update')){data=op('in')[2].map(id=>({id}));data.forEach(r=>read.add(r.id))}
-   else data=op('is')?notes.filter(n=>!read.has(n.id)).map(n=>({id:n.id})):notes;
+   else if(op('is')){const rows=notes.filter(n=>!read.has(n.id));data=String(op('select')?.[1]||'').startsWith('*')?rows:rows.map(n=>({id:n.id}))}
+   else data=notes.map(n=>read.has(n.id)?{...n,read_at:'2026-10-10T10:01:00Z'}:n);
   }
   if(table==='runs')data=op('in')?[run]:[];
   if(table==='grinder_replies')data=op('in')?[{id:REPLY,run_id:RUN}]:eq('id')?replies.filter(r=>r.id===eq('id')[2]):replies;
@@ -93,6 +103,10 @@ const tick=()=>new Promise(r=>setTimeout(r,30));
  assert.equal(JSON.stringify(writes[0].ops.slice(1)),JSON.stringify([['in','id',[N(1)]],['eq','recipient_id',ME.id],['is','read_at',null],['select','id']]));
  assert.equal(doc.querySelector('[data-responses-link]').textContent,'Responses · 2 unread');  // refreshUnread ran
  assert.equal(doc.querySelector('#account-menu > summary').dataset.unread,'true');
+ // The default inbox is unread-only. Once the write is confirmed, the seen item does not return.
+ w.history.replaceState(null,'','/?inbox');await social.inbox();
+ assert.deepEqual([...doc.querySelectorAll('.response-item')].map(a=>a.dataset.notificationId),[N(2),N(3)]);
+ w.sessionStorage.setItem('ag_response_return','?inbox');
  // Arriving on the run: the named reply, and only it, is the target, with the way back above it.
  const arrive=async url=>{w.history.replaceState(null,'',url);const slot=doc.createElement('section');doc.body.append(slot);await social.thread(RUN,slot,{});await tick();return slot};
  let slot=await arrive(exactHref);
@@ -116,10 +130,17 @@ const tick=()=>new Promise(r=>setTimeout(r,30));
  assert.equal(w.sessionStorage.getItem('ag_response_return'),null);
  slot=await arrive('/?run='+RUN);
  assert.equal(slot.querySelector('.response-return'),null);
+ // All is a real history view. Following a historical item returns to All, not the unread default.
+ w.history.replaceState(null,'','/?inbox&filter=all');await social.inbox();
+ assert.deepEqual([...doc.querySelectorAll('.response-item')].map(a=>a.dataset.notificationId),[N(1),N(2),N(3)]);
+ [...doc.querySelectorAll('a[data-notification-id]')].find(a=>a.textContent==='Open exact reply').click();await tick();
+ assert.equal(w.sessionStorage.getItem('ag_response_return'),'?inbox&filter=all');
+ slot=await arrive(exactHref);
+ assert.equal(slot.querySelector('.response-return a').getAttribute('href'),'/?inbox&filter=all');
 })().catch(e=>{console.error(e);process.exitCode=1});
 """], cwd=ROOT, check=True)
-    # The builder's profile keeps the same way back for a reader who arrived from Notifications.
-    assert '<p class="response-return"><a class="act" href="/?inbox">Back to Notifications</a></p>' in PEOPLE
+    # The builder's profile keeps the exact inbox view a reader arrived from.
+    assert "ag_response_return" in PEOPLE and "Back to Notifications" in PEOPLE
 
 
 def test_response_inbox_phone_styles_use_blue_unread_trace():
