@@ -3,8 +3,12 @@ begin;
 alter table strava.runs add column if not exists prompt_provenance jsonb;
 alter table strava.dropin_links add column if not exists prompt_provenance jsonb;
 -- Unknown authorship is not a measured zero. Older links required a positive human count;
--- provenance-aware links may carry a null count beside the explicit origin summary.
+-- provenance-aware links may carry zero known human turns or a null count beside the explicit
+-- origin summary. Replace the generated 011 constraint by name so retries remain deterministic.
 alter table strava.dropin_links alter column turns_typed drop not null;
+alter table strava.dropin_links drop constraint if exists dropin_links_turns_typed_check;
+alter table strava.dropin_links add constraint dropin_links_turns_typed_check
+ check (turns_typed between 0 and 100000);
 
 create or replace function strava.check_prompt_provenance(p jsonb) returns void
 language plpgsql set search_path=strava,pg_temp as $$
@@ -14,7 +18,7 @@ begin
  if jsonb_typeof(p) is distinct from 'object' or octet_length(p::text)>2048 then raise exception 'Invalid prompt provenance'; end if;
  if exists(select 1 from jsonb_object_keys(p) x where x not in ('v','counts','human_turns','known_autonomous_turns','unknown_turns','relays')) then raise exception 'Unsupported prompt provenance field'; end if;
  if (select count(*) from jsonb_object_keys(p))<>6 then raise exception 'Missing prompt provenance field'; end if;
- if p->>'v' <> '1' or jsonb_typeof(p->'counts') is distinct from 'object' or jsonb_typeof(p->'relays') is distinct from 'object' then raise exception 'Invalid prompt provenance'; end if;
+ if jsonb_typeof(p->'v') is distinct from 'number' or p->'v'<>'1'::jsonb or jsonb_typeof(p->'counts') is distinct from 'object' or jsonb_typeof(p->'relays') is distinct from 'object' then raise exception 'Invalid prompt provenance'; end if;
  if exists(select 1 from jsonb_object_keys(p->'counts') x where x not in ('human-typed','human-via-tool','agent-to-agent','automation','unknown')) then raise exception 'Unsupported prompt provenance kind'; end if;
  if (select count(*) from jsonb_object_keys(p->'counts'))<>5 then raise exception 'Missing prompt provenance kind'; end if;
  foreach k in array array['human-typed','human-via-tool','agent-to-agent','automation','unknown'] loop

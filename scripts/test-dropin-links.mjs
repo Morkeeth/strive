@@ -76,6 +76,7 @@ for (const role of ['anon', 'authenticated']) {
 }
 
 const prompt_provenance={v:1,counts:{'human-typed':3,'human-via-tool':0,'agent-to-agent':0,automation:0,unknown:0},human_turns:3,known_autonomous_turns:0,unknown_turns:0,relays:{}};
+const agent_provenance={v:1,counts:{'human-typed':0,'human-via-tool':0,'agent-to-agent':1,automation:0,unknown:0},human_turns:0,known_autonomous_turns:1,unknown_turns:0,relays:{}};
 const good = { title: 'Shipped the drop-in', harness: 'Claude Code', turns_typed: 3, tool_calls: 12, files_touched: 2, commits: 1, duration_s: 1800, started_hour: 23, rhythm: [1, 0, 2], route: [0, 1, 0, 2], prompt_provenance };
 const create = async (payload, bucket = 'ip-a') => (await db.query('select strava.dropin_create($1::jsonb,$2) r', [JSON.stringify(payload), bucket])).rows[0].r;
 const refuse = (payload, re, bucket) => assert.rejects(create(payload, bucket), re);
@@ -89,6 +90,8 @@ assert.equal(back.title, good.title);
 assert.deepEqual(back.rhythm, good.rhythm);
 assert.deepEqual(back.route, good.route);
 assert.deepEqual(back.prompt_provenance,prompt_provenance);
+const agentOnly=await create({...good,title:'Agent-only run',turns_typed:0,prompt_provenance:agent_provenance},'ip-agent-only');
+assert.equal((await db.query('select strava.dropin_read($1) r',[agentOnly.id])).rows[0].r.turns_typed,0,'known agent-only links preserve measured zero human turns');
 // A link made by a client that predates the route (or a run with no file touch) has none.
 const { route: _omitted, ...without } = good;
 const older = await create(without, 'ip-route');

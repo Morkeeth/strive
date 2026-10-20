@@ -14,11 +14,17 @@ try{
  await assert.rejects(insert({...valid,relays:{'a\nb':3}}),/Invalid relay count/);
  await assert.rejects(insert({...valid,relays:{['😀'.repeat(21)]:3}}),/Invalid relay count/);
  await assert.rejects(insert({...valid,raw_prompt:'secret'}),/Unsupported prompt provenance field/);
+ await assert.rejects(insert({...valid,v:'1'}),/Invalid prompt provenance/);
  const {unknown_turns,...missingTotal}=valid;
  await assert.rejects(insert(missingTotal),/Missing prompt provenance field/);
  const missingKind={...valid,counts:{...valid.counts}};delete missingKind.counts.unknown;
  await assert.rejects(insert(missingKind),/Missing prompt provenance kind/);
  await assert.rejects(db.query("update strava.runs set prompt_provenance=$2 where profile_id=$1",[CASEY,{...valid,counts:{...valid.counts,'human-typed':39},human_turns:42}]),/Prompt provenance cannot be edited/);
+ await db.exec('begin');
+ await db.query("select set_config('strive.prompt_provenance',$1,true)",[JSON.stringify(valid)]);
+ const carried=(await db.query("insert into strava.runs(profile_id,title,visibility,harness,schema_version,measurement_revision,trace_basis,rhythm) values($1,'TEST DATA trigger carry','private','Codex',1,$2,'elapsed','[1]') returning prompt_provenance",[CASEY,(++revision).toString(16).padStart(64,'0')])).rows[0];
+ await db.exec('commit');
+ assert.deepEqual(carried.prompt_provenance,valid,'the production-style insert path carries provenance through the 051 trigger');
  await db.exec(await readFile(new URL('../supabase/strava/051_prompt_provenance.sql',import.meta.url),'utf8'));
  console.log('PASS: bounded prompt provenance persists, rejects bad totals and hidden fields, and is immutable');
 }finally{await db.close();}
