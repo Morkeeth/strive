@@ -91,6 +91,13 @@ assert.equal(mixedCodex.turns_typed,1);
 assert.equal(mixedCodex.prompt_provenance.counts['human-typed'],1);
 assert.equal(Object.values(mixedCodex.prompt_provenance.counts).reduce((a,b)=>a+b,0),1);
 
+const scheduledCodex=Dropin.parseText([
+  JSON.stringify({timestamp:'2026-10-20T10:00:00Z',type:'session_meta',payload:{source:'cron'}}),
+  JSON.stringify({timestamp:'2026-10-20T10:00:01Z',type:'event_msg',payload:{type:'user_message',message:'scheduled task'}}),
+].join('\n'));
+assert.equal(scheduledCodex.turns_typed,0);
+assert.equal(scheduledCodex.prompt_provenance.counts.automation,1);
+
 const realAt = process.argv.indexOf('--real');
 if (realAt !== -1) {
   const n = Number(process.argv[realAt + 1] || 20);

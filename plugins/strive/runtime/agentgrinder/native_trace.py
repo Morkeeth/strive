@@ -14,7 +14,11 @@ def codex_activity(path, records=None):
         records = list(read_records(path))
     delegated = any(isinstance((r.get('payload') or {}).get('source'), dict) and 'subagent' in r['payload']['source']
                     for r in records if r.get('type') == 'session_meta')
-    counts = Counter(human=0, injected=0, delegated=0)
+    source = next(((r.get('payload') or {}).get('source') for r in records
+                   if r.get('type') == 'session_meta'
+                   and isinstance((r.get('payload') or {}).get('source'), str)), None)
+    automated = source in ('cron', 'ci', 'hook', 'automation')
+    counts = Counter(human=0, injected=0, delegated=0, automated=0)
     from .provenance import classify as classify_provenance, summary as provenance_summary
     provenance_events = []
     events, calls = [], set()
@@ -40,12 +44,14 @@ def codex_activity(path, records=None):
         if text is not None:
             if delegated:
                 counts['delegated'] += 1
+            elif automated:
+                counts['automated'] += 1
             elif text.lstrip().startswith(CODEX_INJECTED):
                 counts['injected'] += 1
             else:
                 counts['human'] += 1
                 kind = 'human'
-            provenance_event = classify_provenance('codex', row, {'delegated': delegated})
+            provenance_event = classify_provenance('codex', row, {'delegated': delegated, 'source': source})
             if provenance_event:
                 provenance_events.append(provenance_event)
         elif p.get('type') in ('function_call', 'custom_tool_call'):

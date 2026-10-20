@@ -56,12 +56,14 @@ def sittings(path, harness, gap=1800):
     last = None
     idle = False
     delegated = False
+    automated = False
     for row in source:
         payload = row.get("payload") or {}
         if not isinstance(payload, dict): payload = {}
         if harness == "codex" and row.get("type") == "session_meta":
             metadata.append({k:v for k,v in row.items() if k != "timestamp"})
             delegated = isinstance(payload.get("source"),dict) and "subagent" in payload["source"]
+            automated = payload.get("source") in ("cron", "ci", "hook", "automation")
             continue
         if harness == "codex":
             text = None
@@ -74,7 +76,7 @@ def sittings(path, harness, gap=1800):
                     part.get("text") or "" for part in content if isinstance(part, dict)
                 ) if isinstance(content, list) else str(content or "")
             from .provenance import CODEX_INJECTED
-            human = text is not None and not delegated and not text.lstrip().startswith(CODEX_INJECTED)
+            human = text is not None and not delegated and not automated and not text.lstrip().startswith(CODEX_INJECTED)
             try:
                 stamp = datetime.fromisoformat(row.get("timestamp", "").replace("Z", "+00:00"))
                 stamp = stamp.astimezone(timezone.utc) if stamp.tzinfo else None

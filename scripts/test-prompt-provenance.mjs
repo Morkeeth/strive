@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import Provenance from '../site/provenance.js';
-const require=createRequire(import.meta.url),Feed=require('../site/feed-card.js');
+const require=createRequire(import.meta.url),Feed=require('../site/feed-card.js'),Context=require('../site/run-context.js');
 
 assert.deepEqual(Object.keys(Provenance.ADAPTERS).sort(),['bb','claude','codex','cursor']);
 const events=[
@@ -18,9 +18,13 @@ assert.equal(summary.known_autonomous_turns,2);
 assert.equal(summary.unknown_turns,1);
 assert.equal(Provenance.line(summary),'5 prompts: 1 you, 1 relayed by bb, 1 agent-to-agent, 1 automated, 1 origin unknown');
 assert.equal(Feed.provenanceLine({prompt_provenance:summary}),'<p class="fc-provenance">5 prompts: 1 you, 1 relayed by bb, 1 agent-to-agent, 1 automated, 1 origin unknown</p>');
+assert.match(Context.measurementDetails({prompt_provenance:summary}),/Prompt origins.*5 prompts/);
+assert.doesNotMatch(Feed.card({id:'r1',title:'Run',prompt_provenance:summary,profile:{name:'A'}}),/5 prompts/);
 const sdk=Provenance.classify('claude',{type:'user',promptSource:'sdk',userType:'external',turnOrigin:'sdk',promptId:'p1',entrypoint:'sdk-ts',wrapper:'bb',message:{}});
 assert.equal(sdk.kind,'unknown','SDK metadata alone does not prove a human initiated the request');
 assert.equal(sdk.relayed_by,undefined);
 const injected=Provenance.classify('codex',{type:'event_msg',payload:{type:'user_message',message:'# AGENTS.md instructions\n<INSTRUCTIONS>injected</INSTRUCTIONS>'}});
 assert.equal(injected,null,'agent context in a user-role envelope is not human input');
+const desktopInjected=Provenance.classify('codex',{type:'response_item',payload:{type:'message',role:'user',content:[{type:'input_text',text:'# AGENTS.md instructions\n<INSTRUCTIONS>injected</INSTRUCTIONS>'}]}});
+assert.equal(desktopInjected,null,'desktop list-form agent context is not human input');
 console.log('PASS: typed prompt provenance registry and card line');

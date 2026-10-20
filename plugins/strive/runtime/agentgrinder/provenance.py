@@ -85,7 +85,10 @@ def codex(record: dict, context: dict | None = None):
     if record.get("type") == "event_msg" and payload.get("type") == "user_message":
         text = payload.get("message") or ""
     elif record.get("type") == "response_item" and payload.get("type") == "message" and payload.get("role") == "user":
-        text = payload.get("content") or ""
+        content = payload.get("content")
+        text = "".join(
+            str(block.get("text") or "") for block in content if isinstance(block, dict)
+        ) if isinstance(content, list) else str(content or "")
     if text is None:
         return None
     rendered = str(text)

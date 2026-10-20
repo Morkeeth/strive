@@ -101,7 +101,7 @@ function measurementNotes(r){
  const facts=[...new Map([...cardFacts(r),...headlineFacts(r)].map(row=>[row[0],row])).values()];
  return [...facts.filter(row=>row[2]).map(([label,,detail])=>[label,detail]),...missing];
 }
-function measurementDetails(r,{preview=false}={}){const evidence=preview?(root.StriveEvidence||(typeof require==='function'?require('./run-evidence.js'):null)):null;return `<details class="post-measurement-note"><summary>About these measurements</summary>${evidence?`<p>${esc(evidence.basis(r).explanation)}</p>`:''}${measurementNotes(r).map(([label,detail])=>`<p><strong>${esc(label)}.</strong> ${esc(detail)}</p>`).join('')}</details>`;}
+function measurementDetails(r,{preview=false}={}){const evidence=preview?(root.StriveEvidence||(typeof require==='function'?require('./run-evidence.js'):null)):null,provenance=root.StriveProvenance||(typeof require==='function'?require('./provenance.js'):null),promptLine=provenance?.line?.(r.prompt_provenance)||'';return `<details class="post-measurement-note"><summary>About these measurements</summary>${evidence?`<p>${esc(evidence.basis(r).explanation)}</p>`:''}${promptLine?`<p><strong>Prompt origins.</strong> ${esc(promptLine)}</p>`:''}${measurementNotes(r).map(([label,detail])=>`<p><strong>${esc(label)}.</strong> ${esc(detail)}</p>`).join('')}</details>`;}
 function prepareForStorage(m){return estimates()?.prepare(m)||m;}
 function profileFacts(runs){
  const rows=[...new Map((runs||[]).map((r,i)=>[r.id||'row-'+i,r])).values()];

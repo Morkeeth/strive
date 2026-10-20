@@ -236,7 +236,7 @@
   }
 
   function codexReader() {
-    let delegated = false, index = -1, commits = 0, edits = 0;
+    let delegated = false, source = null, index = -1, commits = 0, edits = 0;
     // Typed turns come in two shapes (agentgrinder/native_trace.py says why): the CLI's
     // event_msg user_message, or the desktop app's response_item user message. The event form
     // wins when the file has it; `messages` is the fallback.
@@ -249,7 +249,10 @@
         if (typeof o.timestamp === "string" && t != null) stamps.push(t);
         const p = o.payload;
         if (!isObj(p)) return;
-        if (o.type === "session_meta" && isObj(p.source) && "subagent" in p.source) delegated = true;
+        if (o.type === "session_meta") {
+          if (isObj(p.source) && "subagent" in p.source) delegated = true;
+          else if (typeof p.source === "string") source = p.source;
+        }
         let kind = null;
         if (o.type === "event_msg" && p.type === "user_message") {
           // Whether the session is delegated is only known once every session_meta is read,
@@ -273,8 +276,9 @@
       },
       done() {
         const typedIn = users.length ? users : messages;
-        const human = delegated ? [] : typedIn.filter((u) => !u.injected);
-        const provenanceEvents = typedIn.map((u) => provenance.classify("codex", u.row, { delegated })).filter(Boolean);
+        const automated = ["cron", "ci", "hook", "automation"].includes(source);
+        const human = delegated || automated ? [] : typedIn.filter((u) => !u.injected);
+        const provenanceEvents = typedIn.map((u) => provenance.classify("codex", u.row, { delegated, source })).filter(Boolean);
         if (!human.length && !provenanceEvents.length) throw readError("no-turns");
         const all = events.concat(human.filter((u) => u.t != null).map((u) => u.t)).sort((a, b) => a - b);
         const start = all.length ? all[0] : 0;

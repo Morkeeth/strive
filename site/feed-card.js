@@ -463,7 +463,6 @@
     const body = `
     <${tag} class="fc-title">${esc(titleOf(r))}</${tag}>
     ${cardSummary(r) ? `<p class="fc-cap">${esc(cardSummary(r))}</p>` : ""}
-    ${provenanceLine(r)}
     ${page||checkpoints||r.capture_metadata?`${context?.headlineHtml?.(r,'fc-activity-stats',{preview})||''}${context?.cardSecondary?.(r,{commits:true,preview})||''}`:''}
     ${story?story.visual(r):''}
     ${r.feedback_question?`<p class="fc-question"><span>Feedback welcome</span>${esc(r.feedback_question)}</p>`:''}
