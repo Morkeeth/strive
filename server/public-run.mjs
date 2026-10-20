@@ -26,13 +26,14 @@ const PUBLIC_RUN_FIELDS='id,profile_id,created_at,title,caption,photo_layout,sto
 export async function readPublic(id,fetcher=fetch){
  if(!validId(id))return null;
  const request=select=>{const query=new URLSearchParams({id:'eq.'+id,visibility:'eq.public',select,limit:'1'});return fetcher(config.SB_URL+'/rest/v1/runs?'+query,{headers:{apikey:config.SB_KEY,"Accept-Profile":config.SB_SCHEMA},cache:'no-store',signal:AbortSignal.timeout(8000)})};
- let response=await request(PUBLIC_RUN_FIELDS);
+ let fields=PUBLIC_RUN_FIELDS,response=await request(fields);
  // Production can trail an additive visual-choice migration. Keep the public page available on
  // that older schema; retry only for this exact missing optional column, never for a broad 400.
- if(response.status===400){
+ for(let retries=0;response.status===400&&retries<2;retries++){
   const detail=await response.clone().text();
-  if(/hero_visual/i.test(detail)&&/(does not exist|not found|schema cache|PGRST204)/i.test(detail))
-   response=await request(PUBLIC_RUN_FIELDS.replace(',hero_visual',''));
+  const missing=['hero_visual','prompt_provenance'].find(name=>fields.includes(','+name)&&new RegExp(name,'i').test(detail));
+  if(!missing||!/(does not exist|not found|schema cache|PGRST204)/i.test(detail))break;
+  fields=fields.replace(','+missing,'');response=await request(fields);
  }
  if(!response.ok)throw new Error('Public run unavailable');const rows=await response.json();
  // The query asks for public rows only. The row is checked again here, so a lost filter or a

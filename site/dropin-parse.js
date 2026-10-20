@@ -157,7 +157,8 @@
           line = new Array(24).fill(0);
           for (const t of toolsAt) if (pos.has(t)) line[Math.min(23, Math.floor((pos.get(t) / span) * 24))] += 1;
         }
-        return { turns_typed: typed.length, prompt_provenance: provenance.summary(provenanceEvents), tool_calls: tools, files_touched: files.size, commits,
+        const promptProvenance=provenance.summary(provenanceEvents);
+        return { turns_typed: promptProvenance.unknown_turns ? null : typed.length, prompt_provenance: promptProvenance, tool_calls: tools, files_touched: files.size, commits,
           duration_s: Math.trunc(span), started: t0, rhythm, route: folderRoute(touched),
           ...(line ? { line, line_basis: "tool calls per bin of moving time" } : {}) };
       },
@@ -251,7 +252,7 @@
         if (!isObj(p)) return;
         if (o.type === "session_meta") {
           if (isObj(p.source) && "subagent" in p.source) delegated = true;
-          else if (typeof p.source === "string") source = p.source;
+          else if (source === null && typeof p.source === "string") source = p.source;
         }
         let kind = null;
         if (o.type === "event_msg" && p.type === "user_message") {
@@ -298,7 +299,7 @@
   // through Claude Code, Codex, Pi or ACP. Count only explicit user requests and unique work
   // items; started/completed pairs for one item must never count twice.
   function bbReader() {
-    const requests = new Set(), messageItems = new Set(), workItems = new Set(), files = new Set(), touched = [];
+    const requests = new Set(), allRequests = new Set(), messageItems = new Set(), workItems = new Set(), files = new Set(), touched = [];
     const allAt = [], requestAt = [], messageAt = [], workAt = [];
     let commits = 0;
     const requestEvents = new Map();
@@ -311,6 +312,7 @@
         const data = isObj(o.data) ? o.data : {};
         if (o.type === "client/turn/requested") {
           const id = String(data.requestId || o.id || `seq:${o.seq}`);
+          allRequests.add(id);
           const provenanceEvent = provenance.classify("bb", o);
           if (provenanceEvent && !requestEvents.has(id)) requestEvents.set(id, provenanceEvent);
           if (data.initiator === "user" && !requests.has(id)) { requests.add(id); if (t != null) requestAt.push(t); }
@@ -334,12 +336,13 @@
       done() {
         // New exports carry client/turn/requested. userMessage items are a compatibility fallback,
         // not a second count of the same human turn.
-        const typed = requests.size || messageItems.size;
-        if (!typed && !requestEvents.size) throw readError("no-turns");
-        const userAt = requests.size ? requestAt : messageAt;
         const provenanceEvents = requestEvents.size
           ? [...requestEvents.values()]
           : [...messageItems].map(() => provenance.classify("bb", {type:"item/started",data:{item:{type:"userMessage"}}}));
+        const promptProvenance = provenance.summary(provenanceEvents);
+        const typed = promptProvenance.human_turns;
+        if (!allRequests.size && !messageItems.size) throw readError("no-turns");
+        const userAt = allRequests.size ? requestAt : messageAt;
         const start = userAt.length ? Math.min(...userAt) : (allAt.length ? Math.min(...allAt) : null);
         const ev = start == null ? [] : allAt.filter((t) => t >= start).sort((a, b) => a - b);
         let span = 0; for (let i = 1; i < ev.length; i++) span += Math.min(ev[i] - ev[i - 1], 1200);
@@ -348,7 +351,7 @@
         else rhythm[0] = typed;
         if (workAt.length && start != null && span > 0) for (const t of workAt) line[Math.min(bins - 1, Math.floor(((t - start) / span) * bins))] += 1;
         else if (workItems.size) line[0] = workItems.size;
-        return { turns_typed: typed, prompt_provenance: provenance.summary(provenanceEvents), tool_calls: workItems.size, files_touched: files.size || null,
+        return { turns_typed: typed, prompt_provenance: promptProvenance, tool_calls: workItems.size, files_touched: files.size || null,
           commits: commits || null, duration_s: span ? Math.trunc(span) : null, started: start,
           rhythm, line, line_basis: "bb work items per bin of moving time", route: folderRoute(touched) };
       },
@@ -378,7 +381,7 @@
       done() {
         if (!prompts) throw readError("no-turns");
         const prompt_provenance = provenance.summary(Array.from({ length: prompts }, () => ({ kind: "unknown", confidence: "low", adapter: "generic", fields: ["role"] })));
-        return { turns_typed: 0, prompt_provenance, tool_calls: tools || null, files_touched: null, commits: null,
+        return { turns_typed: null, prompt_provenance, tool_calls: tools || null, files_touched: null, commits: null,
           duration_s: stamps.length >= 2 ? Math.trunc(Math.max(...stamps) - Math.min(...stamps)) : null,
           started: stamps.length ? Math.min(...stamps) : null, rhythm: [prompts], route: [] };
       },

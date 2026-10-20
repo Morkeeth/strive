@@ -105,12 +105,6 @@
     return out;
   }
 
-  function provenanceLine(r) {
-    const p = root.StriveProvenance || (typeof require === "function" ? require("./provenance.js") : null);
-    const value = p && p.line(r.prompt_provenance);
-    return value ? `<p class="fc-provenance">${esc(value)}</p>` : "";
-  }
-
   function recordedFacts(r) {
     return context?.cardFacts?context.cardFacts(r):(contract()?.heroStats(r)||[]);
   }
@@ -496,7 +490,7 @@
   }
 
   function privateMarker(r){return r?.visibility==='private'?'<aside class="private-run-marker" aria-label="Private run"><strong>Only me. Not public.</strong><br>Only you can see this.</aside>':'';}
-  const api = { privateMarker, card, cardSummary, provenanceLine, actions, face, headline, stats, achievement, harnessName, badge, spark, settle, routeGeometry, routeMap, proofRoute, changeAtlas, resultVisual, photoVisual, heroChoices, heroVisual, strideBars, strideText, strideHtml, stride, wireStride, nextSlot, builderRow, profileOf, durationLabel, when, titleOf };
+  const api = { privateMarker, card, cardSummary, actions, face, headline, stats, achievement, harnessName, badge, spark, settle, routeGeometry, routeMap, proofRoute, changeAtlas, resultVisual, photoVisual, heroChoices, heroVisual, strideBars, strideText, strideHtml, stride, wireStride, nextSlot, builderRow, profileOf, durationLabel, when, titleOf };
   root.GrinderFeed = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

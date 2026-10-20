@@ -40,7 +40,7 @@ def test_sdk_driven_claude_file_keeps_unknown_provenance_without_human_inflation
     source = tmp_path / "1854c446.jsonl"
     source.write_text(json.dumps(sdk_row()) + "\n")
     run = parse_session(str(source))
-    assert run["turns_typed"] == 0
+    assert run["turns_typed"] is None
     assert run["prompt_provenance"]["counts"]["unknown"] == 1
 
 

@@ -145,9 +145,8 @@ def inspect_source(source, harness, gap=1800, _frozen=False, progress=None):
         for chunk in iter(lambda: stream.read(1024*1024), b''): digest.update(chunk)
     from .plugin import source_identity
     session = source_identity((row for _, row, _ in records(path)), harness, path)
-    codex_rows = list(records(path)) if harness == 'codex' else None
-    codex_events = harness == 'codex' and any(row.get('type') == 'event_msg' and isinstance(row.get('payload'), dict) and row['payload'].get('type') == 'user_message' for _, row, _ in codex_rows)
-    codex_source = next(((row.get('payload') or {}).get('source') for _, row, _ in (codex_rows or [])
+    codex_events = harness == 'codex' and any(row.get('type') == 'event_msg' and isinstance(row.get('payload'), dict) and row['payload'].get('type') == 'user_message' for _, row, _ in records(path))
+    codex_source = next(((row.get('payload') or {}).get('source') for _, row, _ in records(path)
                          if row.get('type') == 'session_meta' and isinstance((row.get('payload') or {}).get('source'), str)), None)
     groups = []
     sdk_requests = 0
@@ -179,7 +178,7 @@ def inspect_source(source, harness, gap=1800, _frozen=False, progress=None):
         from .native_sittings import cursor_time
         from .ingest import _cursor_text
         current = None; last = None; idle = False
-        for index, row, _ in (codex_rows if harness == 'codex' else records(path)):
+        for index, row, _ in records(path):
             seen += 1
             if progress and seen % 256 == 0: progress('reading', seen, 'records read')
             if harness == 'codex' and row.get('type') == 'session_meta': continue

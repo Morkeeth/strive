@@ -10,7 +10,7 @@ STRIVE records what evidence says about the origin of each prompt. A `user` role
 | `automation` | Scheduled, CI, hook, system, or automation marker | High | No | Automated direction | Yes |
 | `unknown` | A prompt-like record without enough origin evidence | Low | No | Unknown | Excluded |
 
-The legacy `turns_typed` field now means recorded human turns: `human-typed + human-via-tool`. The card must show the split when provenance is present, for example `41 prompts: 38 you, 3 relayed by bb`. Agent-to-agent and automated prompts are shown but never added to human turns. Unknown prompts stay visible and are excluded from human-effort and autonomy rates.
+The legacy `turns_typed` field means recorded human turns when every prompt origin is known: `human-typed + human-via-tool`. If any prompt origin is unknown, the legacy field stays unknown instead of showing a measured zero or lower bound. The full split appears only under **Explore this run**, for example `41 prompts: 38 you, 3 relayed by bb`. Agent-to-agent and automated prompts are shown there but never added to human turns. Unknown prompts stay visible and are excluded from human-effort and autonomy rates.
 
 An external SDK entrypoint and prompt ID prove how a request arrived, not who initiated it. Claude SDK envelopes remain unknown unless the driving tool's own export records a human initiator.
 

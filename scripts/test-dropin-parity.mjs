@@ -64,7 +64,7 @@ for (let i = 0; i < FIXTURES.length; i++) {
 }
 // Every fixture must exercise something: prove the edge files are not trivially empty.
 const edge = await browser(path.join(ROOT, 'samples/dropin/claude-edge.jsonl'));
-assert.deepEqual([edge.turns_typed, edge.tool_calls, edge.files_touched, edge.commits], [3, 8, 2, 2]);
+assert.deepEqual([edge.turns_typed, edge.tool_calls, edge.files_touched, edge.commits], [null, 8, 2, 2]);
 // The route is station indices: the fixture visits a nested folder and comes back, and no
 // folder name survives the read.
 assert.deepEqual(edge.route, [0, 1, 0]);
@@ -74,7 +74,7 @@ const delegated = await browser(path.join(ROOT, 'samples/dropin/codex-delegated.
 assert.equal(delegated.turns_typed,0);
 assert.equal(delegated.prompt_provenance.counts['agent-to-agent'],1);
 const relayed = await browser(path.join(ROOT, 'samples/dropin/claude-sdk-bb.jsonl'));
-assert.equal(relayed.turns_typed,0);
+assert.equal(relayed.turns_typed,null);
 assert.equal(relayed.prompt_provenance.counts.unknown,1);
 assert.ok(Number.isFinite(Date.parse(relayed.started)),'unknown-only capture keeps a finite recorded start');
 // A Codex desktop rollout keeps the typed turns as user-role messages, beside two injected ones.

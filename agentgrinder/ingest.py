@@ -254,7 +254,7 @@ def parse_session(path: str, athlete: str = "you") -> dict:
         "project": proj_name,
         "started": start_ts.isoformat() if start_ts else None,
         "duration_s": int(span),
-        "turns_typed": len(typed_ts),
+        "turns_typed": len(typed_ts) if prompt_provenance["unknown_turns"] == 0 else None,
         "prompt_provenance": prompt_provenance,
         "tool_calls": tool_calls,
         "files_touched": len(files),

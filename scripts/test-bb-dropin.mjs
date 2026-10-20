@@ -32,6 +32,14 @@ assert.equal(compatibilityRun.turns_typed,2);
 assert.equal(compatibilityRun.prompt_provenance.counts['human-via-tool'],2);
 assert.equal(compatibilityRun.prompt_provenance.counts.unknown,0);
 
+const agentOnly=Dropin.parseText(JSON.stringify([
+ {type:'client/turn/requested',threadId:'t',seq:1,createdAt:1760954400000,data:{requestId:'a1',initiator:'agent'}},
+ {type:'item/started',threadId:'t',seq:2,createdAt:1760954400100,data:{item:{id:'u1',type:'userMessage'}}},
+ {type:'item/completed',threadId:'t',seq:3,createdAt:1760954400200,data:{item:{id:'u1',type:'userMessage'}}},
+]));
+assert.equal(agentOnly.turns_typed,0,'agent-started bb requests never fall back to userMessage lifecycle rows');
+assert.equal(agentOnly.prompt_provenance.counts['agent-to-agent'],1);
+
 const blob=new Blob([source]);
 const streamed=await Dropin.parseFile(blob);
 assert.deepEqual(streamed,run,'pretty JSON array follows the same browser File path');
@@ -41,7 +49,7 @@ const generic=Dropin.parseText([
   JSON.stringify({role:'assistant',content:[{type:'tool_call',name:'read'}],timestamp:'2026-10-20T09:40:02Z'})
 ].join('\n'));
 assert.equal(generic.harness,'Other agent');
-assert.equal(generic.turns_typed,0);
+assert.equal(generic.turns_typed,null);
 assert.equal(generic.prompt_provenance.counts.unknown,1);
 assert.equal(generic.tool_calls,1);
 assert.equal(generic.files_touched,null);
