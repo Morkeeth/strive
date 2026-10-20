@@ -1214,22 +1214,21 @@ window.GrinderSocial = function ({
       </nav>`;
 
       if (!rows.length) {
+        if (filter === "unread") {
+          body.innerHTML =
+            filters +
+            empty(
+              "No unread notifications. Open All to browse earlier XUDOS and replies.",
+              `<div class="cta"><a class="act" href="/?inbox&filter=all">Show all responses</a></div>`,
+            );
+          await refreshUnread();
+          return;
+        }
         body.innerHTML =
           filters +
           empty(
             "No responses yet. Share a public run with a friend to start a conversation.",
             `<div class="cta"><a class="act blue" href="/?mine">Open your runs</a><a class="act" href="/?people">Find people</a></div>`,
-          );
-        await refreshUnread();
-        return;
-      }
-
-      if (!visible.length) {
-        body.innerHTML =
-          filters +
-          empty(
-            "No unread notifications. Open All to browse earlier XUDOS and replies.",
-            `<div class="cta"><a class="act" href="/?inbox&filter=all">Show all responses</a></div>`,
           );
         await refreshUnread();
         return;

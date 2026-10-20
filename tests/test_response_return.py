@@ -36,6 +36,7 @@ def test_inbox_defaults_to_unread_so_seen_items_do_not_return():
     assert 'const filter = filterParam === "all" ? "all" : "unread"' in inbox
     assert 'href="/?inbox&filter=all"' in inbox
     assert '.is("read_at", null)' in inbox
+    assert 'if (filter === "unread")' in inbox[inbox.index("if (!rows.length)") : inbox.index("body.innerHTML =", inbox.index("if (!rows.length)"))]
 
 
 def test_exact_reply_navigation_and_return_context():
