@@ -4,13 +4,14 @@
   function build(run,{profileId,title,project,caption,output,repo,metricChoices={}}){
     const base={profile_id:profileId,title:title||'Untitled run',
       project,model:run.model||null,capture_metadata:run.capture_metadata||null,segment_id:run.segment_id||null,
+      prompt_provenance:run.prompt_provenance||null,
       wall_time_s:Number.isInteger(run.wall_time_s)&&run.wall_time_s>=0?run.wall_time_s:null,
       harness:run.harness||null,prompts:run.turns_typed??null,duration_s:run.duration_s??null,
       commits:run.commits??null,tool_calls:run.tool_calls??null,shell_calls:run.shell_calls??null,files_touched:run.files_touched??null,
       rhythm:run.rhythm||null,caption:caption||null,output_url:output||null,visibility:'private',started_at:run.started||null};
     // model, segment_id and wall_time_s arrive with supabase/strava/001_segments.sql. They are left
     // out while null so a database without that migration still accepts the row.
-    for(const key of ['model','segment_id','wall_time_s']) if(base[key]==null) delete base[key];
+    for(const key of ['model','segment_id','wall_time_s','prompt_provenance']) if(base[key]==null) delete base[key];
     const coach={claims:run.claims??null,claims_verified:run.claims_verified??null,artifacts_produced:run.artifacts_produced??null,
       reach:run.reach??null,
       coach_verdict:run.coach_verdict??null,coach_plan:run.coach_plan??null,coach_tool_calls:run.coach_tool_calls??null,

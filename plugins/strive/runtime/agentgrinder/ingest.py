@@ -114,7 +114,7 @@ def parse_session(path: str, athlete: str = "you") -> dict:
     commits = 0
     project = None
     first_prompt = None
-    sdk_requests = 0
+    provenance_events = []
     tracker = ClaimTracker()       # v0 verified-claims rule, see claims.py
     written: set[str] = set()      # Edit/Write paths; 'produced' = the ones that exist at close
 
@@ -135,6 +135,12 @@ def parse_session(path: str, athlete: str = "you") -> dict:
             typ = o.get("type")
             msg = o.get("message") if isinstance(o.get("message"), dict) else {}
 
+            if typ == "user":
+                from .provenance import classify as classify_provenance
+                provenance_event = classify_provenance("claude-code", o)
+                if provenance_event:
+                    provenance_events.append(provenance_event)
+
             if is_human_turn(o):
                 tracker.typed_turn()
                 if ts:
@@ -148,8 +154,6 @@ def parse_session(path: str, athlete: str = "you") -> dict:
                             if isinstance(b, dict) and b.get("type") == "text":
                                 first_prompt = (b.get("text") or "").strip()
                                 break
-            elif is_external_sdk_turn(o):
-                sdk_requests += 1
             elif is_tool_result(o):
                 tracker.tool_result(result_text(o))
             elif typ == "assistant":
@@ -175,13 +179,9 @@ def parse_session(path: str, athlete: str = "you") -> dict:
                             commits += 1
 
     tracker.close()
-    if not typed_ts:
-        if sdk_requests:
-            raise ValueError(
-                "Claude Code recorded Agent SDK requests, not typed human turns. "
-                "For a bb session, export `bb thread log --all --json` and import that file; "
-                "the Claude JSONL cannot prove which SDK requests a person typed."
-            )
+    from .provenance import summary as provenance_summary
+    prompt_provenance = provenance_summary(provenance_events)
+    if not typed_ts and not sum(prompt_provenance["counts"].values()):
         raise ValueError(f"no typed human turns found in {path}")
     # v0 'artifacts produced': Edit/Write paths that exist on disk at PARSE time (not at the
     # session's close — a later delete or rename reads as not produced). 'promised' has no source
@@ -190,7 +190,8 @@ def parse_session(path: str, athlete: str = "you") -> dict:
 
     # moving time (Strava-style): sum gaps between events, but a gap over IDLE_CAP means you stepped away
     IDLE_CAP = 1200  # 20 min
-    ev = sorted(t for t in all_ts if t >= min(typed_ts))
+    start_ts = min(typed_ts) if typed_ts else (min(all_ts) if all_ts else None)
+    ev = sorted(t for t in all_ts if start_ts is not None and t >= start_ts)
     span = 0
     for a, b in zip(ev, ev[1:]):
         span += min((b - a).total_seconds(), IDLE_CAP)
@@ -198,7 +199,7 @@ def parse_session(path: str, athlete: str = "you") -> dict:
     buckets = 24
     rhythm = [0] * buckets
     if span > 0:
-        t0 = min(typed_ts)
+        t0 = start_ts
         for t in typed_ts:
             idx = min(buckets - 1, int((t - t0).total_seconds() / span * buckets))
             rhythm[idx] += 1
@@ -224,8 +225,11 @@ def parse_session(path: str, athlete: str = "you") -> dict:
     # REACH — did this cross to a person who is not the author? git is the witness, and the
     # answer is None whenever the machine cannot tell (agentgrinder/reach.py).
     repo = gitwork.repo_of(cwd) if cwd else None
-    reach_value, reach_reason = reachmod.reach_of(
-        repo[1] if repo else None, min(typed_ts), max(all_ts or typed_ts))
+    if typed_ts:
+        reach_value, reach_reason = reachmod.reach_of(
+            repo[1] if repo else None, min(typed_ts), max(all_ts or typed_ts))
+    else:
+        reach_value, reach_reason = None, reachmod.R_NO_WINDOW
     # real characteristic: does the project carry a rules/context file?
     rules = None; rules_lines = 0; has_plan = False
     if cwd:
@@ -243,14 +247,16 @@ def parse_session(path: str, athlete: str = "you") -> dict:
     title = (first_prompt[:60] + "…") if first_prompt and len(first_prompt) > 60 else (first_prompt or f"{proj_name} session")
     route_ix, route_names = folder_route(touched)
 
+    prompt_provenance = provenance_summary(provenance_events)
     return {
         "athlete": athlete,
         "title": title,
         "harness": "Claude Code",
         "project": proj_name,
-        "started": min(typed_ts).isoformat(),
+        "started": start_ts.isoformat() if start_ts else None,
         "duration_s": int(span),
-        "turns_typed": len(typed_ts),
+        "turns_typed": len(typed_ts) if prompt_provenance["unknown_turns"] == 0 else None,
+        "prompt_provenance": prompt_provenance,
         "tool_calls": tool_calls,
         "files_touched": len(files),
         "commits": commits,
@@ -401,10 +407,15 @@ def parse_cursor_session(path: str, athlete: str = "you", records=None, cursor_d
     touched: list[str] = []    # every path a tool named, in order: the route
     first_prompt = None
     best_prompt = None
+    provenance_events = []
     ts_re = _re.compile(r"<timestamp>(.*?)</timestamp>")
     uq_re = _re.compile(r"<user_query>(.*?)</user_query>", _re.S)
     from .native_sittings import records as read_records
     for o in records if records is not None else read_records(path):
+        from .provenance import classify as classify_provenance
+        provenance_event = classify_provenance("cursor", o)
+        if provenance_event:
+            provenance_events.append(provenance_event)
         role = o.get("role")
         msg = o.get("message") if isinstance(o.get("message"), dict) else {}
         text = _cursor_text(msg)
@@ -518,6 +529,8 @@ def parse_cursor_session(path: str, athlete: str = "you", records=None, cursor_d
         reach_value, reach_reason = None, reachmod.HARNESS_LIMIT["Cursor"]
 
     route_ix, route_names = folder_route(touched)
+    from .provenance import summary as provenance_summary
+    prompt_provenance = provenance_summary(provenance_events)
     run = {
         "athlete": athlete, "title": title, "harness": "Cursor",
         "project": public_project or proj or None,
@@ -527,7 +540,8 @@ def parse_cursor_session(path: str, athlete: str = "you", records=None, cursor_d
         "started": (min(pts).isoformat() if pts else None),
         "trace_basis": "typed-turn order; spacing is not elapsed time; sessions split on human-turn gaps, not measured idle",
         "capabilities": {"timed_trace": False, "claim_evidence": False, "authorship": True},
-        "duration_s": dur, "turns_typed": typed, "tool_calls": tool_calls,
+        "duration_s": dur, "turns_typed": typed if not prompt_provenance["unknown_turns"] else None,
+        "prompt_provenance": prompt_provenance, "tool_calls": tool_calls,
         "shell_calls": shell_calls,
         "files_touched": len(files) if files else None,
         # Cursor's `files` set only ever holds paths a write tool named, so touched and changed
@@ -778,7 +792,7 @@ def parse_grokbot_session(path: str, athlete: str = "you", records=None) -> dict
 # author's own machine that day: the shipped glob saw 16 files, the real tree held 64. A person
 # who has just started with Codex has no archived sessions at all, so every Codex command
 # returned "nothing to read" while their transcripts sat on disk.
-_INJECT_MARKERS = ("<recommended_plugins>", "<environment_context>", "<turn_aborted>")
+from .provenance import CODEX_INJECTED as _INJECT_MARKERS
 
 CODEX_GLOBS = (
     "~/.codex/sessions/**/*.jsonl",      # where live sessions land, nested by date
@@ -902,10 +916,9 @@ def parse_codex_session(path: str, athlete: str = "you", records=None) -> dict:
     from .capture_metadata import recorded
     records = list(records) if records is not None else list(read_records(path))
     native = codex_activity(path, records=records)
-    hit = (native['typed'], native['tools']) if native['typed'] else None
-    if not hit:
+    typed, tool_calls = native['typed'], native['tools']
+    if not sum(native['prompt_provenance']['counts'].values()):
         raise ValueError(f"no human user_message turns in {path}")
-    typed, tool_calls = hit
     edits, commits, stamps, cwd = _codex_scan(path, records=records)
     written = set(edits)
     files = set(edits)
@@ -942,6 +955,7 @@ def parse_codex_session(path: str, athlete: str = "you", records=None) -> dict:
         "project_identity": project_identity(cwd),
         "parser_version": "codex-sittings-2026-09-05" if records is not None else "codex-native-2026-09-04",
         "authorship": native["authorship"],
+        "prompt_provenance": native["prompt_provenance"],
         "trace": native["trace"],
         "trace_basis": native["trace_basis"],
         "capabilities": {"timed_trace": bool(native["trace"]), "claim_evidence": False, "authorship": True},

@@ -5,7 +5,7 @@ from datetime import datetime
 
 # Records with the user role that no person typed. The last one is the desktop app's attachment
 # record; its own prompt, when there was one, is a separate record.
-CODEX_INJECTED = ('<recommended_plugins>', '<environment_context>', '<turn_aborted>', '# Files mentioned by the user:')
+from .provenance import CODEX_INJECTED
 
 
 def codex_activity(path, records=None):
@@ -14,7 +14,13 @@ def codex_activity(path, records=None):
         records = list(read_records(path))
     delegated = any(isinstance((r.get('payload') or {}).get('source'), dict) and 'subagent' in r['payload']['source']
                     for r in records if r.get('type') == 'session_meta')
-    counts = Counter(human=0, injected=0, delegated=0)
+    source = next(((r.get('payload') or {}).get('source') for r in records
+                   if r.get('type') == 'session_meta'
+                   and isinstance((r.get('payload') or {}).get('source'), str)), None)
+    automated = source in ('cron', 'ci', 'hook', 'automation')
+    counts = Counter(human=0, injected=0, delegated=0, automated=0)
+    from .provenance import classify as classify_provenance, summary as provenance_summary
+    provenance_events = []
     events, calls = [], set()
     # TWO SHAPES OF A TYPED TURN. The CLI writes `event_msg` / `user_message`. The Codex desktop
     # app (rollouts of 29 Jul 2026 on the author's machine) writes none of those: the person's
@@ -38,11 +44,16 @@ def codex_activity(path, records=None):
         if text is not None:
             if delegated:
                 counts['delegated'] += 1
+            elif automated:
+                counts['automated'] += 1
             elif text.lstrip().startswith(CODEX_INJECTED):
                 counts['injected'] += 1
             else:
                 counts['human'] += 1
                 kind = 'human'
+            provenance_event = classify_provenance('codex', row, {'delegated': delegated, 'source': source})
+            if provenance_event:
+                provenance_events.append(provenance_event)
         elif p.get('type') in ('function_call', 'custom_tool_call'):
             identity = p.get('call_id') or p.get('id') or ('record', index)
             if identity not in calls:
@@ -63,7 +74,8 @@ def codex_activity(path, records=None):
     for stamp, kind in events:
         if kind == 'human': buckets[min(len(buckets)-1, int((stamp-start)/span*len(buckets)))] += 1
     trace = [{'second': round(stamp-start, 3), 'kind': kind} for stamp, kind in events]
-    return dict(typed=counts['human'], tools=len(calls), authorship=dict(counts), trace=trace, rhythm=buckets,
+    return dict(typed=counts['human'], tools=len(calls), authorship=dict(counts),
+                prompt_provenance=provenance_summary(provenance_events), trace=trace, rhythm=buckets,
                 trace_basis='timestamped native events' if events else 'timestamps unavailable')
 
 

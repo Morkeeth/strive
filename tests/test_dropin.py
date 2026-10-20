@@ -59,10 +59,11 @@ def test_the_reader_makes_no_request():
 
 def test_the_upload_allowlist_matches_the_database_allowlist():
     js = re.search(r"const UPLOAD_KEYS = \[(.*?)\]", READER).group(1)
-    # 012 replaced dropin_create, so its allowlist is the one the database enforces.
+    # 012 defines the base allowlist; 051 wraps it with validated prompt provenance.
     sql = re.search(r"allowed constant text\[\] := array\[(.*?)\];", (ROOT / "supabase/strava/012_dropin_route.sql").read_text(), re.S).group(1)
     words = lambda s: sorted(re.findall(r"'([a-z_]+)'|\"([a-z_]+)\"", s))
-    assert sorted(w[0] or w[1] for w in words(js)) == sorted(w[0] or w[1] for w in words(sql))
+    expected = [w[0] or w[1] for w in words(sql)] + ["prompt_provenance"]
+    assert sorted(w[0] or w[1] for w in words(js)) == sorted(expected)
 
 
 def test_migration_011_only_creates():

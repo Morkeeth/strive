@@ -22,17 +22,18 @@ export const origin=config.ORIGIN;
 export const SHARE_IMAGE_CACHE='public, max-age=0, s-maxage=300, stale-while-revalidate=600';
 export const validId=id=>typeof id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const PUBLIC_RUN_FIELDS='id,profile_id,created_at,title,caption,photo_layout,story_result,story_next,feedback_question,output_url,repo_url,receipts,shipped,artifact_url,image_url,hero_visual,project,harness,model,capture_metadata,started_at,duration_s,wall_time_s,prompts,tool_calls,shell_calls,files_touched,artifacts_produced,commits,rhythm,route,trace_basis,measurement_revision,history_evidence,ridge,worker_bins,commit_bins,ridge_basis,ridge_wall_seconds,ridge_tool_calls,code_route,visibility,profiles!runs_profile_id_fkey(github_handle,handle,display_name,avatar_url)';
+const PUBLIC_RUN_FIELDS='id,profile_id,created_at,title,caption,photo_layout,story_result,story_next,feedback_question,output_url,repo_url,receipts,shipped,artifact_url,image_url,hero_visual,project,harness,model,capture_metadata,prompt_provenance,started_at,duration_s,wall_time_s,prompts,tool_calls,shell_calls,files_touched,artifacts_produced,commits,rhythm,route,trace_basis,measurement_revision,history_evidence,ridge,worker_bins,commit_bins,ridge_basis,ridge_wall_seconds,ridge_tool_calls,code_route,visibility,profiles!runs_profile_id_fkey(github_handle,handle,display_name,avatar_url)';
 export async function readPublic(id,fetcher=fetch){
  if(!validId(id))return null;
  const request=select=>{const query=new URLSearchParams({id:'eq.'+id,visibility:'eq.public',select,limit:'1'});return fetcher(config.SB_URL+'/rest/v1/runs?'+query,{headers:{apikey:config.SB_KEY,"Accept-Profile":config.SB_SCHEMA},cache:'no-store',signal:AbortSignal.timeout(8000)})};
- let response=await request(PUBLIC_RUN_FIELDS);
+ let fields=PUBLIC_RUN_FIELDS,response=await request(fields);
  // Production can trail an additive visual-choice migration. Keep the public page available on
  // that older schema; retry only for this exact missing optional column, never for a broad 400.
- if(response.status===400){
+ for(let retries=0;response.status===400&&retries<2;retries++){
   const detail=await response.clone().text();
-  if(/hero_visual/i.test(detail)&&/(does not exist|not found|schema cache|PGRST204)/i.test(detail))
-   response=await request(PUBLIC_RUN_FIELDS.replace(',hero_visual',''));
+  const missing=['hero_visual','prompt_provenance'].find(name=>fields.includes(','+name)&&new RegExp(name,'i').test(detail));
+  if(!missing||!/(does not exist|not found|schema cache|PGRST204)/i.test(detail))break;
+  fields=fields.replace(','+missing,'');response=await request(fields);
  }
  if(!response.ok)throw new Error('Public run unavailable');const rows=await response.json();
  // The query asks for public rows only. The row is checked again here, so a lost filter or a

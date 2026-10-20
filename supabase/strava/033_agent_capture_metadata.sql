@@ -12,7 +12,7 @@ begin
   if not field=any(array['title','project','harness','turns_typed','duration_s','tool_calls','files_touched','commits','claims','claims_verified','artifacts_produced','started','visibility','rhythm','route','schema_version','measurement_revision','baseline_revision','trace_basis','note','run_id','body','reason','question_id',
     'ridge','worker_bins','commit_bins','ridge_basis','ridge_wall_seconds','ridge_tool_calls','wall_time_s','shell_calls','model','caption',
     'repo_url','receipts','shipped','artifact_url','image_url',
-    'code_route','capture_metadata']) then raise exception 'Unsupported public field: %',field; end if;
+    'code_route','capture_metadata','prompt_provenance']) then raise exception 'Unsupported public field: %',field; end if;
   if field=any(array['turns_typed','tool_calls','files_touched','commits','claims','claims_verified','artifacts_produced','ridge_tool_calls','wall_time_s','shell_calls']) and value<>'null'::jsonb then
    if jsonb_typeof(value)<>'number' or (value::text)::numeric<0 or (value::text)::numeric<>floor((value::text)::numeric) or (value::text)::numeric>2147483647 then raise exception 'Counts must be non-negative whole numbers'; end if;
   end if;

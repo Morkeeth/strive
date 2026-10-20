@@ -64,17 +64,39 @@ for (let i = 0; i < FIXTURES.length; i++) {
 }
 // Every fixture must exercise something: prove the edge files are not trivially empty.
 const edge = await browser(path.join(ROOT, 'samples/dropin/claude-edge.jsonl'));
-assert.deepEqual([edge.turns_typed, edge.tool_calls, edge.files_touched, edge.commits], [3, 8, 2, 2]);
+assert.deepEqual([edge.turns_typed, edge.tool_calls, edge.files_touched, edge.commits], [null, 8, 2, 2]);
 // The route is station indices: the fixture visits a nested folder and comes back, and no
 // folder name survives the read.
 assert.deepEqual(edge.route, [0, 1, 0]);
 assert.ok(!JSON.stringify(edge).includes('SECRET-FOLDER'), 'a folder name must not survive the read');
 assert.equal((await browser(path.join(ROOT, 'samples/dropin/not-a-session.jsonl'))).error, 'unknown');
-assert.equal((await browser(path.join(ROOT, 'samples/dropin/codex-delegated.jsonl'))).error, 'delegated');
-assert.equal((await browser(path.join(ROOT, 'samples/dropin/claude-sdk-bb.jsonl'))).error, 'sdk-driven');
+const delegated = await browser(path.join(ROOT, 'samples/dropin/codex-delegated.jsonl'));
+assert.equal(delegated.turns_typed,0);
+assert.equal(delegated.prompt_provenance.counts['agent-to-agent'],1);
+const relayed = await browser(path.join(ROOT, 'samples/dropin/claude-sdk-bb.jsonl'));
+assert.equal(relayed.turns_typed,null);
+assert.equal(relayed.prompt_provenance.counts.unknown,1);
+assert.ok(Number.isFinite(Date.parse(relayed.started)),'unknown-only capture keeps a finite recorded start');
 // A Codex desktop rollout keeps the typed turns as user-role messages, beside two injected ones.
 const desktop = await browser(path.join(ROOT, 'samples/dropin/codex-desktop.jsonl'));
 assert.deepEqual([desktop.turns_typed, desktop.tool_calls, desktop.route], [2, 2, [0, 1]]);
+
+const mixedCodex=Dropin.parseText([
+  JSON.stringify({timestamp:'2026-10-20T10:00:00Z',type:'session_meta',payload:{source:'desktop'}}),
+  JSON.stringify({timestamp:'2026-10-20T10:00:01Z',type:'event_msg',payload:{type:'user_message',message:'real request'}}),
+  JSON.stringify({timestamp:'2026-10-20T10:00:01Z',type:'response_item',payload:{type:'message',role:'user',content:[{type:'input_text',text:'real request'}]}}),
+  JSON.stringify({timestamp:'2026-10-20T10:00:02Z',type:'event_msg',payload:{type:'user_message',message:'# AGENTS.md instructions\n<INSTRUCTIONS>injected</INSTRUCTIONS>'}}),
+].join('\n'));
+assert.equal(mixedCodex.turns_typed,1);
+assert.equal(mixedCodex.prompt_provenance.counts['human-typed'],1);
+assert.equal(Object.values(mixedCodex.prompt_provenance.counts).reduce((a,b)=>a+b,0),1);
+
+const scheduledCodex=Dropin.parseText([
+  JSON.stringify({timestamp:'2026-10-20T10:00:00Z',type:'session_meta',payload:{source:'cron'}}),
+  JSON.stringify({timestamp:'2026-10-20T10:00:01Z',type:'event_msg',payload:{type:'user_message',message:'scheduled task'}}),
+].join('\n'));
+assert.equal(scheduledCodex.turns_typed,0);
+assert.equal(scheduledCodex.prompt_provenance.counts.automation,1);
 
 const realAt = process.argv.indexOf('--real');
 if (realAt !== -1) {

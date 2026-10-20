@@ -5,7 +5,7 @@ import {JSDOM} from 'jsdom';
 const w=new JSDOM('<details><div id="drop-stage"><div id="drop-zone"><input type="file" id="drop-file"></div><p id="drop-error" hidden></p><p id="drop-progress"></p></div></details>',{runScripts:'outside-only',url:'https://striverun.app/?post'}).window;
 w.HTMLElement.prototype.scrollIntoView=function(){};w.TextEncoder=TextEncoder;w.TextDecoder=TextDecoder;Object.defineProperty(w,'crypto',{value:webcrypto});
 let posted=null,network=0;w.fetch=()=>{network++;throw Error('No network before Save')};
-for(const file of ['run-estimates.js','run-context.js','run-contract.js','capture-estimates.js','dropin-parse.js','dropin.js'])w.eval(readFileSync('site/'+file,'utf8'));
+for(const file of ['provenance.js','run-estimates.js','run-context.js','run-contract.js','capture-estimates.js','dropin-parse.js','dropin.js'])w.eval(readFileSync('site/'+file,'utf8'));
 w.GrinderDropinUI.mount({privateFirst:true,post:token=>{posted=JSON.parse(Buffer.from(decodeURIComponent(token),'base64').toString())}});
 const bytes=readFileSync('samples/dropin/codex-desktop.jsonl');const blob=new Blob([bytes]);blob.name='native.jsonl';
 await w.GrinderDropinUI.read(blob);assert.ok(posted?.measurement_revision,w.document.querySelector('#drop-error').textContent);assert.equal(w.document.querySelector('details').open,true);assert.equal(network,0);

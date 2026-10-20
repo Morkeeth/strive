@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8791").rstrip("/")
 SESSION = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "samples/dropin/claude-edge.jsonl"
 OUT = Path(sys.argv[3]) if len(sys.argv) > 3 else Path("/tmp/strive-dropin-flow")
-ALLOWED = {"title", "harness", "turns_typed", "tool_calls", "files_touched", "commits", "duration_s", "started_hour", "rhythm", "route"}
+ALLOWED = {"title", "harness", "turns_typed", "tool_calls", "files_touched", "commits", "duration_s", "started_hour", "rhythm", "route", "prompt_provenance"}
 SENTINEL = "PROMPT-SENTINEL-7f3a"
 
 

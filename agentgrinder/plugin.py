@@ -26,7 +26,8 @@ MAX_SOURCE = 64 * 1024 * 1024
 FIELDS = {'harness', 'capture_metadata', 'project', 'turns_typed', 'duration_s',
           'tool_calls', 'files_touched', 'commits', 'started', 'rhythm', 'ridge',
           'ridge_basis', 'ridge_wall_seconds', 'worker_bins', 'commit_bins',
-          'ridge_tool_calls', 'trace_basis', 'schema_version', 'measurement_revision', 'code_route'}
+          'ridge_tool_calls', 'trace_basis', 'schema_version', 'measurement_revision', 'code_route',
+          'prompt_provenance'}
 
 
 def encoded(value):
