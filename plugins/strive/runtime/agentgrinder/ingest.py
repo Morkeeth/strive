@@ -114,7 +114,7 @@ def parse_session(path: str, athlete: str = "you") -> dict:
     commits = 0
     project = None
     first_prompt = None
-    sdk_requests = 0
+    provenance_events = []
     tracker = ClaimTracker()       # v0 verified-claims rule, see claims.py
     written: set[str] = set()      # Edit/Write paths; 'produced' = the ones that exist at close
 
@@ -135,6 +135,12 @@ def parse_session(path: str, athlete: str = "you") -> dict:
             typ = o.get("type")
             msg = o.get("message") if isinstance(o.get("message"), dict) else {}
 
+            if typ == "user":
+                from .provenance import classify as classify_provenance
+                provenance_event = classify_provenance("claude-code", o)
+                if provenance_event:
+                    provenance_events.append(provenance_event)
+
             if is_human_turn(o):
                 tracker.typed_turn()
                 if ts:
@@ -148,8 +154,6 @@ def parse_session(path: str, athlete: str = "you") -> dict:
                             if isinstance(b, dict) and b.get("type") == "text":
                                 first_prompt = (b.get("text") or "").strip()
                                 break
-            elif is_external_sdk_turn(o):
-                sdk_requests += 1
             elif is_tool_result(o):
                 tracker.tool_result(result_text(o))
             elif typ == "assistant":
@@ -176,12 +180,6 @@ def parse_session(path: str, athlete: str = "you") -> dict:
 
     tracker.close()
     if not typed_ts:
-        if sdk_requests:
-            raise ValueError(
-                "Claude Code recorded Agent SDK requests, not typed human turns. "
-                "For a bb session, export `bb thread log --all --json` and import that file; "
-                "the Claude JSONL cannot prove which SDK requests a person typed."
-            )
         raise ValueError(f"no typed human turns found in {path}")
     # v0 'artifacts produced': Edit/Write paths that exist on disk at PARSE time (not at the
     # session's close — a later delete or rename reads as not produced). 'promised' has no source
@@ -243,6 +241,7 @@ def parse_session(path: str, athlete: str = "you") -> dict:
     title = (first_prompt[:60] + "…") if first_prompt and len(first_prompt) > 60 else (first_prompt or f"{proj_name} session")
     route_ix, route_names = folder_route(touched)
 
+    from .provenance import summary as provenance_summary
     return {
         "athlete": athlete,
         "title": title,
@@ -251,6 +250,7 @@ def parse_session(path: str, athlete: str = "you") -> dict:
         "started": min(typed_ts).isoformat(),
         "duration_s": int(span),
         "turns_typed": len(typed_ts),
+        "prompt_provenance": provenance_summary(provenance_events),
         "tool_calls": tool_calls,
         "files_touched": len(files),
         "commits": commits,
@@ -401,10 +401,15 @@ def parse_cursor_session(path: str, athlete: str = "you", records=None, cursor_d
     touched: list[str] = []    # every path a tool named, in order: the route
     first_prompt = None
     best_prompt = None
+    provenance_events = []
     ts_re = _re.compile(r"<timestamp>(.*?)</timestamp>")
     uq_re = _re.compile(r"<user_query>(.*?)</user_query>", _re.S)
     from .native_sittings import records as read_records
     for o in records if records is not None else read_records(path):
+        from .provenance import classify as classify_provenance
+        provenance_event = classify_provenance("cursor", o)
+        if provenance_event:
+            provenance_events.append(provenance_event)
         role = o.get("role")
         msg = o.get("message") if isinstance(o.get("message"), dict) else {}
         text = _cursor_text(msg)
@@ -518,6 +523,7 @@ def parse_cursor_session(path: str, athlete: str = "you", records=None, cursor_d
         reach_value, reach_reason = None, reachmod.HARNESS_LIMIT["Cursor"]
 
     route_ix, route_names = folder_route(touched)
+    from .provenance import summary as provenance_summary
     run = {
         "athlete": athlete, "title": title, "harness": "Cursor",
         "project": public_project or proj or None,
@@ -527,7 +533,7 @@ def parse_cursor_session(path: str, athlete: str = "you", records=None, cursor_d
         "started": (min(pts).isoformat() if pts else None),
         "trace_basis": "typed-turn order; spacing is not elapsed time; sessions split on human-turn gaps, not measured idle",
         "capabilities": {"timed_trace": False, "claim_evidence": False, "authorship": True},
-        "duration_s": dur, "turns_typed": typed, "tool_calls": tool_calls,
+        "duration_s": dur, "turns_typed": typed, "prompt_provenance": provenance_summary(provenance_events), "tool_calls": tool_calls,
         "shell_calls": shell_calls,
         "files_touched": len(files) if files else None,
         # Cursor's `files` set only ever holds paths a write tool named, so touched and changed
@@ -902,10 +908,9 @@ def parse_codex_session(path: str, athlete: str = "you", records=None) -> dict:
     from .capture_metadata import recorded
     records = list(records) if records is not None else list(read_records(path))
     native = codex_activity(path, records=records)
-    hit = (native['typed'], native['tools']) if native['typed'] else None
-    if not hit:
+    typed, tool_calls = native['typed'], native['tools']
+    if not sum(native['prompt_provenance']['counts'].values()):
         raise ValueError(f"no human user_message turns in {path}")
-    typed, tool_calls = hit
     edits, commits, stamps, cwd = _codex_scan(path, records=records)
     written = set(edits)
     files = set(edits)
@@ -942,6 +947,7 @@ def parse_codex_session(path: str, athlete: str = "you", records=None) -> dict:
         "project_identity": project_identity(cwd),
         "parser_version": "codex-sittings-2026-09-05" if records is not None else "codex-native-2026-09-04",
         "authorship": native["authorship"],
+        "prompt_provenance": native["prompt_provenance"],
         "trace": native["trace"],
         "trace_basis": native["trace_basis"],
         "capabilities": {"timed_trace": bool(native["trace"]), "claim_evidence": False, "authorship": True},

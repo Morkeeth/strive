@@ -185,6 +185,7 @@ button.ghost,.act.ghost{background:transparent;color:var(--soft);border-color:va
 .post-facts>div:last-child .metric-definition>p{left:auto;right:0}
 .run-agent-identity{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:#555;margin:6px 0}
 .harness-mark{display:inline-flex;width:76px;height:32px;flex:none;border:1px solid #e5e5e5;overflow:hidden}
+.fc-provenance{margin:8px 0 12px;padding:9px 11px;border-left:3px solid #0047ff;background:#f4f7ff;color:#18223a;font-size:13px;line-height:1.35}
 .harness-mark svg{width:100%;height:100%}.model-chip{border:1px solid #dfe4ef;border-radius:4px;padding:4px 6px;background:#f7f9ff;overflow-wrap:anywhere}
 .activity-bar{fill:#0047ff;transform-origin:bottom;animation:activity-appear .4s ease-out both}.activity-commit{stroke:#101010;stroke-width:2}.activity-basis{font-size:11px;color:#666;margin-top:5px}.activity-basis p{font-size:12px;max-width:60ch}.post-no-trace{padding:12px 0;margin:0;font-size:13px;color:#555}
 @keyframes activity-appear{from{opacity:0;transform:scaleY(.2)}to{opacity:1;transform:scaleY(1)}}

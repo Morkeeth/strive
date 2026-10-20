@@ -58,6 +58,7 @@
 
   const blocks = (msg) => (msg && Array.isArray(msg.content) ? msg.content : []);
   const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+  const provenance = root.StriveProvenance || (typeof require === "function" ? require("./provenance.js") : null);
 
   // THE ROUTE: the folders the run went through, as station indices. agentgrinder/ingest.py
   // folder_route is the same rule, and scripts/test-dropin-parity.mjs compares the two.
@@ -87,12 +88,8 @@
 
   // agentgrinder/authorship.is_human_turn, the one gate every typed-turn count goes through.
   function isHumanTurn(o) {
-    if (o.type !== "user") return false;
-    if (o.promptSource !== "typed" && o.promptSource !== "queued") return false;
-    if (o.isMeta || o.isSidechain) return false;
-    if (o.toolUseResult !== undefined && o.toolUseResult !== null) return false;
-    if (blocks(o.message).some((b) => isObj(b) && b.type === "tool_result")) return false;
-    return true;
+    const event = provenance.classify("claude", o);
+    return !!event && ["human-typed", "human-via-tool"].includes(event.kind);
   }
 
   // SDK requests are non-interactive in Claude's provenance. bb retains the missing authorship
@@ -110,7 +107,8 @@
 
   function claudeReader() {
     const typed = [], all = [];
-    let tools = 0, commits = 0, sdkRequests = 0;
+    let tools = 0, commits = 0;
+    const provenanceEvents = [];
     const files = new Set(), touched = [], toolsAt = [];
     return {
       harness: "Claude Code",
@@ -118,10 +116,10 @@
         const t = seconds(o.timestamp);
         if (t != null) all.push(t);
         const msg = isObj(o.message) ? o.message : {};
+        const provenanceEvent = provenance.classify("claude", o);
+        if (provenanceEvent) provenanceEvents.push(provenanceEvent);
         if (isHumanTurn(o)) {
           if (t != null) typed.push(t);
-        } else if (isExternalSdkTurn(o)) {
-          sdkRequests += 1;
         } else if (o.type === "assistant") {
           for (const b of blocks(msg)) {
             if (!isObj(b) || b.type !== "tool_use") continue;
@@ -137,7 +135,7 @@
         }
       },
       done() {
-        if (!typed.length) throw readError(sdkRequests ? "sdk-driven" : "no-turns");
+        if (!typed.length && !provenanceEvents.length) throw readError("no-turns");
         const t0 = Math.min(...typed);
         const ev = all.filter((t) => t >= t0).sort((a, b) => a - b);
         let span = 0;
@@ -159,7 +157,7 @@
           line = new Array(24).fill(0);
           for (const t of toolsAt) if (pos.has(t)) line[Math.min(23, Math.floor((pos.get(t) / span) * 24))] += 1;
         }
-        return { turns_typed: typed.length, tool_calls: tools, files_touched: files.size, commits,
+        return { turns_typed: typed.length, prompt_provenance: provenance.summary(provenanceEvents), tool_calls: tools, files_touched: files.size, commits,
           duration_s: Math.trunc(span), started: t0, rhythm, route: folderRoute(touched),
           ...(line ? { line, line_basis: "tool calls per bin of moving time" } : {}) };
       },
@@ -177,11 +175,14 @@
     let typed = 0, tools = 0, commits = 0;
     const files = new Set(), stamps = [], perTurn = [], touched = [];
     let edits = 0;
+    const provenanceEvents = [];
     return {
       harness: "Cursor",
       add(o) {
         const msg = isObj(o.message) ? o.message : {};
         if (o.role === "user") {
+          const provenanceEvent = provenance.classify("cursor", o);
+          if (provenanceEvent) provenanceEvents.push(provenanceEvent);
           const text = cursorText(msg);
           if (!text.includes("<user_query>")) return;
           typed += 1;
@@ -213,7 +214,7 @@
         const bins = Math.min(24, perTurn.length);
         const line = new Array(bins).fill(0);
         perTurn.forEach((v, i) => { line[Math.min(bins - 1, Math.floor((i * bins) / perTurn.length))] += v; });
-        return { turns_typed: typed, tool_calls: tools, files_touched: files.size || null,
+        return { turns_typed: typed, prompt_provenance: provenance.summary(provenanceEvents), tool_calls: tools, files_touched: files.size || null,
           commits: edits || commits ? commits : null, duration_s: null,
           started: stamps.length ? Math.min(...stamps) : null, rhythm, line, line_basis: "tool calls per typed turn, in turn order",
           route: folderRoute(touched) };
@@ -239,7 +240,7 @@
     // Typed turns come in two shapes (agentgrinder/native_trace.py says why): the CLI's
     // event_msg user_message, or the desktop app's response_item user message. The event form
     // wins when the file has it; `messages` is the fallback.
-    const users = [], messages = [], events = [], calls = new Set(), files = new Set(), stamps = [], touched = [];
+    const users = [], messages = [], events = [], calls = new Set(), files = new Set(), stamps = [], touched = [], promptRows = [];
     return {
       harness: "Codex",
       add(o) {
@@ -255,10 +256,12 @@
           // so each user message is held as (time, injected) and classified at the end.
           const text = String(p.message || "").replace(/^\s+/, "");
           users.push({ t, injected: CODEX_INJECTED.some((m) => text.startsWith(m)) });
+          promptRows.push(o);
           return;
         } else if (o.type === "response_item" && p.type === "message" && p.role === "user") {
           const text = (Array.isArray(p.content) ? p.content.filter(isObj).map((c) => c.text || "").join("") : String(p.content || "")).replace(/^\s+/, "");
           messages.push({ t, injected: CODEX_INJECTED.some((m) => text.startsWith(m)) });
+          promptRows.push(o);
           return;
         } else if (p.type === "function_call" || p.type === "custom_tool_call") {
           const id = p.call_id || p.id || "record:" + index;
@@ -273,13 +276,14 @@
       done() {
         const typedIn = users.length ? users : messages;
         const human = delegated ? [] : typedIn.filter((u) => !u.injected);
-        if (!human.length) throw readError(delegated ? "delegated" : "no-turns");
+        const provenanceEvents = promptRows.map((o) => provenance.classify("codex", o, { delegated })).filter(Boolean);
+        if (!human.length && !provenanceEvents.length) throw readError("no-turns");
         const all = events.concat(human.filter((u) => u.t != null).map((u) => u.t)).sort((a, b) => a - b);
         const start = all.length ? all[0] : 0;
         const span = all.length ? Math.max(1, all[all.length - 1] - start) : 1;
         const rhythm = new Array(Math.min(24, Math.max(1, human.length))).fill(0);
         for (const u of human) if (u.t != null) rhythm[Math.min(rhythm.length - 1, Math.floor(((u.t - start) / span) * rhythm.length))] += 1;
-        return { turns_typed: human.length, tool_calls: calls.size, files_touched: files.size || null,
+        return { turns_typed: human.length, prompt_provenance: provenance.summary(provenanceEvents), tool_calls: calls.size, files_touched: files.size || null,
           commits: edits || commits ? commits : null,
           duration_s: stamps.length >= 2 ? Math.trunc(Math.max(...stamps) - Math.min(...stamps)) : null,
           started: stamps.length ? Math.min(...stamps) : null, rhythm, route: folderRoute(touched) };
@@ -293,8 +297,9 @@
   // items; started/completed pairs for one item must never count twice.
   function bbReader() {
     const requests = new Set(), messageItems = new Set(), workItems = new Set(), files = new Set(), touched = [];
-    const allAt = [], userAt = [], workAt = [];
+    const allAt = [], requestAt = [], messageAt = [], workAt = [];
     let commits = 0;
+    const requestEvents = new Map();
     const workTypes = new Set(["commandExecution", "fileChange", "toolCall", "webSearch", "webFetch", "imageView", "imageGeneration", "fileRead", "search", "delegation", "extension"]);
     const at = (o) => Number.isFinite(o.createdAt) ? o.createdAt / 1000 : seconds(o.timestamp);
     return {
@@ -302,15 +307,17 @@
       add(o) {
         const t = at(o); if (t != null) allAt.push(t);
         const data = isObj(o.data) ? o.data : {};
-        if (o.type === "client/turn/requested" && data.initiator === "user") {
+        if (o.type === "client/turn/requested") {
           const id = String(data.requestId || o.id || `seq:${o.seq}`);
-          if (!requests.has(id)) { requests.add(id); if (t != null) userAt.push(t); }
+          const provenanceEvent = provenance.classify("bb", o);
+          if (provenanceEvent && !requestEvents.has(id)) requestEvents.set(id, provenanceEvent);
+          if (data.initiator === "user" && !requests.has(id)) { requests.add(id); if (t != null) requestAt.push(t); }
           return;
         }
         if ((o.type === "item/started" || o.type === "item/completed") && isObj(data.item)) {
           const item = data.item, id = String(item.id || o.id || `seq:${o.seq}`);
           if (item.type === "userMessage") {
-            if (!messageItems.has(id)) { messageItems.add(id); if (t != null) userAt.push(t); }
+            if (!messageItems.has(id)) { messageItems.add(id); if (t != null) messageAt.push(t); }
             return;
           }
           if (!workTypes.has(item.type) || workItems.has(id)) return;
@@ -326,7 +333,11 @@
         // New exports carry client/turn/requested. userMessage items are a compatibility fallback,
         // not a second count of the same human turn.
         const typed = requests.size || messageItems.size;
-        if (!typed) throw readError("no-turns");
+        if (!typed && !requestEvents.size) throw readError("no-turns");
+        const userAt = requests.size ? requestAt : messageAt;
+        const provenanceEvents = requestEvents.size
+          ? [...requestEvents.values()]
+          : [...messageItems].map(() => provenance.classify("bb", {type:"item/started",data:{item:{type:"userMessage"}}}));
         const start = userAt.length ? Math.min(...userAt) : (allAt.length ? Math.min(...allAt) : null);
         const ev = start == null ? [] : allAt.filter((t) => t >= start).sort((a, b) => a - b);
         let span = 0; for (let i = 1; i < ev.length; i++) span += Math.min(ev[i] - ev[i - 1], 1200);
@@ -335,7 +346,7 @@
         else rhythm[0] = typed;
         if (workAt.length && start != null && span > 0) for (const t of workAt) line[Math.min(bins - 1, Math.floor(((t - start) / span) * bins))] += 1;
         else if (workItems.size) line[0] = workItems.size;
-        return { turns_typed: typed, tool_calls: workItems.size, files_touched: files.size || null,
+        return { turns_typed: typed, prompt_provenance: provenance.summary(provenanceEvents), tool_calls: workItems.size, files_touched: files.size || null,
           commits: commits || null, duration_s: span ? Math.trunc(span) : null, started: start,
           rhythm, line, line_basis: "bb work items per bin of moving time", route: folderRoute(touched) };
       },
@@ -346,7 +357,7 @@
   // messages. It proves only typed turns and explicit tool-call blocks. Unknown fields stay
   // unknown, so a new agent can reach the review-and-save flow without invented measurements.
   function genericReader() {
-    let typed = 0, tools = 0;
+    let prompts = 0, tools = 0;
     const stamps = [];
     return {
       harness: "Other agent",
@@ -355,7 +366,7 @@
         const role = o.role || msg.role || (o.type === "message" ? o.role : null);
         const t = seconds(o.timestamp || o.created_at || o.createdAt);
         if (t != null) stamps.push(t);
-        if (role === "user") typed += 1;
+        if (role === "user") prompts += 1;
         if (role === "assistant") {
           if (Array.isArray(msg.tool_calls)) tools += msg.tool_calls.length;
           const content = Array.isArray(msg.content) ? msg.content : [];
@@ -363,10 +374,11 @@
         } else if (["tool_call", "function_call", "custom_tool_call"].includes(o.type)) tools += 1;
       },
       done() {
-        if (!typed) throw readError("no-turns");
-        return { turns_typed: typed, tool_calls: tools || null, files_touched: null, commits: null,
+        if (!prompts) throw readError("no-turns");
+        const prompt_provenance = provenance.summary(Array.from({ length: prompts }, () => ({ kind: "unknown", confidence: "low", adapter: "generic", fields: ["role"] })));
+        return { turns_typed: 0, prompt_provenance, tool_calls: tools || null, files_touched: null, commits: null,
           duration_s: stamps.length >= 2 ? Math.trunc(Math.max(...stamps) - Math.min(...stamps)) : null,
-          started: stamps.length ? Math.min(...stamps) : null, rhythm: [typed], route: [] };
+          started: stamps.length ? Math.min(...stamps) : null, rhythm: [prompts], route: [] };
       },
     };
   }

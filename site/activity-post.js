@@ -54,6 +54,7 @@
       <header class="dc-head">${F.face(r,36)}<div class="dc-identity">${handle?`<a class="dc-author" href="${esc(links.profileHref(handle))}">${esc(name)}</a>`:`<strong class="dc-author">${esc(name)}</strong>`}<p class="meta">${esc(dateLabel)}${r.harness?' · '+esc(F.harnessName(r)):''}</p></div><details class="post-options"><summary aria-label="Run options">•••</summary><div><a href="${esc(href)}">Open run</a>${owner?`<a href="${esc(href)}#run-edit">Edit this run</a>`:''}${day?`<a href="/?day=${day}${owner?'':'&p='+encodeURIComponent(r.profile_id)}">Day summary</a>`:''}${root.StriveContext?.measurementDetails?.(r)||''}</div></details></header>
       ${audience?`<p class="dc-audience">${esc(audience)}</p>`:''}
       <div class="post-story">${project?`<a class="post-project" href="/?project=${encodeURIComponent(r.project)}&scope=${owner?'mine':'public'}">${esc(project)}</a>`:''}<h2><a href="${esc(href)}">${esc(title)}</a></h2>${caption&&caption!==title?`<p class="post-caption">${esc(caption)}</p>`:!caption?(root.StrivePlaceholders?.render('description',{compact:true})||''):''}</div>
+      ${F.provenanceLine?.(r)||''}
       ${root.StriveContext?.shareHtml?.(r)||''}
       ${trail(r)}
       <div class="post-workline">${!noImage?(root.StriveContext?.cardSecondary?.(r,{omitUnknown:true})||''):''}

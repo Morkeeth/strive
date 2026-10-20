@@ -15,7 +15,9 @@ def validate_run(run: dict) -> dict:
     if not isinstance(run, dict):
         raise ValueError("A grind must be a JSON object.")
     from .capture_metadata import validate as validate_metadata
+    from .provenance import validate as validate_provenance
     validate_metadata(run.get("capture_metadata"))
+    validate_provenance(run.get("prompt_provenance"))
     version = run.get("schema_version", 0)
     if type(version) is not int or version not in (0, SCHEMA_VERSION):
         raise ValueError("This grind uses an unsupported format. Update Agent Grinder to read it.")

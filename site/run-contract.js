@@ -41,6 +41,11 @@
       run.capture_metadata=ctx.prepareForStorage(run.capture_metadata);
       ctx.validate(run.capture_metadata);
     }
+    if(run.prompt_provenance!=null) {
+      const provenance=typeof StriveProvenance!=="undefined"?StriveProvenance:typeof require==="function"?require("./provenance.js"):null;
+      if(!provenance) throw Error("Prompt provenance validator unavailable");
+      run.prompt_provenance=provenance.validate(run.prompt_provenance);
+    }
     const version = run.schema_version ?? 0;
     if (!Number.isInteger(version) || ![0, 1].includes(version))
       throw new Error(
