@@ -82,6 +82,7 @@ def test_capture_is_primary_and_manual_import_is_advanced():
         ["claude", "Claude Code", picker.format("claude")],
         ["codex", "Codex", picker.format("codex")],
         ["grok", "Grok Bot", None],
+        ["bb", "bb", "bb thread log --self --all --json > bb-session.json"],
     ]
     # Pressing an agent shows its own picker command; nothing is shown or copied before that.
     assert page["quickHidden"] is True

@@ -17,6 +17,7 @@
   "use strict";
 
   const HARNESSES = ["Claude Code", "Cursor", "Codex"];
+  const IMPORT_HARNESSES = [...HARNESSES, "bb", "Other agent"];
 
   // Python's datetime keeps microseconds; Date keeps milliseconds. Seconds are parsed here as a
   // float with the full fraction so the wall time rounds the same way int() does in Python.
@@ -271,10 +272,94 @@
     };
   }
 
+  // bb's documented export is `bb thread log --all --json`: a JSON array of stored thread
+  // event rows. The rows use one provider-independent event vocabulary even when the thread ran
+  // through Claude Code, Codex, Pi or ACP. Count only explicit user requests and unique work
+  // items; started/completed pairs for one item must never count twice.
+  function bbReader() {
+    const requests = new Set(), messageItems = new Set(), workItems = new Set(), files = new Set(), touched = [];
+    const allAt = [], userAt = [], workAt = [];
+    let commits = 0;
+    const workTypes = new Set(["commandExecution", "fileChange", "toolCall", "webSearch", "webFetch", "imageView", "imageGeneration", "fileRead", "search", "delegation", "extension"]);
+    const at = (o) => Number.isFinite(o.createdAt) ? o.createdAt / 1000 : seconds(o.timestamp);
+    return {
+      harness: "bb",
+      add(o) {
+        const t = at(o); if (t != null) allAt.push(t);
+        const data = isObj(o.data) ? o.data : {};
+        if (o.type === "client/turn/requested" && data.initiator === "user") {
+          const id = String(data.requestId || o.id || `seq:${o.seq}`);
+          if (!requests.has(id)) { requests.add(id); if (t != null) userAt.push(t); }
+          return;
+        }
+        if ((o.type === "item/started" || o.type === "item/completed") && isObj(data.item)) {
+          const item = data.item, id = String(item.id || o.id || `seq:${o.seq}`);
+          if (item.type === "userMessage") {
+            if (!messageItems.has(id)) { messageItems.add(id); if (t != null) userAt.push(t); }
+            return;
+          }
+          if (!workTypes.has(item.type) || workItems.has(id)) return;
+          workItems.add(id); if (t != null) workAt.push(t);
+          if (item.type === "commandExecution" && /(^|[;&|]\s*)git\s+commit\b/.test(String(item.command || ""))) commits += 1;
+          if (item.type === "fileChange" && Array.isArray(item.changes)) for (const change of item.changes) {
+            if (!isObj(change) || typeof change.path !== "string" || !change.path) continue;
+            files.add(change.path); touched.push(change.path);
+          }
+        }
+      },
+      done() {
+        // New exports carry client/turn/requested. userMessage items are a compatibility fallback,
+        // not a second count of the same human turn.
+        const typed = requests.size || messageItems.size;
+        if (!typed) throw readError("no-turns");
+        const start = userAt.length ? Math.min(...userAt) : (allAt.length ? Math.min(...allAt) : null);
+        const ev = start == null ? [] : allAt.filter((t) => t >= start).sort((a, b) => a - b);
+        let span = 0; for (let i = 1; i < ev.length; i++) span += Math.min(ev[i] - ev[i - 1], 1200);
+        const bins = Math.min(24, Math.max(1, typed)), rhythm = new Array(bins).fill(0), line = new Array(bins).fill(0);
+        if (userAt.length && start != null && span > 0) for (const t of userAt) rhythm[Math.min(bins - 1, Math.floor(((t - start) / span) * bins))] += 1;
+        else rhythm[0] = typed;
+        if (workAt.length && start != null && span > 0) for (const t of workAt) line[Math.min(bins - 1, Math.floor(((t - start) / span) * bins))] += 1;
+        else if (workItems.size) line[0] = workItems.size;
+        return { turns_typed: typed, tool_calls: workItems.size, files_touched: files.size || null,
+          commits: commits || null, duration_s: span ? Math.trunc(span) : null, started: start,
+          rhythm, line, line_basis: "bb work items per bin of moving time", route: folderRoute(touched) };
+      },
+    };
+  }
+
+  // A conservative fallback for other JSON/JSONL agents that record ordinary role-based
+  // messages. It proves only typed turns and explicit tool-call blocks. Unknown fields stay
+  // unknown, so a new agent can reach the review-and-save flow without invented measurements.
+  function genericReader() {
+    let typed = 0, tools = 0;
+    const stamps = [];
+    return {
+      harness: "Other agent",
+      add(o) {
+        const msg = isObj(o.message) ? o.message : o;
+        const role = o.role || msg.role || (o.type === "message" ? o.role : null);
+        const t = seconds(o.timestamp || o.created_at || o.createdAt);
+        if (t != null) stamps.push(t);
+        if (role === "user") typed += 1;
+        if (role === "assistant") {
+          if (Array.isArray(msg.tool_calls)) tools += msg.tool_calls.length;
+          const content = Array.isArray(msg.content) ? msg.content : [];
+          tools += content.filter((b) => isObj(b) && ["tool_use", "tool_call", "function_call"].includes(b.type)).length;
+        } else if (["tool_call", "function_call", "custom_tool_call"].includes(o.type)) tools += 1;
+      },
+      done() {
+        if (!typed) throw readError("no-turns");
+        return { turns_typed: typed, tool_calls: tools || null, files_touched: null, commits: null,
+          duration_s: stamps.length >= 2 ? Math.trunc(Math.max(...stamps) - Math.min(...stamps)) : null,
+          started: stamps.length ? Math.min(...stamps) : null, rhythm: [typed], route: [] };
+      },
+    };
+  }
+
   const MESSAGES = {
     "no-turns": "This file has no turn a person typed, so there is nothing to put on a card.",
     delegated: "This Codex session was run by another agent, not typed by a person.",
-    unknown: "This does not look like a Claude Code, Cursor or Codex session file. Pick a .jsonl file from one of the folders listed.",
+    unknown: "This does not look like a Claude Code, Cursor, Codex or bb session export. Choose a JSON/JSONL session with typed user messages, or use the manual post below without measured counts.",
     empty: "This file is empty.",
     binary: "This file is not text. Pick a .jsonl session file.",
   };
@@ -287,10 +372,12 @@
   // Which harness wrote this record. Codex wraps every record in a payload; Claude Code tags
   // records user/assistant with a session uuid; Cursor records are a bare role and message.
   function detect(o) {
+    if (isObj(o.data) && typeof o.type === "string" && typeof o.threadId === "string" && Number.isFinite(o.createdAt) && Number.isSafeInteger(o.seq)) return bbReader;
     if (isObj(o.payload) && typeof o.type === "string") return codexReader;
     if ((o.type === "user" || o.type === "assistant") && isObj(o.message)) return claudeReader;
     if (["summary", "system", "file-history-snapshot", "attachment", "queue-operation"].includes(o.type) && ("sessionId" in o || "uuid" in o || "leafUuid" in o || "messageId" in o)) return claudeReader;
     if ((o.role === "user" || o.role === "assistant") && isObj(o.message) && o.type === undefined) return cursorReader;
+    if (["user", "assistant"].includes(o.role) || (o.type === "message" && ["user", "assistant"].includes(o.role))) return genericReader;
     return null;
   }
 
@@ -368,7 +455,12 @@
 
   function parseText(text) {
     const r = createReader();
-    for (const line of String(text).split("\n")) r.line(line);
+    const source = String(text), trimmed = source.trim();
+    if (trimmed.startsWith("[")) {
+      let rows; try { rows = JSON.parse(trimmed); } catch (_) { throw readError("unknown"); }
+      if (!Array.isArray(rows)) throw readError("unknown");
+      for (const row of rows) r.line(JSON.stringify(row));
+    } else for (const line of source.split("\n")) r.line(line);
     return r.finish();
   }
 
@@ -380,6 +472,11 @@
     const r = createReader();
     const head = new Uint8Array(await file.slice(0, 512).arrayBuffer());
     if (head.includes(0)) throw readError("binary");
+    if (new TextDecoder("utf-8").decode(head).trimStart().startsWith("[")) {
+      const out = parseText(await file.text());
+      if (onProgress) onProgress(file.size, file.size);
+      return out;
+    }
     const reader = file.stream().getReader();
     const decoder = new TextDecoder("utf-8");
     let rest = "", read = 0;
@@ -419,7 +516,7 @@
     };
   }
 
-  const api = { parseText, parseFile, createReader, uploadPayload, folderRoute, UPLOAD_KEYS, HARNESSES, isHumanTurn, cursorTime, seconds };
+  const api = { parseText, parseFile, createReader, uploadPayload, folderRoute, UPLOAD_KEYS, HARNESSES, IMPORT_HARNESSES, isHumanTurn, cursorTime, seconds };
   root.GrinderDropin = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

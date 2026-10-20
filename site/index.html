@@ -1829,7 +1829,8 @@ function dropZoneHtml(){
 const AGENT_FILES=[
     ['Claude Code','~/.claude/projects/','one folder per project, newest .jsonl is your latest session',''],
     ['Cursor','~/.cursor/projects/','then <project>/agent-transcripts/<id>/<id>.jsonl',''],
-    ['Codex','~/.codex/sessions/','then YYYY/MM/DD/rollout-….jsonl','']];
+    ['Codex','~/.codex/sessions/','then YYYY/MM/DD/rollout-….jsonl',''],
+    ['bb','bb thread log --self --all --json > bb-session.json','run this inside the bb thread, then choose bb-session.json','local export; prompts stay in the file until you choose to save']];
 // The newest public runs, only Public ones: a Link run never reaches this door.
 async function fetchLatestPublicRuns(limit){
   if(!sb) return null;
