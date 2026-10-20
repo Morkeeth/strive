@@ -39,6 +39,7 @@ assert.throws(()=>Contract.validate({schema_version:1,turns_typed:0,prompt_prove
 assert.equal(Contract.validate({schema_version:1,turns_typed:null,prompt_provenance:unknownOnly}).turns_typed,null);
 const uploaded=DropinForProvenance.uploadPayload({harness:'Claude Code',turns_typed:summary.human_turns,prompt_provenance:summary,rhythm:[1]},'Run');
 assert.deepEqual(uploaded.prompt_provenance,summary,'anonymous-link payload carries validated provenance');
+assert.equal(uploaded.turns_typed,null,'an unknown origin cannot leave the device as a false measured human count');
 
 const {readPublic}=await import('../server/public-run.mjs');
 const requested=[];

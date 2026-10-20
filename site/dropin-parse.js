@@ -535,10 +535,14 @@
   function uploadPayload(run, title) {
     const whole = (v) => (Number.isSafeInteger(v) && v >= 0 ? v : null);
     const started = run.started ? new Date(run.started) : null;
+    const prompt_provenance = run.prompt_provenance ? provenance.validate(run.prompt_provenance) : null;
+    const turns_typed = prompt_provenance
+      ? (prompt_provenance.unknown_turns ? null : prompt_provenance.human_turns)
+      : whole(run.turns_typed);
     return {
       title: String(title || "").replace(/[\u0000-\u001f\u007f]+/g, " ").trim().slice(0, 80),
       harness: HARNESSES.includes(run.harness) ? run.harness : null,
-      turns_typed: whole(run.turns_typed),
+      turns_typed,
       tool_calls: whole(run.tool_calls),
       files_touched: whole(run.files_touched),
       commits: whole(run.commits),
@@ -547,7 +551,7 @@
       rhythm: (Array.isArray(run.line) && run.line.length ? run.line : Array.isArray(run.rhythm) ? run.rhythm : []).slice(0, 24).map((v) => whole(v) ?? 0),
       // Station indices only (folderRoute); a run that touched no file has no map.
       route: Array.isArray(run.route) && run.route.length && run.route.length <= MAX_MOVES && run.route.every((v) => Number.isInteger(v) && v >= 0 && v < MAX_STATIONS) ? run.route : null,
-      prompt_provenance: run.prompt_provenance ? provenance.validate(run.prompt_provenance) : null,
+      prompt_provenance,
     };
   }
 
