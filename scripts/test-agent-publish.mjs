@@ -495,7 +495,7 @@ const draftGate=await act(reviewToken,'draft',strivePayload(REV('review-draft'),
 assert.equal(draftGate.review_required,true);
 assert.equal((await db.query('select payload from strava.grinder_agent_drafts where id=$1',[draftGate.id])).rows[0].payload.visibility,'private');
 assert.equal((await db.query("select count(*)::int as n from strava.runs where measurement_revision=$1 and visibility<>'private'",[REV('review-after')])).rows[0].n,0);
-const provenanceRun=await act(reviewToken,'publish',strivePayload(REV('review-provenance'),{prompt_provenance:promptProvenance}));
+const provenanceRun=await act(reviewToken,'publish',strivePayload(REV('review-provenance'),{turns_typed:promptProvenance.human_turns,prompt_provenance:promptProvenance}));
 assert.deepEqual((await db.query('select prompt_provenance from strava.runs where id=$1',[provenanceRun.id])).rows[0].prompt_provenance,promptProvenance);
 console.log('PASS database review gate: direct RPC public request saves privately; private preview preserves measurements; existing public run is byte-for-byte unchanged on retry; draft payload forced private');
 await db.close();
