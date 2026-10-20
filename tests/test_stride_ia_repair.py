@@ -193,11 +193,12 @@ def test_notifications_reuse_the_existing_rls_backed_store():
         ("grinder_notifications", own),
     ]
     assert inbox["reads"][0]["calls"][2:] == [["order", "created_at", {"ascending": False}], ["limit", 50]]
+    # The default inbox is the one-time view: already-read rows stay available only
+    # through the explicit All history filter.
     assert inbox["items"] == [
         {"id": "n1", "state": "card response-item unread", "links": [
             ["Open profile", "/fixture-actor"],
             ["Open exact reply", "/?run=11111111-1111-4111-8111-111111111111#reply-22222222-2222-4222-8222-222222222222"]]},
-        {"id": "n2", "state": "card response-item read", "links": [["Open profile", "/fixture-actor"], ["Open Following", "/?following"]]},
     ]
     # The compact panel is still exported by the module and keeps the same rules.
     seen = node(NOTIFICATIONS)
