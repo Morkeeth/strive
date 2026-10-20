@@ -215,7 +215,8 @@
         const bins = Math.min(24, perTurn.length);
         const line = new Array(bins).fill(0);
         perTurn.forEach((v, i) => { line[Math.min(bins - 1, Math.floor((i * bins) / perTurn.length))] += v; });
-        return { turns_typed: typed, prompt_provenance: provenance.summary(provenanceEvents), tool_calls: tools, files_touched: files.size || null,
+        const promptProvenance = provenance.summary(provenanceEvents);
+        return { turns_typed: promptProvenance.unknown_turns ? null : typed, prompt_provenance: promptProvenance, tool_calls: tools, files_touched: files.size || null,
           commits: edits || commits ? commits : null, duration_s: null,
           started: stamps.length ? Math.min(...stamps) : null, rhythm, line, line_basis: "tool calls per typed turn, in turn order",
           route: folderRoute(touched) };
@@ -351,7 +352,7 @@
         else rhythm[0] = typed;
         if (workAt.length && start != null && span > 0) for (const t of workAt) line[Math.min(bins - 1, Math.floor(((t - start) / span) * bins))] += 1;
         else if (workItems.size) line[0] = workItems.size;
-        return { turns_typed: typed, prompt_provenance: promptProvenance, tool_calls: workItems.size, files_touched: files.size || null,
+        return { turns_typed: promptProvenance.unknown_turns ? null : typed, prompt_provenance: promptProvenance, tool_calls: workItems.size, files_touched: files.size || null,
           commits: commits || null, duration_s: span ? Math.trunc(span) : null, started: start,
           rhythm, line, line_basis: "bb work items per bin of moving time", route: folderRoute(touched) };
       },
@@ -530,7 +531,7 @@
 
   // THE ONLY THING THAT MAY LEAVE THE DEVICE. "Anyone with the link" sends exactly this object, and the
   // database refuses any key that is not on the same list (supabase/strava/011_dropin_links.sql).
-  const UPLOAD_KEYS = ["title", "harness", "turns_typed", "tool_calls", "files_touched", "commits", "duration_s", "started_hour", "rhythm", "route"];
+  const UPLOAD_KEYS = ["title", "harness", "turns_typed", "tool_calls", "files_touched", "commits", "duration_s", "started_hour", "rhythm", "route", "prompt_provenance"];
   function uploadPayload(run, title) {
     const whole = (v) => (Number.isSafeInteger(v) && v >= 0 ? v : null);
     const started = run.started ? new Date(run.started) : null;
@@ -546,6 +547,7 @@
       rhythm: (Array.isArray(run.line) && run.line.length ? run.line : Array.isArray(run.rhythm) ? run.rhythm : []).slice(0, 24).map((v) => whole(v) ?? 0),
       // Station indices only (folderRoute); a run that touched no file has no map.
       route: Array.isArray(run.route) && run.route.length && run.route.length <= MAX_MOVES && run.route.every((v) => Number.isInteger(v) && v >= 0 && v < MAX_STATIONS) ? run.route : null,
+      prompt_provenance: run.prompt_provenance ? provenance.validate(run.prompt_provenance) : null,
     };
   }
 

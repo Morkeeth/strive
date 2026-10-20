@@ -41,6 +41,17 @@ def _result(kind: str, confidence: str, adapter: str, fields: list[str], relayed
 def claude_code(record: dict, _context: dict | None = None):
     if record.get("type") != "user" or _tool_result(record) or record.get("isMeta"):
         return None
+    # Claude stores transcript bookkeeping in user-role envelopes too. These rows are
+    # visible context, not authored prompts, and must not make a known human count unknown.
+    if record.get("isCompactSummary") or record.get("isVisibleInTranscriptOnly"):
+        return None
+    content = record.get("message", {}).get("content") if isinstance(record.get("message"), dict) else None
+    rendered = content if isinstance(content, str) else " ".join(
+        str(block.get("text") or "") for block in content or []
+        if isinstance(block, dict) and block.get("type") == "text"
+    )
+    if rendered.lstrip().startswith(("<bash-input>", "<local-command", "<command-name>")):
+        return None
     if record.get("promptSource") in ("typed", "queued") and not record.get("isSidechain"):
         return _result("human-typed", "high", "claude-code", ["promptSource", "isMeta", "isSidechain"])
     if record.get("isSidechain"):
@@ -147,7 +158,7 @@ def validate(value: dict | None):
         return None
     if not isinstance(value, dict) or set(value) != {"v", "counts", "human_turns", "known_autonomous_turns", "unknown_turns", "relays"}:
         raise ValueError("invalid prompt provenance")
-    if value["v"] != 1 or not isinstance(value["counts"], dict) or set(value["counts"]) != set(KINDS):
+    if type(value["v"]) is not int or value["v"] != 1 or not isinstance(value["counts"], dict) or set(value["counts"]) != set(KINDS):
         raise ValueError("invalid prompt provenance kinds")
     if any(type(value["counts"][kind]) is not int or not 0 <= value["counts"][kind] <= 1000000 for kind in KINDS):
         raise ValueError("invalid prompt provenance count")
@@ -156,11 +167,11 @@ def validate(value: dict | None):
         "known_autonomous_turns": value["counts"]["agent-to-agent"] + value["counts"]["automation"],
         "unknown_turns": value["counts"]["unknown"],
     }
-    if any(value[key] != expected[key] for key in expected):
+    if any(type(value[key]) is not int or not 0 <= value[key] <= 1000000 or value[key] != expected[key] for key in expected):
         raise ValueError("prompt provenance totals do not add up")
     relays = value["relays"]
     if not isinstance(relays, dict) or len(relays) > 16 or any(
-        not isinstance(key, str) or not 1 <= len(key) <= 40 or type(count) is not int or count < 1
+        not isinstance(key, str) or not 1 <= len(key) <= 40 or type(count) is not int or not 1 <= count <= 1000000
         for key, count in relays.items()
     ) or sum(relays.values()) != value["counts"]["human-via-tool"]:
         raise ValueError("invalid prompt provenance relays")

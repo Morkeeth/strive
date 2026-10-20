@@ -62,8 +62,9 @@ def sittings(path, harness, gap=1800):
         if not isinstance(payload, dict): payload = {}
         if harness == "codex" and row.get("type") == "session_meta":
             metadata.append({k:v for k,v in row.items() if k != "timestamp"})
-            delegated = isinstance(payload.get("source"),dict) and "subagent" in payload["source"]
-            automated = payload.get("source") in ("cron", "ci", "hook", "automation")
+            if len(metadata) == 1:
+                delegated = isinstance(payload.get("source"),dict) and "subagent" in payload["source"]
+                automated = payload.get("source") in ("cron", "ci", "hook", "automation")
             continue
         if harness == "codex":
             text = None

@@ -49,3 +49,20 @@ def test_validation_accepts_json_objects_regardless_of_key_order():
     out = summary([])
     out["counts"] = dict(reversed(list(out["counts"].items())))
     assert validate(out) is out
+
+
+@pytest.mark.parametrize("row", [
+    {"type": "user", "isCompactSummary": True, "message": {"content": "continued summary"}},
+    {"type": "user", "isVisibleInTranscriptOnly": True, "message": {"content": "local echo"}},
+    {"type": "user", "message": {"content": "<bash-input>git status</bash-input>"}},
+])
+def test_claude_bookkeeping_user_envelopes_are_not_prompt_events(row):
+    assert classify("claude-code", row) is None
+
+
+def test_validation_rejects_boolean_and_out_of_range_derived_totals():
+    out = summary([])
+    with pytest.raises(ValueError):
+        validate({**out, "v": True})
+    with pytest.raises(ValueError):
+        validate({**out, "human_turns": 1000001})

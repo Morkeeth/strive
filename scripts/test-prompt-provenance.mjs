@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import Provenance from '../site/provenance.js';
-const require=createRequire(import.meta.url),Feed=require('../site/feed-card.js'),Context=require('../site/run-context.js');
+const require=createRequire(import.meta.url),Feed=require('../site/feed-card.js'),Context=require('../site/run-context.js'),DropinForProvenance=require('../site/dropin-parse.js');
 
 assert.deepEqual(Object.keys(Provenance.ADAPTERS).sort(),['bb','claude','codex','cursor']);
 const events=[
@@ -28,6 +28,12 @@ const injected=Provenance.classify('codex',{type:'event_msg',payload:{type:'user
 assert.equal(injected,null,'agent context in a user-role envelope is not human input');
 const desktopInjected=Provenance.classify('codex',{type:'response_item',payload:{type:'message',role:'user',content:[{type:'input_text',text:'# AGENTS.md instructions\n<INSTRUCTIONS>injected</INSTRUCTIONS>'}]}});
 assert.equal(desktopInjected,null,'desktop list-form agent context is not human input');
+assert.equal(Provenance.classify('claude',{type:'user',isCompactSummary:true,message:{content:'summary'}}),null);
+assert.equal(Provenance.classify('claude',{type:'user',isVisibleInTranscriptOnly:true,message:{content:'echo'}}),null);
+assert.equal(Provenance.classify('claude',{type:'user',message:{content:'<bash-input>git status</bash-input>'}}),null);
+assert.throws(()=>Provenance.validate({...Provenance.summary([]),human_turns:1000001}),/Invalid prompt provenance total/);
+const uploaded=DropinForProvenance.uploadPayload({harness:'Claude Code',turns_typed:summary.human_turns,prompt_provenance:summary,rhythm:[1]},'Run');
+assert.deepEqual(uploaded.prompt_provenance,summary,'anonymous-link payload carries validated provenance');
 
 const {readPublic}=await import('../server/public-run.mjs');
 const requested=[];

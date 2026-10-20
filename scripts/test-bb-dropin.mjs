@@ -40,6 +40,11 @@ const agentOnly=Dropin.parseText(JSON.stringify([
 assert.equal(agentOnly.turns_typed,0,'agent-started bb requests never fall back to userMessage lifecycle rows');
 assert.equal(agentOnly.prompt_provenance.counts['agent-to-agent'],1);
 
+const legacyOnly=Dropin.parseText(JSON.stringify([
+ {type:'item/started',threadId:'t',seq:1,createdAt:1760954400000,data:{item:{id:'u1',type:'userMessage'}}},
+]));
+assert.equal(legacyOnly.turns_typed,null,'legacy lifecycle-only bb exports do not claim zero human turns');
+
 const blob=new Blob([source]);
 const streamed=await Dropin.parseFile(blob);
 assert.deepEqual(streamed,run,'pretty JSON array follows the same browser File path');

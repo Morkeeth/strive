@@ -247,6 +247,7 @@ def parse_session(path: str, athlete: str = "you") -> dict:
     title = (first_prompt[:60] + "…") if first_prompt and len(first_prompt) > 60 else (first_prompt or f"{proj_name} session")
     route_ix, route_names = folder_route(touched)
 
+    prompt_provenance = provenance_summary(provenance_events)
     return {
         "athlete": athlete,
         "title": title,
@@ -529,6 +530,7 @@ def parse_cursor_session(path: str, athlete: str = "you", records=None, cursor_d
 
     route_ix, route_names = folder_route(touched)
     from .provenance import summary as provenance_summary
+    prompt_provenance = provenance_summary(provenance_events)
     run = {
         "athlete": athlete, "title": title, "harness": "Cursor",
         "project": public_project or proj or None,
@@ -538,7 +540,8 @@ def parse_cursor_session(path: str, athlete: str = "you", records=None, cursor_d
         "started": (min(pts).isoformat() if pts else None),
         "trace_basis": "typed-turn order; spacing is not elapsed time; sessions split on human-turn gaps, not measured idle",
         "capabilities": {"timed_trace": False, "claim_evidence": False, "authorship": True},
-        "duration_s": dur, "turns_typed": typed, "prompt_provenance": provenance_summary(provenance_events), "tool_calls": tool_calls,
+        "duration_s": dur, "turns_typed": typed if not prompt_provenance["unknown_turns"] else None,
+        "prompt_provenance": prompt_provenance, "tool_calls": tool_calls,
         "shell_calls": shell_calls,
         "files_touched": len(files) if files else None,
         # Cursor's `files` set only ever holds paths a write tool named, so touched and changed

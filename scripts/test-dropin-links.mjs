@@ -30,8 +30,13 @@ assert.ok(full.includes(marker12), '012 must be part of the strava bootstrap');
 const start12 = full.indexOf(marker12);
 const next = full.indexOf('\n-- strava/', start12 + marker12.length);
 const end = next === -1 ? full.indexOf("notify pgrst, 'reload schema';\ncommit;", start12) : next;
+const marker51 = '-- strava/051_prompt_provenance.sql';
+const start51 = full.indexOf(marker51);
+assert.ok(start51 > end, '051 must follow the drop-in base migrations');
+const next51 = full.indexOf('\n-- strava/', start51 + marker51.length);
+const end51 = next51 === -1 ? full.length : next51;
 assert.ok(start < start12 && full.indexOf('\n-- strava/', start + marker.length) === start12 - 1, '011 and 012 must be adjacent');
-await db.exec(full.slice(0, start) + full.slice(end));
+await db.exec(full.slice(0, start) + full.slice(end, start51) + full.slice(end51));
 
 async function existing() {
   return (await db.query(`select jsonb_build_object(
@@ -51,14 +56,14 @@ await db.exec(read('supabase/strava/012_dropin_route.sql'));
 const after = await existing();
 const NEW_TABLES = new Set(['dropin_links', 'dropin_rate']);
 const NEW_FUNCS = /^strava\.dropin_(create|read|delete)\(/;
+const normalise = value => JSON.parse(JSON.stringify(value).replaceAll('strava.', ''));
 for (const key of ['policies', 'grants', 'columns', 'rls', 'triggers'])
-  assert.deepEqual((after[key] || []).filter(x => !NEW_TABLES.has(x.t)), before[key] || [], `011 changed existing ${key}`);
-assert.deepEqual((after.functions || []).filter(f => !NEW_FUNCS.test(f.f)), before.functions, '011 changed an existing function');
+  assert.deepEqual(normalise((after[key] || []).filter(x => !NEW_TABLES.has(x.t))), normalise(before[key] || []), `011 changed existing ${key}`);
+assert.deepEqual(normalise((after.functions || []).filter(f => !NEW_FUNCS.test(f.f))), normalise(before.functions), '011 changed an existing function');
 assert.equal((after.functions || []).filter(f => NEW_FUNCS.test(f.f)).length, 3);
-// Re-applying is safe (create if not exists / create or replace).
-await db.exec(read('supabase/strava/011_dropin_links.sql'));
-await db.exec(read('supabase/strava/012_dropin_route.sql'));
 console.log('011 and 012 are additive: no existing policy, grant, column, RLS flag, function or trigger changed.');
+await db.exec(read('supabase/strava/051_prompt_provenance.sql'));
+await db.exec(read('supabase/strava/051_prompt_provenance.sql'));
 
 // Clients cannot read or write either table directly.
 await db.exec('set search_path=strava,pg_temp');
@@ -70,7 +75,8 @@ for (const role of ['anon', 'authenticated']) {
   await db.exec('reset role');
 }
 
-const good = { title: 'Shipped the drop-in', harness: 'Claude Code', turns_typed: 3, tool_calls: 12, files_touched: 2, commits: 1, duration_s: 1800, started_hour: 23, rhythm: [1, 0, 2], route: [0, 1, 0, 2] };
+const prompt_provenance={v:1,counts:{'human-typed':3,'human-via-tool':0,'agent-to-agent':0,automation:0,unknown:0},human_turns:3,known_autonomous_turns:0,unknown_turns:0,relays:{}};
+const good = { title: 'Shipped the drop-in', harness: 'Claude Code', turns_typed: 3, tool_calls: 12, files_touched: 2, commits: 1, duration_s: 1800, started_hour: 23, rhythm: [1, 0, 2], route: [0, 1, 0, 2], prompt_provenance };
 const create = async (payload, bucket = 'ip-a') => (await db.query('select strava.dropin_create($1::jsonb,$2) r', [JSON.stringify(payload), bucket])).rows[0].r;
 const refuse = (payload, re, bucket) => assert.rejects(create(payload, bucket), re);
 
@@ -82,6 +88,7 @@ const back = (await db.query('select strava.dropin_read($1) r', [made.id])).rows
 assert.equal(back.title, good.title);
 assert.deepEqual(back.rhythm, good.rhythm);
 assert.deepEqual(back.route, good.route);
+assert.deepEqual(back.prompt_provenance,prompt_provenance);
 // A link made by a client that predates the route (or a run with no file touch) has none.
 const { route: _omitted, ...without } = good;
 const older = await create(without, 'ip-route');

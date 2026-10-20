@@ -48,7 +48,7 @@ begin
    if not existing then
     insert into runs(profile_id,title,project,harness,prompts,duration_s,tool_calls,files_touched,commits,claims,claims_verified,artifacts_produced,visibility,started_at,source_actor_id,agent_name,schema_version,measurement_revision,baseline_revision,rhythm,route,note,trace_basis,
      ridge,worker_bins,commit_bins,ridge_basis,ridge_wall_seconds,ridge_tool_calls,wall_time_s,shell_calls,model,caption,
-     repo_url,receipts,shipped,artifact_url,image_url,code_route,capture_metadata)
+     repo_url,receipts,shipped,artifact_url,image_url,code_route,capture_metadata,prompt_provenance)
     values(actor.owner_id,left(coalesce(payload->>'title','Agent grind'),200),left(payload->>'project',200),left(payload->>'harness',100),
      (payload->>'turns_typed')::integer,(payload->>'duration_s')::double precision,(payload->>'tool_calls')::integer,
      (payload->>'files_touched')::integer,(payload->>'commits')::integer,(payload->>'claims')::integer,(payload->>'claims_verified')::integer,
@@ -57,7 +57,7 @@ begin
      (payload->>'ridge_wall_seconds')::double precision,(payload->>'ridge_tool_calls')::integer,(payload->>'wall_time_s')::integer,(payload->>'shell_calls')::integer,
      nullif(trim(payload->>'model'),''),nullif(trim(payload->>'caption'),''),
      nullif(payload->>'repo_url',''),nullif(payload->'receipts','null'::jsonb),nullif(payload->'shipped','null'::jsonb),
-     nullif(payload->>'artifact_url',''),nullif(payload->>'image_url',''),nullif(payload->'code_route','null'::jsonb),nullif(payload->'capture_metadata','null'::jsonb))
+     nullif(payload->>'artifact_url',''),nullif(payload->>'image_url',''),nullif(payload->'code_route','null'::jsonb),nullif(payload->'capture_metadata','null'::jsonb),nullif(payload->'prompt_provenance','null'::jsonb))
     returning id into result_id;
    end if;
   end if;
