@@ -160,7 +160,9 @@ def validate(value: dict | None):
         return None
     if not isinstance(value, dict) or set(value) != {"v", "counts", "human_turns", "known_autonomous_turns", "unknown_turns", "relays"}:
         raise ValueError("invalid prompt provenance")
-    if type(value["v"]) is not int or value["v"] != 1 or not isinstance(value["counts"], dict) or set(value["counts"]) != set(KINDS):
+    # JSON has one number type: browsers and PostgreSQL cannot distinguish 1 from 1.0 after
+    # exchange. Accept both spellings, but never Python's bool subclass.
+    if type(value["v"]) not in (int, float) or value["v"] != 1 or not isinstance(value["counts"], dict) or set(value["counts"]) != set(KINDS):
         raise ValueError("invalid prompt provenance kinds")
     if any(type(value["counts"][kind]) is not int or not 0 <= value["counts"][kind] <= 1000000 for kind in KINDS):
         raise ValueError("invalid prompt provenance count")

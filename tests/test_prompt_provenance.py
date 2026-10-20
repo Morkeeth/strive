@@ -73,3 +73,7 @@ def test_validation_rejects_boolean_and_out_of_range_derived_totals():
         validate({**out, "v": True})
     with pytest.raises(ValueError):
         validate({**out, "human_turns": 1000001})
+
+
+def test_json_number_version_matches_browser_and_database():
+    assert validate({**summary([]), "v": 1.0})["v"] == 1.0
