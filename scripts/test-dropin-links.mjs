@@ -107,6 +107,7 @@ await refuse({ ...good, title: 'x'.repeat(81) }, /1 to 80/);
 await refuse({ ...good, harness: 'Grok Bot' }, /out of range/);
 await refuse({ ...good, turns_typed: -1 }, /out of range/);
 await refuse({ ...good, turns_typed: 1.5 }, /whole numbers/);
+await refuse({ ...good, turns_typed: null, prompt_provenance: null }, /require prompt provenance/);
 await refuse({ ...good, rhythm: ['a'] }, /rhythm/);
 await refuse({ ...good, rhythm: 'text' }, /rhythm/);
 await refuse({ ...good, rhythm: Array(25).fill(1) }, /out of range/);

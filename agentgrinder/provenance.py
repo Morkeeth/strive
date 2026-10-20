@@ -7,10 +7,12 @@ typed it. New tools join the registry with one adapter and fixtures for every cl
 from __future__ import annotations
 
 from collections import Counter
+import re
 from typing import Callable
 
 KINDS = ("human-typed", "human-via-tool", "agent-to-agent", "automation", "unknown")
 CONFIDENCE = ("high", "medium", "low")
+RELAY_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._:/+\-]{0,39}$")
 CODEX_INJECTED = (
     "<recommended_plugins>", "<environment_context>", "<turn_aborted>",
     "# Files mentioned by the user:", "# AGENTS.md instructions", "<permissions instructions>",
@@ -171,7 +173,7 @@ def validate(value: dict | None):
         raise ValueError("prompt provenance totals do not add up")
     relays = value["relays"]
     if not isinstance(relays, dict) or len(relays) > 16 or any(
-        not isinstance(key, str) or not 1 <= len(key) <= 40 or type(count) is not int or not 1 <= count <= 1000000
+        not isinstance(key, str) or RELAY_NAME.fullmatch(key) is None or type(count) is not int or not 1 <= count <= 1000000
         for key, count in relays.items()
     ) or sum(relays.values()) != value["counts"]["human-via-tool"]:
         raise ValueError("invalid prompt provenance relays")

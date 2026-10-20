@@ -45,6 +45,13 @@ def test_summary_counts_human_relay_and_keeps_unknown_visible():
     assert out["relays"] == {"bb": 1}
 
 
+@pytest.mark.parametrize("relay", ["a\nb", "😀" * 21])
+def test_relay_names_use_the_same_bounded_ascii_contract(relay):
+    value = summary([{"kind": "human-via-tool", "confidence": "high", "adapter": "bb", "fields": [], "relayed_by": relay}])
+    with pytest.raises(ValueError, match="relays"):
+        validate(value)
+
+
 def test_validation_accepts_json_objects_regardless_of_key_order():
     out = summary([])
     out["counts"] = dict(reversed(list(out["counts"].items())))

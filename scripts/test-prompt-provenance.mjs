@@ -15,6 +15,8 @@ assert.deepEqual(events.map(e=>e.kind),Provenance.KINDS);
 const summary=Provenance.summary(events);
 assert.throws(()=>Provenance.validate({...summary,raw_prompt:'secret'}),/Invalid prompt provenance/);
 assert.throws(()=>Provenance.validate({...summary,relays:{bb:1000001}}),/Invalid prompt provenance relays/);
+assert.throws(()=>Provenance.validate({...summary,relays:{'a\nb':1}}),/Invalid prompt provenance relays/);
+assert.throws(()=>Provenance.validate({...summary,relays:{['😀'.repeat(21)]:1}}),/Invalid prompt provenance relays/);
 assert.equal(summary.human_turns,2);
 assert.equal(summary.known_autonomous_turns,2);
 assert.equal(summary.unknown_turns,1);

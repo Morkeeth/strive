@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from .authorship import is_human_turn, has_tool_result
 from .contract import validate_run
+from .provenance import classify as classify_provenance, summary as provenance_summary
 
 
 def capture(path: str) -> dict:
@@ -64,7 +65,9 @@ def capture(path: str) -> dict:
     for stamp in tools:
         rhythm[min(59, int((stamp-start).total_seconds()/max(span, 1)*60))] += 1
     revision = hashlib.sha256(b'grinder-claude-agent-v1\0' + raw).hexdigest()
-    result = dict(schema_version=1, harness='claude-agent', turns_typed=0,
+    prompt_provenance = provenance_summary([classify_provenance('claude-code', row) for row in prompts])
+    result = dict(schema_version=1, harness='claude-agent', turns_typed=None,
+                  prompt_provenance=prompt_provenance,
                   started=start.isoformat(), duration_s=span, tool_calls=len(tools),
                   rhythm=rhythm, trace_basis='elapsed-agent-tool-calls',
                   measurement_revision=revision)

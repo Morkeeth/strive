@@ -11,6 +11,8 @@ try{
  assert.deepEqual(saved.prompt_provenance,valid);
  await assert.rejects(insert({...valid,human_turns:44}),/Human provenance total mismatch/);
  await assert.rejects(insert({...valid,relays:{bb:'3'}}),/Invalid relay count/);
+ await assert.rejects(insert({...valid,relays:{'a\nb':3}}),/Invalid relay count/);
+ await assert.rejects(insert({...valid,relays:{['😀'.repeat(21)]:3}}),/Invalid relay count/);
  await assert.rejects(insert({...valid,raw_prompt:'secret'}),/Unsupported prompt provenance field/);
  const {unknown_turns,...missingTotal}=valid;
  await assert.rejects(insert(missingTotal),/Missing prompt provenance field/);

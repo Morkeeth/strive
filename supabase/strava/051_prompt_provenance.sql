@@ -28,7 +28,7 @@ begin
  if (p->>'unknown_turns')::numeric <> (p->'counts'->>'unknown')::numeric then raise exception 'Unknown provenance total mismatch'; end if;
  if (select count(*) from jsonb_object_keys(p->'relays'))>16 then raise exception 'Too many relay names'; end if;
  for k,relay_value in select key,value from jsonb_each(p->'relays') loop
-  if length(k) not between 1 and 40 or strava.grinder_is_safe_count(relay_value) is not true then raise exception 'Invalid relay count'; end if;
+  if k !~ '^[A-Za-z0-9][A-Za-z0-9 ._:/+\-]{0,39}$' or strava.grinder_is_safe_count(relay_value) is not true then raise exception 'Invalid relay count'; end if;
   if (relay_value::text)::numeric>1000000 then raise exception 'Invalid relay count'; end if;
   relay_total := relay_total+(relay_value::text)::numeric;
  end loop;
@@ -85,6 +85,9 @@ language plpgsql volatile security definer set search_path=strava,pg_temp as $$
 declare made jsonb; provenance jsonb:=nullif(payload->'prompt_provenance','null'::jsonb);
 begin
  perform strava.check_prompt_provenance(provenance);
+ if nullif(payload->'turns_typed','null'::jsonb) is null and provenance is null then
+  raise exception 'Unknown human turns require prompt provenance';
+ end if;
  made:=strava.dropin_create_without_prompt_provenance_051(payload-'prompt_provenance',bucket);
  update strava.dropin_links set prompt_provenance=provenance where id=(made->>'id')::uuid;
  return made;
