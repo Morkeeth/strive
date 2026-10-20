@@ -21,9 +21,9 @@ def test_post_page_exposes_priority_harnesses_and_private_preview():
     page = json.loads(subprocess.check_output(
         ["node", str(ROOT / "tests/fixtures/connect_body_probe.mjs"), str(ROOT)], cwd=ROOT, text=True))
     assert "capture → preview → share" not in page["body"]
-    # The priority harnesses are the four choices the page opens on, in this order. Three open a
-    # local session picker (dc6cc32); Grok Bot is asked through the agent guide.
-    assert [source["name"] for source in page["sources"]] == ["Cursor", "Claude Code", "Codex", "Grok Bot"]
+    # Native agents open a local picker, Grok Bot uses the agent guide, and bb exports the current
+    # thread through its local CLI before the browser reads it.
+    assert [source["name"] for source in page["sources"]] == ["Cursor", "Claude Code", "Codex", "Grok Bot", "bb"]
     for source in ("cursor", "claude", "codex"):
         command = f"uvx --from __CAPTURE_PACKAGE__ strive sessions --harness {source} --open --site __ORIGIN__"
         assert page["picks"][source]["command"] == command and page["picks"][source]["quick"] is True

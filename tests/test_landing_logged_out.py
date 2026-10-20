@@ -131,7 +131,8 @@ def test_the_drop_zone_left_the_home_for_add_a_run():
     page = node(RENDER_CONNECT)
     assert page["drop"] == {"count": 1, "entry": "post-file-entry", "open": False, "summary": "Or drop a session file"}
     assert page["fixture"]["drop"] == "post-file-entry"
-    assert page["folders"] == ['~/.claude/projects/', '~/.cursor/projects/', '~/.codex/sessions/']
+    assert page["folders"] == ['~/.claude/projects/', '~/.cursor/projects/', '~/.codex/sessions/',
+                               'bb thread log --self --all --json > bb-session.json']
     route = HTML[HTML.index('async function route(){'):]
     assert "if(location.hash==='#drop-zone') return viewPost();" in route
     # d716f23 (8 Oct 2026): home starts with real public work for everybody; Following is a filter.

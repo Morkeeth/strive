@@ -133,7 +133,10 @@ def make_server(harness, root, site, candidates=None):
         progress('finding')
         selected=rows[index];kind=selected['harness'];e=html.escape
         info=inspect_source(selected['source'],kind,progress=progress);groups=info['sittings']
-        if not groups:raise ValueError('No recorded human sitting found in this session.')
+        if not groups:
+            if info.get('sdk_requests'):
+                raise ValueError('This Claude Code file contains Agent SDK requests, not provable typed turns. For a bb session, run `bb thread log --all --json` and choose that export on Add run.')
+            raise ValueError('No recorded human sitting found in this session.')
         choices=''.join(f'<label class="pick"><input type="radio" name="sitting" value="{g["sitting"]}" required> <strong>Sitting {g["sitting"]}</strong><small>{e(local_time(g["start"]))} → {e(local_time(g["end"]))}</small><small>{g["typed"]} typed turns · {g["records"]} records</small><p>{e(clean_prompt(g["prompt"],kind) or "First prompt not captured")}</p></label>' for g in reversed(groups))
         return f'<h1>Choose the part you worked on</h1><p>A sitting starts with a human turn and splits after a recorded gap of 30 minutes. Times include their UTC offset. Only your choice becomes a preview.</p><form method="post" action="/{nonce}"><input type="hidden" name="token" value="{nonce}"><input type="hidden" name="session" value="{index}"><input type="hidden" name="project" value="{e(name,quote=True)}">{choices}<button>Prepare private preview</button></form>',200
     def start(index,name,sitting,phase='preview'):

@@ -145,15 +145,18 @@ def inspect_source(source, harness, gap=1800, _frozen=False, progress=None):
     session = source_identity((row for _, row, _ in records(path)), harness, path)
     codex_events = harness == 'codex' and any(row.get('type') == 'event_msg' and isinstance(row.get('payload'), dict) and row['payload'].get('type') == 'user_message' for _, row, _ in records(path))
     groups = []
+    sdk_requests = 0
     seen = 0
     if progress: progress('reading', 0, 'records read')
     if harness == 'claude':
+        from .authorship import is_external_sdk_turn
         events = []
         for _, row, _ in records(path):
             seen += 1
             if progress and seen % 256 == 0: progress('reading', seen, 'records read')
             at = stamp(row)
             if at is None: continue
+            sdk_requests += int(is_external_sdk_turn(row))
             human = prompt(row, harness)
             events.append((at, human is not None, ' '.join((human or '').split())[:180]))
             if len(events) > MAX_EVENTS: raise ValueError('More than 250,000 dated records; select a smaller native export.')
@@ -191,7 +194,7 @@ def inspect_source(source, harness, gap=1800, _frozen=False, progress=None):
     if progress: progress('reading', seen, 'records read')
     if signature(path) != before: raise ValueError('The session changed while reading. Retry when its writer is idle.')
     for i, group in enumerate(groups): group['sitting']=i+1
-    return dict(source=str(path),session=session,sha256=digest.hexdigest(),bytes=before[2],signature=before,sittings=groups)
+    return dict(source=str(path),session=session,sha256=digest.hexdigest(),bytes=before[2],signature=before,sittings=groups,sdk_requests=sdk_requests)
 
 
 @contextmanager

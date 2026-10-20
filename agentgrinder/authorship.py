@@ -72,6 +72,21 @@ def is_human_turn(rec: dict) -> bool:
     return True
 
 
+def is_external_sdk_turn(rec: dict) -> bool:
+    """Detect a non-interactive Agent SDK request without calling it human."""
+    if rec.get("type") != "user" or rec.get("promptSource") != "sdk":
+        return False
+    if rec.get("entrypoint") not in ("sdk-ts", "sdk-cli", "sdk-py"):
+        return False
+    if rec.get("userType") != "external" or rec.get("turnOrigin") != "sdk":
+        return False
+    if not isinstance(rec.get("promptId"), str) or not rec["promptId"].strip():
+        return False
+    if rec.get("isMeta") or rec.get("isSidechain") or has_tool_result(rec):
+        return False
+    return True
+
+
 def classify(rec: dict) -> str | None:
     """One `type: "user"` record -> exactly one of CATEGORIES. None if not a user record.
 

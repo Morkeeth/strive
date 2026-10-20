@@ -128,7 +128,7 @@ const draw=async phone=>{
     # own fold (details.drop-where, which a phone closed) has not been drawn since d79fb3f.
     for page in (phone_page, laptop):
         assert page["foldOpen"] is False and page["foldHoldsZone"] is True
-        assert page["folders"] == ["~/.claude/projects/", "~/.cursor/projects/", "~/.codex/sessions/"]
+        assert page["folders"] == ["~/.claude/projects/", "~/.cursor/projects/", "~/.codex/sessions/", "bb thread log --self --all --json > bb-session.json"]
     send = phone[phone.index("async function sendToLaptop"):phone.index("function phoneStage")]
     # The page the person is on, so Connect sends Connect and the landing sends the landing.
     assert 'const url = location.href;' in send and "run" not in send.replace("return", "")

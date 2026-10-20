@@ -1,0 +1,67 @@
+[
+  {
+    "id": "evt-user-1",
+    "scope": { "kind": "thread" },
+    "threadId": "thread-fixture",
+    "seq": 1,
+    "type": "client/turn/requested",
+    "data": {
+      "direction": "outbound",
+      "source": "tell",
+      "initiator": "user",
+      "requestId": "creq_fixture_1",
+      "senderThreadId": null,
+      "input": [{ "type": "text", "text": "Synthetic fixture: repair the share flow.", "mentions": [] }],
+      "target": { "kind": "thread-start" },
+      "request": { "method": "turn/start", "params": {} },
+      "execution": { "model": "fixture-model", "serviceTier": "default", "reasoningLevel": "medium", "permissionMode": "full", "source": "client/turn/requested" }
+    },
+    "createdAt": 1792490400000
+  },
+  {
+    "id": "evt-command-start",
+    "scope": { "kind": "turn", "turnId": "turn-1" },
+    "threadId": "thread-fixture",
+    "seq": 2,
+    "type": "item/started",
+    "data": { "item": { "type": "commandExecution", "id": "command-1", "command": "npm test", "cwd": "/workspace/project", "status": "pending", "approvalStatus": null } },
+    "createdAt": 1792490410000
+  },
+  {
+    "id": "evt-command-complete",
+    "scope": { "kind": "turn", "turnId": "turn-1" },
+    "threadId": "thread-fixture",
+    "seq": 3,
+    "type": "item/completed",
+    "data": { "item": { "type": "commandExecution", "id": "command-1", "command": "npm test", "cwd": "/workspace/project", "status": "completed", "approvalStatus": null, "exitCode": 0, "durationMs": 1000 } },
+    "createdAt": 1792490411000
+  },
+  {
+    "id": "evt-file",
+    "scope": { "kind": "turn", "turnId": "turn-1" },
+    "threadId": "thread-fixture",
+    "seq": 4,
+    "type": "item/completed",
+    "data": { "item": { "type": "fileChange", "id": "file-1", "changes": [{ "path": "src/share.js", "kind": "update" }], "status": "completed", "approvalStatus": null } },
+    "createdAt": 1792490420000
+  },
+  {
+    "id": "evt-user-2",
+    "scope": { "kind": "thread" },
+    "threadId": "thread-fixture",
+    "seq": 5,
+    "type": "client/turn/requested",
+    "data": {
+      "direction": "outbound",
+      "source": "tell",
+      "initiator": "user",
+      "requestId": "creq_fixture_2",
+      "senderThreadId": null,
+      "input": [{ "type": "text", "text": "Synthetic fixture: verify the card.", "mentions": [] }],
+      "target": { "kind": "new-turn" },
+      "request": { "method": "turn/start", "params": {} },
+      "execution": { "model": "fixture-model", "serviceTier": "default", "reasoningLevel": "medium", "permissionMode": "full", "source": "client/turn/requested" }
+    },
+    "createdAt": 1792490460000
+  }
+]
