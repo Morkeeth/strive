@@ -2,6 +2,9 @@
 begin;
 alter table strava.runs add column if not exists prompt_provenance jsonb;
 alter table strava.dropin_links add column if not exists prompt_provenance jsonb;
+-- Unknown authorship is not a measured zero. Older links required a positive human count;
+-- provenance-aware links may carry a null count beside the explicit origin summary.
+alter table strava.dropin_links alter column turns_typed drop not null;
 
 create or replace function strava.check_prompt_provenance(p jsonb) returns void
 language plpgsql set search_path=strava,pg_temp as $$
