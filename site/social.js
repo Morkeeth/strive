@@ -131,7 +131,12 @@ window.GrinderSocial = function ({
 
   function stashResponseReturn() {
     try {
-      sessionStorage.setItem(RESPONSE_RETURN_KEY, "?inbox");
+      const historyView =
+        new URLSearchParams(location.search).get("filter") === "all";
+      sessionStorage.setItem(
+        RESPONSE_RETURN_KEY,
+        historyView ? "?inbox&filter=all" : "?inbox",
+      );
     } catch (_) {}
   }
 
@@ -147,6 +152,12 @@ window.GrinderSocial = function ({
     try {
       sessionStorage.removeItem(RESPONSE_RETURN_KEY);
     } catch (_) {}
+  }
+
+  function responseReturnHref() {
+    const pending = peekResponseReturn();
+    if (pending === "?inbox&filter=all") return "/?inbox&filter=all";
+    return pending === "?inbox" ? "/?inbox" : null;
   }
 
   function replyTargetId() {
@@ -377,9 +388,9 @@ window.GrinderSocial = function ({
   }
 
   function responseReturnBar() {
-    const pending = peekResponseReturn();
-    if (pending !== "?inbox") return "";
-    return `<p class="response-return"><a class="act" href="/?inbox">Back to Notifications</a></p>`;
+    const href = responseReturnHref();
+    if (!href) return "";
+    return `<p class="response-return"><a class="act" href="${href}">Back to Notifications</a></p>`;
   }
 
   // THE FOLLOWING FEED, which is also the signed-in home (25 Sep 2026 evening). Runs from the
@@ -525,12 +536,12 @@ window.GrinderSocial = function ({
     if(person.id===viewerId){const suggestion=slot.closest('.fc-builder');if(suggestion)suggestion.remove();else slot.replaceChildren();return;}
     try {
       if (
-        sessionStorage.getItem(RESPONSE_RETURN_KEY) === "?inbox" &&
+        responseReturnHref() &&
         !slot.parentElement?.querySelector(".response-return")
       ) {
         const bar = document.createElement("p");
         bar.className = "response-return";
-        bar.innerHTML = '<a class="act" href="/?inbox">Back to Notifications</a>';
+        bar.innerHTML = `<a class="act" href="${responseReturnHref()}">Back to Notifications</a>`;
         slot.before(bar);
       }
     } catch (_) {}
@@ -1138,7 +1149,7 @@ window.GrinderSocial = function ({
               }),
           );
           status(
-            peekResponseReturn() === "?inbox"
+            responseReturnHref()
               ? "Reply posted. Return to Notifications when you are ready."
               : "Reply posted.",
           );
@@ -1182,21 +1193,20 @@ window.GrinderSocial = function ({
     const filterParam = new URLSearchParams(location.search).get("filter");
     const filter = filterParam === "all" ? "all" : "unread";
     try {
+      let notificationsQuery = db
+        .from("grinder_notifications")
+        .select(
+          "*,actor:profiles!grinder_notifications_actor_id_fkey(github_handle,name,handle,display_name,avatar_url)",
+        )
+        .eq("recipient_id", me().id);
+      if (filter === "unread")
+        notificationsQuery = notificationsQuery.is("read_at", null);
       const rows = await result(
-        db
-          .from("grinder_notifications")
-          .select(
-            "*,actor:profiles!grinder_notifications_actor_id_fkey(github_handle,name,handle,display_name,avatar_url)",
-          )
-          .eq("recipient_id", me().id)
-          .order("created_at", { ascending: false })
-          .limit(50),
+        notificationsQuery.order("created_at", { ascending: false }).limit(50),
       );
       const { runs, replies } = await resolveNotificationTargets(rows);
       const unreadCount = rows.filter((n) => !n.read_at).length;
-      const visible = rows.filter((n) =>
-        filter === "unread" ? !n.read_at : true,
-      );
+      const visible = rows;
 
       const filters = `<nav class="response-filters" aria-label="Response filters">
         <a href="/?inbox&filter=all" class="${filter === "all" ? "on" : ""}" ${filter === "all" ? 'aria-current="page"' : ""}>All</a>

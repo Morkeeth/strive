@@ -152,7 +152,7 @@ const data={grinder_notifications:[{id:'n1',kind:'reply',run_id:run,source_id:re
     {id:'n2',kind:'follow',read_at:'2026-10-10T11:00:00Z',created_at:'2026-10-10T09:00:00Z',actor}],
   runs:[{id:run,visibility:'private',title:'TEST DATA run',profiles:{handle:'fixture-viewer'}}],grinder_replies:[{id:reply,run_id:run}]};
 const db={from(table){const q={table,calls:[]};log.push(q);const chain=new Proxy({},{get:(_,name)=>name==='then'
-  ?(ok,bad)=>Promise.resolve({data:data[table]||[],error:null}).then(ok,bad):(...a)=>{q.calls.push([name,...a]);return chain}});return chain}};
+  ?(ok,bad)=>{let rows=data[table]||[];if(table==='grinder_notifications'&&q.calls.some(c=>c[0]==='is'&&c[1]==='read_at'&&c[2]===null))rows=rows.filter(r=>!r.read_at);return Promise.resolve({data:rows,error:null}).then(ok,bad)}:(...a)=>{q.calls.push([name,...a]);return chain}});return chain}};
 let viewer=null;
 const social=w.GrinderSocial({client:db,me:()=>viewer,app:()=>d.getElementById('app'),frame(){},railHtml:()=>'',feedTabs:()=>'',setPrimarySection(){},status(){},signInGitHub(){}});
 const text=el=>el.textContent.replace(/\s+/g,' ').trim(),settle=()=>new Promise(r=>setTimeout(r,30));
@@ -184,7 +184,7 @@ def test_notifications_reuse_the_existing_rls_backed_store():
     assert "if(q.has('inbox')){setPrimarySection('inbox');return social.inbox();}" in INDEX
     inbox = node(INBOX)
     assert inbox["signedOutReads"] == 0 and inbox["signedOutItems"] == 0
-    assert inbox["title"] == "Notifications" and inbox["summary"] == "1 unread · 2 recent"
+    assert inbox["title"] == "Notifications" and inbox["summary"] == "1 unread · 1 recent"
     own = [["eq", "recipient_id", "fixture-viewer"]]
     assert [(q["table"], [c for c in q["calls"] if c[0] in ("eq", "in")]) for q in inbox["reads"]] == [
         ("grinder_notifications", own),
@@ -192,7 +192,7 @@ def test_notifications_reuse_the_existing_rls_backed_store():
         ("grinder_replies", [["in", "id", ["22222222-2222-4222-8222-222222222222"]]]),
         ("grinder_notifications", own),
     ]
-    assert inbox["reads"][0]["calls"][2:] == [["order", "created_at", {"ascending": False}], ["limit", 50]]
+    assert inbox["reads"][0]["calls"][2:] == [["is", "read_at", None], ["order", "created_at", {"ascending": False}], ["limit", 50]]
     # The default inbox is the one-time view: already-read rows stay available only
     # through the explicit All history filter.
     assert inbox["items"] == [

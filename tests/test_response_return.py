@@ -35,6 +35,7 @@ def test_inbox_defaults_to_unread_so_seen_items_do_not_return():
     assert 'const filterParam = new URLSearchParams(location.search).get("filter")' in inbox
     assert 'const filter = filterParam === "all" ? "all" : "unread"' in inbox
     assert 'href="/?inbox&filter=all"' in inbox
+    assert '.is("read_at", null)' in inbox
 
 
 def test_exact_reply_navigation_and_return_context():
@@ -69,7 +70,8 @@ const client={from(table){const c={table,ops:[]};calls.push(c);const q=new Proxy
   let data=[];
   if(table==='grinder_notifications'){
    if(op('update')){data=op('in')[2].map(id=>({id}));data.forEach(r=>read.add(r.id))}
-   else data=op('is')?notes.filter(n=>!read.has(n.id)).map(n=>({id:n.id})):notes.map(n=>read.has(n.id)?{...n,read_at:'2026-10-10T10:01:00Z'}:n);
+   else if(op('is')){const rows=notes.filter(n=>!read.has(n.id));data=String(op('select')?.[1]||'').startsWith('*')?rows:rows.map(n=>({id:n.id}))}
+   else data=notes.map(n=>read.has(n.id)?{...n,read_at:'2026-10-10T10:01:00Z'}:n);
   }
   if(table==='runs')data=op('in')?[run]:[];
   if(table==='grinder_replies')data=op('in')?[{id:REPLY,run_id:RUN}]:eq('id')?replies.filter(r=>r.id===eq('id')[2]):replies;
@@ -127,10 +129,17 @@ const tick=()=>new Promise(r=>setTimeout(r,30));
  assert.equal(w.sessionStorage.getItem('ag_response_return'),null);
  slot=await arrive('/?run='+RUN);
  assert.equal(slot.querySelector('.response-return'),null);
+ // All is a real history view. Following a historical item returns to All, not the unread default.
+ w.history.replaceState(null,'','/?inbox&filter=all');await social.inbox();
+ assert.deepEqual([...doc.querySelectorAll('.response-item')].map(a=>a.dataset.notificationId),[N(1),N(2),N(3)]);
+ [...doc.querySelectorAll('a[data-notification-id]')].find(a=>a.textContent==='Open exact reply').click();await tick();
+ assert.equal(w.sessionStorage.getItem('ag_response_return'),'?inbox&filter=all');
+ slot=await arrive(exactHref);
+ assert.equal(slot.querySelector('.response-return a').getAttribute('href'),'/?inbox&filter=all');
 })().catch(e=>{console.error(e);process.exitCode=1});
 """], cwd=ROOT, check=True)
-    # The builder's profile keeps the same way back for a reader who arrived from Notifications.
-    assert '<p class="response-return"><a class="act" href="/?inbox">Back to Notifications</a></p>' in PEOPLE
+    # The builder's profile keeps the exact inbox view a reader arrived from.
+    assert "ag_response_return" in PEOPLE and "Back to Notifications" in PEOPLE
 
 
 def test_response_inbox_phone_styles_use_blue_unread_trace():
