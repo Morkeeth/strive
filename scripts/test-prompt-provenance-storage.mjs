@@ -12,6 +12,7 @@ try{
  await assert.rejects(db.query("insert into strava.runs(profile_id,title,visibility,harness,prompts,schema_version,measurement_revision,trace_basis,rhythm,prompt_provenance) values($1,'TEST DATA false zero','private','Codex',0,1,$2,'elapsed','[1,2]',$3)",[CASEY,(++revision).toString(16).padStart(64,'0'),valid]),/Unknown prompt origins require an unknown human count/);
  await assert.rejects(insert({...valid,human_turns:44}),/Human provenance total mismatch/);
  await assert.rejects(insert({...valid,relays:{bb:'3'}}),/Invalid relay count/);
+ await assert.rejects(insert({...valid,relays:{bb:0}}),/Invalid relay count/);
  await assert.rejects(insert({...valid,relays:{'a\nb':3}}),/Invalid relay count/);
  await assert.rejects(insert({...valid,relays:{['😀'.repeat(21)]:3}}),/Invalid relay count/);
  await assert.rejects(insert({...valid,raw_prompt:'secret'}),/Unsupported prompt provenance field/);

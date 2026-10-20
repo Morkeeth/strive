@@ -33,7 +33,7 @@ begin
  if (select count(*) from jsonb_object_keys(p->'relays'))>16 then raise exception 'Too many relay names'; end if;
  for k,relay_value in select key,value from jsonb_each(p->'relays') loop
   if k !~ '^[A-Za-z0-9][A-Za-z0-9 ._:/+\-]{0,39}$' or strava.grinder_is_safe_count(relay_value) is not true then raise exception 'Invalid relay count'; end if;
-  if (relay_value::text)::numeric>1000000 then raise exception 'Invalid relay count'; end if;
+  if (relay_value::text)::numeric not between 1 and 1000000 then raise exception 'Invalid relay count'; end if;
   relay_total := relay_total+(relay_value::text)::numeric;
  end loop;
  if relay_total<>(p->'counts'->>'human-via-tool')::numeric then raise exception 'Relay total mismatch'; end if;
