@@ -95,9 +95,22 @@
     return true;
   }
 
+  // SDK requests are non-interactive in Claude's provenance. bb retains the missing authorship
+  // fact in its own event export, so detect this shape only to route the operator to that source.
+  function isExternalSdkTurn(o) {
+    if (o.type !== "user" || o.promptSource !== "sdk") return false;
+    if (!["sdk-ts", "sdk-cli", "sdk-py"].includes(o.entrypoint)) return false;
+    if (o.userType !== "external" || o.turnOrigin !== "sdk") return false;
+    if (typeof o.promptId !== "string" || !o.promptId.trim()) return false;
+    if (o.isMeta || o.isSidechain) return false;
+    if (o.toolUseResult !== undefined && o.toolUseResult !== null) return false;
+    if (blocks(o.message).some((b) => isObj(b) && b.type === "tool_result")) return false;
+    return true;
+  }
+
   function claudeReader() {
     const typed = [], all = [];
-    let tools = 0, commits = 0;
+    let tools = 0, commits = 0, sdkRequests = 0;
     const files = new Set(), touched = [], toolsAt = [];
     return {
       harness: "Claude Code",
@@ -107,6 +120,8 @@
         const msg = isObj(o.message) ? o.message : {};
         if (isHumanTurn(o)) {
           if (t != null) typed.push(t);
+        } else if (isExternalSdkTurn(o)) {
+          sdkRequests += 1;
         } else if (o.type === "assistant") {
           for (const b of blocks(msg)) {
             if (!isObj(b) || b.type !== "tool_use") continue;
@@ -122,7 +137,7 @@
         }
       },
       done() {
-        if (!typed.length) throw readError("no-turns");
+        if (!typed.length) throw readError(sdkRequests ? "sdk-driven" : "no-turns");
         const t0 = Math.min(...typed);
         const ev = all.filter((t) => t >= t0).sort((a, b) => a - b);
         let span = 0;
@@ -358,6 +373,7 @@
 
   const MESSAGES = {
     "no-turns": "This file has no turn a person typed, so there is nothing to put on a card.",
+    "sdk-driven": "This Claude Code file was driven through the Agent SDK, so it cannot prove which requests a person typed. For a bb session, run `bb thread log --all --json` and choose that export instead.",
     delegated: "This Codex session was run by another agent, not typed by a person.",
     unknown: "This does not look like a Claude Code, Cursor, Codex or bb session export. Choose a JSON/JSONL session with typed user messages, or use the manual post below without measured counts.",
     empty: "This file is empty.",
@@ -516,7 +532,7 @@
     };
   }
 
-  const api = { parseText, parseFile, createReader, uploadPayload, folderRoute, UPLOAD_KEYS, HARNESSES, IMPORT_HARNESSES, isHumanTurn, cursorTime, seconds };
+  const api = { parseText, parseFile, createReader, uploadPayload, folderRoute, UPLOAD_KEYS, HARNESSES, IMPORT_HARNESSES, isHumanTurn, isExternalSdkTurn, cursorTime, seconds };
   root.GrinderDropin = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

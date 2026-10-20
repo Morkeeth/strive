@@ -71,6 +71,7 @@ assert.deepEqual(edge.route, [0, 1, 0]);
 assert.ok(!JSON.stringify(edge).includes('SECRET-FOLDER'), 'a folder name must not survive the read');
 assert.equal((await browser(path.join(ROOT, 'samples/dropin/not-a-session.jsonl'))).error, 'unknown');
 assert.equal((await browser(path.join(ROOT, 'samples/dropin/codex-delegated.jsonl'))).error, 'delegated');
+assert.equal((await browser(path.join(ROOT, 'samples/dropin/claude-sdk-bb.jsonl'))).error, 'sdk-driven');
 // A Codex desktop rollout keeps the typed turns as user-role messages, beside two injected ones.
 const desktop = await browser(path.join(ROOT, 'samples/dropin/codex-desktop.jsonl'));
 assert.deepEqual([desktop.turns_typed, desktop.tool_calls, desktop.route], [2, 2, [0, 1]]);

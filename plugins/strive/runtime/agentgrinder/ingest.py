@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import gitwork, privacy, reach as reachmod
-from .authorship import is_human_turn
+from .authorship import is_external_sdk_turn, is_human_turn
 from .project_identity import identity as project_identity
 from .claims import ClaimTracker, is_tool_result, result_text
 
@@ -114,6 +114,7 @@ def parse_session(path: str, athlete: str = "you") -> dict:
     commits = 0
     project = None
     first_prompt = None
+    sdk_requests = 0
     tracker = ClaimTracker()       # v0 verified-claims rule, see claims.py
     written: set[str] = set()      # Edit/Write paths; 'produced' = the ones that exist at close
 
@@ -147,6 +148,8 @@ def parse_session(path: str, athlete: str = "you") -> dict:
                             if isinstance(b, dict) and b.get("type") == "text":
                                 first_prompt = (b.get("text") or "").strip()
                                 break
+            elif is_external_sdk_turn(o):
+                sdk_requests += 1
             elif is_tool_result(o):
                 tracker.tool_result(result_text(o))
             elif typ == "assistant":
@@ -173,6 +176,12 @@ def parse_session(path: str, athlete: str = "you") -> dict:
 
     tracker.close()
     if not typed_ts:
+        if sdk_requests:
+            raise ValueError(
+                "Claude Code recorded Agent SDK requests, not typed human turns. "
+                "For a bb session, export `bb thread log --all --json` and import that file; "
+                "the Claude JSONL cannot prove which SDK requests a person typed."
+            )
         raise ValueError(f"no typed human turns found in {path}")
     # v0 'artifacts produced': Edit/Write paths that exist on disk at PARSE time (not at the
     # session's close — a later delete or rename reads as not produced). 'promised' has no source

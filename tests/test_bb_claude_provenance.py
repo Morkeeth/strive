@@ -1,43 +1,65 @@
-"""Pin the two hypotheses reported for bb-driven Claude Code sessions.
+"""Pin the two reported hypotheses for bb-driven Claude Code sessions."""
+import json
 
-bb's Claude Code bridge writes ordinary ``type: user`` transcript rows without
-Claude terminal provenance fields.  STRIVE must not silently relabel those rows
-as human, because the same shape is also used for injected harness messages.
-The bb event export is the authoritative path: it records ``initiator``.
-"""
-from pathlib import Path
+import pytest
 
-from agentgrinder.authorship import classify, is_human_turn
-from agentgrinder.plugin import source_identity
+from agentgrinder.authorship import classify, is_external_sdk_turn, is_human_turn
+from agentgrinder.ingest import parse_session
+from agentgrinder.session_picker import discover
 
 
-def test_bb_driven_claude_prompt_has_no_terminal_human_provenance():
-    row = {
-        "type": "user",
-        "userType": "human",
-        "entrypoint": "bb",
+def sdk_row(entrypoint="sdk-ts"):
+    return {
+        "type": "user", "sessionId": "1854c446", "uuid": "shared-message",
+        "timestamp": "2026-10-20T09:00:00Z", "promptSource": "sdk",
+        "userType": "external", "entrypoint": entrypoint, "turnOrigin": "sdk",
+        "promptId": "prompt-fixture", "isMeta": False, "isSidechain": False,
         "message": {"role": "user", "content": "synthetic bb prompt"},
     }
 
-    # userType/entrypoint are deliberately irrelevant: Claude Code's measured
-    # human signal is promptSource=typed|queued.  The bb export instead supplies
-    # data.initiator=user, which site/dropin-parse.js reads directly.
+
+@pytest.mark.parametrize("entrypoint", ["sdk-ts", "sdk-cli", "sdk-py"])
+def test_sdk_request_is_detected_but_never_relabelled_human(entrypoint):
+    row = sdk_row(entrypoint)
+    assert is_external_sdk_turn(row) is True
     assert is_human_turn(row) is False
     assert classify(row) == "harness"
-    assert is_human_turn({**row, "promptSource": "typed"}) is True
 
 
-def test_resumed_or_copied_session_ids_remain_separate_sources():
-    ids = ["73474d0f", "6adffa63", "be263046", "15a38bd8", "1854c446"]
-    found = [
-        source_identity(
-            [{"type": "user", "sessionId": session_id}],
-            "claude",
-            Path(f"/tmp/{session_id}.jsonl"),
-        )
-        for session_id in ids
-    ]
+@pytest.mark.parametrize("field,value", [
+    ("promptId", None), ("userType", "internal"), ("turnOrigin", "user"),
+    ("isMeta", True), ("isSidechain", True), ("entrypoint", "cli"),
+])
+def test_incomplete_or_injected_sdk_shapes_do_not_match(field, value):
+    row = sdk_row()
+    row[field] = value
+    assert is_external_sdk_turn(row) is False
 
-    # STRIVE does not merge or substitute an older copy for the selected one.
-    assert found == ids
-    assert len(set(found)) == len(ids)
+
+def test_sdk_driven_claude_file_gets_bb_export_instruction(tmp_path):
+    source = tmp_path / "1854c446.jsonl"
+    source.write_text(json.dumps(sdk_row()) + "\n")
+    with pytest.raises(ValueError, match=r"bb thread log --all --json"):
+        parse_session(str(source))
+
+
+def test_resumed_copies_stay_separate_and_earlier_copy_is_only_older(tmp_path):
+    older = tmp_path / "73474d0f.jsonl"
+    current = tmp_path / "1854c446.jsonl"
+    shared = {
+        "type": "user", "uuid": "shared-message", "promptSource": "typed",
+        "timestamp": "2026-10-20T09:00:00Z", "cwd": str(tmp_path),
+        "message": {"role": "user", "content": "shared synthetic prompt"},
+    }
+    older.write_text(json.dumps({**shared, "sessionId": "73474d0f"}) + "\n")
+    current.write_text("\n".join([
+        json.dumps({**shared, "sessionId": "1854c446"}),
+        json.dumps({**shared, "sessionId": "1854c446", "uuid": "new-message",
+                    "timestamp": "2026-10-20T09:05:00Z",
+                    "message": {"role": "user", "content": "new synthetic prompt"}}),
+    ]) + "\n")
+
+    rows = discover("claude", candidates=[("claude", older), ("claude", current)])
+    assert {row["session"] for row in rows} == {"73474d0f", "1854c446"}
+    assert parse_session(str(older))["turns_typed"] == 1
+    assert parse_session(str(current))["turns_typed"] == 2
