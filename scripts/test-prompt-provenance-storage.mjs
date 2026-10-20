@@ -29,5 +29,8 @@ try{
  await db.exec('commit');
  assert.deepEqual(carried.prompt_provenance,valid,'the production-style insert path carries provenance through the 051 trigger');
  await db.exec(await readFile(new URL('../supabase/strava/051_prompt_provenance.sql',import.meta.url),'utf8'));
+ const legacySignature='strava.dropin_create_without_prompt_provenance_051(jsonb,text)';
+ const legacyPrivileges=(await db.query("select has_function_privilege($1,$2,'execute') as anon_create,has_function_privilege($3,$2,'execute') as authenticated_create",['anon',legacySignature,'authenticated'])).rows[0];
+ assert.deepEqual(legacyPrivileges,{anon_create:false,authenticated_create:false},'saved rollback functions must not remain callable');
  console.log('PASS: bounded prompt provenance persists, rejects bad totals and hidden fields, and is immutable');
 }finally{await db.close();}

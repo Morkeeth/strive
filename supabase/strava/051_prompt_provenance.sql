@@ -94,6 +94,9 @@ do $$ begin
   alter function strava.dropin_read(uuid) rename to dropin_read_without_prompt_provenance_051;
  end if;
 end $$;
+-- A rename preserves ACLs. The saved SECURITY DEFINER bodies are rollback material only;
+-- revoke their former public entry-point grants so callers cannot bypass this wrapper.
+revoke all on function strava.dropin_create_without_prompt_provenance_051(jsonb,text),strava.dropin_read_without_prompt_provenance_051(uuid) from public,anon,authenticated;
 create or replace function strava.dropin_create(payload jsonb,bucket text) returns jsonb
 language plpgsql volatile security definer set search_path=strava,pg_temp as $$
 declare made jsonb; provenance jsonb:=nullif(payload->'prompt_provenance','null'::jsonb);
