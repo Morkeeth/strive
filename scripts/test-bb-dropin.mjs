@@ -12,6 +12,14 @@ assert.deepEqual(run.route,[0]);
 assert.equal(run.started,'2026-10-20T10:00:00.000Z');
 assert.equal(run.capture_metadata.basis,'cursor-model-info');
 
+// bb's own initiator field is the human/agent/system boundary. Claude Code
+// userType or entrypoint hints must not be needed for an official bb export.
+const provenance=JSON.parse(source);
+provenance[0].data.userType='automated';
+provenance[0].data.entrypoint='bb';
+const provenanceRun=Dropin.parseText(JSON.stringify(provenance));
+assert.equal(provenanceRun.turns_typed,2);
+
 const blob=new Blob([source]);
 const streamed=await Dropin.parseFile(blob);
 assert.deepEqual(streamed,run,'pretty JSON array follows the same browser File path');
