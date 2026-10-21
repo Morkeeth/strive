@@ -136,6 +136,7 @@ Rules:
 - A picture is only ever one the author already added to one of their runs and then picked here. No stock image, no generated image, no camera roll scan, no automatic publish.
 - A picture marked "Personal photo" on its run starts in Photo mode when picked. Any other picture starts in Screenshot mode. Both are the author's own earlier words and both can be changed.
 - No picture is ever required. Data is enough. A mode with no picture picked saves as Data.
+- A run card with no measured route or author picture may show a small harness-specific motion fallback. It is decorative, uses no remote media, and makes no claim about the run. Reduced-motion readers get its still frame.
 - Fallback order: chosen picture, then the measured trace, then one plain sentence: "No measured trace and no picture on this page yet." The owner also gets a link to choose a visual.
 
 Privacy:
