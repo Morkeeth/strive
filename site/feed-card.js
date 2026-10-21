@@ -332,10 +332,11 @@
   function heroVisual(r) {
     const checkpoints=checkpointVisual(r);if(checkpoints)return checkpoints;
     if(historical?.historical(r))return historical.facts(r);
+    if (r?.trace_basis === "typed-by-author") return "";
     const choices = heroChoices(r);
     const chosen = choices.find(([key]) => key === r.hero_visual) || choices[0];
-    if (!chosen) return harnessVisual(r);
-    return chosen[0] === "result" ? `<div class="fc-harness-result">${harnessVisual(r)}${chosen[1]}</div>` : chosen[1];
+    if (!chosen) return r?.harness ? harnessVisual(r) : "";
+    return chosen[1];
   }
 
   // THE STRIDE LINE. Wordle's grid for a run: two lines of plain text a person pastes into a

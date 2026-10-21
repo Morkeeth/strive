@@ -29,7 +29,7 @@ const emptyCard = Feed.card(run('Grok Bot'), {preview: true});
 assert.match(emptyCard, /data-harness-visual="grok-bot"/);
 
 const resultCard = Feed.card({...run('Codex'), shipped: ['Working preview']}, {preview: true});
-assert.match(resultCard, /data-harness-visual="codex"/);
+assert.doesNotMatch(resultCard, /data-harness-visual/);
 assert.match(resultCard, /Working preview/);
 
 const measured = Feed.heroVisual({...run('Cursor'), route: [0, 1, 0]});
