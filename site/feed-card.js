@@ -281,6 +281,26 @@
     const label = shipped[0] || "";
     return n && label ? `<div class="fc-result" aria-label="Result"><b class="num">${n}</b><span>${esc(label)}</span></div>` : "";
   }
+  // A light, local fallback for runs without a measured route or an author photo. It uses no
+  // downloaded media and claims nothing about the run. Each supported harness gets one small
+  // motion signature; reduced-motion readers get the same still frame.
+  function harnessVisual(r) {
+    const raw = harnessName(r).toLowerCase();
+    const key = raw.includes("grok") ? "grok-bot"
+      : raw.includes("claude") ? "claude"
+      : raw.includes("cursor") ? "cursor"
+      : raw.includes("codex") ? "codex" : "agent";
+    const art = key === "grok-bot"
+      ? '<g class="hv-signal"><path d="M132 25c10-10 26-10 36 0M138 32c7-7 17-7 24 0"/></g><g class="hv-bot"><path d="M116 62h68a16 16 0 0 1 16 16v48a16 16 0 0 1-16 16h-68a16 16 0 0 1-16-16V78a16 16 0 0 1 16-16Z"/><path d="M150 62V45"/><circle cx="150" cy="42" r="5"/><circle class="hv-eye hv-eye-a" cx="125" cy="99" r="6"/><circle class="hv-eye hv-eye-b" cx="175" cy="99" r="6"/><path d="M128 121c13 9 31 9 44 0"/></g>'
+      : key === "claude"
+      ? '<g class="hv-orbit"><ellipse cx="150" cy="94" rx="72" ry="29"/><ellipse cx="150" cy="94" rx="72" ry="29" transform="rotate(60 150 94)"/><ellipse cx="150" cy="94" rx="72" ry="29" transform="rotate(120 150 94)"/></g><circle class="hv-core" cx="150" cy="94" r="15"/>'
+      : key === "cursor"
+      ? '<g class="hv-lanes"><path d="M62 55h176M62 92h176M62 129h176"/><circle cx="96" cy="55" r="5"/><circle cx="190" cy="92" r="5"/><circle cx="132" cy="129" r="5"/></g><path class="hv-pointer" d="m118 49 42 42-21 3 12 25-13 7-12-25-17 15Z"/>'
+      : key === "codex"
+      ? '<g class="hv-window"><rect x="65" y="42" width="170" height="104" rx="12"/><path d="M65 68h170M86 91h52M86 111h88M86 131h65"/><path class="hv-caret" d="M181 126h25"/></g>'
+      : '<g class="hv-route"><path d="M55 127 101 91l39 17 43-67 30 38 34-22"/><circle cx="101" cy="91" r="5"/><circle cx="140" cy="108" r="5"/><circle cx="183" cy="41" r="5"/><circle cx="213" cy="79" r="5"/></g>';
+    return `<div class="fc-harness-visual hv-${key}" data-harness-visual="${key}" aria-hidden="true"><svg viewBox="0 0 300 184" focusable="false">${art}</svg></div>`;
+  }
   function changeAtlas(r) {
     if(checkpointView()?.claimed(r))return "";
     const native = routeMap(r);
@@ -314,7 +334,8 @@
     if(historical?.historical(r))return historical.facts(r);
     const choices = heroChoices(r);
     const chosen = choices.find(([key]) => key === r.hero_visual) || choices[0];
-    return chosen ? chosen[1] : "";
+    if (!chosen) return harnessVisual(r);
+    return chosen[0] === "result" ? `<div class="fc-harness-result">${harnessVisual(r)}${chosen[1]}</div>` : chosen[1];
   }
 
   // THE STRIDE LINE. Wordle's grid for a run: two lines of plain text a person pastes into a
@@ -490,7 +511,7 @@
   }
 
   function privateMarker(r){return r?.visibility==='private'?'<aside class="private-run-marker" aria-label="Private run"><strong>Only me. Not public.</strong><br>Only you can see this.</aside>':'';}
-  const api = { privateMarker, card, cardSummary, actions, face, headline, stats, achievement, harnessName, badge, spark, settle, routeGeometry, routeMap, proofRoute, changeAtlas, resultVisual, photoVisual, heroChoices, heroVisual, strideBars, strideText, strideHtml, stride, wireStride, nextSlot, builderRow, profileOf, durationLabel, when, titleOf };
+  const api = { privateMarker, card, cardSummary, actions, face, headline, stats, achievement, harnessName, badge, spark, settle, routeGeometry, routeMap, proofRoute, changeAtlas, resultVisual, photoVisual, harnessVisual, heroChoices, heroVisual, strideBars, strideText, strideHtml, stride, wireStride, nextSlot, builderRow, profileOf, durationLabel, when, titleOf };
   root.GrinderFeed = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
