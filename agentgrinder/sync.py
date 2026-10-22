@@ -110,9 +110,14 @@ def sitting_key(key: str, index: int) -> str:
 
 def payload_for(harness: str, path: str, pick: int = -1) -> dict:
     from .agent_api import run_payload
+    from .engine.series import record_and_attach
     from .native_sittings import read_sitting
     run = read_sitting(path, harness, pick=pick, gap=SITTING_GAP)
     run.pop("title", None)
+    try:
+        record_and_attach(run, path=str(STATE_DIR / "series.db"), command="agentgrinder sync")
+    except (KeyError, ValueError, TypeError) as error:
+        raise ValueError(str(error)) from error
     return run_payload(run, "private")
 
 
