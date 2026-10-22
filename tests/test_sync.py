@@ -2,6 +2,7 @@
 import io
 import json
 import os
+import re
 import shutil
 import time
 from pathlib import Path
@@ -36,6 +37,19 @@ class Opener:
         self.requests.append(request)
         body = json.dumps({"id": "11111111-1111-1111-1111-111111111111", "visibility": "private", "existing": False})
         return io.BytesIO(body.encode())
+
+
+def test_payload_for_records_a_measurement_revision_for_a_claude_session(tmp_path, monkeypatch):
+    monkeypatch.setenv("STRIVE_HOME", str(tmp_path / ".strive"))
+    import importlib
+    from agentgrinder import sync
+    sync = importlib.reload(sync)
+    target = tmp_path / "claude.jsonl"
+    shutil.copy(ROOT / "samples/dropin/claude-edge.jsonl", target)
+
+    payload = sync.payload_for("claude", str(target), pick=1)
+
+    assert re.fullmatch(r"[0-9a-f]{64}", payload["measurement_revision"])
 
 
 def test_a_finished_session_is_sent_once_as_a_private_run_with_counts_only(home):
