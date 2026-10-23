@@ -100,6 +100,18 @@
     try { return { runs: await runsQuery(sb).then((r) => (r.error ? null : r.data || []), () => null) }; } catch (_) { return { runs: null }; }
   }
 
+  // A small polling read for the open feed. The ordered IDs are the membership of the same
+  // 300-row window as the feed, so a public/private swap cannot collide at an unchanged count.
+  async function latestRunToken(sb) {
+    try {
+      const response=await sb.from("runs").select("id").eq("visibility","public")
+        .order("started_at",{ascending:false,nullsFirst:false}).order("id",{ascending:false}).limit(300);
+      if(response.error)return null;
+      const ids=(response.data||[]).map(row=>row.id);
+      return ids.length?ids.join(":"):"empty";
+    } catch (_) { return null; }
+  }
+
   // Never throws: a failed or missing read is an empty section, not a broken page.
   async function read(sb, now) {
     try { return await readAll(sb, now); } catch (_) { return { runs: null, clubs: null, events: null }; }
@@ -133,7 +145,7 @@
     return `<section class="home-community" aria-label="Clubs and events"><div class="hc-col"><div class="land-head"><h2>Events</h2></div>${events}</div><div class="hc-col"><div class="land-head"><h2 id="h-clubs">Clubs</h2><a href="/?crews">${data.clubs && data.clubs.length ? "All clubs" : "Start or join a club"}</a></div>${clubs}</div></section>`;
   }
 
-  const api = { week, weekHtml, eventRow, clubRow, community, builders, popular, popularDays, read, readRuns };
+  const api = { week, weekHtml, eventRow, clubRow, community, builders, popular, popularDays, read, readRuns, latestRunToken };
   root.GrinderHome = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

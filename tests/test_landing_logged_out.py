@@ -208,7 +208,7 @@ def test_landing_loads_latest_public_run_only():
     # draws the sorted runs a page at a time, reading XUDOS for the cards on that page.
     assert "await H.readRuns(sb)" in view and "H.read(sb" not in view
     assert "const sorted=StriveActivity.sort(runs);" in view and "feedCards(page,await ackData(page)," in view
-    assert "if(!runs.length){const older=await fetchLatestPublicRuns(5);" in view
+    assert "if(!requireComplete&&!runs.length){const older=await fetchLatestPublicRuns(5);" in view
     seen = node(PUBLIC_READS)
     filters = lambda q: [c[1:] for c in q["calls"] if c[0] not in ("select", "order", "limit")]
     # The landing's read touches the runs table once and nothing else.

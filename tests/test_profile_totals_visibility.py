@@ -20,9 +20,9 @@ def test_profile_public_runs_count_is_always_public_only():
     # f3b8d23 removed the "Visible to you" cell: the Public runs cell is now the owner's only, and
     # every other reader gets one Runs figure that is labelled as what they can open.
     seen = _profile_probe()
-    owner = seen["owner"]  # TEST DATA: 3 public, 1 followers, 1 close friends, 1 private, 1 anonymous
+    owner = seen["owner"]  # TEST DATA: only the 3 public rows enter the owner's profile.
     assert owner["publicRunsCell"] == 3
-    assert owner["statRuns"] == "7" and owner["scope"] == "Your latest 7 runs · Includes private work"
+    assert owner["statRuns"] == "3" and owner["scope"] == "Your latest 3 public runs · Private captures stay in Run review"
     assert seen["ownerEmpty"]["publicRunsCell"] == 0
     # Signed-in reader who can open a close-friends run: 4 rows, never presented as a public count.
     other = seen["other"]

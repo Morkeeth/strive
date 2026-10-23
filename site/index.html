@@ -667,6 +667,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/capture-prices.js"></script><script src="/capture-estimates.js"></script><script src="/dropin-parse.js"></script>
 <script src="/fair.js"></script>
 <script src="/home.js"></script>
+<script src="/feed-refresh.js"></script>
 <script src="/dropin.js"></script>
 <script src="/photo-grid.js"></script>
 <script src="/photo-draft.js"></script>
@@ -892,6 +893,7 @@ function handleAuthStateChange(event,session,refreshAndRoute){
 // The social feeds (home, Following, a club) draw the same feed card as the public feed.
 const social=GrinderSocial({client:sb,me:()=>ME,app:()=>$('app'),frame,railHtml,feedTabs,setPrimarySection,status,signInGitHub:()=>signInWithGitHub(),
   renderRuns:async runs=>{noteTraces(runs);const ad=await ackData(runs);setTimeout(()=>{wireKudos();countUp()},0);return feedCards(runs,ad)}});
+const feedRefresh=StriveFeedRefresh.create({visible:()=>document.visibilityState!=='hidden'});
 const people=GrinderPeople({client:sb,me:()=>ME,app:()=>$('app'),frame,railHtml,feedTabs,setPrimarySection,status,social,drawAvatar:avatar,renderRuns:async runs=>{noteTraces(runs);const ad=await ackData(runs);setTimeout(()=>{wireKudos();countUp()},0);return runs.map(r=>runCard(r,ad.mine.has(r.id),(ad.countsKnown===false?null:ad.counts[r.id]))).join('')}});
 const practices=GrinderPractices({client:sb,me:()=>ME,app:()=>$('app'),frame,status});
 const progress=GrinderProgress({client:sb,me:()=>ME,app:()=>$('app'),frame,status,signIn:showSignIn,signInGitHub:()=>signInWithGitHub()});
@@ -1869,7 +1871,7 @@ function bindCompactCard(card,deck,ad,{onChange=()=>{},shareHref=null}={}){
   };
   const pager=StriveDayCard.wire(card,{onChange:(...args)=>{bindActions();onChange(...args)}});bindActions();return pager;
 }
-async function feedCards(runs,ad,{ownerView=false,preview=false,decorate=html=>html,onCard=null,current=()=>true}={}){
+async function feedCards(runs,ad,{ownerView=false,preview=false,decorate=html=>html,onCard=null,current=()=>true,requireComplete=false}={}){
   const rows=StriveActivity.sort(runs),choices=new Map(),mounts=[],cards=[],timezone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
   for(const run of rows){const t=StriveActivity.time(run);if(t===null)continue;const day=StriveDay.localDay(new Date(t)),key=run.profile_id+'|'+day;
     if(!choices.has(key))choices.set(key,Promise.resolve(sb.rpc('read_day_card',{owner_id:run.profile_id,card_key:day+'_'+day,viewer_timezone:timezone})));}
@@ -1878,7 +1880,7 @@ async function feedCards(runs,ad,{ownerView=false,preview=false,decorate=html=>h
   for(const run of rows){
     const t=StriveActivity.time(run),day=t===null?null:StriveDay.localDay(new Date(t)),saved=day?await choices.get(run.profile_id+'|'+day):{data:null},own=ownerView&&typeof ME==='object'&&ME?.id===run.profile_id;
     if(!current())return '';
-    if(saved?.error){if(preview)throw Error('Card choices could not load.');const failure='<article class="card"><p>Card choices could not load. Refresh to try again.</p></article>';cards.push(failure);if(onCard)onCard(failure);continue;}
+    if(saved?.error){if(requireComplete)throw Error('Card choices could not load.');if(preview)throw Error('Card choices could not load.');const failure='<article class="card"><p>Card choices could not load. Refresh to try again.</p></article>';cards.push(failure);if(onCard)onCard(failure);continue;}
     const project=GrinderContract.projectLabel(run.project),token=project&&day?await StriveDayCard.token(run.profile_id,day+'_'+day,project):'',cardId=(preview?'queue-post-':'post-')+run.id;
     cards.push(decorate(StrivePost.render(run,{choices:saved?.data,token,owner:own,review:preview,cardId,actions:' ',dateLabel:StriveActivity.label(run)}),run));
     if(onCard)onCard(cards[cards.length-1]);
@@ -1888,35 +1890,38 @@ async function feedCards(runs,ad,{ownerView=false,preview=false,decorate=html=>h
       void StriveRunPhotos.mountCovers({client:sb,root:card.parentElement});};
     if(onCard)setTimeout(mount,0);else mounts.push(mount);
   }
+  const html='<div class="strive-overview">'+cards.join('')+'</div>';
+  if(requireComplete)return {html,mount:()=>mounts.forEach(mount=>mount())};
   setTimeout(()=>mounts.forEach(mount=>mount()),0);
-  return '<div class="strive-overview">'+cards.join('')+'</div>';
+  return html;
 }
 
 // A stranger lands on what is going on, then people, then runs. Real rows only (site/home.js).
 const FEED_PAGE=20;
 async function viewLanding(){
+  const requireComplete=arguments[0]?.requireComplete===true;
   const app=$('app'),generation=AUTH_GENERATION,viewGeneration=RUN_VIEW_GENERATION;
   const current=()=>generation===AUTH_GENERATION&&viewGeneration===RUN_VIEW_GENERATION;
-  frame(null,null,true);
-  $('shell').classList.add('home-shell');
-  setPrimarySection('feed');
-  if(!app.querySelector('.home[data-boot-skeleton]'))app.innerHTML=feedTabs('home')+landingHTML();
-  app.querySelector('.home')?.removeAttribute('data-boot-skeleton');
+  if(!requireComplete){frame(null,null,true);$('shell').classList.add('home-shell');setPrimarySection('feed');if(!app.querySelector('.home[data-boot-skeleton]'))app.innerHTML=feedTabs('home')+landingHTML();app.querySelector('.home')?.removeAttribute('data-boot-skeleton')}
+  else if(!app.querySelector('.home'))return false;
 
   const H=window.GrinderHome, now=Date.now();
+  // Read the refresh baseline before the feed. A run published during the feed read then changes
+  // the next probe, while both baseline and probe use the exact same public-row query.
+  const refreshBaseline=H&&sb?await H.latestRunToken(sb):null;
+  if(!current())return false;
   const data=H&&sb?await H.readRuns(sb):{runs:null};
-  if(!current())return;
+  if(!current())return false;
+  if(requireComplete&&data.runs===null)return false;
   const put=(id,html)=>{const el=$(id);if(el)el.innerHTML=html};
   // A failed read says it failed; only a read that worked may say there is nothing.
   const failed='<p class="home-none" data-failed>This section could not load. Refresh to try again.</p>';
-  put('home-week',data.runs===null?failed:H.weekHtml(data.runs,[],now,{showEvents:false}));
-  $('home-community')?.remove();$('home-join')?.remove();
-  if(data.runs!==null&&!data.runs.length)$('home-week-section')?.setAttribute('hidden','');
   const who=data.runs?H.builders(data.runs.filter(r=>r.profile_id!==ME?.id),6):[];
-  put('home-builders',data.runs===null?failed:who.length?who.map(b=>GrinderFeed.builderRow(b.run)).join(''):'<p class="home-none">Find a friend and follow what they build.</p>');
+  const commitAside=()=>{put('home-week',data.runs===null?failed:H.weekHtml(data.runs,[],now,{showEvents:false}));$('home-community')?.remove();$('home-join')?.remove();$('home-week-section')?.toggleAttribute('hidden',data.runs!==null&&!data.runs.length);put('home-builders',data.runs===null?failed:who.length?who.map(b=>GrinderFeed.builderRow(b.run)).join(''):'<p class="home-none">Find a friend and follow what they build.</p>')};
+  if(!requireComplete)commitAside();
   const body=$('landing-feature-body');
   let runs=data.runs||[], runsFailed=data.runs===null;
-  if(!runs.length){const older=await fetchLatestPublicRuns(5);if(older===null)runsFailed=true;else{runs=older;runsFailed=false}}
+  if(!requireComplete&&!runs.length){const older=await fetchLatestPublicRuns(5);if(older===null)runsFailed=true;else{runs=older;runsFailed=false}}
   if(runs.length){
     noteTraces(runs);
     void window.StriveRunPhotos?.prefetch?.({client:sb,runIds:StriveActivity.sort(runs).slice(0,FEED_PAGE).map(r=>r.id)});
@@ -1924,12 +1929,16 @@ async function viewLanding(){
     const sorted=StriveActivity.sort(runs);let shown=0;
     const more=async()=>{
       const page=sorted.slice(shown,shown+FEED_PAGE);shown+=page.length;
-      await feedCards(page,await ackData(page),{current,onCard:html=>{if(current()){body.querySelector('.feed-skeleton')?.remove();let deck=body.querySelector(':scope>.strive-overview');if(!deck){deck=document.createElement('div');deck.className='strive-overview';body.prepend(deck)}deck.insertAdjacentHTML('beforeend',html)}}});if(!current())return false;
+      let complete;try{
+        if(requireComplete)complete=await feedCards(page,await ackData(page),{current,requireComplete});
+        else await feedCards(page,await ackData(page),{current,onCard:html=>{if(current()){body.querySelector('.feed-skeleton')?.remove();let deck=body.querySelector(':scope>.strive-overview');if(!deck){deck=document.createElement('div');deck.className='strive-overview';body.prepend(deck)}deck.insertAdjacentHTML('beforeend',html)}}});if(!current())return false;
+      }catch(_){return false}
+      if(requireComplete){$('feed-more')?.closest('.feed-more-row')?.remove();body.querySelectorAll('.feed-skeleton').forEach(el=>el.remove());body.innerHTML=complete.html;complete.mount()}
       wireKudos();return true;
     };
-    if(!body.querySelector('.feed-skeleton'))body.innerHTML='';$('feed-more')?.closest('.feed-more-row')?.remove();
+    if(!requireComplete){if(!body.querySelector('.feed-skeleton'))body.innerHTML='';$('feed-more')?.closest('.feed-more-row')?.remove()}
     const ok=await more();body.querySelectorAll('.feed-skeleton').forEach(el=>el.remove());body.classList.remove('feed-loading');body.removeAttribute('aria-busy');
-    if(!ok)return;
+    if(!ok)return false;
     if(shown<sorted.length){
       body.insertAdjacentHTML('afterend','<p class="feed-more-row"><button type="button" class="act ghost" id="feed-more">Show more runs</button></p>');
       const button=$('feed-more');
@@ -1940,17 +1949,25 @@ async function viewLanding(){
     body.classList.remove('feed-loading');body.removeAttribute('aria-busy');
     body.innerHTML=runsFailed?failed:'<p class="home-none">No public run yet. <a href="/?post">Connect your agent and add the first one</a>.</p>';
   }
+  if(requireComplete)commitAside();
   wireKudos();
   void updateReviewCount();
-  if(ME||location.search||location.hash) return;
+  if(!requireComplete)feedRefresh.start({
+    baseline:refreshBaseline,
+    probe:()=>H.latestRunToken(sb),
+    refresh:async()=>{if(await viewLanding({requireComplete:true})===false)throw new Error('feed refresh did not complete');},
+    current:()=>current()&&location.pathname==='/'&&!location.search,
+  });
+  if(ME||location.search||location.hash) return !runsFailed;
   const line=$('public-run-count');
-  if(!line) return;
+  if(!line) return !runsFailed;
   const count=await fetchPublicRunCount();
   const scope=line.textContent;
   line.textContent=count===0?'No public runs yet. Yours would be the first.'
     :count===1?'1 public run is live.'
     :Number.isInteger(count)?`${count} public runs are live. ${scope}`:scope;
   line.dataset.countState=Number.isInteger(count)?'ready':'unavailable';
+  return !runsFailed;
 }
 
 
@@ -2535,11 +2552,12 @@ async function viewProfile(handle){
   if(!prof){ app.innerHTML='<div class="card"><div class="empty">Profile not found.</div></div>'; return; }
   const canonicalProfile=StriveLinks.profilePath(handle);if(canonicalProfile){let link=document.querySelector('link[rel="canonical"]');if(!link){link=document.createElement('link');link.rel='canonical';document.head.append(link)}link.href=location.origin+canonicalProfile;if(new URLSearchParams(location.search).get('u')===handle&&!new URLSearchParams(location.search).has('preview')&&!new URLSearchParams(location.search).has('share'))history.replaceState(null,'',canonicalProfile+location.hash);}
   const isOwner=ME&&ME.id===prof.id,preview=isOwner&&new URLSearchParams(location.search).get('preview')==='public',mine=isOwner&&!preview;
+  const canSeeCloseFriends=Boolean(ME)&&mine===false&&preview===false;
   const {data:runs,error:profileRunsError}=await sb.from('runs').select('*, profiles!runs_profile_id_fkey(github_handle,name,rig,handle,display_name,avatar_url)')
-    .eq('profile_id',prof.id)[mine||(!preview&&ME)?'in':'eq']('visibility',mine?['public','link','private','close_friends','anonymous']:!preview&&ME?['public','close_friends']:'public').order('started_at',{ascending:false,nullsFirst:false}).order('id',{ascending:false}).limit(50);
+    .eq('profile_id',prof.id)[canSeeCloseFriends?'in':'eq']('visibility',canSeeCloseFriends?['public','close_friends']:'public').order('started_at',{ascending:false,nullsFirst:false}).order('id',{ascending:false}).limit(50);
   if(!current())return;
   if(profileRunsError){app.innerHTML='<div class="card"><div class="empty">This profile’s runs could not load. Refresh to try again.</div></div>';return;}
-  noteTraces(runs); noteLooked([handle],mine?'all':'public');
+  noteTraces(runs); noteLooked([handle],mine?'own-public':'public');
   const R=StriveActivity.sort(runs||[]); const publicCount=R.filter(r=>r.visibility==='public').length; const visibleExtra=!mine&&ME&&R.length>publicCount; const profileAcks=await ackData(R),acksR=profileAcks.countsKnown===false?null:R.reduce((sum,r)=>sum+(profileAcks.counts[r.id]||0),0);
   const sh=grindShape(R, acksR||0);
   // Pinned first (migration 015): only runs this reader can already see, newest pin first, at most 3.
@@ -2556,9 +2574,9 @@ async function viewProfile(handle){
   frame(railHtml(mine?'profile':null,R), null); if(mine)setPrimarySection('profile');
   // A person's profile shows their face: their photo link, else their GitHub picture. An agent keeps its trace tile.
   const profileFace=isOwner&&AUTH_USER?{...prof,avatar_url:GrinderAuth.present(prof,AUTH_USER)?.avatar_url||prof.avatar_url}:prof;
-  const profileHtml=`${isOwner?`<div class="profile-view-mode"><span>${preview?'Public profile preview':'Your profile · includes private work'}</span><a href="/?u=${encodeURIComponent(handle)}${preview?'':'&preview=public'}">${preview?'Back to your profile':'Preview public profile'}</a></div>`:''}<section class="profile-header"><div class="phero">${!isAgentProfile(prof)&&window.GrinderFeed?.face?GrinderFeed.face({profiles:profileFace},56):avatar(handle,{size:36,agent:isAgentProfile(prof)})}
+  const profileHtml=`${isOwner?`<div class="profile-view-mode"><span>${preview?'Public profile preview':'Your profile · public runs only'}</span><a href="/?u=${encodeURIComponent(handle)}${preview?'':'&preview=public'}">${preview?'Back to your profile':'Preview public profile'}</a></div>`:''}<section class="profile-header"><div class="phero">${!isAgentProfile(prof)&&window.GrinderFeed?.face?GrinderFeed.face({profiles:profileFace},56):avatar(handle,{size:36,agent:isAgentProfile(prof)})}
       <div class="profile-name"><h1>${esc(prof.display_name||prof.name||handle)}</h1><div class="h">@${esc(handle)}</div>${profileLinksHtml(prof,mine)}</div>${mine?'<div class="profile-actions"><button id="edit-profile-open" class="ghost">Edit profile</button></div>':'<div id="social-follow" class="social-follow profile-follow" data-label="Follow"></div>'}</div>
-    <section class="profile-activity-stats" aria-label="Activity in the loaded runs"><div><span>Runs</span><strong>${R.length}</strong></div><div><span>Projects</span><strong>${new Set(R.map(r=>GrinderContract.projectLabel(r.project)).filter(Boolean)).size}</strong></div><div><span>XUDOS received</span><strong>${acksR===null?'Unavailable':acksR}</strong></div></section><p class="profile-stats-scope">${mine?'Your latest':'Latest visible'} ${R.length} runs · ${mine?'Includes private work':'Only runs you can open'}</p>
+    <section class="profile-activity-stats" aria-label="Activity in the loaded runs"><div><span>Runs</span><strong>${R.length}</strong></div><div><span>Projects</span><strong>${new Set(R.map(r=>GrinderContract.projectLabel(r.project)).filter(Boolean)).size}</strong></div><div><span>XUDOS received</span><strong>${acksR===null?'Unavailable':acksR}</strong></div></section><p class="profile-stats-scope">${mine?'Your latest '+R.length+' public runs · Private captures stay in Run review':'Latest visible '+R.length+' runs · Only runs you can open'}</p>
     <details class="profile-recorded-details"><summary>Recorded activity</summary>${StriveContext.profileFacts(R)}</details></section>
     ${projects||setup?`<details class="profile-project-list"><summary>${mine?'Projects & tools':'Projects'}</summary>${projects}
     ${setup?`<div class="head"><h2>Tools</h2></div><div class="profile-tools">${setup}</div>`:''}
@@ -3025,7 +3043,7 @@ function mountHomeCommunity(){
     if(RUN_VIEW_GENERATION!==generation||$('home-community'))return;if(!body){if(++tries<40)setTimeout(place,100);return}
     const slot=document.createElement('section');slot.id='home-community';slot.innerHTML=H.community(data);body.before(slot)};place()});
 }
-async function route(){ setPrimarySection(); RUN_VIEW_GENERATION++;window.StriveRunPhotos?.disposeAll?.();account.recover(); try{document.title=pageTitle(new URLSearchParams(location.search))}catch(_){}
+async function route(){ setPrimarySection(); RUN_VIEW_GENERATION++;feedRefresh.stop();window.StriveRunPhotos?.disposeAll?.();account.recover(); try{document.title=pageTitle(new URLSearchParams(location.search))}catch(_){}
   if(ME && social.refreshUnread) social.refreshUnread();
   if(IDENTITY_SETUP)return viewIdentitySetup();
   restoreImport();

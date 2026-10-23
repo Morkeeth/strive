@@ -28,10 +28,10 @@ def test_profile_shows_pinned_first_and_only_visible_runs():
     assert view.index("${pinnedHtml}") < view.index("<h2>Activities</h2>")
     seen = _profile_probe()
     owner_id = "00000000-0000-4000-8000-0000000000a1"
-    # TEST DATA: runs 1..7, newest is 7. Pins, newest pin first: 2 public, 5 close friends,
-    # 6 private, 1 public. Run 4 is followers-only, run 7 anonymous, run 3 public and unpinned.
+    # TEST DATA: runs 1..7. The owner's profile is public work only; a signed-in close friend
+    # may also see close-friends work. Private, link and anonymous rows never enter the profile.
     expected = {
-        "owner": (["in", "visibility", ["public", "link", "private", "close_friends", "anonymous"]], [2, 5, 6], [7, 4, 3, 1], "3 of 3"),
+        "owner": (["eq", "visibility", "public"], [2, 1], [3], "2 of 3"),
         "other": (["in", "visibility", ["public", "close_friends"]], [2, 5, 1], [3], "3 of 3"),
         "anonymous": (["eq", "visibility", "public"], [2, 1], [3], "2 of 3"),
         "ownerPreview": (["eq", "visibility", "public"], [2, 1], [3], "2 of 3"),
@@ -47,6 +47,7 @@ def test_profile_shows_pinned_first_and_only_visible_runs():
         assert got["pinnedBeforeActivities"] is True and got["lastPinnedBeforeFirstRecent"] is True, reader
     # A pin never widens the audience: private and followers-only pins stay off other readers' pages.
     assert seen["other"]["renderedVisibilities"] == ["close_friends", "public"]
+    assert seen["owner"]["renderedVisibilities"] == ["public"]
     assert seen["anonymous"]["renderedVisibilities"] == ["public"]
     assert seen["ownerPreview"]["renderedVisibilities"] == ["public"]
     # Nothing pinned among the readable rows: no Pinned section at all.
