@@ -143,6 +143,12 @@ async function scenario({ viewer, preview = false, providers = ["github"], rows 
 
 const agent = { ...profile, rig: { agent: true } };
 const noLinks = { ...profile, github_handle: null, x_handle: null, avatar_url: null };
+const privateBackfill = Array.from({ length: 497 }, (_, n) => ({
+  ...row(6, "private"),
+  id: `22222222-2222-4222-8222-${String(n).padStart(12, "0")}`,
+  started_at: `2026-10-23T${String(Math.floor(n / 60) % 24).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}:00Z`,
+  created_at: `2026-10-23T${String(Math.floor(n / 60) % 24).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}:00Z`,
+}));
 const result = {
   owner: await scenario({ viewer: "owner" }),
   ownerPreview: await scenario({ viewer: "owner", preview: true }),
@@ -151,6 +157,7 @@ const result = {
   otherEmpty: await scenario({ viewer: "other", rows: [ROWS[3], ROWS[5]] }),
   anonymousEmpty: await scenario({ viewer: null, rows: [ROWS[3], ROWS[5]] }),
   ownerEmpty: await scenario({ viewer: "owner", rows: [] }),
+  ownerPrivateBackfill: await scenario({ viewer: "owner", rows: [...privateBackfill, ROWS[0], ROWS[1], ROWS[2]] }),
   ownerNoLinksGithubOnly: await scenario({ viewer: "owner", prof: noLinks, providers: ["github"] }),
   ownerNoLinksX: await scenario({ viewer: "owner", prof: noLinks, providers: ["github", "x"] }),
   ownerNoLinksTwitter: await scenario({ viewer: "owner", prof: noLinks, providers: ["github", "twitter"] }),

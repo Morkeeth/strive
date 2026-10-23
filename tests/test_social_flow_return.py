@@ -43,15 +43,19 @@ def test_following_states_public_only_and_points_close_friends_to_profile():
 def test_profile_empty_and_heading_respect_viewer():
     seen = _profile_probe()
     # Heading. "Recent runs you can see" / "Recent public runs" became one Activities heading with a
-    # reader-specific scope line (f3b8d23). Only the owner is told private work is included.
-    assert seen["owner"]["scope"] == "Your latest 7 runs · Includes private work"
-    assert seen["owner"]["viewMode"] == "Your profile · includes private work"
+    # reader-specific scope line. The owner's profile is public work; private captures stay in review.
+    assert seen["owner"]["scope"] == "Your latest 3 public runs · Private captures stay in Run review"
+    assert seen["owner"]["viewMode"] == "Your profile · public runs only"
     assert seen["other"]["scope"] == "Latest visible 4 runs · Only runs you can open"
     assert seen["anonymous"]["scope"] == "Latest visible 3 runs · Only runs you can open"
     assert seen["ownerPreview"]["viewMode"] == "Public profile preview"
     public_note = "Only Public runs appear here. Followers-only runs stay off this profile."
     assert seen["anonymous"]["publicNote"] == public_note and seen["ownerPreview"]["publicNote"] == public_note
     assert seen["other"]["publicNote"] is None and seen["owner"]["publicNote"] is None
+    backfill = seen["ownerPrivateBackfill"]
+    assert backfill["statRuns"] == "3"
+    assert backfill["renderedVisibilities"] == ["public"]
+    assert backfill["filters"][-1] == ["eq", "visibility", "public"]
     # Empty states. The owner has only a followers-only and a private run (TEST DATA); neither
     # reader gets a row, and the wording differs by reader without saying that hidden runs exist.
     signed_in, signed_out = seen["otherEmpty"], seen["anonymousEmpty"]
