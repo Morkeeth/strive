@@ -2,6 +2,8 @@
 (function(root){
  // Enable at build time only after the production estimate validator is installed.
  const ESTIMATE_UPLOADS_READY=false;
+ // A priced model by the name a person reads, with the identifier the price table matched.
+ const priced=id=>{const name=root.StriveAgents?.modelName(id);return name&&name!==id?`${name} (${id})`:id};
  const count=n=>Number.isSafeInteger(n)&&n>=0;
  const object=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>keys.includes(k));
  const required=(v,keys)=>keys.every(k=>Object.hasOwn(v,k));
@@ -51,11 +53,11 @@
   if(!e){return {rows,missing:[['Est. dollars','No stored per-model usage and price provenance. No dollar estimate is shown.'],['Tool-active time · proxy','No stored tool-call bin provenance. No active-time proxy is shown.']]};}
   const source=`Capture window ${e.source.started_at} to ${e.source.ended_at}; source SHA-256 ${e.source.sha256}.`;
   if(!e.cost)missing.push(['Est. dollars','No stored cost inputs. No dollar estimate is shown.']);
-  else if(e.cost.components.some(c=>c.price===null))missing.push(['Est. dollars','No recorded price for '+e.cost.components.filter(c=>c.price===null).map(c=>c.model).join(', ')+'. The complete dollar estimate is omitted.']);
+  else if(e.cost.components.some(c=>c.price===null))missing.push(['Est. dollars','No recorded price for '+e.cost.components.filter(c=>c.price===null).map(c=>priced(c.model)).join(', ')+'. The complete dollar estimate is omitted.']);
   else{
    let dollars=0;
    for(const c of e.cost.components){const r=c.price.rates_per_million;dollars+=((c.input_tokens-c.cache_read_tokens-c.cache_write_5m_tokens-c.cache_write_1h_tokens)*r.input+c.cache_read_tokens*r.cache_read+c.cache_write_5m_tokens*r.cache_write_5m+c.cache_write_1h_tokens*r.cache_write_1h+c.output_tokens*r.output)/1e6;}
-   const provenance=e.cost.components.map(c=>`${c.model} (${c.role}): ${c.input_tokens} input including ${c.cache_read_tokens} cache reads, ${c.cache_write_5m_tokens} 5-minute writes and ${c.cache_write_1h_tokens} 1-hour writes; ${c.output_tokens} output. Rates USD per million ${JSON.stringify(c.price.rates_per_million)}. ${c.price.table_url}, ${c.price.table_version}, checked ${c.price.checked_on}; service tier ${c.price.service_tier}; context tier ${c.price.context_tier}.`).join(' ');
+   const provenance=e.cost.components.map(c=>`${priced(c.model)} (${c.role}): ${c.input_tokens} input including ${c.cache_read_tokens} cache reads, ${c.cache_write_5m_tokens} 5-minute writes and ${c.cache_write_1h_tokens} 1-hour writes; ${c.output_tokens} output. Rates USD per million ${JSON.stringify(c.price.rates_per_million)}. ${c.price.table_url}, ${c.price.table_version}, checked ${c.price.checked_on}; service tier ${c.price.service_tier}; context tier ${c.price.context_tier}.`).join(' ');
    rows.push(['Est. dollars','$'+dollars.toFixed(2),`Model-price comparison from stored capture inputs, not a bill. Excludes subscription terms, tool fees and taxes; standard-assumed means processing speed was not recorded. ${source} ${provenance} Null rates apply only to token categories with zero usage. Method model-price-v1. Captures and price inputs are uploader-supplied, not independently verified by STRIVE.`]);
   }
   if(e.tool_activity){const a=e.tool_activity;rows.push(['Tool activity',a.occupied_bins.length+' occupied clock minutes',`${a.occupied_bins.length} occupied clock minutes: unique 60-second clock bins contain at least one recorded tool call. This counts occupied bins, including partial boundary minutes; it is not continuous tool runtime or measured human active time. Origin ${a.origin_utc}; method ${a.method}. ${source}`]);}

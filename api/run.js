@@ -16,7 +16,7 @@ module.exports=async function handler(req,res){
    res.statusCode=200;res.end(JSON.stringify(runJson(run)));return;
   }
   if(req.query.image==='1'){
-   const {ImageResponse}=await import('@vercel/og');const avatar=run?await readAvatar(run):null;const image=new ImageResponse(run?card(run,{avatar}):privateCard(),{width:1200,height:630});
+   const {ImageResponse}=await import('@vercel/og');const {shareFonts}=await import('../server/share-fonts.mjs');const avatar=run?await readAvatar(run):null;const image=new ImageResponse(run?card(run,{avatar}):privateCard(),{width:1200,height:630,fonts:await shareFonts()});
    const png=Buffer.from(await image.arrayBuffer());
    res.statusCode=200;res.setHeader('Content-Type','image/png');res.setHeader('Cache-Control',SHARE_IMAGE_CACHE);res.end(png);
   }else if(!run&&validId(id)){

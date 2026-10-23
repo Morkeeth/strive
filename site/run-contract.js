@@ -727,7 +727,7 @@
     if (!root) return "";
     const workers = root.children;
     const longest = Math.max(1, ...workers.map((w) => w.wall_seconds || 0));
-    const chip = (m) => '<span class="tree-chip" title="' + escText(m || "model unknown") + '">' + escText(m || "model unknown") + "</span>";
+    const chip = (m) => '<span class="tree-chip" title="' + escText(m || "model unknown") + '">' + escText((m && root.StriveAgents ? root.StriveAgents.modelName(m) : m) || "model unknown") + "</span>";
     const counts = (n) =>
       '<span class="tree-counts">' +
       (n.bubbles == null ? "?" : n.bubbles) + " turns · " +

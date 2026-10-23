@@ -3,6 +3,8 @@
 // no table and no column, so a day has no text of its own: the headline is counted, and the
 // question and the comments belong to one run, named here the lead run.
 (function(root){
+  const names=()=>root.StriveAgents||(typeof require==='function'?require('./agent-names.js'):null);
+  const agentOf=r=>names()?.agentName(r.harness)||r.harness;
   const DAY=/^\d{4}-\d{2}-\d{2}$/;
   const pad=n=>String(n).padStart(2,'0');
   const localDay=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -13,7 +15,7 @@
   const startOf=r=>{const e=evidenceOf(r),d=e?new Date(Date.parse(e.repo_window_end)-1):new Date(r.started_at||r.created_at);return Number.isFinite(d.getTime())?d:null};
   const secondsOf=r=>Math.max(0,Number(r.wall_time_s||r.duration_s||0)||0);
   const resultOf=r=>[r.story_result,r.caption,r.note].find(v=>typeof v==='string'&&v.trim())||'';
-  const modelsOf=r=>{const m=r.capture_metadata&&Array.isArray(r.capture_metadata.models)?r.capture_metadata.models:(typeof r.model==='string'&&r.model?[r.model]:[]);return [...new Set(m.filter(v=>typeof v==='string'&&v))]};
+  const modelsOf=r=>{const m=r.capture_metadata&&Array.isArray(r.capture_metadata.models)?r.capture_metadata.models:(typeof r.model==='string'&&r.model?[r.model]:[]);return [...new Set(m.filter(v=>typeof v==='string'&&v).map(v=>names()?.modelName(v)||v))]};
   // A project total needs disjoint observations or commit identities, never an unchecked sum.
   function commitSummary(runs){
     const rows=[...new Map((runs||[]).map(r=>[r.id,r])).values()];
@@ -80,7 +82,7 @@
     // the row opens the run that says what came out, and names how many runs are behind it.
     const grouped=new Map();
     for(const i of lines){const key=i.label||'run:'+i.run.id,g=grouped.get(key)||{label:i.label,raw:i.raw,runs:[],seconds:0,commits:0,models:new Set(),harnesses:new Set(),result:'',open:null};
-      g.runs.push(i);g.seconds+=i.seconds;g.commits+=i.commits||0;i.models.forEach(m=>g.models.add(m));if(i.run.harness)g.harnesses.add(i.run.harness);
+      g.runs.push(i);g.seconds+=i.seconds;g.commits+=i.commits||0;i.models.forEach(m=>g.models.add(m));if(i.run.harness)g.harnesses.add(agentOf(i.run));
       if(i.result){g.result=i.result;g.open=i.run}grouped.set(key,g)}
     // Git history is drawn on its project's lane as marks: when commits landed, never who made them.
     // A project that has git history and no captured session still gets a lane, made of marks only.
@@ -154,7 +156,7 @@
     const doneHtml=`<div class="head"><h2>What got done</h2><span class="meta">${plural(told.length,'result')} · ${plural(D.groups.length,'project')}</span></div>
       <div class="card day-sheet">${D.groups.length?`<div class="day-axis">${axis}</div>${told.map(line).join('')}${untold.length?`<details class="day-untold" ${mine||!told.length?'open':''}><summary>${told.length?`${plural(untold.length,'more project')} with work or commits, no result written`:`${plural(untold.length,'project')} with work or commits, no result written yet`}</summary>${untold.map(quiet).join('')}${mine?'<p class="hint">Open a run and write what came out of it. It moves up and gets a full row.</p>':''}</details>`:''}`:'<div class="empty"><h3>No named work on this day</h3><p>A run appears here once it has a project or a written result.</p></div>'}
       ${D.plumbing.length?`<details class="day-plumbing"><summary><b>Plumbing</b> ${plural(D.plumbing.length,'run')} with no project and no written result · ${span(D.plumbingSeconds)}<span class="day-track">${D.plumbing.filter(i=>i.seconds>0).map(bar).join('')}</span></summary>
-        <ul>${D.plumbing.map(i=>`<li><a href="${esc(editHref(i.run.id))}">${esc(i.run.harness||'Run')} · ${hm(i.start)} · ${span(i.seconds)}</a></li>`).join('')}</ul>
+        <ul>${D.plumbing.map(i=>`<li><a href="${esc(editHref(i.run.id))}">${esc(agentOf(i.run)||'Run')} · ${hm(i.start)} · ${span(i.seconds)}</a></li>`).join('')}</ul>
         <p class="hint">Lineage is not recorded: which run started which is unknown, so these stay side by side.</p></details>`:''}</div>`;
     const howHtml=`${spent||models?`<div class="head"><h2>How the day was spent</h2></div><div class="card day-how">${spent}${models?`<div><p class="meta">Models, by number of runs that recorded each</p>${models}</div>`:''}</div>`:''}`;
     // Comments are the lead run's own thread: a day has none of its own. The heading names that run.

@@ -6,7 +6,7 @@ const photos=await readPublicPhotos(run,async()=>new Response(JSON.stringify([{i
 assert.equal(photos[1].is_cover,true,'public reader keeps the author-selected cover flag');
 const page=html(run,{photos,kudos:0});
 assert.ok(page.indexOf('class="share-author"')<page.indexOf('class="public-run-photo-grid"'),'builder identity precedes the selected image mosaic');
-assert.ok(page.includes(`/api/og?run=${id}&v=4`),'the public page requests the current share-card image');
+assert.ok(page.includes(`/api/og?run=${id}&v=5`),'the public page requests the current share-card image');
 assert.ok(page.indexOf('class="public-run-photos"')<page.indexOf('class="share-copy"'),'selected photos lead the public story');
 assert.ok(page.includes('href="/?legacy=1&run='+id+'">Open in STRIVE'),'entry opens this exact run in the interactive app');
 assert.ok(page.includes('<link rel="canonical" href="https://striverun.app/test-author/11111111-test-data-work">'),'shared address stays clean');
