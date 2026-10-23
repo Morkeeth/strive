@@ -62,10 +62,21 @@ def has_tool_result(rec: dict) -> bool:
 
 
 def is_human_turn(rec: dict) -> bool:
-    """True iff a person typed this. Transcripto's gate, vendored (see module docstring)."""
-    if rec.get("type") != "user":
+    """True iff evidence records a direct or tool-relayed human turn."""
+    from .provenance import classify as classify_provenance
+    event = classify_provenance("claude-code", rec)
+    return bool(event and event["kind"] in ("human-typed", "human-via-tool"))
+
+
+def is_external_sdk_turn(rec: dict) -> bool:
+    """Detect a non-interactive Agent SDK request without calling it human."""
+    if rec.get("type") != "user" or rec.get("promptSource") != "sdk":
         return False
-    if rec.get("promptSource") not in ("typed", "queued"):
+    if rec.get("entrypoint") not in ("sdk-ts", "sdk-cli", "sdk-py"):
+        return False
+    if rec.get("userType") != "external" or rec.get("turnOrigin") != "sdk":
+        return False
+    if not isinstance(rec.get("promptId"), str) or not rec["promptId"].strip():
         return False
     if rec.get("isMeta") or rec.get("isSidechain") or has_tool_result(rec):
         return False

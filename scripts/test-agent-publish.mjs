@@ -478,6 +478,10 @@ const reviewToken=await token(await agent(OWNER_A,{visibility:'public'}),{scopes
 const beforeGate=await act(reviewToken,'publish',strivePayload(REV('review-before'),{visibility:'public'}));
 assert.equal(beforeGate.visibility,'public','baseline: scoped agent could publish without the run panel');
 await db.exec(await readFile(new URL('../supabase/strava/041_agent_run_review.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../supabase/strava/011_dropin_links.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../supabase/strava/012_dropin_route.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../supabase/strava/051_prompt_provenance.sql',import.meta.url),'utf8'));
+const promptProvenance={v:1,counts:{'human-typed':2,'human-via-tool':0,'agent-to-agent':1,automation:0,unknown:0},human_turns:2,known_autonomous_turns:1,unknown_turns:0,relays:{}};
 const afterGate=await act(reviewToken,'publish',strivePayload(REV('review-after'),{visibility:'public'}));
 assert.equal(afterGate.visibility,'private');assert.equal(afterGate.review_required,true);
 assert.equal((await db.query('select visibility from strava.runs where id=$1',[afterGate.id])).rows[0].visibility,'private');
@@ -491,5 +495,7 @@ const draftGate=await act(reviewToken,'draft',strivePayload(REV('review-draft'),
 assert.equal(draftGate.review_required,true);
 assert.equal((await db.query('select payload from strava.grinder_agent_drafts where id=$1',[draftGate.id])).rows[0].payload.visibility,'private');
 assert.equal((await db.query("select count(*)::int as n from strava.runs where measurement_revision=$1 and visibility<>'private'",[REV('review-after')])).rows[0].n,0);
+const provenanceRun=await act(reviewToken,'publish',strivePayload(REV('review-provenance'),{turns_typed:promptProvenance.human_turns,prompt_provenance:promptProvenance}));
+assert.deepEqual((await db.query('select prompt_provenance from strava.runs where id=$1',[provenanceRun.id])).rows[0].prompt_provenance,promptProvenance);
 console.log('PASS database review gate: direct RPC public request saves privately; private preview preserves measurements; existing public run is byte-for-byte unchanged on retry; draft payload forced private');
 await db.close();

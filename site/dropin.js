@@ -27,6 +27,7 @@
       id: "dropin", title: title || "", harness: run.harness, prompts: run.turns_typed, turns_typed: run.turns_typed,
       tool_calls: run.tool_calls, files_touched: run.files_touched, commits: run.commits, duration_s: run.duration_s,
       rhythm: run.line || run.rhythm, route: run.route || null, started_hour: GrinderDropin.uploadPayload(run, "").started_hour,
+      prompt_provenance: run.prompt_provenance || null,
       // created_at is when the card is made, as on the shared page, so both say the same thing.
       started_at: run.started, created_at: new Date().toISOString(), visibility: "anonymous",
     };
@@ -99,7 +100,7 @@
       try {
         if(file.size>1024*1024)throw Error('This prepared preview exceeds 1 MiB. Choose a smaller sitting in the local picker.');
         const prepared=JSON.parse(await file.text());
-        const allowed=new Set(['schema_version','measurement_revision','harness','title','project','visibility','turns_typed','tool_calls','shell_calls','files_touched','commits','started','duration_s','rhythm','trace_basis','capture_metadata','route','ridge','ridge_basis','ridge_wall_seconds','worker_bins','commit_bins','ridge_tool_calls','code_route','claims','claims_verified','artifacts_produced']);
+        const allowed=new Set(['schema_version','measurement_revision','harness','title','project','visibility','turns_typed','prompt_provenance','tool_calls','shell_calls','files_touched','commits','started','duration_s','rhythm','trace_basis','capture_metadata','route','ridge','ridge_basis','ridge_wall_seconds','worker_bins','commit_bins','ridge_tool_calls','code_route','claims','claims_verified','artifacts_produced']);
         if(!prepared||Array.isArray(prepared)||Object.keys(prepared).some(key=>!allowed.has(key)))throw Error('This is not a bounded STRIVE preview. Choose the .strive.json file from the local picker.');
         if(prepared.schema_version!==1||!/^[a-f0-9]{64}$/.test(prepared.measurement_revision||''))throw Error('This preview is missing its source reference. Prepare it again in the local picker.');
         prepared.visibility='private';GrinderContract.validate(prepared);
@@ -135,7 +136,7 @@
         const digest = await crypto.subtle.digest("SHA-256",source);
         const measurement_revision = Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,"0")).join("");
         const metrics={schema_version:1,measurement_revision,harness:run.harness,
-          turns_typed:run.turns_typed,tool_calls:run.tool_calls,files_touched:run.files_touched,
+          turns_typed:run.turns_typed,prompt_provenance:run.prompt_provenance,tool_calls:run.tool_calls,files_touched:run.files_touched,
           started:typeof run.started==='string'?run.started:null,
           capture_metadata:run.capture_metadata,
           rhythm:run.line||run.rhythm,trace_basis:'position'};
@@ -306,7 +307,7 @@
   // already carries it through sign-in. The typed title and the audience the person chose go with it.
   function post(audience) {
     const token = encodeURIComponent(btoa(JSON.stringify({
-      schema_version: 0, harness: run.harness, turns_typed: run.turns_typed, tool_calls: run.tool_calls,
+      schema_version: 0, harness: run.harness, turns_typed: run.turns_typed, prompt_provenance:run.prompt_provenance, tool_calls: run.tool_calls,
       files_touched: run.files_touched, commits: run.commits, duration_s: run.duration_s, started: run.started, rhythm: run.line || run.rhythm,
     })));
     try { sessionStorage.setItem("ag_import_edits", JSON.stringify({ token, i_title: ($("drop-title").value || "").trim(), i_vis: audience })); } catch (_) {}

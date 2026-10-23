@@ -136,6 +136,7 @@ Rules:
 - A picture is only ever one the author already added to one of their runs and then picked here. No stock image, no generated image, no camera roll scan, no automatic publish.
 - A picture marked "Personal photo" on its run starts in Photo mode when picked. Any other picture starts in Screenshot mode. Both are the author's own earlier words and both can be changed.
 - No picture is ever required. Data is enough. A mode with no picture picked saves as Data.
+- A run card with no measured route or author picture may show a small harness-specific motion fallback. It is decorative, uses no remote media, and makes no claim about the run. Reduced-motion readers get its still frame.
 - Fallback order: chosen picture, then the measured trace, then one plain sentence: "No measured trace and no picture on this page yet." The owner also gets a link to choose a visual.
 
 Privacy:
@@ -359,3 +360,7 @@ The import step and the saved-run editor draw the same grid, `render()` in `site
 Gap: role controls (Result, Before, After, Personal photo) are no longer offered in either place. Roles already saved are kept and still drive the reader's card. A personal photo saved before this change shows as `Hidden` until the author shows it.
 
 Checks: `scripts/test-photo-editor.mjs`, `scripts/test-compact-photo-editor.mjs`, and in a real browser at 390 and 1440 `scripts/check-photo-editor.py`.
+
+## 16 October — review identity before measurements
+
+Private review rows keep title, recorded run date, project/repository and exact authored result lines visible while collapsed. Captions are labelled Author note; absent results stay unknown. The preliminary card still uses the shared posted renderer. Feed text paints after saved display choices, independently of photo metadata; the existing authorized photo mount fills its reserved media area. No owner rows are cached for first paint.

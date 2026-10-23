@@ -106,7 +106,7 @@ def stamp(row):
     except ValueError: return None
 
 
-def prompt(row, harness, codex_events=False):
+def prompt(row, harness, codex_events=False, codex_source=None):
     from .session_picker import text
     if harness == 'claude':
         from .authorship import is_human_turn
@@ -115,10 +115,12 @@ def prompt(row, harness, codex_events=False):
     p = row.get('payload') or {}
     if not isinstance(p, dict): p = {}
     if harness == 'codex':
+        if codex_source in ('cron', 'ci', 'hook', 'automation'): return None
         value = None
         if row.get('type') == 'event_msg' and p.get('type') == 'user_message': value = str(p.get('message') or '')
         elif not codex_events and row.get('type') == 'response_item' and p.get('type') == 'message' and p.get('role') == 'user': value = text(p.get('content'))
-        if value is not None and value.lstrip().startswith(('<recommended_plugins>', '<environment_context>', '<turn_aborted>', '# Files mentioned by the user:')): return None
+        from .provenance import CODEX_INJECTED
+        if value is not None and value.lstrip().startswith(CODEX_INJECTED): return None
         return value
     from .ingest import _cursor_text
     value = _cursor_text(row.get('message') or {})
@@ -144,16 +146,21 @@ def inspect_source(source, harness, gap=1800, _frozen=False, progress=None):
     from .plugin import source_identity
     session = source_identity((row for _, row, _ in records(path)), harness, path)
     codex_events = harness == 'codex' and any(row.get('type') == 'event_msg' and isinstance(row.get('payload'), dict) and row['payload'].get('type') == 'user_message' for _, row, _ in records(path))
+    codex_source = next(((row.get('payload') or {}).get('source') for _, row, _ in records(path)
+                         if row.get('type') == 'session_meta' and isinstance((row.get('payload') or {}).get('source'), str)), None)
     groups = []
+    sdk_requests = 0
     seen = 0
     if progress: progress('reading', 0, 'records read')
     if harness == 'claude':
+        from .authorship import is_external_sdk_turn
         events = []
         for _, row, _ in records(path):
             seen += 1
             if progress and seen % 256 == 0: progress('reading', seen, 'records read')
             at = stamp(row)
             if at is None: continue
+            sdk_requests += int(is_external_sdk_turn(row))
             human = prompt(row, harness)
             events.append((at, human is not None, ' '.join((human or '').split())[:180]))
             if len(events) > MAX_EVENTS: raise ValueError('More than 250,000 dated records; select a smaller native export.')
@@ -175,7 +182,7 @@ def inspect_source(source, harness, gap=1800, _frozen=False, progress=None):
             seen += 1
             if progress and seen % 256 == 0: progress('reading', seen, 'records read')
             if harness == 'codex' and row.get('type') == 'session_meta': continue
-            human = prompt(row,harness,codex_events)
+            human = prompt(row,harness,codex_events,codex_source)
             at = stamp(row) if harness == 'codex' else cursor_time(_cursor_text(row.get('message') or {}))
             if at and last and (at-last).total_seconds() > gap: idle=True
             if human is not None and current and idle: groups.append(current); current=None
@@ -191,7 +198,7 @@ def inspect_source(source, harness, gap=1800, _frozen=False, progress=None):
     if progress: progress('reading', seen, 'records read')
     if signature(path) != before: raise ValueError('The session changed while reading. Retry when its writer is idle.')
     for i, group in enumerate(groups): group['sitting']=i+1
-    return dict(source=str(path),session=session,sha256=digest.hexdigest(),bytes=before[2],signature=before,sittings=groups)
+    return dict(source=str(path),session=session,sha256=digest.hexdigest(),bytes=before[2],signature=before,sittings=groups,sdk_requests=sdk_requests)
 
 
 @contextmanager

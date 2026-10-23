@@ -48,6 +48,25 @@ function cardFacts(r){
   ['You typed',count(typed)?number(typed):'Not recorded','Recorded human messages, not words or keystrokes.']
  ];
 }
+  function shareFacts(run){
+    const recorded=cardFacts(run)||[],find=label=>recorded.find(r=>r[0]===label);
+    let m;try{m=validate(run.capture_metadata)}catch{}
+    const source=m?.estimates?.source;
+    const span=source?(Date.parse(source.ended_at)-Date.parse(source.started_at))/1000:null;
+    const seconds=[span,run.ridge_basis==='wall-time'?run.ridge_wall_seconds:null,run.wall_time_s,run.duration_s].find(v=>Number.isFinite(v)&&v>=0);
+    const duration=seconds==null?'Not recorded':seconds<60?Math.floor(seconds)+' sec':seconds<3600?Math.floor(seconds/60)+' min':Math.floor(seconds/3600)+' hr '+Math.floor(seconds%3600/60)+' min';
+    return [find('Recorded tokens')||['Recorded tokens','Not recorded','Complete usage is absent.'],find('Est. dollars')||['Est. dollars','Not recorded','No complete stored model usage and prices. This is not your subscription bill.'],['Elapsed',duration,'Captured elapsed span, including waiting.'],find('Model')||['Model','Not recorded','No captured model names.']];
+  }
+// The three facts a card shows, the same pick as the share page: tokens, est. dollars, elapsed,
+// then you typed, model, files changed. A missing fact is left out, never shown as 'Not recorded'.
+function shownFacts(run){
+ const all=shareFacts(run),card=cardFacts(run)||[],get=(rows,label)=>rows.find(row=>row[0]===label),known=row=>row&&typeof row[1]==='string'&&row[1]&&row[1]!=='Not recorded';
+ const agents=root.StriveAgents||(typeof require==='function'?require('./agent-names.js'):null),names=agents?.recordedModels?.(run)?.map(m=>m.name).join(', ')||(run.model?agents?.modelName?.(run.model):'');
+ const model=names?['Model',names,'Model names from the capture.']:get(all,'Model');
+ const files=Number.isInteger(run.files_touched)&&run.files_touched>=0?['Files changed',run.files_touched.toLocaleString('en-US'),'Files the capture says it changed.']:null;
+ return [get(all,'Recorded tokens'),get(all,'Est. dollars'),get(all,'Elapsed'),get(card,'You typed'),model,files].filter(known).slice(0,3);
+}
+function shareHtml(run){const rows=shownFacts(run);return rows.length?'<dl class="post-facts post-share-facts" data-count="'+rows.length+'" aria-label="Recorded facts">'+rows.map(([label,value,why])=>'<div><dt>'+esc(label)+'</dt><dd title="'+esc(why)+'">'+esc(value)+'</dd></div>').join('')+'</dl>':'';}
 // Three headline facts from the same run; elapsed span is never active time.
 const meanings={'Recorded tokens':'Text the model read and wrote.','Typed turns':'Messages you wrote.','Tool calls':'Actions the agent took.','Files touched':'Files the capture says it changed.','Commits':'Git commits recorded in this capture.','Est. dollars':'List-price cost of the recorded model usage.','Tool-active time · proxy':'Minutes with at least one recorded agent tool action.','Elapsed':'Time between the first and last captured event, including waiting.'};
 function headlineFacts(r,{preview=false}={}){
@@ -91,7 +110,7 @@ function measurementNotes(r){
  const facts=[...new Map([...cardFacts(r),...headlineFacts(r)].map(row=>[row[0],row])).values()];
  return [...facts.filter(row=>row[2]).map(([label,,detail])=>[label,detail]),...missing];
 }
-function measurementDetails(r,{preview=false}={}){const evidence=preview?(root.StriveEvidence||(typeof require==='function'?require('./run-evidence.js'):null)):null;return `<details class="post-measurement-note"><summary>About these measurements</summary>${evidence?`<p>${esc(evidence.basis(r).explanation)}</p>`:''}${measurementNotes(r).map(([label,detail])=>`<p><strong>${esc(label)}.</strong> ${esc(detail)}</p>`).join('')}</details>`;}
+function measurementDetails(r,{preview=false}={}){const evidence=preview?(root.StriveEvidence||(typeof require==='function'?require('./run-evidence.js'):null)):null,provenance=root.StriveProvenance||(typeof require==='function'?require('./provenance.js'):null),promptLine=provenance?.line?.(r.prompt_provenance)||'';return `<details class="post-measurement-note"><summary>About these measurements</summary>${evidence?`<p>${esc(evidence.basis(r).explanation)}</p>`:''}${promptLine?`<p><strong>Prompt origins.</strong> ${esc(promptLine)}</p>`:''}${measurementNotes(r).map(([label,detail])=>`<p><strong>${esc(label)}.</strong> ${esc(detail)}</p>`).join('')}</details>`;}
 function prepareForStorage(m){return estimates()?.prepare(m)||m;}
 function profileFacts(runs){
  const rows=[...new Map((runs||[]).map((r,i)=>[r.id||'row-'+i,r])).values()];
@@ -107,5 +126,5 @@ function profileFacts(runs){
  <div><dt>You typed</dt><dd>${typedRuns?typed.toLocaleString('en-US'):'Not recorded'}</dd><small>${scope(typedRuns)} have human message counts</small></div>
  </dl><p class="profile-models">Recorded models: ${models.size?[...models].map(esc).join(', '):'Not recorded'}</p><p class="profile-stats-scope">Recorded usage only; missing captures are not counted as zero. Cached input is already included.</p></section>`;
 }
-const api={context,setup,metrics,validate,cardFacts,headlineFacts,headlineHtml,profileFacts,cardSecondary,factLabel,measurementNotes,measurementDetails,prepareForStorage};root.StriveContext=api;if(typeof module!=='undefined')module.exports=api;
+const api={shareFacts,shownFacts,shareHtml,context,setup,metrics,validate,cardFacts,headlineFacts,headlineHtml,profileFacts,cardSecondary,factLabel,measurementNotes,measurementDetails,prepareForStorage};root.StriveContext=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

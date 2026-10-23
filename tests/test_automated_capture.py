@@ -18,7 +18,9 @@ def write(tmp_path, data):
 def test_agent_capture_counts_requests_not_success_or_human_input(tmp_path):
     data=rows();data.insert(2,data[1]) # duplicate transport record is one tool invocation
     run=capture(write(tmp_path,data))
-    assert run['turns_typed']==0 and run['tool_calls']==1
+    assert run['turns_typed'] is None and run['tool_calls']==1
+    assert run['prompt_provenance']['counts']['unknown']==1
+    assert run['prompt_provenance']['human_turns']==0
     assert sum(run['rhythm'])==1 and run['duration_s']==120
     assert run.get('commits') is None and run.get('artifacts_produced') is None
     assert run.get('claims_verified') is None
@@ -29,6 +31,13 @@ def test_agent_capture_counts_requests_not_success_or_human_input(tmp_path):
     assert capture(write(tmp_path,data))['measurement_revision']==run['measurement_revision']
     data[-1]['timestamp']='2026-09-01T10:03:00Z'
     assert capture(write(tmp_path,data))['measurement_revision']!=run['measurement_revision']
+
+
+def test_sidechain_capture_records_known_zero_human_turns(tmp_path):
+    data=rows();data[0]['isSidechain']=True
+    run=capture(write(tmp_path,data))
+    assert run['turns_typed']==0
+    assert run['prompt_provenance']['counts']['agent-to-agent']==1
 
 
 @pytest.mark.parametrize('source',['typed','queued',None,'unknown'])

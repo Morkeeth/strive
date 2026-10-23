@@ -7,9 +7,11 @@ export async function buildReviewImageEngine(target='dist/review-image-engine'){
  let code=await readFile(source+'index.edge.js','utf8');
  const wasm='import resvg_wasm from "./resvg.wasm?module";';
  const dynamic='loadAdditionalAsset: loadDynamicAsset({\n      emoji: options.emoji\n    })';
- if(!code.includes(wasm)||!code.includes(dynamic))throw new Error('Review image engine upstream adapter changed');
- code=code.replace(wasm,'var resvg_wasm = await WebAssembly.compile(await (await fetch(new URL("./resvg.wasm", import.meta.url))).arrayBuffer());')
+ if(!code.includes(wasm)||!code.includes(dynamic)||!code.includes('initWasm(resvg_wasm)')||!code.includes('new URL("./noto-sans-v27-latin-regular.ttf", import.meta.url)'))throw new Error('Review image engine upstream adapter changed');
+ code=code.replace(wasm,'var resvg_wasm = fetch("/review-image-engine/resvg.wasm").then(res=>res.arrayBuffer()).then(bytes=>WebAssembly.compile(bytes));')
   .replace(dynamic,'loadAdditionalAsset: async () => undefined')
+  .replace('initWasm(resvg_wasm)', 'resvg_wasm.then(module => initWasm(module))')
+  .replace('new URL("./noto-sans-v27-latin-regular.ttf", import.meta.url)', '"/review-image-engine/noto-sans-v27-latin-regular.ttf"')
   .replaceAll('process.env.NODE_ENV','"production"').replaceAll('process.env.JEST_WORKER_ID','undefined');
  await writeFile(target+'/index.js',code);
  await Promise.all(['resvg.wasm','noto-sans-v27-latin-regular.ttf'].map(file=>cp(source+file,target+'/'+file)));

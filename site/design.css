@@ -609,3 +609,4 @@ button,summary{touch-action:manipulation}
 .import-loader{padding:24px}.import-spinner{display:inline-block;width:24px;height:24px;border:3px solid var(--line,#d9e5ff);border-top-color:var(--blue,#0047ff);border-radius:50%;animation:import-spin 1s linear infinite}
 @keyframes import-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.import-spinner{animation:none}}
+.site-foot .foot-cost{display:inline-flex;align-items:center;min-height:44px}.site-foot .foot-cost a{display:inline;min-height:0}

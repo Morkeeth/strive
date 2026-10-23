@@ -1,3 +1,4 @@
+import {buildBrowserCompat} from './build-browser-compat.mjs';
 import {buildReviewImageEngine} from './build-review-image-engine.mjs';
 import {cp,mkdir,readdir,readFile,writeFile} from 'node:fs/promises';
 import {runtimeConfig} from '../server/runtime-config.mjs';
@@ -79,5 +80,6 @@ console.log(`Built ${BRAND} website with explicit strava schema; no privileged k
 
 await buildAgentFrontdoor({origin:config.ORIGIN,revision:gitSha});
 execFileSync('python3',['scripts/build-native-plugin.py'],{stdio:'inherit'});
+await buildBrowserCompat();
 await writeFile('dist/index.html',withContentSecurityPolicy(await readFile('dist/index.html','utf8'),{supabaseOrigin:config.SB_URL}));
 console.log('Content-Security-Policy written for dist/index.html.');

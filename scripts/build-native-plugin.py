@@ -142,6 +142,11 @@ Review and save in STRIVE starts as Only me. Choose your audience separately.
 Tell us what happened at https://striverun.app/?feedback: your editor, the action,
 what you expected and what happened. Do not include tokens or raw transcripts.
 ''' % MCP_INSTALL_LINK).replace('__STRIVE_MCP_SPEC__', PACKAGE_SPEC))
+# People reach the guide from /install. Browsers show the .md as text with no working links, so write an HTML twin.
+_page_spec = importlib.util.spec_from_file_location('plugin_install_page', ROOT/'scripts/plugin_install_page.py')
+plugin_install_page = importlib.util.module_from_spec(_page_spec)
+_page_spec.loader.exec_module(plugin_install_page)
+(out/'install.html').write_text(plugin_install_page.render((out/'install.md').read_text()))
 print('Built STRIVE native plugin '+manifest['version']+' '+sha)
 
 # The visual install page carries the same pinned server; dist/install.html is the copy build-site made.

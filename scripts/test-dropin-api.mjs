@@ -26,6 +26,7 @@ for (const [k, v] of Object.entries(payload)) {
   else if (k === 'harness') assert.ok(Dropin.HARNESSES.includes(v));
   else if (k === 'rhythm') assert.ok(v.every(Number.isSafeInteger));
   else if (k === 'route') assert.ok(v === null || (Array.isArray(v) && v.every(n => Number.isSafeInteger(n) && n >= 0 && n <= 15)), 'route is station indices only');
+  else if (k === 'prompt_provenance') assert.deepEqual(v, run.prompt_provenance);
   else assert.ok(v === null || Number.isSafeInteger(v), `${k} must be a whole number or null`);
 }
 // Nothing on the parsed run itself can carry text either: the reader keeps no prompt.
@@ -47,6 +48,7 @@ try {
   assert.ok(!JSON.stringify(stored).includes(SENTINEL));
   assert.equal(stored.title, 'My title');
   assert.equal(stored.delete_hash.length, 64);
+  assert.deepEqual(stored.prompt_provenance,payload.prompt_provenance);
   assert.notEqual(stored.delete_hash, made.delete_url.split('#')[1], 'the secret itself is never stored');
 
   // Refused at the server before the database is called.

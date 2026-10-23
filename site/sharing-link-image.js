@@ -12,7 +12,7 @@
   const job={key};jobs.set(slot,job);slot.replaceChildren();if(!run)return;
   const note=document.createElement('p');note.setAttribute('role','status');note.textContent='Building link preview on this computer…';slot.append(note);
   try{
-   engine ||= import('/review-image-engine/index.js');
+   if(!engine)engine=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/review-image-engine/index.js';script.setAttribute('data-optional','');script.onload=()=>resolve(root.StriveReviewImageEngine);script.onerror=()=>{engine=null;script.remove();reject(Error('Preview engine unavailable'))};document.head.append(script);});
    // The hosted image's own typeface, from this site; without it the engine's bundled font draws.
    fonts ||= root.StriveLinkPreviewCard.fonts(file=>fetch('/fonts/'+file).then(response=>{if(!response.ok)throw new Error('font');return response.arrayBuffer()}));
    const {ImageResponse}=await engine;

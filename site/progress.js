@@ -49,15 +49,7 @@ window.GrinderProgress = function ({client: db, me, app, frame, status, signIn, 
     const current=()=>me()?.id===viewer&&body.isConnected&&$('progress-body')===body;
     try {
       let loaded=await ownRuns(); if(!current())return;let offset=loaded.length, more=loaded.length===100;
-      const noteResult=await Promise.allSettled([
-        rows(db.from('grinder_notifications').select('id,kind,run_id,source_id,actor_id,created_at,actor:profiles!grinder_notifications_actor_id_fkey(github_handle,name,handle,display_name,avatar_url)').eq('recipient_id',me().id).is('read_at',null).order('created_at',{ascending:false}).limit(3))
-      ]);
-      if(!current())return;
-      const notes=noteResult[0].status==='fulfilled'?noteResult[0].value:[];
-      $('progress-body').innerHTML=`${notes.length?`<section class="panel reply-form"><h2>Responses to your work</h2>${notes.map(n=>{const who=window.GrinderPeople?.present?.(n.actor)||{},name=who.href?`<a href="${who.href}">${esc(who.label||'Someone')}</a>`:esc(who.label||'Someone');
-        // XUDOS and a follow link the person. Only a comment links its discussion.
-        const href=window.StriveLinks.runHref(loaded.find(run=>run.id===n.run_id)||{id:n.run_id});
-        return `<p>${name} ${n.kind==='ack'?'sent XUDOS on your run':n.kind==='reply'?`replied to your run. <a href="${esc(href)}${n.source_id?`#reply-${encodeURIComponent(n.source_id)}`:'#grind-thread'}">Open exact reply</a>`:'followed you'}<br><small>${esc(date(n.created_at))}</small></p>`}).join('')}<a href="/?inbox">Open Responses</a></section>`:""}<form id="history-filter" class="history-filters"><label>Find a run<input name="query" type="search" placeholder="Title or project" autocomplete="off"></label><label>Harness<select name="harness" aria-label="Harness"><option value="">All harnesses</option></select></label><label>Audience<select name="audience" aria-label="Audience"><option value="">All audiences</option><option value="private">Only me</option><option value="link">Followers</option><option value="close_friends">Close friends</option><option value="public">Public</option><option value="crew">Crew members</option></select></label><button type="submit">Find runs</button></form><p id="history-count" class="meta"></p><div id="history-list"></div><button id="history-more" class="act" ${more?'':'hidden'}>Load older runs</button>`;
+      $('progress-body').innerHTML=`<form id="history-filter" class="history-filters"><label>Find a run<input name="query" type="search" placeholder="Title or project" autocomplete="off"></label><label>Harness<select name="harness" aria-label="Harness"><option value="">All harnesses</option></select></label><label>Audience<select name="audience" aria-label="Audience"><option value="">All audiences</option><option value="private">Only me</option><option value="link">Followers</option><option value="close_friends">Close friends</option><option value="public">Public</option><option value="crew">Crew members</option></select></label><button type="submit">Find runs</button></form><p id="history-count" class="meta"></p><div id="history-list"></div><button id="history-more" class="act" ${more?'':'hidden'}>Load older runs</button>`;
       function render() {
         if(!current())return;
         window.StriveRunPhotos?.disposeAll?.();

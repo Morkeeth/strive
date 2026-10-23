@@ -39,7 +39,9 @@ const facts=html=>{const d=new JSDOM(html).window.document;return {html,
   slots:['landing-feature','landing-feature-body','public-run-count','home-builders','home-week'].filter(id=>d.getElementById(id)),
   primary:d.querySelectorAll('.act.primary').length,buttons:d.querySelectorAll('button').length,
   lists:d.querySelectorAll('ol,ul').length,inputs:d.querySelectorAll('input,#drop-zone,#drop-stage').length,
-  skeleton:!!d.querySelector('#landing-feature-body [data-skeleton]'),
+  intro:d.querySelector('.home-intro')?.textContent||'',
+  skeletons:d.querySelectorAll('#landing-feature-body .feed-skeleton').length,
+  busy:d.getElementById('landing-feature-body').getAttribute('aria-busy'),
   labelledby:d.getElementById('landing-feature').getAttribute('aria-labelledby')}};
 const shell=new JSDOM(s,{url:'https://strive.test/',runScripts:'outside-only'}).window.document;
 const adds=[...shell.querySelectorAll('.bar a[href="/?post"]')].map(a=>({cls:a.className,text:a.textContent.replace(/\s+/g,' ').trim(),
@@ -129,7 +131,8 @@ def test_the_drop_zone_left_the_home_for_add_a_run():
     page = node(RENDER_CONNECT)
     assert page["drop"] == {"count": 1, "entry": "post-file-entry", "open": False, "summary": "Or drop a session file"}
     assert page["fixture"]["drop"] == "post-file-entry"
-    assert page["folders"] == ['~/.claude/projects/', '~/.cursor/projects/', '~/.codex/sessions/']
+    assert page["folders"] == ['~/.claude/projects/', '~/.cursor/projects/', '~/.codex/sessions/',
+                               'bb thread log --self --all --json > bb-session.json']
     route = HTML[HTML.index('async function route(){'):]
     assert "if(location.hash==='#drop-zone') return viewPost();" in route
     # d716f23 (8 Oct 2026): home starts with real public work for everybody; Following is a filter.
@@ -144,15 +147,19 @@ def test_landing_points_to_a_real_run_not_the_bundled_sample():
     body = out["html"]
     assert "const REAL_RUN='/r/3afa89e7-aff5-488d-bec3-da36196b8c5e';" in HTML
     assert '/?example' not in HTML
-    assert out["skeleton"] is True and out["labelledby"] == "h-popular"
+    assert out["skeletons"] == 2 and out["busy"] == "true" and out["labelledby"] == "h-popular"
+    assert out["intro"] == ""
     view = view_landing()
     assert "let runs=data.runs||[], runsFailed=data.runs===null;" in view
     # 58b3174 (12 Oct 2026): the same sorted real runs, drawn one page of 20 at a time.
     assert "\nconst FEED_PAGE=20;\n" in HTML
     assert "const sorted=StriveActivity.sort(runs);let shown=0;" in view
     assert "const page=sorted.slice(shown,shown+FEED_PAGE);shown+=page.length;" in view
-    assert "const cards=await feedCards(page,await ackData(page));if(!current())return false;" in view
-    assert "body.insertAdjacentHTML('beforeend',cards);wireKudos();return true;" in view
+    assert re.search(r"await feedCards\(page,await ackData\(page\),\{current,onCard:", view)
+    assert "if(current()){body.querySelector('.feed-skeleton')?.remove();" in view
+    assert "body.prepend(deck)" in view
+    assert "deck.insertAdjacentHTML('beforeend',html)" in view
+    assert "wireKudos();return true;" in view
     # The one sample a newcomer is offered, on Add a run, is a real public run address.
     assert re.fullmatch(r"/r/[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}", node(RENDER_CONNECT)["sample"])
     assert 'aria-label="Sample run card"' not in body
@@ -200,7 +207,7 @@ def test_landing_loads_latest_public_run_only():
     # 58b3174 (12 Oct 2026): with Clubs and Events hidden the landing reads runs only (readRuns), and
     # draws the sorted runs a page at a time, reading XUDOS for the cards on that page.
     assert "await H.readRuns(sb)" in view and "H.read(sb" not in view
-    assert "const sorted=StriveActivity.sort(runs);" in view and "feedCards(page,await ackData(page))" in view
+    assert "const sorted=StriveActivity.sort(runs);" in view and "feedCards(page,await ackData(page)," in view
     assert "if(!runs.length){const older=await fetchLatestPublicRuns(5);" in view
     seen = node(PUBLIC_READS)
     filters = lambda q: [c[1:] for c in q["calls"] if c[0] not in ("select", "order", "limit")]

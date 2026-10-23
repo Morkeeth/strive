@@ -32,7 +32,7 @@ console.log('PASS query is scoped to owner and private rows; logout/navigation c
 slot.innerHTML='';
 await Q.mount({client:reader(Promise.resolve({data:[{...run,source_actor_id:null,title:'TEST DATA manual'}],error:null})),owner:'owner',slot,esc:s=>s,current:()=>true,open:false});
 assert.match(slot.textContent,/Only me. Not public/);
-assert.equal(slot.querySelector('a').getAttribute('href'),'/?run=run&review=1');
+assert.equal(slot.querySelector('a').getAttribute('href'),'/?run=run&review=1#run-edit');
 console.log('PASS existing private manual import has review entry and explicit private marker');
 
 const F=require('../site/feed-card.js');
@@ -47,3 +47,42 @@ assert.equal(Q.waiting(run,'other'),false);
 assert.equal(Q.waiting({...run,created_at:'2026-10-13T15:59:59Z'},'owner'),false);
 assert.equal(Q.waiting({...run,created_at:'2026-10-13T16:00:00Z'},'owner'),true);
 assert.equal(Q.waiting({...run,created_at:'2026-10-13T18:00:00Z'},'owner'),true);
+
+// Creation order wins even when an older recording was uploaded later.
+const newest={...run,id:'new-upload',created_at:'2026-10-15T08:00:00Z',started_at:'2026-10-13T20:00:00Z',title:'Newest upload'},older={...run,id:'older-upload',created_at:'2026-10-14T08:00:00Z',started_at:'2026-10-15T07:00:00Z',title:'Older upload'};
+assert.deepEqual((await Q.read(reader(Promise.resolve({data:[older,newest],error:null})),'owner')).map(r=>r.id),['new-upload','older-upload']);
+const {full}=await import('../tests/fixtures/estimate-capture.mjs');
+assert.equal(Q.facts({capture_metadata:full}).find(r=>r[0]==='Est. dollars')[1],'$1.89');
+assert.equal(Q.facts({}).length,0,'a run with nothing recorded shows no fact cells');
+assert.ok(Q.facts({capture_metadata:full}).length<=3,'at most three facts');
+const bad=structuredClone(full);bad.input_tokens++;
+assert.equal(Q.facts({capture_metadata:bad}).find(r=>r[0]==='Est. dollars'),undefined,'uninterpretable usage hides dollars');
+assert.equal(Q.facts({duration_s:0}).find(r=>r[0]==='Elapsed')[1],'0 sec');
+assert.equal(Q.facts({duration_s:13260}).find(r=>r[0]==='Elapsed')[1],'3 hr 41 min');
+slot.innerHTML='';
+const escape=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
+await Q.mount({client:reader(Promise.resolve({data:[older,{...newest,title:'<img src=x onerror=alert(1)>',caption:'<script>private</script>'}],error:null})),owner:'owner',slot,esc:escape,current:()=>true,open:true});
+assert.equal(slot.querySelectorAll('img,script').length,0,'untrusted run text must be escaped');
+const cards=slot.querySelectorAll('.queue-preview');assert.equal(cards.length,2);
+assert.equal([...cards].filter(c=>c.open).length,1,'first preliminary card is open; the rest collapse');
+cards[0].open=true;slot.querySelector('[data-next]').click();
+assert.equal(cards[0].open,false);assert.equal(cards[1].open,true);
+assert.equal(document.activeElement,cards[1].querySelector('summary'));
+assert.equal(writes.length,4,'opening and next must not write to runs');
+slot.querySelector('[data-collapse]').click();assert.equal([...cards].some(c=>c.open),false);
+console.log('PASS newest upload first despite older capture date; stored cache-aware costs only; missing/invalid facts unknown; escaping; collapse/next keyboard focus without writes');
+
+let posts=[];
+function publisher({actor='public',changed=false}={}){return {from(table){const q={select(){return q},eq(k,v){posts.push([table,k,v]);return q},single(){return Promise.resolve({data:{visibility:actor}})},update(value){posts.push(value);return q},then(resolve){resolve({data:changed?[]:[{id:'run'}]})}};return q}}}
+await assert.rejects(()=>Q.approve(publisher(),run,'other'),/Only the owner/);assert.equal(posts.length,0);
+await assert.rejects(()=>Q.approve(publisher({actor:'private'}),run,'owner'),/still private/);assert.equal(posts.some(v=>v.visibility==='public'),false);
+posts=[];await Q.approve(publisher(),run,'owner');assert.deepEqual(posts.slice(-4),[{visibility:'public'},['runs','id','run'],['runs','profile_id','owner'],['runs','visibility','private']]);
+await assert.rejects(()=>Q.approve(publisher({changed:true}),run,'owner'),/changed/);
+console.log('PASS inline approval owner/private scope, private source-agent block, stale row refusal');
+
+slot.innerHTML='';let finishCard;let live=true;
+await Q.mount({client:reader(Promise.resolve({data:[run],error:null})),owner:'owner',slot,esc:escape,current:()=>live,open:true,renderCard:()=>new Promise(resolve=>finishCard=resolve)});
+assert.equal(slot.querySelector('[data-approve-id]').disabled,true,'approval waits for actual card render');
+live=false;finishCard('<p>OLD OWNER PRIVATE CARD</p>');await Promise.resolve();await Promise.resolve();
+assert.doesNotMatch(slot.textContent,/OLD OWNER PRIVATE CARD/,'a late card must not cross navigation/auth generations');
+console.log('PASS pending card disables approval; late renderer cannot insert stale owner content');

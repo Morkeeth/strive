@@ -54,12 +54,14 @@ def test_one_page_auto_capture_with_advanced_import():
     assert "['cursor','claude','codex'].map(h=>[h,picker(h)])" in body
     assert [(s['source'], s['name'], s['command']) for s in page['sources']] == [
         ('cursor', 'Cursor', PICKER.format('cursor')), ('claude', 'Claude Code', PICKER.format('claude')),
-        ('codex', 'Codex', PICKER.format('codex')), ('grok', 'Grok Bot', None)]
+        ('codex', 'Codex', PICKER.format('codex')), ('grok', 'Grok Bot', None),
+        ('bb', 'bb', 'bb thread log --self --all --json > bb-session.json')]
     # The file drop is on the same page, folded, with the three places a session file lives.
     entry = page['fileEntry']
     assert entry['zone'] is True and entry['input'] == 'file' and entry['open'] is False
     assert entry['summary'] == 'Or drop a session file'
-    assert entry['folders'] == ['~/.claude/projects/', '~/.cursor/projects/', '~/.codex/sessions/']
+    assert entry['folders'] == ['~/.claude/projects/', '~/.cursor/projects/', '~/.codex/sessions/',
+                                'bb thread log --self --all --json > bb-session.json']
     assert entry['zoneText'].endswith('Read on this device. Nothing is saved until you choose to save it.')
     # Advanced: the freshest-session command survives as the terminal route, closed by default.
     setup = page['setup']

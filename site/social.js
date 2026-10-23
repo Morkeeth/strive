@@ -131,7 +131,12 @@ window.GrinderSocial = function ({
 
   function stashResponseReturn() {
     try {
-      sessionStorage.setItem(RESPONSE_RETURN_KEY, "?inbox");
+      const historyView =
+        new URLSearchParams(location.search).get("filter") === "all";
+      sessionStorage.setItem(
+        RESPONSE_RETURN_KEY,
+        historyView ? "?inbox&filter=all" : "?inbox",
+      );
     } catch (_) {}
   }
 
@@ -147,6 +152,12 @@ window.GrinderSocial = function ({
     try {
       sessionStorage.removeItem(RESPONSE_RETURN_KEY);
     } catch (_) {}
+  }
+
+  function responseReturnHref() {
+    const pending = peekResponseReturn();
+    if (pending === "?inbox&filter=all") return "/?inbox&filter=all";
+    return pending === "?inbox" ? "/?inbox" : null;
   }
 
   function replyTargetId() {
@@ -212,7 +223,7 @@ window.GrinderSocial = function ({
         summary.textContent = `${count ? `${count} unread · ` : ""}${total} recent`;
       }
       const unreadFilter = document.querySelector(
-        '.response-filters a[href="/?inbox&filter=unread"]',
+        '.response-filters a[href="/?inbox"]',
       );
       if (unreadFilter) {
         unreadFilter.textContent = count ? `Unread · ${count}` : "Unread";
@@ -377,9 +388,9 @@ window.GrinderSocial = function ({
   }
 
   function responseReturnBar() {
-    const pending = peekResponseReturn();
-    if (pending !== "?inbox") return "";
-    return `<p class="response-return"><a class="act" href="/?inbox">Back to Notifications</a></p>`;
+    const href = responseReturnHref();
+    if (!href) return "";
+    return `<p class="response-return"><a class="act" href="${href}">Back to Notifications</a></p>`;
   }
 
   // THE FOLLOWING FEED, which is also the signed-in home (25 Sep 2026 evening). Runs from the
@@ -525,12 +536,12 @@ window.GrinderSocial = function ({
     if(person.id===viewerId){const suggestion=slot.closest('.fc-builder');if(suggestion)suggestion.remove();else slot.replaceChildren();return;}
     try {
       if (
-        sessionStorage.getItem(RESPONSE_RETURN_KEY) === "?inbox" &&
+        responseReturnHref() &&
         !slot.parentElement?.querySelector(".response-return")
       ) {
         const bar = document.createElement("p");
         bar.className = "response-return";
-        bar.innerHTML = '<a class="act" href="/?inbox">Back to Notifications</a>';
+        bar.innerHTML = `<a class="act" href="${responseReturnHref()}">Back to Notifications</a>`;
         slot.before(bar);
       }
     } catch (_) {}
@@ -1138,7 +1149,7 @@ window.GrinderSocial = function ({
               }),
           );
           status(
-            peekResponseReturn() === "?inbox"
+            responseReturnHref()
               ? "Reply posted. Return to Notifications when you are ready."
               : "Reply posted.",
           );
@@ -1179,49 +1190,45 @@ window.GrinderSocial = function ({
     resetUnreadMarks(me()?.id);
     clearResponseReturn();
     const body = byId("social-body");
-    const filter =
-      new URLSearchParams(location.search).get("filter") === "unread"
-        ? "unread"
-        : "all";
+    const filterParam = new URLSearchParams(location.search).get("filter");
+    const filter = filterParam === "all" ? "all" : "unread";
     try {
+      let notificationsQuery = db
+        .from("grinder_notifications")
+        .select(
+          "*,actor:profiles!grinder_notifications_actor_id_fkey(github_handle,name,handle,display_name,avatar_url)",
+        )
+        .eq("recipient_id", me().id);
+      if (filter === "unread")
+        notificationsQuery = notificationsQuery.is("read_at", null);
       const rows = await result(
-        db
-          .from("grinder_notifications")
-          .select(
-            "*,actor:profiles!grinder_notifications_actor_id_fkey(github_handle,name,handle,display_name,avatar_url)",
-          )
-          .eq("recipient_id", me().id)
-          .order("created_at", { ascending: false })
-          .limit(50),
+        notificationsQuery.order("created_at", { ascending: false }).limit(50),
       );
       const { runs, replies } = await resolveNotificationTargets(rows);
       const unreadCount = rows.filter((n) => !n.read_at).length;
-      const visible = rows.filter((n) =>
-        filter === "unread" ? !n.read_at : true,
-      );
+      const visible = rows;
 
       const filters = `<nav class="response-filters" aria-label="Response filters">
-        <a href="/?inbox" class="${filter === "all" ? "on" : ""}" ${filter === "all" ? 'aria-current="page"' : ""}>All</a>
-        <a href="/?inbox&filter=unread" class="${filter === "unread" ? "on" : ""}" ${filter === "unread" ? 'aria-current="page"' : ""}>Unread${unreadCount ? ` · ${unreadCount}` : ""}</a>
+        <a href="/?inbox&filter=all" class="${filter === "all" ? "on" : ""}" ${filter === "all" ? 'aria-current="page"' : ""}>All</a>
+        <a href="/?inbox" class="${filter === "unread" ? "on" : ""}" ${filter === "unread" ? 'aria-current="page"' : ""}>Unread${unreadCount ? ` · ${unreadCount}` : ""}</a>
       </nav>`;
 
       if (!rows.length) {
+        if (filter === "unread") {
+          body.innerHTML =
+            filters +
+            empty(
+              "No unread notifications. Open All to browse earlier XUDOS and replies.",
+              `<div class="cta"><a class="act" href="/?inbox&filter=all">Show all responses</a></div>`,
+            );
+          await refreshUnread();
+          return;
+        }
         body.innerHTML =
           filters +
           empty(
             "No responses yet. Share a public run with a friend to start a conversation.",
             `<div class="cta"><a class="act blue" href="/?mine">Open your runs</a><a class="act" href="/?people">Find people</a></div>`,
-          );
-        await refreshUnread();
-        return;
-      }
-
-      if (!visible.length) {
-        body.innerHTML =
-          filters +
-          empty(
-            "No unread notifications. Open All to browse earlier XUDOS and replies.",
-            `<div class="cta"><a class="act" href="/?inbox">Show all responses</a></div>`,
           );
         await refreshUnread();
         return;
