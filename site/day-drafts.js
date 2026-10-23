@@ -39,7 +39,7 @@
   function label(run,project,projectLabel){return (project&&project.trim())||projectLabel(run.project)||''}
   function rowFor(run,{profileId,project,projectLabel,rejectPaths,safeRepoUrl}){
     const typed=project&&project.trim()?projectLabel(rejectPaths(project.trim())):null,name=typed||projectLabel(run.project)||null;
-    return root.StriveImportRow.build(run,{profileId,title:`${name||run.harness||'Work'} session`,project:name,caption:null,output:null,repo:safeRepoUrl(run.repo_url)});
+    return root.StriveImportRow.build(run,{profileId,title:`${name||root.StriveAgents?.agentName(run.harness)||run.harness||'Work'} session`,project:name,caption:null,output:null,repo:safeRepoUrl(run.repo_url)});
   }
   async function open(deps){
     const {client,me,app,frame,railHtml,esc,status,signIn,decode,validate,projectLabel}=deps;
@@ -86,9 +86,9 @@
       <div class="dd-foot"><button type="button" class="act blue" id="dd-save"></button><span id="dd-summary" role="status"></span></div>`;
     const histList=slot.querySelector('#dd-hist'),list=slot.querySelector('#dd-list'),project=slot.querySelector('#dd-project'),save=slot.querySelector('#dd-save'),summary=slot.querySelector('#dd-summary');
     const ticked=new Set(drafts.filter(d=>d.state==='ready').map(d=>d.i));
-    const facts=run=>[run.harness||'Harness unknown',day.selection_label?new Date(run.started).toLocaleString([], {dateStyle:'medium',timeStyle:'short'}):clock(run.started),run.duration_s==null?'duration unknown':`${Math.round(run.duration_s/60)} min`,
+    const facts=run=>[root.StriveAgents?.agentName(run.harness)||run.harness||'Harness unknown',day.selection_label?new Date(run.started).toLocaleString([], {dateStyle:'medium',timeStyle:'short'}):clock(run.started),run.duration_s==null?'duration unknown':`${Math.round(run.duration_s/60)} min`,
       run.turns_typed==null?'typed turns unknown':`${run.turns_typed} typed turns`,run.tool_calls==null?'tool calls unknown':`${run.tool_calls} tool calls`,
-      run.commits==null?'commits unknown':`${run.commits} commits`,((run.capture_metadata&&run.capture_metadata.models)||[]).join(', ')||'model unknown'].join(' · ');
+      run.commits==null?'commits unknown':`${run.commits} commits`,[...new Set(((run.capture_metadata&&run.capture_metadata.models)||[]).map(m=>root.StriveAgents?.modelName(m)||m))].join(', ')||'model unknown'].join(' · ');
     const exact=d=>{const row=rowFor(d.run,{...deps,profileId:owner,project:project.value});delete row.profile_id;return JSON.stringify(row,null,1)};
     function paint(){
       const savedCount=[...drafts,...hist].filter(d=>d.state==='saved').length,remaining=[...drafts,...hist].some(d=>d.state==='ready'||d.state==='failed');

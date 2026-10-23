@@ -39,5 +39,8 @@ const selected=ctxRow=>w.StriveImportRow?.build?.(ctxRow,{profileId:'owner',titl
 w.eval(fs.readFileSync('site/import-row.js','utf8'));
 const imageRow=selected({schema_version:1,tool_calls:385,files_touched:15,commits:7,turns_typed:16,duration_s:69,model:'PRIVATE-MODEL',rhythm:[385],capture_metadata:{basis:'cursor-model-info',models:['PRIVATE-MODEL']}});
 const imageTree=JSON.stringify(photoCard({...imageRow,visibility:'public',profiles:{display_name:'TEST owner'}},[],{}));
-assert.ok(!imageTree.includes('385')&&!imageTree.includes('PRIVATE-MODEL'));assert.match(imageTree,/Typed turns|Turns/);assert.match(imageTree,/16/);
+assert.ok(!imageTree.includes('385')&&!imageTree.includes('PRIVATE-MODEL'));assert.match(imageTree,/Selected row only/);
+// PRODUCT.md: turn and tool-call totals are not hero facts, so a row with only those selected
+// carries its title and no fact row; nothing deselected reaches the image.
+assert.doesNotMatch(imageTree,/Typed turns|Tool calls|"16"/);
 console.log('PASS unfurl tree receives only the selected row; omitted tool count and model cannot reach it');

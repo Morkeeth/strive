@@ -44,7 +44,7 @@ assert.equal(profilePage.statusCode,200);
 assert.match(profilePage.body,/<meta property="og:title" content="Oscar · STRIVE">/);
 assert.match(profilePage.body,/<h2>Activities<\/h2>/);
 assert.match(profilePage.body,/Public title/);
-assert.match(profilePage.body,/og\?profile=morkeeth&amp;v=2|og\?profile=morkeeth&v=2/);
+assert.match(profilePage.body,/og\?profile=morkeeth&amp;v=3|og\?profile=morkeeth&v=3/);
 const profileTree=JSON.stringify(profileCard({id:profileId,display_name:'Oscar',handle:'morkeeth'},
  {activities:[{id:publicId,profile_id:profileId,visibility:'public',title:'Public title',project:'STRIVE',commits:2},
   {id:privateId,profile_id:profileId,visibility:'private',title:'Secret title',project:'Secret',commits:99}],
