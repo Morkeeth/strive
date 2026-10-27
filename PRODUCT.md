@@ -60,3 +60,11 @@ Brand decision, 16 September: the public product is STRIVE, tagline "Post your s
 Candidate only. Feed leads with author title, caption, optional linked output image and feedback question. Long-session awards and metric heroes leave the feed; source labels and the blue map remain. Detail adds optional author-written What changed / Still open / A question for you. These are declarations, not inferred or independently verified results. Existing owner-only editing and run audience cover these bounded fields. Any working attempt, design, research or unfinished question can be shared. No shipped-per-token score.
 
 Migration 030 adds these optional fields. The comparison uses fixture accounts and a disposable database. It does not prove Bean participation, hosted authentication or retention.
+
+## 27 Oct 2026: choose from saved history
+
+My private runs includes saved recordings from before the old 13 October cutoff. Search by project, title or authored result; filter by project, agent and recorded day. Twelve choices render per page. Choices stay selected across filters. Preview chosen runs opens one complete card with the Public audience and all its authored caption, then an explicit **Post this run publicly** action posts only that run. Next chosen run requires its own preview and action. Browsing and selection never change a run or its audience.
+
+Card image stages use source dimensions: wide (at least 1.6 width/height) uses 16:9, square (at least 0.8) uses 1:1, portrait uses 4:5, and unknown uses 4:3. Every source is contained in full, without stretching. Captions and open controls have their own strip and cannot cover the image. Full image opening remains available for small text and mixed galleries. No crop or subject guess is applied.
+
+The public posting preview reads the saved selected-photo list and loads every selected image, including the images behind Feed's +N. A failed list, asset request or image decode leaves Post disabled with a retry that keeps the selected run. A verified empty list says “No images selected” and keeps the normal explicit Post action. Signed-out `/r/` pages use the same source-shape rules and keep captions below source pixels.

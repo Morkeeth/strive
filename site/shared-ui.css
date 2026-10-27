@@ -58,6 +58,10 @@ button.act.follow-button:focus-visible{outline:2px solid var(--blue);outline-off
 #status.shown{opacity:1;transform:translate(-50%,0)}
 #status.err{border-color:#e9a5a5;color:#8b1e1e}
 
+/* A single portrait needs a bounded, readable stage instead of a short crop. */
+.activity-post.card .run-media-slot:has(.run-media-gallery[data-media-count="1"] img.run-photo-cover){height:400px;min-height:400px}
+@media(max-width:700px){.activity-post.card .run-media-slot:has(.run-media-gallery[data-media-count="1"] img.run-photo-cover){height:330px;min-height:330px}}
+
 .day-nav{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin:10px 0 22px}
 .day-nav>span{font-size:13px;color:var(--soft);text-align:center}
 .day-nav>a:last-child{justify-self:end}

@@ -79,6 +79,13 @@
     const work=photos.filter(p=>p.role!=='personal'&&!chosen.some(item=>item.id===p.id));
     return [...chosen,...work].slice(0,6);
   }
+  // Deterministic, lossless framing. Role never licenses cropping a face or screenshot.
+  // The source shape chooses the stage; the complete source always fits inside it.
+  const frameRule=(width,height)=>(root.StrivePhotoFrame||(typeof require==='function'?require('./photo-frame.js'):null)).rule(width,height);
+  function frameImage(image,photo,figure){
+    const apply=()=>{const rule=frameRule(image.naturalWidth||photo.width,image.naturalHeight||photo.height);figure.dataset.imageShape=rule.shape;figure.style.setProperty('--image-aspect',rule.aspect);image.style.objectFit=rule.fit;image.style.objectPosition='center';};
+    apply();image.addEventListener('load',apply,{once:true});
+  }
   function photoPath(photo){
     if(typeof photo?.url!=="string")return null;
     try{
@@ -284,30 +291,30 @@
       early.set(key,get(`/api/run-photos?run_id=${encodeURIComponent(id)}`,{headers:h}));setTimeout(()=>early.delete(key),15000);}
   }
   function takeEarly(h,id){const key=`${h.Authorization||''} ${id}`,job=early.get(key);early.delete(key);return job||null}
-  async function mountCovers({client,root:host=document}){
+  async function mountCovers({client,root:host=document,publishReview=false}){
     let active=true,stopTileFit=()=>{};const controller=new AbortController(),urls=new Set(),images=new Set();
     const dispose=()=>{active=false;controller.abort();for(const url of urls)URL.revokeObjectURL(url);urls.clear();for(const image of images)image.remove();stopTileFit();disposers.delete(dispose)};
     disposers.add(dispose);
     stopTileFit=root.StrivePlaceholders?.fit?.(host)||(()=>{});
-    const cards=[...host.querySelectorAll('.activity-post[data-photo-gallery]:not([data-photo-checked]), .fc[data-run-id]:not([data-photo-checked]), .card[data-run-id]:not(.dc):not([data-photo-checked]), .history-run[data-run-id]:not([data-photo-checked])')];
-    await Promise.all(cards.map(async (card,cardIndex)=>{
+    const cards=[...host.querySelectorAll(publishReview?'[data-run-id]':'.activity-post[data-photo-gallery]:not([data-photo-checked]), .fc[data-run-id]:not([data-photo-checked]), .card[data-run-id]:not(.dc):not([data-photo-checked]), .history-run[data-run-id]:not([data-photo-checked])')];
+    const outcomes=await Promise.all(cards.map(async (card,cardIndex)=>{
       card.dataset.photoChecked='true';
       const placeholder=card.querySelector('[data-photo-placeholder]');
       const generation=Symbol(),pendingUrls=new Set();coverGeneration.set(card,generation);
       const current=()=>{if(active&&card.isConnected!==false&&coverGeneration.get(card)===generation)return true;for(const url of pendingUrls){URL.revokeObjectURL(url);urls.delete(url)}pendingUrls.clear();return false;};
       try{
         const runId=card.dataset.runId;
-        const visuals=card.dataset.runVisibility==='public'?showcase[runId]||[]:[];
+        const visuals=!publishReview&&card.dataset.runVisibility==='public'?showcase[runId]||[]:[];
         const listHeaders=await headers(client);if(!current())return;
         const list=await (takeEarly(listHeaders,runId)||get(`/api/run-photos?run_id=${encodeURIComponent(runId)}`,{headers:listHeaders,signal:controller.signal}));
-        if(!current())return;if(!list.ok){if(placeholder)placeholder.innerHTML='<p class="media-read-error">Images unavailable. Open the run to try again.</p>';return;}
-        const payload=await list.json(), photos=payload?.photos||[];
+        if(!current())return;if(!list.ok){if(publishReview)throw Error('Selected photos could not be read. This run is still private.');if(placeholder)placeholder.innerHTML='<p class="media-read-error">Images unavailable. Open the run to try again.</p>';return;}
+        const payload=await list.json();if(publishReview&&!Array.isArray(payload?.photos))throw Error('The selected photo list is unknown. This run is still private.');const photos=payload?.photos||[];
         const mode=card.dataset.photoLayout||'cover';
         const ordered=photos.length>0&&photos.every(p=>Number.isInteger(p.sort_position));
         const projectFirst=!ordered&&card.dataset.projectGallery!==undefined;
         if(ordered)card.querySelector('.post-visual[data-visual-run]')?.remove();
-        const selected=cardPhotos(photos,mode,projectFirst);
-        if(!ordered&&card.dataset.selectedPhoto){
+        const selected=publishReview?photos.filter(p=>p.is_selected!==false&&p.is_private!==true&&(p.role!=='personal'||p.personal_public_selected===true)).sort((a,b)=>(a.sort_position??100)-(b.sort_position??100)):cardPhotos(photos,mode,projectFirst);
+        if(!publishReview&&!ordered&&card.dataset.selectedPhoto){
           const chosen=selected.find(p=>p.id===card.dataset.selectedPhoto);
           if(chosen){selected.splice(selected.indexOf(chosen),1);selected.unshift(chosen);}
           else{
@@ -315,30 +322,42 @@
             if(approved){selected.unshift(approved);selected.length=Math.min(selected.length,6);}
           }
         }
-        if(!selected.length&&!visuals.length){card.querySelector('.post-workline>.run-agent-identity')?.remove();const empty=card.querySelector('[data-photo-placeholder]');if(empty){empty.hidden=false;if(root.StrivePlaceholders)empty.innerHTML=root.StrivePlaceholders.render('screenshot',{story:card.dataset.mediaStory||'',owner:card.dataset.runOwner==='true',seed:card.dataset.mediaSeed,harness:card.dataset.mediaHarness,model:card.dataset.mediaModel});}return;}
+        if(!selected.length&&!visuals.length){if(publishReview){card.querySelector('[data-photo-placeholder]')?.replaceChildren();return {runId,status:'known-none',selectedIds:[],dispose};}card.querySelector('.post-workline>.run-agent-identity')?.remove();const empty=card.querySelector('[data-photo-placeholder]');if(empty){empty.hidden=false;if(root.StrivePlaceholders)empty.innerHTML=root.StrivePlaceholders.render('screenshot',{story:card.dataset.mediaStory||'',owner:card.dataset.runOwner==='true',seed:card.dataset.mediaSeed,harness:card.dataset.mediaHarness,model:card.dataset.mediaModel});}return;}
         // Build a detached group. Attach only while the same view is active, after all reads.
-        const group=document.createElement('div');group.className='run-media run-media-gallery';group.setAttribute('aria-label','Images from this run');group.tabIndex=0;
+        const pendingImages=[];const group=document.createElement('div');group.className='run-media run-media-gallery';if(publishReview)group.dataset.publishReview='true';group.setAttribute('aria-label','Images from this run');group.tabIndex=0;
         if(projectFirst&&!selected.some(p=>p.role!=='personal')){
           const empty=document.createElement('figure');empty.className='run-project-missing';
           empty.innerHTML=root.StrivePlaceholders?.render('screenshot',{story:card.dataset.mediaStory||card.querySelector('.title,h2')?.textContent||'',owner:card.dataset.runOwner==='true',seed:card.dataset.mediaSeed,harness:card.dataset.mediaHarness,model:card.dataset.mediaModel})||'<section class="strive-empty"><h3>No project screenshot added</h3><p>The personal photo is separate from the project result.</p></section>';
           group.append(empty);
         }
         const personal=selected.find(p=>p.role==='personal');
-        const visible=ordered?selected.slice(0,3):selected.length>3?(personal?[...selected.filter(p=>p!==personal).slice(0,2),personal]:selected.slice(0,3)):selected;
+        const visible=publishReview?selected:ordered?selected.slice(0,3):selected.length>3?(personal?[...selected.filter(p=>p!==personal).slice(0,2),personal]:selected.slice(0,3)):selected;
         for(const photo of visible){
-          const path=photoPath(photo);if(!path)continue;
+          const path=photoPath(photo);if(publishReview&&path){const source=new URL(path,location.origin);if(source.searchParams.get('run_id')!==runId||source.searchParams.get('id')!==String(photo.id))throw Error('A selected photo source does not match this run. This run is still private.');}if(!path){if(publishReview)throw Error('A selected photo has no readable source. This run is still private.');continue;}
           const imageHeaders=await headers(client);if(!current())return;
-          let url=publicImage(path,card,imageHeaders,true),objectUrl=false;
+          let url=publishReview?null:publicImage(path,card,imageHeaders,true),objectUrl=false;
           if(!url){
             const imageRes=await get(path,{headers:imageHeaders,signal:controller.signal},960);
-            if(!current()||!imageRes.ok)return;
+            if(!current())return;if(!imageRes.ok){if(publishReview)throw Error('A selected photo could not load. This run is still private.');return;}
             const blob=await imageRes.blob();if(!current())return;
             url=URL.createObjectURL(blob);objectUrl=true;urls.add(url);pendingUrls.add(url);
           }
           const figure=document.createElement('figure'),image=document.createElement('img');
-          figure.dataset.photoRole=photo.role||'photo';image.className='run-photo-cover';if(photo.width&&photo.height){image.width=photo.width;image.height=photo.height}image.decoding='async';image.alt=roles[photo.role]||'Run photo';image.loading=cardIndex===0?'eager':'lazy';image.fetchPriority=cardIndex===0?'high':'low';image.classList.add('image-reveal');image.src=url;images.add(image);if(cardIndex===0&&!objectUrl){const preload=document.createElement('link');preload.rel='preload';preload.as='image';preload.href=url;document.head.append(preload);}
+          if(publishReview){
+            const ready=new Promise((resolve,reject)=>{
+              image.addEventListener('load',async()=>{
+                try{
+                  if(!image.naturalWidth||!image.naturalHeight||typeof image.decode!=='function')throw Error('decode unavailable');
+                  await image.decode();resolve();
+                }catch(_){reject(Error('A selected photo could not decode. This run is still private.'));}
+              },{once:true});
+              image.addEventListener('error',()=>reject(Error('A selected photo could not decode. This run is still private.')),{once:true});
+            });
+            ready.catch(()=>{});pendingImages.push(ready);
+          }
+          figure.dataset.photoRole=photo.role||'photo';frameImage(image,photo,figure);image.className='run-photo-cover';if(photo.width&&photo.height){image.width=photo.width;image.height=photo.height}image.decoding=publishReview?'sync':'async';image.alt=roles[photo.role]||'Run photo';image.loading=publishReview||cardIndex===0?'eager':'lazy';image.fetchPriority=cardIndex===0?'high':'low';if(!publishReview)image.classList.add('image-reveal');image.src=url;images.add(image);if(cardIndex===0&&!objectUrl){const preload=document.createElement('link');preload.rel='preload';preload.as='image';preload.href=url;document.head.append(preload);}
           const release=()=>{if(objectUrl){URL.revokeObjectURL(url);urls.delete(url);pendingUrls.delete(url)}};
-          image.onload=()=>{image.classList.add('is-loaded');release()};image.onerror=()=>{release();figure.replaceChildren();figure.innerHTML=root.StrivePlaceholders?.render('screenshot',{story:card.dataset.mediaStory||'',owner:card.dataset.runOwner==='true',seed:card.dataset.mediaSeed,harness:card.dataset.mediaHarness,model:card.dataset.mediaModel})||''};
+          image.onload=()=>{image.classList.add('is-loaded');if(!publishReview)release()};image.onerror=()=>{release();figure.replaceChildren();figure.innerHTML=root.StrivePlaceholders?.render('screenshot',{story:card.dataset.mediaStory||'',owner:card.dataset.runOwner==='true',seed:card.dataset.mediaSeed,harness:card.dataset.mediaHarness,model:card.dataset.mediaModel})||''};
           const runHref=card.querySelector('.post-open a, .fc-body')?.getAttribute('href')||'/?run='+encodeURIComponent(runId);
           const link=document.createElement('a');link.href=runHref+'#run-photos';link.setAttribute('aria-label','Open '+(roles[photo.role]||'run image')+' at full size');link.append(image);
           link.onclick=event=>{event.preventDefault();void openImage({path,client,label:roles[photo.role]||'Run image',gallery:selected})};figure.append(link);
@@ -347,10 +366,10 @@
         for(const visual of visuals){
           const figure=document.createElement('figure'),link=document.createElement('a'),image=document.createElement('img'),caption=document.createElement('figcaption');
           link.href=visual.url;link.target='_blank';link.rel='noopener noreferrer';link.setAttribute('aria-label','Open source of '+visual.label);
-          image.className='run-photo-cover';image.width=visual.width;image.height=visual.height;image.loading='lazy';image.decoding='async';image.src=visual.src;image.alt=visual.alt;
+          frameImage(image,visual,figure);image.className='run-photo-cover';image.width=visual.width;image.height=visual.height;image.loading='lazy';image.decoding=publishReview?'sync':'async';image.src=visual.src;image.alt=visual.alt;
           caption.textContent=visual.label+' · project context';link.append(image);figure.append(link,caption);group.append(figure);
         }
-        const total=selected.length+visuals.length+(projectFirst&&!selected.some(p=>p.role!=='personal')?1:0);group.dataset.mediaCount=String(Math.min(3,group.children.length));group.dataset.totalMedia=String(total);if(total>3){const more=document.createElement('span');more.className='media-more-count';more.textContent='+'+(total-3);more.setAttribute('aria-label',(total-3)+' more images');group.children[2].querySelector('a')?.append(more);}group.style.setProperty('--media-count',Math.min(3,group.children.length));if(card.querySelector('.run-media-slot'))card.querySelector('.run-media-slot').dataset.mediaCount=group.dataset.mediaCount;
+        const total=selected.length+visuals.length+(projectFirst&&!selected.some(p=>p.role!=='personal')?1:0);group.dataset.mediaCount=String(publishReview?group.children.length:Math.min(3,group.children.length));group.dataset.totalMedia=String(total);if(group.children.length===1){group.dataset.imageShape=group.firstElementChild.dataset.imageShape||'unknown';group.style.setProperty('--image-aspect',group.firstElementChild.style.getPropertyValue('--image-aspect')||'4 / 3');}if(!publishReview&&total>3){const more=document.createElement('span');more.className='media-more-count';more.textContent='+'+(total-3);more.setAttribute('aria-label',(total-3)+' more images');group.children[2].querySelector('a')?.append(more);}group.style.setProperty('--media-count',Math.min(3,group.children.length));if(card.querySelector('.run-media-slot'))card.querySelector('.run-media-slot').dataset.mediaCount=group.dataset.mediaCount;
         if(visuals.length)group.classList.add('run-project-gallery');
         if(!current())return;
         card.querySelectorAll('.run-media').forEach(el=>el.remove());
@@ -363,9 +382,11 @@
         else if(card.querySelector('.post-open'))card.querySelector('.post-open').before(group);
         else{const title=card.querySelector('.run-metrics')||card.querySelector('.note')||card.querySelector('.run-title-row');if(title)title.after(group);else card.prepend(group)}
         images.add(group);
-      }catch(_){}
+        if(publishReview){await Promise.all(pendingImages);if(!current())return;return {runId,status:'ready',selectedIds:selected.map(p=>p.id),dispose};}
+      }catch(error){if(publishReview){dispose();throw error;}}
     }));
     if(active){stopTileFit();stopTileFit=root.StrivePlaceholders?.fit?.(host)||(()=>{});}
+    return outcomes;
   }
   // First picture and latest picture of a project, side by side. runs is oldest first. A photo the
   // author marked Before or After wins; otherwise the earliest and the latest photo are used and are
@@ -479,5 +500,5 @@
     })();
     return next=>{chosen=next||null;paint()};
   }
-  root.StriveRunPhotos={prefetch,prepareCards,mount,mountCovers,mountPair,mountThumbs,mountVisuals,mountChooser,disposeAll,forget,lead,cardPhotos};
+  root.StriveRunPhotos={prefetch,prepareCards,mount,mountCovers,mountPair,mountThumbs,mountVisuals,mountChooser,disposeAll,forget,lead,cardPhotos,frameRule};
 })(typeof window!=="undefined"?window:globalThis);

@@ -364,3 +364,11 @@ Checks: `scripts/test-photo-editor.mjs`, `scripts/test-compact-photo-editor.mjs`
 ## 16 October — review identity before measurements
 
 Private review rows keep title, recorded run date, project/repository and exact authored result lines visible while collapsed. Captions are labelled Author note; absent results stay unknown. The preliminary card still uses the shared posted renderer. Feed text paints after saved display choices, independently of photo metadata; the existing authorized photo mount fills its reserved media area. No owner rows are cached for first paint.
+
+## 27 October — saved history and complete image previews
+
+Saved private history includes older recordings. Search and filters narrow the choices without changing a run or its audience. The owner chooses runs, inspects one full public post preview, and uses one explicit Post action for that run. A later chosen run needs its own preview and action.
+
+This supersedes the 11 October cover-crop defaults for run media in Feed and signed-out `/r/` pages. `site/photo-frame.js` supplies one source-shape rule to both browser and server renderers. A source ratio of at least 1.6 uses a 16:9 stage; at least 0.8 uses 1:1; a narrower source uses 4:5; unknown dimensions use 4:3. The complete source is contained and centered, with bounded stage height. Captions and open controls occupy a separate strip. No source pixels are hidden by them. Small text can be opened at full size. There is no face detector or automatic subject crop.
+
+The public posting preview reads the saved selected-photo list and shows every selected image, including images behind Feed's +N. Each image must load and complete browser decode before Post becomes available. This review has no image reveal animation; ordinary Feed motion stays separate. Failed, denied, malformed or unknown reads do not mean no images. They keep Post disabled and keep the selected run for retry. A successful empty selected-photo read says No images selected and retains the ordinary explicit Post action. This does not hide stored images or change photo selection.
