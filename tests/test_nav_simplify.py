@@ -95,11 +95,12 @@ def test_account_links_are_reachable_from_the_avatar():
     assert seen["signedIn"]["profile"] == "/fixture-owner"
     signed_in = seen["signedIn"]["menu"]
     # Oscar, 24 Oct 2026: fewer items; the avatar opens the profile and Connect agent sits
-    # beside Add run. Recover older runs stays until he rules on where it lives.
+    # beside Add run on desktop. Recover older runs stays until he rules on where it lives.
     assert [(m["label"], m["href"]) for m in signed_in] == [
         ("Responses", "/?inbox"),
         ("Review queue", "/?queue"),
         ("Settings", "/?account"),
+        ("Connect your agent", "/?connect"),  # phone only; desktop hides it beside the header button
         ("Recover older runs", "/?history-import"),
         ("Sign out", None),
     ]

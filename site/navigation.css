@@ -3,6 +3,8 @@
 .product-nav-link{display:flex;align-items:center;justify-content:center;min-height:64px;padding:0 16px;border-bottom:3px solid transparent;color:var(--soft);white-space:nowrap;text-decoration:none}
 .product-nav-link[aria-current=page]{border-color:var(--blue);color:var(--blue);font-weight:650}
 .product-nav-link:focus-visible,.global-add:focus-visible,.global-connect:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+/* On desktop Connect agent is a header button, so the menu does not repeat it; a phone keeps the menu item. */
+@media(min-width:801px){.account-panel a.menu-connect{display:none!important}}
 .global-connect{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border:1px solid var(--rule);border-radius:999px;color:var(--ink)!important;font-weight:600}
 .product-nav-add{display:none}
 .global-add{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:var(--button-height,44px);padding:0 var(--button-pad,20px);border-radius:var(--button-radius,999px);background:var(--blue);color:#fff!important;font-size:14px;font-weight:600;white-space:nowrap}

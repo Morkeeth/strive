@@ -761,7 +761,7 @@ function menuLinks(kind){
   if(!ME) return AUTH_USER
     ? `<a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" class="ghost" data-signout role="menuitem">Sign out</button>`
     : `<a href="/?connect" role="menuitem">Connect your agent</a><div class="menu-sep"></div><button type="button" class="menu-signin" data-signin role="menuitem">${signInLabel()}</button>`;
-  return `<a href="/?inbox" role="menuitem" data-responses-link>Responses</a><a href="/?queue" role="menuitem">Review queue <span data-review-count hidden></span></a><a href="/?account" role="menuitem">Settings</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" class="ghost" data-signout role="menuitem">Sign out</button>`;
+  return `<a href="/?inbox" role="menuitem" data-responses-link>Responses</a><a href="/?queue" role="menuitem">Review queue <span data-review-count hidden></span></a><a href="/?account" role="menuitem">Settings</a><a class="menu-connect" href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" class="ghost" data-signout role="menuitem">Sign out</button>`;
 }
 function syncAuthNav(){
   document.querySelectorAll('[data-auth="1"]').forEach(el=>{el.hidden=!ME});
