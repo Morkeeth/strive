@@ -81,7 +81,13 @@
   }
   // Deterministic, lossless framing. Role never licenses cropping a face or screenshot.
   // The source shape chooses the stage; the complete source always fits inside it.
-  const frameRule=(width,height)=>(root.StrivePhotoFrame||(typeof require==='function'?require('./photo-frame.js'):null)).rule(width,height);
+  function frameRule(width,height){
+    let frames=root.StrivePhotoFrame;
+    if(!frames&&typeof require==='function'){try{frames=require('./photo-frame.js')}catch(_){}}
+    // Older or standalone pages may not load the new helper. Keep the whole image
+    // visible in the unknown-shape stage instead of dropping the photo.
+    return typeof frames?.rule==='function'?frames.rule(width,height):{shape:'unknown',aspect:'4 / 3',fit:'contain'};
+  }
   function frameImage(image,photo,figure){
     const apply=()=>{const rule=frameRule(image.naturalWidth||photo.width,image.naturalHeight||photo.height);figure.dataset.imageShape=rule.shape;figure.style.setProperty('--image-aspect',rule.aspect);image.style.objectFit=rule.fit;image.style.objectPosition='center';};
     apply();image.addEventListener('load',apply,{once:true});
