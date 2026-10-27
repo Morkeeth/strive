@@ -690,6 +690,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/sharing.js"></script>
 <script src="/moments.js"></script>
 <script src="/story-tile.js"></script><script src="/run-placeholders.js"></script>
+<script src="/photo-frame.js"></script>
 <script src="/run-photos.js"></script>
 <script src="/example.js"></script>
 <script src="/forum.js"></script>
@@ -726,20 +727,22 @@ function projectStats(runs){
 // Compatibility hooks for view modules: navigation is rendered once in the shared header.
 function railHtml(){ return ''; }
 function setPrimarySection(){ window.StriveNavigation.sync({handle:typeof ME==='object'&&ME?profileHandle(ME):null}); void updateReviewCount(); }
-let reviewRead=null;
 async function updateReviewCount(){
   const badges=[...document.querySelectorAll('[data-review-count]')];badges.forEach(b=>{b.hidden=true;b.textContent=''});$('review-strip')?.remove();
   const owner=ME?.id;if(!owner)return;const generation=AUTH_GENERATION,viewGeneration=RUN_VIEW_GENERATION;
   try{
-    // Share an in-flight read across the header and Feed render. Never retain private rows.
-    if(!reviewRead||reviewRead.owner!==owner)reviewRead={owner,job:StriveRunQueue.read(sb,owner)};
-    const request=reviewRead;let rows;try{rows=await request.job}finally{if(reviewRead===request)reviewRead=null}
+    // The 496 private rows are a review backlog, not 496 unread alerts. The owner-only
+    // cursor counts arrivals since the queue was last opened and preserves every run.
+    const {data,error}=await sb.rpc('review_alert_counts');if(error)throw error;
     if(generation!==AUTH_GENERATION||viewGeneration!==RUN_VIEW_GENERATION||owner!==ME?.id)return;
-    badges.forEach(b=>{b.textContent=String(rows.length);b.hidden=!rows.length});
+    const row=Array.isArray(data)?data[0]:data,count=Number(row?.new_count);
+    if(!Number.isSafeInteger(count)||count<0)return;
+    badges.forEach(b=>{b.textContent=count>9?'9+':String(count);b.hidden=!count;b.setAttribute('aria-label',count+' new private run'+(count===1?'':'s'))});
     const q=new URLSearchParams(location.search),feed=![...q.keys()].length||q.has('following')||q.has('explore');
-    if(feed&&rows.length&&!$('review-strip'))$('app')?.insertAdjacentHTML('afterbegin','<a id="review-strip" class="review-strip" href="/?queue"><strong>'+rows.length+' run'+(rows.length===1?'':'s')+' waiting for your review</strong><span>Only you can see these. Review →</span></a>');
+    if(feed&&count&&!$('review-strip'))$('app')?.insertAdjacentHTML('afterbegin','<a id="review-strip" class="review-strip" href="/?queue"><strong>'+count+' new private run'+(count===1?'':'s')+'</strong><span>Only you can see these. Review →</span></a>');
   }catch(_){}
 }
+window.addEventListener('strive-review-changed',()=>{void updateReviewCount()});
 
 // A real public run, posted from a real session, for anyone who wants to see a card before making
 // one. It replaced the bundled sample on 25 Sep 2026: a stranger should meet a real run first.
@@ -872,7 +875,7 @@ const roadmapFeedback=StriveFeedback({client:sb,me:()=>ME,signIn:()=>showSignIn(
 let AUTH_GENERATION=0, RUN_VIEW_GENERATION=0;
 // Invalidate synchronously, before any queued auth refresh or pending private request.
 function invalidatePrivateView(){
-  document.querySelectorAll('[data-review-count]').forEach(b=>{b.hidden=true;b.textContent=''});$('review-strip')?.remove();reviewRead=null;
+  document.querySelectorAll('[data-review-count]').forEach(b=>{b.hidden=true;b.textContent=''});$('review-strip')?.remove();
   AUTH_GENERATION++;RUN_VIEW_GENERATION++;
   document.querySelector('dialog.run-share-dialog')?.close();
   ME=null;AUTH_USER=null;IDENTITY_SETUP=null;
@@ -3058,7 +3061,7 @@ async function route(){ setPrimarySection(); RUN_VIEW_GENERATION++;feedRefresh.s
     return GrinderExample.view();
   }
   if(RETIRED.some(k=>q.has(k))){history.replaceState(null,'','/');return viewLanding();}
-  if(q.has('queue')){frame(railHtml('mine'),null);const owner=ME?.id,generation=AUTH_GENERATION,viewGeneration=RUN_VIEW_GENERATION;const slot=$('app');slot.innerHTML='<h1>Run review queue</h1><p><strong>Only me. Not public.</strong> These runs are visible only to you. Review before posting.</p>';if(!owner){showSignIn();return}return StriveRunQueue.mount({client:sb,owner,slot,esc,current:()=>generation===AUTH_GENERATION&&viewGeneration===RUN_VIEW_GENERATION&&owner===ME?.id,open:false,renderCard:run=>feedCards([{...run,visibility:'public'}],{mine:new Set(),counts:{}},{preview:true})});}
+  if(q.has('queue')){frame(railHtml('mine'),null);const owner=ME?.id,generation=AUTH_GENERATION,viewGeneration=RUN_VIEW_GENERATION;const slot=$('app');slot.innerHTML='<h1>Your saved runs</h1><p><strong>Only me.</strong> Choose a few runs, then preview each public post.</p>';if(!owner){showSignIn();return}return StriveRunQueue.mount({client:sb,owner,slot,esc,current:()=>generation===AUTH_GENERATION&&viewGeneration===RUN_VIEW_GENERATION&&owner===ME?.id,open:false,renderCard:run=>feedCards([{...run,visibility:'public'}],{mine:new Set(),counts:{}},{preview:true})});}
   if(q.has('boards'))return viewBoards();
   if(q.has('projects'))return viewProjects();
   if(q.has('day'))return viewDay(q.get('day'));

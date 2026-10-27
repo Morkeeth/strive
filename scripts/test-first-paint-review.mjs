@@ -25,15 +25,26 @@ delivered=[];await context.render([{id:'stale',profile_id:'same',at:1}],{},{curr
 assert.ok(source.indexOf('/first-paint.js')<source.indexOf('<script src="https://cdn.jsdelivr.net/npm/@supabase'));
 const Q=require('../site/run-queue.js'),dom=new JSDOM('<main></main>');globalThis.document=dom.window.document;
 const run={id:'test',profile_id:'owner',visibility:'private',created_at:'2026-10-16T07:00:00Z',started_at:'2026-10-15T22:00:00Z',title:'TEST DATA: repair sharing',project:'STRIVE',repo_url:'https://github.com/Morkeeth/strive',story_result:'Private review now shows the selected card.\nChecks passed; no deployment.',caption:'A separate author note.'};
-function client(rows){const q={select(){return q},eq(){return q},gte(){return q},order(){return q},then(resolve){resolve({data:rows,error:null})}};return {from:()=>q}}
-const slot=document.querySelector('main');let render;
-await Q.mount({client:client([run,{...run,id:'empty',created_at:'2026-10-15T07:00:00Z',title:'Unlabelled work',project:null,repo_url:null,story_result:null,caption:null}]),owner:'owner',slot,esc:s=>String(s).replaceAll('<','&lt;'),current:()=>true,renderCard:()=>new Promise(r=>render=r)});
-const first=slot.querySelector('.queue-preview');
-assert.match(first.querySelector('summary').textContent,/STRIVE/);
-assert.match(first.textContent,/Morkeeth\/strive/,'repository must be visible alongside the project');
-assert.match(first.querySelector('.queue-result').textContent,/Private review now shows/,'authored results must appear without waiting for the card/photo');
-assert.match(first.querySelector('.queue-result').textContent,/no deployment/,'result caveats must remain');
-assert.match(first.querySelector('summary').textContent,/2026/);
+let writes=[],renderCalls=0;
+function client(rows){const q={select(){return q},eq(){return q},gte(){return q},order(){return q},update(row){writes.push(row);return q},then(resolve){resolve({data:rows,error:null})}};return {from:()=>q}}
+const slot=document.querySelector('main'),stalledCard=new Promise(()=>{});
+const missing={...run,id:'empty',created_at:'2026-10-15T07:00:00Z',title:'Unlabelled work',project:null,repo_url:null,story_result:null,caption:null};
+const older=Array.from({length:24},(_,i)=>({...run,id:'older-'+i,created_at:'2026-10-01T07:00:00Z',title:'TEST DATA older run '+i}));
+await Q.mount({client:client([run,missing,...older,{...run,id:'other',profile_id:'other',title:'Other owner private text'},{...run,id:'public',visibility:'public',title:'Already public text'}]),owner:'owner',slot,esc:s=>String(s).replaceAll('<','&lt;'),current:()=>true,renderCard:()=>{renderCalls++;return stalledCard}});
+const choices=[...slot.querySelectorAll('input[type="checkbox"]')],first=choices[0].closest('label');
+assert.equal(choices.length,12,'only one bounded page of choices renders from the older saved history');
+assert.match(first.textContent,/TEST DATA: repair sharing/,'run title is available before the preview');
+assert.match(first.textContent,/STRIVE/);assert.match(first.textContent,/Morkeeth\/strive/,'safe repository identity remains beside the project');
+assert.match(first.textContent,/Private review now shows/,'authored result appears without waiting for the card or photos');
+assert.match(first.textContent,/no deployment/,'the result caveat is retained');assert.match(first.textContent,/2026/);
 assert.match(slot.textContent,/Result not recorded/);assert.match(slot.textContent,/Project not recorded/);
-assert.equal(first.querySelector('[data-approve-id]').disabled,true,'results are not approval; wait for actual share card');
-console.log('PASS photo stall does not block text; static useful first paint; queue identity/project/repo/results and honest missing fields');
+assert.doesNotMatch(slot.textContent,/Other owner private text|Already public text/,'private history must stay scoped to the owner');
+assert.equal(renderCalls,0,'listing and filtering choices does not start any card/photo renderer');
+const search=slot.querySelector('input[type="search"]');search.value='Unlabelled';search.dispatchEvent(new dom.window.Event('input'));
+assert.equal(slot.querySelectorAll('input[type="checkbox"]').length,1);assert.match(slot.textContent,/Result not recorded/);assert.equal(renderCalls,0,'search remains available while photo rendering is stalled');
+search.value='';search.dispatchEvent(new dom.window.Event('input'));
+slot.querySelector('input[type="checkbox"]').click();slot.querySelector('[data-review]').click();
+assert.equal(renderCalls,1,'only the deliberately chosen card starts rendering');
+assert.equal(slot.querySelector('[data-approve-id]').disabled,true,'a chosen result is not approval: the unfinished exact preview blocks Post');
+assert.equal(writes.length,0,'first paint, search and preview selection do not save or publish a run');
+console.log('PASS first text streams without photos; saved history has12bounded choices with title/project/repo/result/caveats and unknown fields; owner-only search works before one chosen preview; no automatic post');

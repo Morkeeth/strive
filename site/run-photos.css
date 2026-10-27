@@ -46,3 +46,5 @@
 .photo-editor .photo-undo button{width:auto;min-height:32px;margin:0;padding:4px 6px;border:0;background:transparent;color:var(--blue,#1258f4);font-weight:700;box-shadow:none;cursor:pointer}
 .photo-editor .photo-limit,.photo-editor .photo-editor-message{margin:10px 0 0;font-size:13px;color:var(--soft,#727d92)}
 @media(prefers-reduced-motion:no-preference){.photo-editor .photo-tile{transition:opacity .12s}}
+/* Upload previews and owner tiles show the complete image automatically. */
+.run-photo-grid img,.photo-editor .photo-tile>img{object-fit:contain;background:var(--rule-2)}

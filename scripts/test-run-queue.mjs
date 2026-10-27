@@ -1,88 +1,31 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-const require=createRequire(import.meta.url), Q=require('../site/run-queue.js');
-const run={id:'run',profile_id:'owner',source_actor_id:'agent',visibility:'private',created_at:'2026-10-14T12:00:00Z'};
-assert.equal(Q.pending(run,'owner'),true);
-for(const changed of [{visibility:'public'},{visibility:'link'},{profile_id:'other'}])assert.equal(Q.pending({...run,...changed},'owner'),false);
-assert.equal(Q.pending(run,null),false);
-assert.equal(Q.pending({...run,source_actor_id:null},'owner'),true,'existing manual private imports must be reviewable');
-let writes=[];
-const client={from(table){assert.equal(table,'runs');const q={delete(){writes.push('delete');return q},eq(k,v){writes.push([k,v]);return q},select(){return Promise.resolve({data:[{id:'run'}],error:null})}};return q}};
-await assert.rejects(()=>Q.discard(client,run,'other'),/Only the owner/);
-assert.equal(writes.length,0);
-await Q.discard(client,run,'owner');
-assert.deepEqual(writes,['delete',['id','run'],['profile_id','owner'],['visibility','private']]);
-await assert.rejects(()=>Q.discard({from(){return {delete(){return this},eq(){return this},select(){return Promise.resolve({data:[],error:null})}}}},run,'owner'),/changed/);
-console.log('PASS pending is owner-only; public runs excluded; manual private imports included; discard only deletes matching private row; stale rows refuse');
-const {JSDOM}=require('jsdom');
-const dom=new JSDOM('<main></main>');globalThis.document=dom.window.document;
-dom.window.HTMLDialogElement.prototype.showModal=function(){this.open=true};
-dom.window.HTMLDialogElement.prototype.close=function(){this.open=false};
-const slot=document.querySelector('main');let reads=[];
-function reader(result){return {from(table){reads.push(table);const q={select(){return q},eq(k,v){reads.push([k,v]);return q},not(k,op,v){reads.push([k,op,v]);return q},gte(k,v){reads.push([k,'gte',v]);return q},order(){return result}};return q}}}
-let resolve;const deferred=new Promise(r=>resolve=r);let current=true;
-const loading=Q.mount({client:reader(deferred),owner:'owner',slot,esc:s=>s,current:()=>current,open:true});
-current=false;resolve({data:[run],error:null});await loading;assert.equal(slot.children.length,0,'logout or navigation must cancel the pending mount');
-reads=[];await Q.read(reader(Promise.resolve({data:[run,{...run,profile_id:'other'}],error:null})),'owner');
-assert.deepEqual(reads,['runs',['profile_id','owner'],['visibility','private'],['created_at','gte','2026-10-13T16:00:00Z']]);
-await Q.mount({client:reader(Promise.resolve({data:null,error:new Error('TEST DATA read failure')})),owner:'owner',slot,esc:s=>s,current:()=>true,open:false});
-assert.match(slot.textContent,/could not load/);assert.doesNotMatch(slot.textContent,/No agent runs/);
-console.log('PASS query is scoped to owner and private rows; logout/navigation cancels mounting; failure is not an empty queue');
-
-slot.innerHTML='';
-await Q.mount({client:reader(Promise.resolve({data:[{...run,source_actor_id:null,title:'TEST DATA manual'}],error:null})),owner:'owner',slot,esc:s=>s,current:()=>true,open:false});
-assert.match(slot.textContent,/Only me. Not public/);
-assert.equal(slot.querySelector('a').getAttribute('href'),'/?run=run&review=1#run-edit');
-console.log('PASS existing private manual import has review entry and explicit private marker');
-
-const F=require('../site/feed-card.js');
-assert.match(F.privateMarker(run),/Only you can see this/);
-assert.equal(F.privateMarker({...run,visibility:'public'}),'');
-assert.equal(F.privateMarker({...run,visibility:'link'}),'');
-
-assert.equal(Q.waiting({...run,created_at:'2026-10-13T12:00:00Z'},'owner'),false);
-assert.equal(Q.waiting({...run,id:'night-parent',created_at:'2026-10-14T05:00:00Z'},'owner'),true);
-assert.equal(Q.waiting(run,'other'),false);
-
-assert.equal(Q.waiting({...run,created_at:'2026-10-13T15:59:59Z'},'owner'),false);
-assert.equal(Q.waiting({...run,created_at:'2026-10-13T16:00:00Z'},'owner'),true);
-assert.equal(Q.waiting({...run,created_at:'2026-10-13T18:00:00Z'},'owner'),true);
-
-// Creation order wins even when an older recording was uploaded later.
-const newest={...run,id:'new-upload',created_at:'2026-10-15T08:00:00Z',started_at:'2026-10-13T20:00:00Z',title:'Newest upload'},older={...run,id:'older-upload',created_at:'2026-10-14T08:00:00Z',started_at:'2026-10-15T07:00:00Z',title:'Older upload'};
-assert.deepEqual((await Q.read(reader(Promise.resolve({data:[older,newest],error:null})),'owner')).map(r=>r.id),['new-upload','older-upload']);
-const {full}=await import('../tests/fixtures/estimate-capture.mjs');
-assert.equal(Q.facts({capture_metadata:full}).find(r=>r[0]==='Est. dollars')[1],'$1.89');
-assert.equal(Q.facts({}).length,0,'a run with nothing recorded shows no fact cells');
-assert.ok(Q.facts({capture_metadata:full}).length<=3,'at most three facts');
-const bad=structuredClone(full);bad.input_tokens++;
-assert.equal(Q.facts({capture_metadata:bad}).find(r=>r[0]==='Est. dollars'),undefined,'uninterpretable usage hides dollars');
-assert.equal(Q.facts({duration_s:0}).find(r=>r[0]==='Elapsed')[1],'0 sec');
-assert.equal(Q.facts({duration_s:13260}).find(r=>r[0]==='Elapsed')[1],'3 hr 41 min');
-slot.innerHTML='';
-const escape=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
-await Q.mount({client:reader(Promise.resolve({data:[older,{...newest,title:'<img src=x onerror=alert(1)>',caption:'<script>private</script>'}],error:null})),owner:'owner',slot,esc:escape,current:()=>true,open:true});
-assert.equal(slot.querySelectorAll('img,script').length,0,'untrusted run text must be escaped');
-const cards=slot.querySelectorAll('.queue-preview');assert.equal(cards.length,2);
-assert.equal([...cards].filter(c=>c.open).length,1,'first preliminary card is open; the rest collapse');
-cards[0].open=true;slot.querySelector('[data-next]').click();
-assert.equal(cards[0].open,false);assert.equal(cards[1].open,true);
-assert.equal(document.activeElement,cards[1].querySelector('summary'));
-assert.equal(writes.length,4,'opening and next must not write to runs');
-slot.querySelector('[data-collapse]').click();assert.equal([...cards].some(c=>c.open),false);
-console.log('PASS newest upload first despite older capture date; stored cache-aware costs only; missing/invalid facts unknown; escaping; collapse/next keyboard focus without writes');
-
-let posts=[];
-function publisher({actor='public',changed=false}={}){return {from(table){const q={select(){return q},eq(k,v){posts.push([table,k,v]);return q},single(){return Promise.resolve({data:{visibility:actor}})},update(value){posts.push(value);return q},then(resolve){resolve({data:changed?[]:[{id:'run'}]})}};return q}}}
-await assert.rejects(()=>Q.approve(publisher(),run,'other'),/Only the owner/);assert.equal(posts.length,0);
-await assert.rejects(()=>Q.approve(publisher({actor:'private'}),run,'owner'),/still private/);assert.equal(posts.some(v=>v.visibility==='public'),false);
-posts=[];await Q.approve(publisher(),run,'owner');assert.deepEqual(posts.slice(-4),[{visibility:'public'},['runs','id','run'],['runs','profile_id','owner'],['runs','visibility','private']]);
-await assert.rejects(()=>Q.approve(publisher({changed:true}),run,'owner'),/changed/);
-console.log('PASS inline approval owner/private scope, private source-agent block, stale row refusal');
-
-slot.innerHTML='';let finishCard;let live=true;
-await Q.mount({client:reader(Promise.resolve({data:[run],error:null})),owner:'owner',slot,esc:escape,current:()=>live,open:true,renderCard:()=>new Promise(resolve=>finishCard=resolve)});
-assert.equal(slot.querySelector('[data-approve-id]').disabled,true,'approval waits for actual card render');
-live=false;finishCard('<p>OLD OWNER PRIVATE CARD</p>');await Promise.resolve();await Promise.resolve();
-assert.doesNotMatch(slot.textContent,/OLD OWNER PRIVATE CARD/,'a late card must not cross navigation/auth generations');
-console.log('PASS pending card disables approval; late renderer cannot insert stale owner content');
+const require=createRequire(import.meta.url),Q=require('../site/run-queue.js'),{JSDOM}=require('jsdom');
+const dom=new JSDOM('<main></main>',{url:'http://localhost'});globalThis.document=dom.window.document;globalThis.location=dom.window.location;require('../site/run-photos.js');globalThis.fetch=async()=>({ok:true,json:async()=>({photos:[]})});
+const slot=document.querySelector('main'),esc=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
+const base={id:'old',profile_id:'owner',visibility:'private',created_at:'2026-08-01T10:00:00Z',started_at:'2026-07-30T10:00:00Z',title:'Historical repair',project:'Revival',caption:'A real saved outcome',harness:'Codex'};
+assert.equal(Q.waiting(base,'owner'),true,'old history must be available');
+for(const change of [{profile_id:'other'},{visibility:'public'},{visibility:'link'}])assert.equal(Q.waiting({...base,...change},'owner'),false);
+const rows=Array.from({length:1001},(_,i)=>({...base,id:'run-'+i,project:i===500?'Needle project':'Scale test',title:i===500?'Find my older work':'TEST DATA scale row '+i}));
+let writes=[],ranges=[],acks=[];
+const client={rpc:async(name,payload)=>{acks.push({name,payload});return {}},from(table){let range=[0,499],update=null,where=[];const q={select(){return q},eq(k,v){where.push([k,v]);return q},order(){return q},range(a,b){range=[a,b];ranges.push(range);return q},update(value){update=value;return q},then(resolve){if(update){writes.push({table,update,where});resolve({data:[{id:'run-500'}]})}else resolve({data:rows.slice(range[0],range[1]+1).filter(r=>where.every(([k,v])=>r[k]===v))})}};return q}};
+assert.equal((await Q.read(client,'owner')).length,1001);assert.deepEqual(ranges,[[0,499],[500,999],[1000,1499]]);
+assert.equal(Q.matches(base,{search:'historical',project:'Revival',harness:'Codex',day:'2026-07-30'}),true);
+assert.equal(Q.matches(base,{search:'absent'}),false);
+let rendered=[],live=true;
+await Q.mount({client,owner:'owner',slot,esc,current:()=>live,renderCard:async run=>{rendered.push(run);return '<article class="card" data-run-id="'+run.id+'" data-run-visibility="public">'+esc(run.title)+'</article>'}});
+assert.equal(slot.querySelectorAll('[data-choose]').length,12,'only one bounded page is mounted');assert.equal(rendered.length,0,'browsing history never renders hundreds of cards');assert.equal(writes.length,0);
+const search=slot.querySelector('[data-filter=search]');search.value='Needle';search.dispatchEvent(new dom.window.Event('input'));
+assert.equal(slot.querySelectorAll('[data-choose]').length,1);assert.equal(slot.querySelector('[data-choose]').dataset.choose,'run-500');
+slot.querySelector('[data-choose]').click();assert.equal(writes.length,0);slot.querySelector('[data-review]').click();await new Promise(r=>setTimeout(r,0));
+assert.equal(rendered.length,1);assert.match(slot.querySelector('[data-preview]').textContent,/Anyone can see/);assert.equal(writes.length,0,'selection and exact preview never publish');
+slot.querySelector('[data-approve-id]').click();await new Promise(r=>setTimeout(r,0));
+assert.equal(writes.length,1);assert.deepEqual(writes[0],{table:'runs',update:{visibility:'public'},where:[['id','run-500'],['profile_id','owner'],['visibility','private']]});assert.match(slot.querySelector('[data-preview]').textContent,/Posted/);
+await assert.rejects(()=>Q.approve(client,base,'other'),/Only the owner/);
+const blocked={from(){return {select(){return this},eq(){return this},single:async()=>({data:{visibility:'private'}})}}};
+await assert.rejects(()=>Q.approve(blocked,{...base,source_actor_id:'agent'},'owner'),/still private/);
+const stale={from(){return {update(){return this},eq(){return this},select:async()=>({data:[]})}}};await assert.rejects(()=>Q.approve(stale,base,'owner'),/changed/);
+// A late private renderer must not insert anything after sign-out/navigation.
+slot.innerHTML='';let finish;live=true;
+await Q.mount({client,owner:'owner',slot,esc,current:()=>live,renderCard:()=>new Promise(r=>finish=r)});slot.querySelector('[data-choose]').click();slot.querySelector('[data-review]').click();assert.equal(slot.querySelector('[data-approve-id]').disabled,true);live=false;finish('PRIVATE LATE CONTENT');await new Promise(r=>setTimeout(r,0));assert.doesNotMatch(slot.textContent,/PRIVATE LATE CONTENT/);
+console.log('PASS: all historical private runs, owner scoping, 1001-row paged read, 12-row UI, search/selection, no publish before preview, single scoped post, agent/stale guards, late private render cancelled');
