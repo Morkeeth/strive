@@ -290,7 +290,9 @@ def test_one_supported_visual_is_selected_and_persisted():
     assert "hero_visual:heroVisual" in INDEX
     save = INDEX[INDEX.index("$('run-save').onclick=async()=>{") :]
     save = save[: save.index("\n")]
-    assert "heroVisual=controls.querySelector('input[name=\"run-hero-visual\"]:checked')?.value||suggestedVisual||null" in save
+    # Oscar, 25 Oct: automatic framing, no options shown. A saved visual is kept; otherwise the suggestion.
+    assert "heroVisual=r.hero_visual||suggestedVisual||null" in save
+    assert 'name="run-hero-visual"' not in INDEX and "visualPicker" not in INDEX
     assert "sb.from('runs').update({...StriveStory.read(controls),title,project:project||null,hero_visual:heroVisual," in save
     assert "proof_route" in migration and "activity_terrain" in migration
     assert "change_atlas" in migration and "result" in migration
