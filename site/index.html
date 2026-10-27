@@ -81,6 +81,8 @@ button.ghost:hover,.act:hover{background:var(--rule-2);border-color:var(--rule)}
 .nav-badge{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 4px;margin-left:4px;border-radius:999px;background:var(--blue, #123cff);color:#fff;font-size:10px;line-height:1;vertical-align:middle}
 .nav-badge[hidden]{display:none}
 .account-menu{position:relative}
+.profile-link{width:44px;height:44px;display:grid;place-items:center}
+.account-menu>summary.account-trigger{font-size:20px;letter-spacing:2px}
 .account-menu>summary{list-style:none;cursor:pointer;color:var(--soft);font-size:13px;display:flex;align-items:center;justify-content:center;min-width:36px;min-height:36px}
 .account-menu>summary::-webkit-details-marker{display:none}
 .account-menu[open]>summary,.account-menu>summary:hover{color:var(--ink)}
@@ -621,8 +623,10 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
   </nav>
   <div class="right">
     <a class="global-add" href="/?post"><span aria-hidden="true">+</span> Add run</a>
+    <a class="global-connect" href="/?connect" data-auth="1" hidden>Connect agent</a>
+    <a id="profile-link" class="profile-trigger profile-link" href="/" hidden aria-label="Open profile"><span id="nav-avatar" class="profile-fallback"><img src="/favicon.svg" alt="" width="30" height="30"></span></a>
     <details id="account-menu" class="account-menu" hidden>
-      <summary class="profile-trigger" aria-label="Profile and settings" aria-haspopup="menu"><span id="nav-avatar" class="profile-fallback"><img src="/favicon.svg" alt="" width="30" height="30"></span><span class="review-avatar-badge" data-review-count hidden></span></summary>
+      <summary class="account-trigger" aria-label="Account menu" aria-haspopup="menu">•••<span class="review-avatar-badge" data-review-count hidden></span></summary>
       <div class="account-panel" role="menu" data-you-links></div>
     </details>
     <span id="me" class="you" hidden></span>
@@ -757,7 +761,7 @@ function menuLinks(kind){
   if(!ME) return AUTH_USER
     ? `<a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" class="ghost" data-signout role="menuitem">Sign out</button>`
     : `<a href="/?connect" role="menuitem">Connect your agent</a><div class="menu-sep"></div><button type="button" class="menu-signin" data-signin role="menuitem">${signInLabel()}</button>`;
-  return `<a href="${esc(StriveLinks.profileHref(profileHandle(ME)))}" role="menuitem">Profile</a><a href="/?inbox" role="menuitem" data-responses-link>Responses</a><a href="/?queue" role="menuitem">Review queue <span data-review-count hidden></span></a><a href="/?account" role="menuitem">Settings</a><a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" class="ghost" data-signout role="menuitem">Sign out</button>`;
+  return `<a href="/?inbox" role="menuitem" data-responses-link>Responses</a><a href="/?queue" role="menuitem">Review queue <span data-review-count hidden></span></a><a href="/?account" role="menuitem">Settings</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" class="ghost" data-signout role="menuitem">Sign out</button>`;
 }
 function syncAuthNav(){
   document.querySelectorAll('[data-auth="1"]').forEach(el=>{el.hidden=!ME});
@@ -879,6 +883,7 @@ function invalidatePrivateView(){
   AUTH_GENERATION++;RUN_VIEW_GENERATION++;
   document.querySelector('dialog.run-share-dialog')?.close();
   ME=null;AUTH_USER=null;IDENTITY_SETUP=null;
+  if($('profile-link'))$('profile-link').hidden=true;
   window.StriveRunPhotos?.disposeAll?.();
   if($('app')&&document.documentElement.dataset.authBoot!=='pending')$('app').innerHTML=skeletonCard();
   if($('notifications-body'))$('notifications-body').innerHTML='';
@@ -2656,7 +2661,7 @@ async function refreshAuth(){
         ? `<span id="nav-avatar">${GrinderFeed.face({profiles:{...ME,avatar_url:shown?.avatar_url}},30)}</span>`
         : `<span id="nav-avatar" class="profile-fallback"><img src="/favicon.svg" alt="" width="30" height="30"></span>`;
     }
-    $('account-menu').hidden=!current.user;$('auth').hidden=!!current.user;$('auth').textContent='Sign in';
+    $('account-menu').hidden=!current.user;$('profile-link').hidden=!ME;if(ME)$('profile-link').href=StriveLinks.profileHref(profileHandle(ME));$('auth').hidden=!!current.user;$('auth').textContent='Sign in';
     syncAuthNav();document.documentElement.dataset.authHint=current.user?'member':'guest';document.documentElement.dataset.authBoot='ready';status('');
     if(social.refreshUnread) social.refreshUnread();
   }catch(e){if(generation!==AUTH_GENERATION)return;AUTH_USER=null;ME=null;IDENTITY_SETUP=null;document.documentElement.dataset.authBoot='ready';status(e.detail?.message||'Sign-in could not be restored. Try again.',true);}

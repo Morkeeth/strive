@@ -59,8 +59,9 @@ def test_primary_nav_has_the_product_loop():
     assert 'class="rail-post"' not in INDEX
     # Each primary destination marks itself; a page outside the menu marks nothing.
     assert seen["current"] == {"/": ["feed"], "/?post": ["post"], "/?following": ["feed"], "/?mine": [], "/?inbox": [], "/?account": []}
-    # My runs left the menu in a321b1b. The avatar menu opens the owner's profile.
-    assert seen["signedIn"]["menu"][0] == {"tag": "A", "label": "Profile", "href": "/fixture-owner", "signin": False, "signout": False, "responses": False}
+    # Oscar, 24 Oct 2026: the avatar itself opens the profile, so Profile left the menu.
+    assert seen["signedIn"]["menu"][0]["label"] == "Responses"
+    assert 'id="profile-link"' in INDEX and "$('profile-link').href=StriveLinks.profileHref(profileHandle(ME))" in INDEX
     retired = INDEX[INDEX.index("const RETIRED="):]
     retired = retired[: retired.index("\n")]
     for key in ("community", "forum", "challenges", "practices", "experiments", "rigs", "progress", "claim", "pitch"):
@@ -93,12 +94,12 @@ def test_account_links_are_reachable_from_the_avatar():
     # so the old literal "/?u=" is now the clean /handle path. Responses joined this menu in a321b1b.
     assert seen["signedIn"]["profile"] == "/fixture-owner"
     signed_in = seen["signedIn"]["menu"]
+    # Oscar, 24 Oct 2026: fewer items; the avatar opens the profile and Connect agent sits
+    # beside Add run. Recover older runs stays until he rules on where it lives.
     assert [(m["label"], m["href"]) for m in signed_in] == [
-        ("Profile", "/fixture-owner"),
         ("Responses", "/?inbox"),
         ("Review queue", "/?queue"),
         ("Settings", "/?account"),
-        ("Connect your agent", "/?connect"),
         ("Recover older runs", "/?history-import"),
         ("Sign out", None),
     ]
