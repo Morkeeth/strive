@@ -64,7 +64,7 @@
       const found=rows.filter(r=>matches(r,filters)),pages=Math.max(1,Math.ceil(found.length/12));page=Math.min(page,pages-1);
       results.innerHTML=found.slice(page*12,page*12+12).map(run=>{
         const info=identity(run),date=run.started_at||run.created_at,when=date?new Date(date).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'Date unknown';
-        return '<label class="queue-choice"><input type="checkbox" data-choose="'+esc(run.id)+'" '+(selected.has(run.id)?'checked':'')+'><span><strong>'+esc(run.title||'Untitled run')+'</strong><small>'+esc(info.project)+' · '+esc(when)+' · '+esc(run.harness||'Agent unknown')+(run.started_at?'':' · start unknown')+'</small><span class="queue-choice-result">'+esc(info.result)+'</span></span></label>';
+        return '<label class="queue-choice"><input type="checkbox" data-choose="'+esc(run.id)+'" '+(selected.has(run.id)?'checked':'')+'><span><strong>'+esc(run.title||'Untitled run')+'</strong><small>'+esc(info.project)+(info.repo?' · '+esc(info.repo):'')+' · '+esc(when)+' · '+esc(run.harness||'Agent unknown')+(run.started_at?'':' · start unknown')+'</small><span class="queue-choice-result">'+esc(info.result)+'</span></span></label>';
       }).join('')||'<p>No runs match these filters. Clear filters to see your history.</p>';
       box.querySelector('[data-page]').textContent=found.length+' matching · Page '+(page+1)+' of '+pages;
       box.querySelector('[data-prev]').disabled=page===0;box.querySelector('[data-next-page]').disabled=page===pages-1;

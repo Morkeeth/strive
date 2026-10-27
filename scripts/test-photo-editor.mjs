@@ -82,13 +82,21 @@ const cases={
       await until(()=>tiles(slot).length===3,'dropped file');assert.equal(tiles(slot).length,3,'the text file is not added');
     }
   },
-  async 'images fill their tiles'(){
-    const {w,d,slot}=await editor({count:1});
-    const html=read('index.html'),sheets=[...html.matchAll(/<style>([\s\S]*?)<\/style>|<link rel="stylesheet" href="\/([\w.-]+\.css)">/g)].map(m=>m[1]??read(m[2])).join('\n');
-    const style=d.createElement('style');style.textContent=sheets;d.head.append(style);
-    const tile=slot.querySelector('.photo-tile'),image=w.getComputedStyle(tile.querySelector('img'));
-    assert.equal(w.getComputedStyle(tile).aspectRatio.replace(/\s/g,''),'1/1','fixed aspect');assert.equal(w.getComputedStyle(tile).overflow,'hidden');
-    assert.equal(image.position,'absolute');assert.equal(image.width,'100%');assert.equal(image.height,'100%');assert.equal(image.objectFit,'cover');
+  async 'whole-image frames are shared by import and saved editors'(){
+    for(const make of [()=>editor({count:1}),()=>draft({names:['first.png','second.png']})]){
+      const {w,d,slot}=await make();
+      const html=read('index.html'),sheets=[...html.matchAll(/<style>([\s\S]*?)<\/style>|<link rel="stylesheet" href="\/([\w.-]+\.css)">/g)].map(m=>m[1]??read(m[2])).join('\n');
+      const style=d.createElement('style');style.textContent=sheets;d.head.append(style);
+      for(const tile of tiles(slot)){
+        const image=w.getComputedStyle(tile.querySelector('img'));
+        assert.equal(w.getComputedStyle(tile).aspectRatio.replace(/\s/g,''),'1/1','the thumbnail has a bounded square frame');
+        assert.equal(w.getComputedStyle(tile).overflow,'hidden');
+        assert.equal(image.position,'absolute');assert.equal(image.width,'100%');assert.equal(image.height,'100%');
+        assert.equal(image.objectFit,'contain','the complete source fits the frame without cropping');
+        assert.ok(['','none'].includes(image.clipPath),'no source mask hides pixels');
+        assert.ok(['','none'].includes(image.transform),'no image zoom hides the source edges');
+      }
+    }
   },
   async 'drag reorders and the first visible photo is the labelled cover'(){
     for(const make of [()=>editor({count:3}),()=>draft({names:['a.png','b.png','c.png']})]){
