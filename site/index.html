@@ -81,6 +81,8 @@ button.ghost:hover,.act:hover{background:var(--rule-2);border-color:var(--rule)}
 .nav-badge{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 4px;margin-left:4px;border-radius:999px;background:var(--blue, #123cff);color:#fff;font-size:10px;line-height:1;vertical-align:middle}
 .nav-badge[hidden]{display:none}
 .account-menu{position:relative}
+.profile-link{width:44px;height:44px;display:grid;place-items:center}
+.account-menu>summary.account-trigger{font-size:20px;letter-spacing:2px}
 .account-menu>summary{list-style:none;cursor:pointer;color:var(--soft);font-size:13px;display:flex;align-items:center;justify-content:center;min-width:36px;min-height:36px}
 .account-menu>summary::-webkit-details-marker{display:none}
 .account-menu[open]>summary,.account-menu>summary:hover{color:var(--ink)}
@@ -510,7 +512,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 .run-hero{margin:14px 0 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);background:var(--blue-wash)}
 .proof-route{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:18px 16px;gap:0}.proof-route>div{position:relative;padding:20px 12px 8px;border-top:2px solid var(--blue)}.proof-route>div:before{content:"";position:absolute;left:10px;top:-5px;width:8px;height:8px;border-radius:50%;background:var(--blue)}.proof-route dt{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);font-weight:600}.proof-route dd{margin:6px 0 0;font-size:13px;line-height:1.35;color:var(--ink)}
 .result-hero{padding:20px}.result-hero .result-number{font-size:44px;line-height:1;color:var(--blue);font-weight:600}.result-hero p{margin:8px 0 0;max-width:50ch}.run-photo-hero img{display:block;width:100%;max-height:360px;object-fit:cover}
-.visual-choice{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0 16px}.visual-choice label{border:1px solid var(--rule);padding:10px 12px;margin:0;cursor:pointer}.visual-choice input{margin-right:6px}
+
 .auto-sync{background:var(--box);border:1px solid var(--blue-soft);padding:18px 18px 12px;margin:0 0 22px}
 .auto-sync h2{font-size:18px;margin:0 0 6px}.auto-sync p{max-width:640px}
 .auto-sync .cmd{border:1px solid var(--rule);margin:10px 0;overflow-wrap:anywhere}.auto-sync .cmd .c{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-width:0}
@@ -621,8 +623,10 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
   </nav>
   <div class="right">
     <a class="global-add" href="/?post"><span aria-hidden="true">+</span> Add run</a>
+    <a class="global-connect" href="/?connect" data-auth="1" hidden>Connect agent</a>
+    <a id="profile-link" class="profile-trigger profile-link" href="/" hidden aria-label="Open profile"><span id="nav-avatar" class="profile-fallback"><img src="/favicon.svg" alt="" width="30" height="30"></span></a>
     <details id="account-menu" class="account-menu" hidden>
-      <summary class="profile-trigger" aria-label="Profile and settings" aria-haspopup="menu"><span id="nav-avatar" class="profile-fallback"><img src="/favicon.svg" alt="" width="30" height="30"></span><span class="review-avatar-badge" data-review-count hidden></span></summary>
+      <summary class="account-trigger" aria-label="Account menu" aria-haspopup="menu">•••<span class="review-avatar-badge" data-review-count hidden></span></summary>
       <div class="account-panel" role="menu" data-you-links></div>
     </details>
     <span id="me" class="you" hidden></span>
@@ -757,7 +761,7 @@ function menuLinks(kind){
   if(!ME) return AUTH_USER
     ? `<a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" class="ghost" data-signout role="menuitem">Sign out</button>`
     : `<a href="/?connect" role="menuitem">Connect your agent</a><div class="menu-sep"></div><button type="button" class="menu-signin" data-signin role="menuitem">${signInLabel()}</button>`;
-  return `<a href="${esc(StriveLinks.profileHref(profileHandle(ME)))}" role="menuitem">Profile</a><a href="/?inbox" role="menuitem" data-responses-link>Responses</a><a href="/?queue" role="menuitem">Review queue <span data-review-count hidden></span></a><a href="/?account" role="menuitem">Settings</a><a href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" class="ghost" data-signout role="menuitem">Sign out</button>`;
+  return `<a href="/?inbox" role="menuitem" data-responses-link>Responses</a><a href="/?queue" role="menuitem">Review queue <span data-review-count hidden></span></a><a href="/?account" role="menuitem">Settings</a><a class="menu-connect" href="/?connect" role="menuitem">Connect your agent</a><a href="/?history-import" role="menuitem">Recover older runs</a><button type="button" class="ghost" data-signout role="menuitem">Sign out</button>`;
 }
 function syncAuthNav(){
   document.querySelectorAll('[data-auth="1"]').forEach(el=>{el.hidden=!ME});
@@ -879,6 +883,7 @@ function invalidatePrivateView(){
   AUTH_GENERATION++;RUN_VIEW_GENERATION++;
   document.querySelector('dialog.run-share-dialog')?.close();
   ME=null;AUTH_USER=null;IDENTITY_SETUP=null;
+  if($('profile-link'))$('profile-link').hidden=true;
   window.StriveRunPhotos?.disposeAll?.();
   if($('app')&&document.documentElement.dataset.authBoot!=='pending')$('app').innerHTML=skeletonCard();
   if($('notifications-body'))$('notifications-body').innerHTML='';
@@ -2077,8 +2082,9 @@ async function viewRun(id){
     const controls=document.createElement('div');controls.className='panel run-editor';
     const availableVisuals=chosenRunHero(r,{codeRoute:GrinderContract.codeRoute(r),ridge:GrinderContract.ridge(r)})?.choices||[];
     const suggestedVisual=availableVisuals.find(v=>v[0]===r.hero_visual)?.[0]||availableVisuals[0]?.[0]||'';
-    const visualPicker=availableVisuals.length>1?`<fieldset><legend>Card visual</legend><p class="hint">Suggested from this run. Choose one.</p><div class="visual-choice">${availableVisuals.map(([key,label])=>`<label><input type="radio" name="run-hero-visual" value="${key}" ${key===suggestedVisual?'checked':''}> ${esc(label)}</label>`).join('')}</div></fieldset>`:'';
-    controls.id='run-edit';controls.innerHTML='<h2>Edit your run</h2><p class="hint">Tell the story, add a photo, then choose who can see it.</p><div class="run-story-fields"><label>Title<input id="run-title" required maxlength="120"></label><label>Project<input id="run-project" maxlength="120"></label><label>What happened?<textarea id="run-caption" maxlength="280" rows="3"></textarea></label><label>Link to what was built (optional)<input id="run-output-url" type="url" maxlength="2048"></label></div><div id="run-editor-photos"></div><details class="run-presentation"><summary>Card appearance</summary>'+visualPicker+'<label class="pin-check"><input type="checkbox" id="run-pin"> Pin to my profile</label></details><label id="run-audience-label">Who can read this run<select id="run-audience"><option value="private">Only me - just you</option><option value="close_friends">Close friends - people on your private list</option><option value="link">Followers - followers and close friends</option><option value="public">Public - Feed and profile</option></select></label><div class="run-edit-actions"><button id="run-save">Save changes</button><button id="run-edit-cancel" class="ghost">Cancel</button><button id="run-delete" class="ghost">Delete run</button></div>';
+    // Oscar, 25 Oct: "Automatic framing, don't display the options for the user." The card uses the
+    // run's saved visual, or the suggestion when none is saved; the owner is not asked to choose.
+    controls.id='run-edit';controls.innerHTML='<h2>Edit your run</h2><p class="hint">Tell the story, add a photo, then choose who can see it.</p><div class="run-story-fields"><label>Title<input id="run-title" required maxlength="120"></label><label>Project<input id="run-project" maxlength="120"></label><label>What happened?<textarea id="run-caption" maxlength="280" rows="3"></textarea></label><label>Link to what was built (optional)<input id="run-output-url" type="url" maxlength="2048"></label></div><div id="run-editor-photos"></div><details class="run-presentation"><summary>Card appearance</summary><label class="pin-check"><input type="checkbox" id="run-pin"> Pin to my profile</label></details><label id="run-audience-label">Who can read this run<select id="run-audience"><option value="private">Only me - just you</option><option value="close_friends">Close friends - people on your private list</option><option value="link">Followers - followers and close friends</option><option value="public">Public - Feed and profile</option></select></label><div class="run-edit-actions"><button id="run-save">Save changes</button><button id="run-edit-cancel" class="ghost">Cancel</button><button id="run-delete" class="ghost">Delete run</button></div>';
 
     controls.querySelector('.run-story-fields').insertAdjacentHTML('afterend','<details class="run-extra-story"><summary>More story and questions</summary>'+StriveStory.editor(r)+'</details>');
     $('grind-thread').before(controls);$('run-editor-photos').append($('run-photos'));$('run-title').value=r.title||'';$('run-pin').checked=!!r.pinned_at;$('run-project').value=r.project||'';$('run-caption').value=r.caption||r.note||'';$('run-output-url').value=r.output_url||'';$('run-audience').value=r.visibility==='anonymous'?'private':r.visibility;
@@ -2097,7 +2103,7 @@ async function viewRun(id){
     for(const link of app.querySelectorAll('a[href="#run-edit"],a[href="#run-photos"],a[href="#run-audience"]'))link.onclick=event=>{event.preventDefault();showEditor(link.hash==='#run-audience'?'run-audience':link.hash==='#run-photos'?'run-photos':'run-title')};
     if(['#run-edit','#run-photos','#run-audience'].includes(location.hash))showEditor(location.hash==='#run-audience'?'run-audience':'run-title');
     void StriveSavedRuns({client:sb,slot:controls,current:()=>current()&&controls.isConnected});
-    $('run-save').onclick=async()=>{const title=$('run-title').value.trim(),project=$('run-project').value.trim(),caption=$('run-caption').value.trim(),output=$('run-output-url').value.trim(),audience=$('run-audience').value,heroVisual=controls.querySelector('input[name="run-hero-visual"]:checked')?.value||suggestedVisual||null;if(!title){status('Add a title.',true);$('run-title').focus();return}if(output&&!safeOutputUrl(output)){status('The output link must start with http:// or https://.',true);return}if(!(await requireCloseFriendsForSave(audience)))return;const saveButton=$('run-save');saveButton.disabled=true;try{await photoEditor?.save?.()}catch(error){saveButton.disabled=false;status(error.message,true);return}const pin=$('run-pin').checked;const {error}=await sb.from('runs').update({...StriveStory.read(controls),title,project:project||null,hero_visual:heroVisual,caption:caption||null,output_url:output||null,visibility:audience,pinned_at:pin?(r.pinned_at||new Date().toISOString()):null}).eq('id',r.id);if(error){saveButton.disabled=false;status(error.message,true);return}history.replaceState(null,'','/?run='+r.id);await viewRun(r.id)};
+    $('run-save').onclick=async()=>{const title=$('run-title').value.trim(),project=$('run-project').value.trim(),caption=$('run-caption').value.trim(),output=$('run-output-url').value.trim(),audience=$('run-audience').value,heroVisual=r.hero_visual||suggestedVisual||null;if(!title){status('Add a title.',true);$('run-title').focus();return}if(output&&!safeOutputUrl(output)){status('The output link must start with http:// or https://.',true);return}if(!(await requireCloseFriendsForSave(audience)))return;const saveButton=$('run-save');saveButton.disabled=true;try{await photoEditor?.save?.()}catch(error){saveButton.disabled=false;status(error.message,true);return}const pin=$('run-pin').checked;const {error}=await sb.from('runs').update({...StriveStory.read(controls),title,project:project||null,hero_visual:heroVisual,caption:caption||null,output_url:output||null,visibility:audience,pinned_at:pin?(r.pinned_at||new Date().toISOString()):null}).eq('id',r.id);if(error){saveButton.disabled=false;status(error.message,true);return}history.replaceState(null,'','/?run='+r.id);await viewRun(r.id)};
     if(StriveRunQueue.pending(r,ME?.id)){
       const review=document.createElement('section');review.className='card pad';review.innerHTML='<h2>Review this private run</h2><p class="private-run-marker"><strong>Only me. Not public</strong><br>Only you can see this run. Opening this review does not publish it.</p><p>Review the card and saved data above. Approve and post puts this run on your public profile and Feed. Discard deletes this private run.</p><div class="cta"><button type="button" data-approve>Approve and post</button><button type="button" data-discard>Discard</button></div><a href="/?queue">Back to review queue</a>';
       controls.before(review);
@@ -2656,7 +2662,7 @@ async function refreshAuth(){
         ? `<span id="nav-avatar">${GrinderFeed.face({profiles:{...ME,avatar_url:shown?.avatar_url}},30)}</span>`
         : `<span id="nav-avatar" class="profile-fallback"><img src="/favicon.svg" alt="" width="30" height="30"></span>`;
     }
-    $('account-menu').hidden=!current.user;$('auth').hidden=!!current.user;$('auth').textContent='Sign in';
+    $('account-menu').hidden=!current.user;$('profile-link').hidden=!ME;if(ME)$('profile-link').href=StriveLinks.profileHref(profileHandle(ME));$('auth').hidden=!!current.user;$('auth').textContent='Sign in';
     syncAuthNav();document.documentElement.dataset.authHint=current.user?'member':'guest';document.documentElement.dataset.authBoot='ready';status('');
     if(social.refreshUnread) social.refreshUnread();
   }catch(e){if(generation!==AUTH_GENERATION)return;AUTH_USER=null;ME=null;IDENTITY_SETUP=null;document.documentElement.dataset.authBoot='ready';status(e.detail?.message||'Sign-in could not be restored. Try again.',true);}

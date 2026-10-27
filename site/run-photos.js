@@ -365,8 +365,12 @@
           const release=()=>{if(objectUrl){URL.revokeObjectURL(url);urls.delete(url);pendingUrls.delete(url)}};
           image.onload=()=>{image.classList.add('is-loaded');if(!publishReview)release()};image.onerror=()=>{release();figure.replaceChildren();figure.innerHTML=root.StrivePlaceholders?.render('screenshot',{story:card.dataset.mediaStory||'',owner:card.dataset.runOwner==='true',seed:card.dataset.mediaSeed,harness:card.dataset.mediaHarness,model:card.dataset.mediaModel})||''};
           const runHref=card.querySelector('.post-open a, .fc-body')?.getAttribute('href')||'/?run='+encodeURIComponent(runId);
-          const link=document.createElement('a');link.href=runHref+'#run-photos';link.setAttribute('aria-label','Open '+(roles[photo.role]||'run image')+' at full size');link.append(image);
-          link.onclick=event=>{event.preventDefault();void openImage({path,client,label:roles[photo.role]||'Run image',gallery:selected})};figure.append(link);
+          // A feed photo opens the run, not a photo viewer (Oscar, 24 Oct). The preview before posting
+          // keeps the full-size viewer, since leaving that page would drop the choice being reviewed.
+          const link=document.createElement('a');link.append(image);
+          if(publishReview){link.href=runHref+'#run-photos';link.setAttribute('aria-label','Open '+(roles[photo.role]||'run image')+' at full size');link.onclick=event=>{event.preventDefault();void openImage({path,client,label:roles[photo.role]||'Run image',gallery:selected})};}
+          else{link.href=runHref;link.setAttribute('aria-label','Open run details');}
+          figure.append(link);
           const caption=visibleCaption(photo.role);if(caption){const label=document.createElement('figcaption');label.textContent=caption;figure.append(label)}group.append(figure);
         }
         for(const visual of visuals){

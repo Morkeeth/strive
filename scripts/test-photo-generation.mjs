@@ -18,7 +18,7 @@ await review.StriveRunPhotos.mountCovers({client:null,root:review.document});
 const [publicCard,privateCard]=review.document.querySelectorAll('.fc');
 assert.deepEqual([...publicCard.querySelectorAll('.run-project-gallery .run-photo-cover')].map(img=>img.getAttribute('src')),['/api/run-photos?id=chosen&run_id='+favour+'&w=320','/media/favour-public-page-20261010.webp','/media/favour-campaign-builder-20261010.webp'],'saved author cover leads, with project screenshots beside it');
 assert.equal(publicCard.querySelector('.run-photo-preview'),null,'one image request per photo: no second low-size copy');
-assert.equal(publicCard.querySelector('.run-media a[aria-label^="Open "]').getAttribute('href'),favourHref+'#run-photos','public photo opens the same clean run URL as its card');
+assert.equal(publicCard.querySelector('.run-media a[aria-label^="Open "]').getAttribute('href'),favourHref,'public photo opens the same clean run URL as its card');
 assert.equal(publicCard.querySelectorAll('.run-media a[href*="?run="]').length,0,'loaded public photos expose no old-form run links');
 assert.ok(!publicCard.innerHTML.includes('not-chosen'));
 assert.equal(privateCard.querySelector('.run-project-gallery'),null,'denied private run cannot inherit public project imagery');
@@ -33,7 +33,7 @@ const postDom=new JSDOM(`<article class="activity-post" data-photo-gallery data-
 const postScope={document:postDom.window.document,location:postDom.window.location,AbortController,URL:Object.assign(class extends URL{},{createObjectURL:()=> 'blob:post',revokeObjectURL(){}}),fetch:async path=>path.includes('?run_id=')?{ok:true,json:async()=>({photos:[{id:'project',url:'/api/run-photos?id=project&run_id='+favour,role:'result'}]})}:{ok:true,blob:async()=>({})}};
 vm.createContext(postScope);vm.runInContext(fs.readFileSync('site/run-photos.js','utf8'),postScope);
 await postScope.StriveRunPhotos.mountCovers({client:null,root:postScope.document});
-assert.equal(postScope.document.querySelector('.run-media a[aria-label^="Open "]').getAttribute('href'),favourHref+'#run-photos','loaded activity-post photo uses its clean public run link');
+assert.equal(postScope.document.querySelector('.run-media a[aria-label^="Open "]').getAttribute('href'),favourHref,'loaded activity-post photo uses its clean public run link');
 postScope.StriveRunPhotos.disposeAll();
 // A successful empty photo read and an access failure must not look the same.
 for(const ok of [true,false]){

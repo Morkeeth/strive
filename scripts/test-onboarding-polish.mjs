@@ -8,7 +8,8 @@ const html=readFileSync('site/index.html','utf8');
 const take=(start,end)=>html.slice(html.indexOf(start),html.indexOf(end,html.indexOf(start)));
 const context={StriveLinks:Links,ME:{id:'owner',handle:'fixture'},AUTH_USER:{id:'auth'},profileHandle:p=>p.handle,signInLabel:()=> 'Sign in',encodeURIComponent};
 vm.createContext(context);vm.runInContext(html.split('\n').find(line=>line.startsWith('const esc=')),context);vm.runInContext(take('function menuLinks(', 'function syncAuthNav('),context);
-for(const state of [{id:'owner',handle:'fixture'},null]){context.ME=state;const menu=vm.runInContext('menuLinks()',context);assert.match(html,/href="\/\?feedback"/);assert.ok(menu.includes('/?connect'));}
+for(const state of [{id:'owner',handle:'fixture'},null]){context.ME=state;const menu=vm.runInContext('menuLinks()',context);assert.match(html,/href="\/\?feedback"/);assert.ok(menu.includes('/?connect'));if(state)assert.match(menu,/class="menu-connect" href="\/\?connect"/,'signed in, the menu item is the phone path; desktop shows the header button');}
+assert.match(html,/class="global-connect"[^>]+href="\/\?connect"/,'Connect agent sits beside Add run, outside the account menu');
 assert.match(html,/prefers-reduced-motion:reduce/);
 assert.match(html,/aria-label="Loading runs"/);
 const body=take('function connectBodyHtml()', 'function wireConnectCopies(');
