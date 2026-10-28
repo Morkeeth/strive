@@ -1372,6 +1372,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     return facts;
   };
   const metricStrip=()=>{
+    if(typedOnlyRun(r))return '';
     // The signed-out detail must show the same estimate-backed headline and basis as Feed/share.
     if(opts.detail)
       return StriveContext.headlineHtml(r,'run-metrics post-facts')+StriveContext.measurementDetails(r);
@@ -1414,7 +1415,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     StriveEvidence.summary(r),
     runUploadIdentity(r),
     StriveContext.setup(r),
-    `<div class="sub run-effort-context"><span class="card-harness">${esc((globalThis.StriveAgents?.agentName(r.harness)||r.harness||'')||'Coding agent')}</span>${r.harness==='Grok Bot'?' · bot activity':''} · ${esc(started)}</div>`,
+    typedOnlyRun(r)?'<div class="sub run-effort-context">Manual · unmeasured · owner-provided update</div>':`<div class="sub run-effort-context"><span class="card-harness">${esc((globalThis.StriveAgents?.agentName(r.harness)||r.harness||'')||'Coding agent')}</span>${r.harness==='Grok Bot'?' · bot activity':''} · ${esc(started)}</div>`,
     codeRoute?codeRouteDetail:'<p class="run-route-source">No work route was captured for this run. Activity bins do not identify which files, tasks or build steps happened.</p>',
     codeRoute&&ridge?ridge:'',
     fiveRow(r),
@@ -1445,7 +1446,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     ${agentChip}
     ${r.segment_id?`<div class="sub"><a href="/?segment=${encodeURIComponent(r.segment_id)}">Open segment leaderboard</a></div>`:''}
     ${metricStrip()}
-    ${opts.detail?StriveContext.cardSecondary(r):''}
+    ${opts.detail&&!typedOnlyRun(r)?StriveContext.cardSecondary(r):''}
     ${StriveStory.visual(r)}
     ${visual}
     ${output?`<p class="run-output"><a href="${esc(output)}" target="_blank" rel="noopener noreferrer">See the work ↗</a></p>`:''}
@@ -2259,7 +2260,7 @@ function wireComposer(){
   fields.forEach(id=>$(id).addEventListener('input',keep));
   window.StrivePhotoDraft?.mount({slot:$('manual-photos'),token,profileId:owner,eligible:true,isCurrent:current,audience:()=> 'private'});
   const build=async()=>StriveProjectUpdate.row({title:$('f_title').value,project:$('f_project').value,changed:$('f_caption').value,problem:$('f_problem').value,feedback:$('f_feedback').value,link:$('f_output_url').value,hasImage:await window.StrivePhotoDraft?.hasDraft(token)});
-  $('manual-preview').onclick=async()=>{try{const row=await build(),slot=$('manual-preview-content');slot.hidden=false;slot.innerHTML='<article class="card pad"><p class="meta">Manual · unmeasured · private draft</p><h3>'+esc(row.project)+' · '+esc(row.title)+'</h3>'+StriveStory.detail(row)+(row.output_url?'<a target="_blank" rel="noopener noreferrer" href="'+esc(row.output_url)+'">Open project link</a>':'')+'</article>';}catch(e){status(e.message,true)}};
+  $('manual-preview').onclick=async()=>{try{const row=await build(),slot=$('manual-preview-content');slot.hidden=false;slot.innerHTML='<article class="card pad"><p class="meta">Manual · unmeasured · private draft</p><h3>'+esc(row.project)+' · '+esc(row.title)+'</h3>'+StriveStory.detail(row,{conversation:false})+(row.output_url?'<a target="_blank" rel="noopener noreferrer" href="'+esc(row.output_url)+'">Open project link</a>':'')+'</article>';}catch(e){status(e.message,true)}};
   pb.onclick=async()=>{
     if(!ME){keep();showSignIn();return;}
     if(!current())return;

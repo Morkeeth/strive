@@ -28,7 +28,18 @@ const RUN='91000000-0000-0000-0000-000000000001', PHOTO='92000000-0000-0000-0000
 assert.ok(Array.isArray(source.rhythm),'The public capture must carry its measured rhythm; never substitute a made-up trace.');
 await as(CASEY);
 await assert.rejects(db.query("insert into strava.runs(profile_id,title) values($1,'Made up')",[CASEY]),/Import a recorded session/);
-await assert.rejects(db.query("insert into strava.runs(profile_id,title,trace_basis) values($1,'Made up','typed-by-author')",[CASEY]),/Import a recorded session/);
+await assert.rejects(db.query("insert into strava.runs(profile_id,title,trace_basis) values($1,'Made up','typed-by-author')",[CASEY]),/Manual updates need a project, title and what changed/);
+// Manual project updates are author-written and unmeasured, always private on first save.
+const manual="insert into strava.runs(profile_id,title,project,story_result,trace_basis,output_url,visibility) values($1,'Synthetic manual update','Synthetic project','Changed the first step','typed-by-author','https://example.com/project',$2) returning *";
+await assert.rejects(db.query(manual,[CASEY,'public']),/New sessions start private/);
+const manualRow=(await db.query(manual,[CASEY,'private'])).rows[0];
+assert.equal(manualRow.trace_basis,'typed-by-author');assert.equal(manualRow.visibility,'private');
+for(const field of ['measurement_revision','harness','model','prompts','duration_s','wall_time_s','commits','capture_metadata','history_evidence','receipts','shipped'])assert.equal(manualRow[field],null,field);
+await as(RILEY);assert.equal((await db.query('select id from strava.runs where id=$1',[manualRow.id])).rows.length,0);
+await anonymous();assert.equal((await db.query('select id from strava.runs where id=$1',[manualRow.id])).rows.length,0);
+await as(CASEY);assert.equal((await db.query('select story_result from strava.runs where id=$1',[manualRow.id])).rows[0].story_result,'Changed the first step');
+await assert.rejects(db.query('update strava.runs set prompts=1 where id=$1',[manualRow.id]),/unmeasured/);
+await db.query('delete from strava.runs where id=$1',[manualRow.id]);
 const insert=`insert into strava.runs(id,profile_id,title,schema_version,measurement_revision,harness,trace_basis,rhythm,tool_calls,visibility)
  values($1,$2,'Recorded source',$3,$4,$5,$6,$7,$8,$9)`;
 const args=[RUN,CASEY,source.schema_version,source.measurement_revision,source.harness,source.trace_basis,JSON.stringify(source.rhythm),source.tool_calls??null];
@@ -155,4 +166,4 @@ const raced=await runPhotos({method:'POST',headers:{authorization:'Bearer user-t
  return new Response('{}');
 });
 assert.equal(raced.status,409);assert.equal(raceDeleted,true);assert.equal(raceQueued,true);
-console.log('Launch backend: capture required, facts immutable, private default, duplicate refused, photo owner/friend/public/revoke/delete RLS, raw Storage denied, metadata stripped, API capabilities separated. '+(captured?'Actual selected session parsed, measured and normalized via public export accepted.':process.env.STRIVE_CAPTURE_SAMPLE?'Capture export sample accepted.':'Synthetic source used; actual capture check separate.'));
+console.log('Launch backend: captured facts immutable, manual updates unmeasured and private-only on first save, private default, duplicate refused, photo owner/friend/public/revoke/delete RLS, raw Storage denied, metadata stripped, API capabilities separated. '+(captured?'Actual selected session parsed, measured and normalized via public export accepted.':process.env.STRIVE_CAPTURE_SAMPLE?'Capture export sample accepted.':'Synthetic source used; actual capture check separate.'));

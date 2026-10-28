@@ -8,11 +8,11 @@ const ctx={URL,URLSearchParams,TextEncoder,document:dom.window.document,location
  $:id=>dom.window.document.getElementById(id),esc:s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
  frame(){},railHtml(){},skeletonCard:()=>'',sb:{from:()=>({select(){return this},eq(){return this},single:async()=>({data:row})})},
  GrinderRunAccess:{viewerMayOpenRun:async r=>r.visibility==='public'},noteTraces(){},ackData:async()=>({mine:new Set(),counts:{}}),fetchAckList:async()=>[],suggestAckReasons:()=>[],ACK_REASONS:{},profileHandle:()=> 'builder',audienceLabel:s=>s,ackListHtml:()=>'',status(){},
- runAttribution:()=>({handle:'builder',name:'Builder'}),safeOutputUrl:()=>null,projectLinkHtml:()=>'',runUploadIdentity:()=>'',fiveRow:()=>'',coachBlock:()=>'',typedOnlyRun:()=>false,chosenRunHero:()=>null,
+ runAttribution:()=>({handle:'builder',name:'Builder'}),safeOutputUrl:()=>null,projectLinkHtml:()=>'',runUploadIdentity:()=>'',fiveRow:()=>'',coachBlock:()=>'',chosenRunHero:()=>null,
  StriveHistory:{historical:()=>false},StriveEvidence:{detail:()=>'',summary:()=>''},
 };ctx.window=ctx;ctx.StriveRunPhotos={disposeAll(){},mount:async()=>{throw Error('STOP_AFTER_REAL_VIEW_RENDER')}};vm.createContext(ctx);
 for(const name of ['run-contract.js','run-placeholders.js','run-estimates.js','run-context.js','run-story.js','run-links.js','feed-card.js','day.js','day-card.js','activity-order.js','activity-post.js','sharing.js'])vm.runInContext(fs.readFileSync('site/'+name,'utf8'),ctx);
-vm.runInContext(card+'\n'+view,ctx);
+vm.runInContext(source.match(/^const typedOnlyRun=.*$/m)[0]+'\n'+card+'\n'+view,ctx);
 const base={id:'11111111-1111-4111-a111-111111111111',profile_id:'someone-else',title:'TEST DATA captured work',visibility:'public',profiles:{handle:'builder'},commits:6,files_touched:21,duration_s:6992,rhythm:[1,2,1],capture_metadata:full};
 async function render(r){row=r;await assert.rejects(ctx.viewRun(r.id),/STOP_AFTER_REAL_VIEW_RENDER/);return dom.window.document.querySelector('#card-'+r.id);}
 let actual=await render(base);const expected=JSON.parse(JSON.stringify(ctx.StriveContext.headlineFacts(base)));
@@ -20,7 +20,7 @@ assert.deepEqual([...actual.querySelectorAll('.run-metrics dt')].map(e=>(e.query
 assert.deepEqual([...actual.querySelectorAll('.run-metrics dd')].map(e=>(e.querySelector('summary')||e).textContent),expected.map(x=>x[1]));
 assert.ok(actual.querySelector('.run-explore #run-journey'),'project bookkeeping stays inside the receipts disclosure');
 assert.equal(dom.window.document.querySelectorAll('#run-journey').length,1);
-assert.ok(actual.querySelector('.post-measurement-note'));assert.match(actual.querySelector('.post-measurement-note').textContent,/not continuous tool runtime or measured human active time/);
+assert.ok(actual.querySelector('.run-agent-identity'),'captured detail retains agent identity');assert.ok(actual.querySelector('.post-measurement-note'));assert.match(actual.querySelector('.post-measurement-note').textContent,/not continuous tool runtime or measured human active time/);
 const absent=structuredClone(base);delete absent.capture_metadata.estimates;actual=await render(absent);
 assert.deepEqual([...actual.querySelectorAll('.run-metrics dt')].map(e=>(e.querySelector('summary')||e).textContent),['Recorded tokens','Tool calls','Elapsed'],'detail uses the same three-position ladder without estimates');
 const unknown=structuredClone(base);unknown.capture_metadata.estimates.cost.components.forEach(c=>c.price=null);actual=await render(unknown);assert.ok(![...actual.querySelectorAll('.run-metrics dt')].some(e=>e.textContent==='Est. dollars*'));assert.match(actual.querySelector('.post-measurement-note').textContent,/No recorded price/);
@@ -41,3 +41,9 @@ console.log('PASS public and app detail: one copy of description, unique provena
 const pricedNoTime=structuredClone(base);delete pricedNoTime.capture_metadata.estimates.tool_activity;const partial=await render(pricedNoTime);assert.deepEqual([...partial.querySelectorAll('.run-metrics dt')].map(e=>(e.querySelector('summary')||e).textContent),['Recorded tokens','Est. dollars*','Elapsed']);assert.equal(partial.querySelectorAll('.run-metrics dd')[1].textContent,'$1.89');const sharedPartial=new JSDOM(publicHtml(pricedNoTime));assert.match(sharedPartial.window.document.body.textContent,/\$1.89/);
 
 const cursorDetail=await render({...base,harness:"cursor",duration_s:null,turns_typed:3,tool_calls:15,files_touched:2,capture_metadata:{basis:"cursor-model-info",models:["auto"]}});assert.deepEqual([...cursorDetail.querySelectorAll(".run-metrics dd")].map(e=>(e.querySelector('summary')||e).textContent),["3","15","2"]);assert.match(cursorDetail.textContent,/Cursor does not record tokens/);
+
+const manual=await render({...base,title:'Synthetic manual update',trace_basis:'typed-by-author',harness:null,capture_metadata:null,duration_s:null,commits:null,files_touched:null,rhythm:null});
+assert.match(manual.querySelector('.run-effort-context').textContent,/Manual · unmeasured/);
+assert.ok(!manual.querySelector('.run-effort-context').textContent.includes('Coding agent'),'manual detail never invents an agent context');
+assert.equal(manual.querySelectorAll('.run-metrics').length,0,'manual detail has no recorded measurement headline');assert.equal(manual.querySelectorAll('.post-token-note,.run-agent-identity').length,0,'manual detail has no captured-agent setup');
+console.log('PASS actual manual detail: unmeasured owner-provided context, no generic agent or recorded headline');
