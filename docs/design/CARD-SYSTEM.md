@@ -87,7 +87,7 @@ One button, named "Card options", with four entries in this order:
 
 | Entry | Address | What it does |
 |---|---|---|
-| Edit card | `&setup=1` | Headline, project order, numbers, highlights, main visual |
+| Edit card | `&setup=1` | Headline, projects (include, main project), picture. Order, numbers, highlights, per-page pictures and framing keep their saved values and are not asked |
 | Choose visual | `&setup=visual` | The same screen, opened at the main visual |
 | Preview as reader | `&p=<own profile id>` | The card as anyone else gets it |
 | Sharing | `&share=1` | Choose what readers see, with the owner and reader numbers side by side |
@@ -107,13 +107,13 @@ Saving on Edit card:
 
 ## 4. Main visual
 
-Class: `.dc-visual`. One of three modes. The author chooses the mode. Nothing guesses it.
+Class: `.dc-visual`. One of three modes. The mode follows the picture the author picks; Edit card shows no mode switch (Oscar, 25 and 26 Oct 2026: automatic framing, no options).
 
 | Mode | What it is | How it is shown |
 |---|---|---|
 | Data | The split between projects, then the measured trace: captured sessions and commits on one clock | Default everywhere. Needs no upload. |
 | Screenshot | A capture of a screen the author picked from their own runs | Shown whole, never cropped. `object-fit: contain`, at most `--visual-shot-max` high, on `--visual-wash`. |
-| Photo | A photograph the author picked from their own runs | Fills a `--visual-photo-ratio` frame. `object-fit: cover`. The author picks the part to keep in the frame and checks the crop in the preview. |
+| Photo | A photograph the author picked from their own runs | Fills a `--visual-photo-ratio` frame. `object-fit: cover`, framed automatically. A focus saved before 28 Oct is kept. |
 
 The split (`.dc-share`, drawn only by `share()` in `site/day-card.js`) stays visible with the selected image. It is one ring.
 
@@ -134,7 +134,7 @@ Rules:
 - A picture leads the page of the project whose run holds it. It shows nowhere else.
 - A photo is atmosphere. Its caption says so: "Atmosphere, not a measurement." It is never evidence that work happened.
 - A picture is only ever one the author already added to one of their runs and then picked here. No stock image, no generated image, no camera roll scan, no automatic publish.
-- A picture marked "Personal photo" on its run starts in Photo mode when picked. Any other picture starts in Screenshot mode. Both are the author's own earlier words and both can be changed.
+- A picture marked "Personal photo" on its run is shown in Photo mode. Any other picture is shown in Screenshot mode. Both follow the author's own earlier word on the run; Edit card does not ask again.
 - No picture is ever required. Data is enough. A mode with no picture picked saves as Data.
 - A run card with no measured route or author picture may show a small harness-specific motion fallback. It is decorative, uses no remote media, and makes no claim about the run. Reduced-motion readers get its still frame.
 - Fallback order: chosen picture, then the measured trace, then one plain sentence: "No measured trace and no picture on this page yet." The owner also gets a link to choose a visual.

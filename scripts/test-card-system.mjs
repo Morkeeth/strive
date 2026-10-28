@@ -84,33 +84,33 @@ title.value='TEST DATA new headline';title.dispatchEvent(new window.Event('input
 assert.equal(state(),'unsaved');assert.equal(said(),'Unsaved changes.');assert.equal(save.disabled,false);assert.equal(leave(),true,'leaving with unsaved changes asks first');
 assert.match(slot.querySelector('#cs-preview').textContent,/TEST DATA new headline/,'the preview is the real card with the unsaved choice');assert.equal(sent.length,0,'a change in the form sends nothing');
 press(cancel);assert.equal(state(),'saved');assert.equal(title.value,'TEST DATA saved headline','Cancel puts the saved choices back');assert.match(slot.querySelector('#cs-preview').textContent,/TEST DATA saved headline/);assert.equal(leave(),false);
-// choose a picture, say it is a photo, hold the top, lead the overview
+// Oscar 25-26 Oct: no kind switch, no framing control, no arrows, no number boxes. The form asks for a headline, projects and a picture.
+for(const gone of ['[name=cs-visual]','[name=cs-focus]','#cs-frame','#cs-hero','#cs-high','.cs-facts','[data-move]','#cs-visual-target','#cs-default'])assert.equal(slot.querySelector(gone),null,`${gone} is no longer offered`);
 const withPic=D.compute(runs.map((r,i)=>i?r:{...r,id:U}),'2026-10-05',v=>v||'');
 pick({run:U,id:P},{role:'result'});
-assert.equal(form.current().visual,'screenshot','a picked picture starts as a screenshot, shown whole: nothing guesses that it is a photo');
-pick({run:U,id:P},{role:'result'});slot.querySelector('[name=cs-visual][value=photo]').checked=true;slot.querySelector('[name=cs-visual][value=photo]').dispatchEvent(new window.Event('change',{bubbles:true}));
-assert.equal(form.current().visual,'photo','the author says it is a photo');assert.equal(slot.querySelector('#cs-frame').hidden,false,'and is then asked what to keep in the frame');
-slot.querySelector('[name=cs-focus][value=top]').checked=true;slot.querySelector('[name=cs-focus][value=top]').dispatchEvent(new window.Event('change',{bubbles:true}));
-slot.querySelector('#cs-hero').checked=true;slot.querySelector('#cs-hero').dispatchEvent(new window.Event('change',{bubbles:true}));
+assert.equal(form.current().visual,'screenshot','a picked picture that is not a personal photo is shown whole');
+pick({run:U,id:P},{role:'personal'});
+assert.equal(form.current().visual,'photo','a personal photo fills the frame, framed automatically');
 assert.equal(state(),'unsaved');
 // a failed save keeps every choice and says so
 answer='the service could not be reached';press(save);assert.equal(state(),'saving');assert.equal(save.disabled,true,'no second save while one is on its way');await settle();
 assert.equal(state(),'error');assert.match(said(),/^Not saved: the service could not be reached\. Your choices are still here\. Press Save to try again\.$/);
-assert.equal(form.current().focus,'top');assert.equal(save.disabled,false);assert.equal(leave(),true,'a failed save still warns on leaving');
+assert.equal(form.current().visual,'photo');assert.equal(save.disabled,false);assert.equal(leave(),true,'a failed save still warns on leaving');
 answer=new Error('network down');press(save);await settle();assert.equal(state(),'error');assert.match(said(),/network down/,'a thrown failure is caught and shown, not lost');
 // then it works
 answer=null;press(save);await settle();assert.equal(state(),'saved');assert.equal(said(),'All changes saved.');assert.equal(leave(),false);
 const body=sent.at(-1);assert.deepEqual(Object.keys(body).sort(),['facts','focus','hero','hidden','highlights','lead','order','photo','projectVisuals','title','v','visual'],'a save carries display choices only');
 assert.ok(!JSON.stringify(body).match(/visibility|public|private|alpha|beta|gamma/),'a save names no audience and no project');
-assert.deepEqual([body.v,body.visual,body.hero,body.focus,body.photo],[2,'photo',true,'top',{run:U,id:P}]);
+assert.deepEqual([body.v,body.visual,body.photo],[2,'photo',{run:U,id:P}]);
+assert.deepEqual(body.facts,savedBefore.facts,'numbers chosen before stay as saved, though the form no longer asks');
+assert.equal(body.focus,C.clean(savedBefore).focus,'framing is not asked for and keeps its saved value');
 assert.deepEqual(C.clean(body),{...body},'what is saved reads back unchanged');
 // Cancel after a save goes back to the new saved state, not the first one
-slot.querySelector('[name=cs-visual][value=data]').checked=true;slot.querySelector('[name=cs-visual][value=data]').dispatchEvent(new window.Event('change',{bubbles:true}));
-assert.equal(state(),'unsaved');assert.equal(form.current().visual,'data');assert.equal(form.current().hero,false,'data mode cannot lead the overview with a picture');
+pick(null,null);assert.equal(state(),'unsaved');assert.equal(form.current().visual,'data');assert.equal(form.current().hero,false,'no picture cannot lead the overview');
 press(cancel);assert.equal(form.current().visual,'photo');assert.deepEqual(reselected.at(-1),{run:U,id:P},'Cancel also puts the picture choice back in the picker');
-// a mode with no picture never blocks a save and is stored as data
-pick(null,null);slot.querySelector('[name=cs-visual][value=photo]').checked=true;slot.querySelector('[name=cs-visual][value=photo]').dispatchEvent(new window.Event('change',{bubbles:true}));
-assert.match(slot.querySelector('#cs-visual-note').textContent,/Pick a picture below\. Until then the card keeps the measured trace, and nothing stops you saving\./);
+// no picture never blocks a save and is stored as data
+pick(null,null);
+assert.match(slot.querySelector('#cs-visual-note').textContent,/^No picture chosen: the card shows the measured trace\.$/);
 press(save);await settle();assert.equal(state(),'saved');assert.equal(sent.at(-1).visual,'data');assert.equal(sent.at(-1).photo,null);
 assert.match(slot.querySelector('#cs-preview').innerHTML,/data-kind="data"/);
 // the picture is drawn in the preview only when its run is in the model
@@ -119,8 +119,7 @@ const pv=C.render(C.slides(withPic,tokens,body),{esc,mine:false,author:'a',windo
 const noteNow=()=>slot.querySelector('#cs-visual-note').textContent;
 pick({run:'b1',id:P},{role:'result'});assert.notEqual(form.current().visual,'data');assert.match(noteNow(),/Its run is Only you, so readers get the measured trace instead\./,'a private picture is flagged on Edit card');
 pick({run:'a1',id:P},{role:'result'});assert.ok(!/Only you/.test(noteNow()),'a picture on a public run carries no such note');
-pick({run:'b1',id:P},{role:'result'});slot.querySelector('[name=cs-visual][value=data]').checked=true;slot.querySelector('[name=cs-visual][value=data]').dispatchEvent(new window.Event('change',{bubbles:true}));
-assert.equal(form.current().visual,'data');assert.ok(!/Only you/.test(noteNow()),'data mode says nothing about a picture it does not draw');
+pick(null,null);assert.equal(form.current().visual,'data');assert.ok(!/Only you/.test(noteNow()),'no picture, no note about one');
 press(cancel);
 
 // ---- the rules are written down, and the names in the document exist in the styles
@@ -135,30 +134,14 @@ const index=readFileSync(new URL('../site/index.html',import.meta.url),'utf8'),s
 assert.match(saveFn,/sb\.rpc\('save_day_card'/);assert.ok(!/from\('runs'\)|visibility/.test(saveFn),'saving display choices never touches a run or its audience');
 console.log('PASS: one page function for links, arrows, keys and history; keys left alone in fields, menus and media; owner menu; same anatomy for one and many projects; save states, Cancel, failed save, leave warning; rules documented and bound to the styles');
 
-// Each project owns its choice; merely changing the page selector does not edit the card.
-const target=slot.querySelector('#cs-visual-target');
-const beforePage=form.current();
-target.value=tokens.get('alpha');target.dispatchEvent(new window.Event('change',{bubbles:true}));
-assert.deepEqual(form.current(),beforePage);
-pick({run:U,id:P},{role:'result'});
-assert.equal(slot.querySelector('#cs-default').disabled,false,'new choice can immediately be reset');
-const alphaChoice=JSON.parse(JSON.stringify(form.current().projectVisuals[tokens.get('alpha')]));
-target.value=tokens.get('beta');target.dispatchEvent(new window.Event('change',{bubbles:true}));
-assert.equal(form.current().projectVisuals[tokens.get('beta')],undefined);
-pick({run:'22222222-2222-4333-8444-555555555555',id:P},{role:'personal'});
-assert.deepEqual(JSON.parse(JSON.stringify(form.current().projectVisuals[tokens.get('alpha')])),alphaChoice);
-target.value=tokens.get('alpha');target.dispatchEvent(new window.Event('change',{bubbles:true}));
-assert.equal(slot.querySelector('[name=cs-visual][value=screenshot]').checked,true);
-press(save);await settle();assert.equal(state(),'saved');
-press(cancel);assert.equal(state(),'saved');
-
-// Use default removes the override, and choosing Photo alone does not replace an inherited cover with Data.
-target.value=tokens.get('alpha');target.dispatchEvent(new window.Event('change',{bubbles:true}));
-press(slot.querySelector('#cs-default'));
-assert.equal(form.current().projectVisuals[tokens.get('alpha')],undefined);
-slot.querySelector('[name=cs-visual][value=photo]').checked=true;
-slot.querySelector('[name=cs-visual][value=photo]').dispatchEvent(new window.Event('change',{bubbles:true}));
-assert.equal(form.current().projectVisuals[tokens.get('alpha')],undefined);
+// Per-page pictures saved earlier survive an edit: the form no longer offers them, so it must not drop them.
+{const slot2=document.createElement('div');document.body.append(slot2);const sent2=[];
+ const kept={v:2,title:'TEST DATA kept',order:[],hidden:[],projectVisuals:{[tokens.get('alpha')]:{photo:{run:U,id:P},visual:'photo',focus:'top'}}};
+ const f2=C.mountSetup({slot:slot2,model,tokens,saved:kept,esc,renderOpts:{esc,author:'a',windowLabel:'w'},save:async c=>{sent2.push(JSON.parse(JSON.stringify(c)))},photos:()=>()=>{}});
+ const t2=slot2.querySelector('#cs-title');t2.value='TEST DATA kept, edited';t2.dispatchEvent(new window.Event('input',{bubbles:true}));
+ press(slot2.querySelector('#cs-save'));await settle();
+ assert.deepEqual(sent2.at(-1).projectVisuals,C.clean(kept).projectVisuals,'a saved per-page picture is kept after an unrelated edit');
+ slot2.remove();}
 
 // The chapter labels, not anonymous numbers, tell a reader what they will open.
 assert.deepEqual([...card.querySelectorAll('.dc-page')].map(a=>a.textContent),names);
