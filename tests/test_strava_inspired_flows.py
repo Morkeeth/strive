@@ -36,7 +36,11 @@ def test_private_preview_leads_with_populated_run_and_optional_details():
     preview = INDEX[INDEX.index("const sample=run.is_sample===true;") : INDEX.index("const editFields=")]
     assert preview.index('id="import-card-preview"') < preview.index('id="i_title"')
     assert 'value="${esc(importedTitle())}"' in preview
-    assert 'Add a note <span class="hint">(optional)</span>' in preview
+    assert 'Project purpose / context <span class="hint">(optional)</span><textarea id="i_caption"' in preview
+    caption_field = preview.split('<textarea id="i_caption"', 1)[1].split('>', 1)[0]
+    assert "required" not in caption_field
+    assert 'placeholder="Who is this for, what problem does it solve, and is it for a hackathon?"' in caption_field
+    assert '<option value="private" selected>Only me</option>' in preview
     assert preview.index('id="i_vis"') < preview.index("Edit details")
     assert preview.index("Edit details") < preview.index('id="i_project"')
     assert "Prompts, code and file paths are not" in preview

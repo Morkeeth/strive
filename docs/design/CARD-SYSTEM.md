@@ -378,3 +378,10 @@ The import and saved-run editor also keep complete images inside their bounded s
 ## 28 October — project problem and highlights lead
 
 Reader cards lead with the project's authored problem/context, what changed and a specific feedback question before the supporting activity metrics. Use `StriveStory.highlights` across feed, detail and public pages; do not infer a problem or result from a trace. The existing `story_next` field retains its Still open meaning on both manual and captured rows; historical rows have no versioned problem field. Notes remain context when a caption is absent. Detail feedback keeps its conversation link. A manual update is labelled Non-verified · Manual · unmeasured. Captured activity is client-reported, never provider-verified. Keep selected screenshots/links and existing audience choices. Metrics remain available at a smaller size, after the project story/visual; unknown cost is never invented.
+
+
+## 28 October follow-up — purpose at authoring time
+
+New manual project updates store the optional plain-language project purpose and hackathon context in `caption` (280 characters), the built feature/change in `story_result`, and the explicit feedback ask in `feedback_question`. They leave `story_next` empty. Existing rows retain their stored values and Still open meaning; no migration rewrites an older author's text. The local manual preview uses the same project highlights as reader cards.
+
+The saved-run editor shows its story fields directly. Purpose/context, built feature/change and a feedback question are authored inputs, never inferred from activity, repository names or a competition link. Optional hackathon context stays plain author text. Recording a context never implies participation, submission or verification by an event.

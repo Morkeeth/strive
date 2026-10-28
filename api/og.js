@@ -10,6 +10,7 @@ module.exports=async function handler(req,res){
   const {homeCard,readPublic,readPublicPhotos,readAvatar,privateCard,photoCard,shareCard,photoSlots,profileSlots,profileCard,SHARE_IMAGE_CACHE}=await import('../server/public-run.mjs');
   const {readProfile,readProfileActivities,shareOrigin}=await import('../server/share-routes.mjs');
   const {shareFonts}=await import('../server/share-fonts.mjs');
+  const rendererTask=Promise.all([import('@vercel/og'),shareFonts()]).then(value=>({value}),error=>({error}));
   const format=req.query.run&&Object.hasOwn(SIZES,req.query.format)?req.query.format:'link';
   // Each selected image is cropped to the slot the card gives it.
   const photoData=async(run,chosen,slot)=>{try{
@@ -47,11 +48,8 @@ module.exports=async function handler(req,res){
    const run=await readPublic(String(req.query.run));
    if(!run)tree=privateCard(format);
    else {
-    const [photos,avatar]=await Promise.all([readPublicPhotos(run),readAvatar(run)]);
-    const screenshots=photos.filter(photo=>photo.role!=='personal');
-    const selected=(screenshots.length?screenshots:photos).slice(0,3);
-    const slots=photoSlots(run,format,selected.length);
-    const photoUrls=(await Promise.all(selected.map((chosen,index)=>photoData(run,chosen,slots[index])))).filter(Boolean);
+    const {runShareAssets}=await import('../server/share-assets.mjs');
+    const {avatar,photoUrls}=await runShareAssets(run,format,{readPublicPhotos,readAvatar,photoSlots,photoData});
     tree=format==='link'?photoCard(run,photoUrls,{avatar}):shareCard(run,photoUrls,{avatar,format});
    }
   }else if(req.query.profile){
@@ -82,8 +80,9 @@ module.exports=async function handler(req,res){
    const run=await readPublic('90a16040-8ad5-4096-978c-8b1f78f3dd2f').catch(()=>null);
    tree=homeCard(run);
   }
-  const {ImageResponse}=await import('@vercel/og');
-  const image=new ImageResponse(tree,{...SIZES[format],fonts:await shareFonts()});
+  const renderer=await rendererTask;if(renderer.error)throw renderer.error;
+  const [{ImageResponse},fonts]=renderer.value;
+  const image=new ImageResponse(tree,{...SIZES[format],fonts});
   const png=Buffer.from(await image.arrayBuffer());
   res.statusCode=200;
   res.setHeader('Content-Type','image/png');
