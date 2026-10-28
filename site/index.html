@@ -1361,6 +1361,8 @@ function chosenRunHero(r,parts){
 }
 const typedOnlyRun=r=>r&&r.trace_basis==='typed-by-author';
 function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handle;
+  const highlights=StriveStory.highlights(r,{conversation:!!opts.detail&&!opts.preview});
+  const projectContext=highlights||StriveContext.context(r,{shownText:r.caption||r.note||''});
   const projectName=()=>StriveActivity.project(r.project);
   const codeFacts=()=>{
     if(typedOnlyRun(r))return [];
@@ -1414,10 +1416,9 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
 
     opts.detail?'<section id="run-journey"></section>':'',
     story,
-    StriveEvidence.summary(r),
     runUploadIdentity(r),
     StriveContext.setup(r),
-    typedOnlyRun(r)?'<div class="sub run-effort-context">Non-verified · Manual · unmeasured · owner-provided update</div>':`<div class="sub run-effort-context"><span class="card-harness">${esc((globalThis.StriveAgents?.agentName(r.harness)||r.harness||'')||'Coding agent')}</span>${r.harness==='Grok Bot'?' · bot activity':''} · ${esc(started)}</div>`,
+    typedOnlyRun(r)?'':`<div class="sub run-effort-context"><span class="card-harness">${esc((globalThis.StriveAgents?.agentName(r.harness)||r.harness||'')||'Coding agent')}</span>${r.harness==='Grok Bot'?' · bot activity':''} · ${esc(started)}</div>`,
     typedOnlyRun(r)?'':codeRoute?codeRouteDetail:'<p class="run-route-source">No work route was captured for this run. Activity bins do not identify which files, tasks or build steps happened.</p>',
     !typedOnlyRun(r)&&codeRoute&&ridge?ridge:'',
     fiveRow(r),
@@ -1430,7 +1431,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
   // document for scrapers until a visibility-safe /runs/{id}.json exists.
   const explore=exploreInner?`<details class="ridge-more run-explore" id="run-detail-${esc(r.id)}" data-run-detail="1"><summary>${typedOnlyRun(r)?'Update details':'Receipts and measurements'}</summary><div class="run-detail-body">${exploreInner}</div></details>`:'';
   const chosen=typedOnlyRun(r)?null:chosenRunHero(r,{codeRoute,ridge});
-  const visual=StriveHistory.historical(r)?StriveHistory.facts(r):typedOnlyRun(r)?'<p class="meta run-source-note">Typed by the author. No capture.</p>':codeRoute||StrivePost.trail(r);
+  const visual=StriveHistory.historical(r)?StriveHistory.facts(r):typedOnlyRun(r)?'':codeRoute||StrivePost.trail(r);
   const followSlot=(!opts.preview&&!selfAck&&r.profile_id)
     ?`<span class="card-follow" data-profile="${esc(r.profile_id)}" data-handle="${esc(h)}" data-label="Follow"></span>`
     :'';
@@ -1442,7 +1443,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
       <div class="who">${whoLink}${anonTag}<small>${att.ghost?'metrics only ·':`@${esc(h)} ·`} ${opts.preview?esc(date):`<a href="${esc(StriveLinks.runHref(r))}">${esc(date)}</a>`}</small></div></div>
 
     <div class="run-title-row"><div class="title">${opts.preview?esc(r.title):`<a href="${esc(StriveLinks.runHref(r))}">${esc(r.title)}</a>`}</div>${ownerActions}</div>
-    ${StriveStory.highlights(r)}
+    ${projectContext}
     <p class="project-source">${esc(StriveStory.source(r))}</p>
     ${audienceNote}
     ${eventChip}
@@ -1454,7 +1455,6 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     ${visual}
     ${output?`<p class="run-output"><a href="${esc(output)}" target="_blank" rel="noopener noreferrer">See the work ↗</a></p>`:''}
 
-    ${opts.detail?'':StriveEvidence.summary(r)}
     ${xudosTip}
     ${opts.preview?'<div class="foot"><span class="meta">Preview · not saved</span></div>':`${followSlot||detailLink?`<div class="foot run-social-actions"><span class="acts">${followSlot}${detailLink}</span></div>`:''}
       <footer class="fc-foot run-actions">${GrinderFeed.actions({id:r.id,shareHref:'/?share=1&run='+encodeURIComponent(r.id),to:r.profile_id,count:count===null?null:count||0,acked,mode:selfAck?'mine':'',commentHref:'#grind-thread'})}</footer>`}

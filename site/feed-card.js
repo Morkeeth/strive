@@ -480,14 +480,16 @@
     const shipped = r.output_url && /^https:\/\//i.test(r.output_url) ? `<span class="fc-chip">Work linked</span>` : "";
     const faceHtml = anon || preview ? face(r) : `<a href="${esc(links.profileHref(p.handle))}" tabindex="-1">${face(r)}</a>`;
     const strideHtml = opts.stride === false || !(preview || page || opts.url) ? "" : stride(r, { url: opts.url, copy: !!opts.copy });
+    const highlights=story?.highlights?.(r)||'';
+    const receiptContext=!highlights&&context?context.context(r,{shownText:cardSummary(r)}):'';
     const body = `
     <${tag} class="fc-title">${esc(titleOf(r))}</${tag}>
-    ${story?.highlights?story.highlights(r):cardSummary(r) ? `<p class="fc-cap">${esc(cardSummary(r))}</p>` : ""}
+    ${highlights|| (cardSummary(r) ? `<p class="fc-cap">${esc(cardSummary(r))}</p>` : "")}
     ${page||checkpoints||r.capture_metadata?`${context?.headlineHtml?.(r,'fc-activity-stats',{preview})||''}${context?.cardSecondary?.(r,{commits:true,preview})||''}`:''}
     ${story?story.visual(r):''}
 
-    ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Non-verified · Manual · unmeasured. Provided by the author.</p>' : ''}${evidence&&!page&&!preview?evidence.summary(r):''}
-    ${page&&context?`<details class="public-receipts"><summary>Receipts and scope</summary>${context.context(r,{shownText:cardSummary(r)})}</details>`:''}
+    ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author'&&(page||preview) ? '<p class="fc-source">Non-verified · Manual · unmeasured. Provided by the author.</p>' : ''}${evidence&&!page&&!preview?evidence.summary(r):''}
+    ${page&&receiptContext?`<details class="public-receipts"><summary>Receipts and scope</summary>${receiptContext}</details>`:''}
     <div class="fc-route-secondary">${checkpoints?"":(page?(typeof module!=="undefined"&&module.exports?require("./activity-post.js"):root.StrivePost)?.trail(r)||"":heroVisual(r))}</div>
     ${checkpoints||preview?'':`<p class="fc-open">Open the story →</p>`}
   `;

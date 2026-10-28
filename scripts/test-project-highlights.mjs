@@ -7,7 +7,7 @@ import Update from '../site/project-update.js';
 import {html} from '../server/public-run.mjs';
 const manual={...Update.row({project:'TEST DATA project',title:'TEST DATA clearer first step',problem:'TEST DATA people cannot find the first action.',changed:'TEST DATA moved the action beside the preview.',feedback:'TEST DATA can you find the first action?',link:'https://example.com'}),id:'11111111-1111-4111-8111-111111111111',profiles:{display_name:'TEST DATA builder'},visibility:'public'};
 const original=JSON.stringify(manual),block=new JSDOM(Story.highlights(manual)).window.document;
-assert.deepEqual([...block.querySelectorAll('h3')].map(e=>e.textContent),['The problem','What changed','Feedback wanted']);
+assert.deepEqual([...block.querySelectorAll('h3')].map(e=>e.textContent),['What changed','Still open','Feedback wanted']);
 assert.equal(block.body.textContent.split(manual.story_result).length-1,1,'caption/result repeat is removed');
 const partial={...manual,caption:manual.story_result.slice(0,20)};assert.equal(new JSDOM(Story.highlights(partial)).window.document.querySelectorAll('.project-highlight').length,3,'truncated manual caption does not repeat result');
 const captured={...manual,trace_basis:'elapsed-agent-tool-calls',caption:'TEST DATA project context',story_next:'TEST DATA still testing on phones',duration_s:60,tool_calls:7,prompts:2,harness:'Codex'};
@@ -29,3 +29,19 @@ assert(before(feed.querySelector('.project-highlights'),feed.querySelector('.pos
 const manualFeed=new JSDOM(ctx.StrivePost.render({...manual,tool_calls:99,duration_s:99})).window.document;
 assert.equal(manualFeed.querySelectorAll('.post-share-facts,.post-trail,.run-agent-identity').length,0,'even stale manual fields cannot create a captured hero');assert.match(manualFeed.querySelector('.project-source').textContent,/Non-verified/);
 console.log('PASS project-first real feed/public renderers: authored problem/change/ask precede facts, manual/captured meanings retained, unknown/absent metrics not invented, escaped copy, no row/audience mutation.');
+
+// Review regressions: retain legacy context, still-open meaning and the detail CTA.
+const noteOnly={...captured,caption:null,story_result:null,story_next:null,feedback_question:null,note:'TEST DATA legacy note <safe>'};
+assert.match(Story.highlights(noteOnly),/legacy note &lt;safe&gt;/);assert.match(Story.highlights({...noteOnly,caption:'  '}),/legacy note &lt;safe&gt;/);assert(!Story.highlights(noteOnly).includes('<safe>'));
+const oldManual={...manual,created_at:'2026-09-20T12:00:00Z',story_next:'TEST DATA old unresolved question'};
+assert.match(Story.highlights(oldManual),/Still open/);assert(!Story.highlights(oldManual).includes('The problem'));assert.match(Story.editor(oldManual),/Still open/);assert.match(Story.detail(oldManual),/Still open/);
+assert(Story.highlights(captured,{conversation:true}).includes('href="#grind-thread"'));assert(!Story.highlights(captured).includes('href="#grind-thread"'));
+const savedSummary=ctx.GrinderFeed.cardSummary,savedHighlights=ctx.StriveStory.highlights;let highlightCalls=0;
+ctx.GrinderFeed.cardSummary=()=> 'TEST DATA derived fallback summary';ctx.StriveStory.highlights=(r)=>{highlightCalls++;return savedHighlights(r)};
+const fallback=new JSDOM(ctx.StrivePost.render({id:'fallback',title:'TEST DATA fallback',visibility:'public'})).window.document;
+assert.equal(highlightCalls,1);assert.equal(fallback.querySelector('.post-caption').textContent,'TEST DATA derived fallback summary');
+ctx.GrinderFeed.cardSummary=savedSummary;ctx.StriveStory.highlights=savedHighlights;
+const pageMode=new JSDOM(ctx.GrinderFeed.card(captured,{page:true})).window.document;
+assert.equal(pageMode.body.textContent.split(captured.story_result).length-1,1,'legacy page mode does not repeat changed text in receipts');
+const manualCard=new JSDOM(ctx.GrinderFeed.card(manual)).window.document;assert.equal(manualCard.body.textContent.split('Non-verified').length-1,1,'one primary manual source label');
+console.log('PASS review regressions: legacy note context, unchanged old story_next meaning, one computed highlights result with summary fallback, detail-only CTA, single source label and nonduplicated result.');

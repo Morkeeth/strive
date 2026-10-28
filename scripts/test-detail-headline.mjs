@@ -45,8 +45,9 @@ const cursorDetail=await render({...base,harness:"cursor",duration_s:null,turns_
 
 const manual=await render({...base,title:'Synthetic manual update',trace_basis:'typed-by-author',harness:null,capture_metadata:null,duration_s:null,commits:null,files_touched:null,rhythm:null});
 assert.equal(manual.querySelector('.run-explore>summary').textContent,'Update details');assert.equal(manual.querySelector('.run-explore').open,false);
-assert.match(manual.querySelector('.run-effort-context').textContent,/Manual · unmeasured/);
-assert.ok(!manual.querySelector('.run-effort-context').textContent.includes('Coding agent'),'manual detail never invents an agent context');
+assert.match(manual.querySelector('.project-source').textContent,/Non-verified.*Manual · unmeasured/);
+assert.equal(manual.querySelector('.run-effort-context'),null,'manual source label is not repeated');
+assert.ok(!manual.querySelector('.project-source').textContent.includes('Coding agent'),'manual detail never invents an agent context');
 assert.equal(manual.querySelectorAll('.run-metrics').length,0,'manual detail has no recorded measurement headline');assert.equal(manual.querySelectorAll('.post-token-note,.run-agent-identity').length,0,'manual detail has no captured-agent setup');
 console.log('PASS actual manual detail: unmeasured owner-provided context, no generic agent or recorded headline');
 
@@ -71,3 +72,11 @@ assert.match(coached.querySelector('.run-explore .grp').textContent,/recorded au
 assert.match(coached.querySelector('.run-explore .para').textContent,/Synthetic captured review/);
 assert.equal([...coached.querySelectorAll('.grp,.para')].filter(el=>!el.closest('.run-explore')).length,0);
 console.log('PASS source-specific disclosures: captured receipts and real coach block retained behind fold; manual update details have no stale coach block');
+
+const questionRow={...base,caption:null,note:'TEST DATA note-only legacy context',feedback_question:'TEST DATA what would help?'};
+const noteDetail=await render(questionRow);assert(noteDetail.textContent.includes(questionRow.note));assert.equal(noteDetail.querySelectorAll('.project-conversation[href="#grind-thread"]').length,1);
+assert(noteDetail.querySelector('.post-measurement-note'));assert(noteDetail.querySelector('.run-evidence'));assert(noteDetail.querySelector('.run-setup'));
+assert.equal(noteDetail.querySelectorAll('.project-source').length,1);assert.equal(noteDetail.querySelector('.run-evidence-basis'),null,'one primary source label; detailed limits remain in receipts');
+console.log('PASS legacy note-only detail, conversation target, one primary source label, preserved measurement/source/setup disclosures.');
+
+const noDescription=await render({...base,caption:null,note:null,story_result:null,story_next:null,feedback_question:null});assert(noDescription.querySelector('.run-context-none'),'missing-description explanation remains when no highlights exist');

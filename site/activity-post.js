@@ -36,7 +36,8 @@
     const C=root.GrinderContract,F=root.GrinderFeed,clean=root.StriveDayCard.clean(choices),id=String(r.id),href=links.runHref(r),p=r.profiles||{},handle=p.handle||p.github_handle,name=p.display_name||p.name||handle||'Builder';
     const project=root.StriveActivity.project(r.project),title=F.titleOf({...r,created_at:null});
     const caption=String(r.caption||F.cardSummary(r)||r.story_result||'').trim();
-    const story=root.StriveStory,manual=r.trace_basis==='typed-by-author';
+    const story=root.StriveStory,manual=r.trace_basis==='typed-by-author',highlights=story?.highlights?.(r)||'';
+    const fallback=highlights?'':caption&&caption!==title?`<p class="post-caption">${esc(caption)}</p>`:!caption?(root.StrivePlaceholders?.render('description',{compact:true})||''):'';
     const work=(manual?[]:C.heroStats(r)).filter(([label])=>label!=='Elapsed');
     const files=r.files_touched??(r.code_route?.v===1&&!r.code_route.unavailable?r.code_route.stats?.files_changed:null);
     if(!manual&&Number.isSafeInteger(files)&&files>0&&!work.some(([label])=>/^Files /.test(label)))work.push([r.files_touched!=null?'Files touched':'Files changed',String(files)]);
@@ -54,9 +55,9 @@
       ${F.privateMarker(r)}
       <header class="dc-head">${F.face(r,36)}<div class="dc-identity">${handle?`<a class="dc-author" href="${esc(links.profileHref(handle))}">${esc(name)}</a>`:`<strong class="dc-author">${esc(name)}</strong>`}<p class="meta">${esc(dateLabel)}${r.harness?' · '+esc(F.harnessName(r)):''}</p></div><details class="post-options"><summary aria-label="Run options">•••</summary><div><a href="${esc(href)}">Open run</a>${owner?`<a href="${esc(href)}#run-edit">Edit this run</a>`:''}${day?`<a href="/?day=${day}${owner?'':'&p='+encodeURIComponent(r.profile_id)}">Day summary</a>`:''}${root.StriveContext?.measurementDetails?.(r)||''}</div></details></header>
       ${audience?`<p class="dc-audience">${esc(audience)}</p>`:''}
-      <div class="post-story">${project?`<a class="post-project" href="/?project=${encodeURIComponent(r.project)}&scope=${owner?'mine':'public'}">${esc(project)}</a>`:''}<h2><a href="${esc(href)}">${esc(title)}</a></h2>${!story?.highlights&&caption&&caption!==title?`<p class="post-caption">${esc(caption)}</p>`:!caption?(root.StrivePlaceholders?.render('description',{compact:true})||''):''}</div>
+      <div class="post-story">${project?`<a class="post-project" href="/?project=${encodeURIComponent(r.project)}&scope=${owner?'mine':'public'}">${esc(project)}</a>`:''}<h2><a href="${esc(href)}">${esc(title)}</a></h2>${fallback}</div>
       <p class="project-source">${esc(story?.source?.(r)||'Recorded activity · client-reported')}</p>
-      ${story?.highlights?.(r)||''}
+      ${highlights}
       <div class="post-workline">${!manual&&!noImage?(root.StriveContext?.cardSecondary?.(r,{omitUnknown:true})||''):''}
       ${work.length?`<p class="post-work">Recorded work · ${work.map(([label,value])=>esc(value)+' '+esc(value==='1'?({'Commits':'commit','Files touched':'file touched','Files changed':'file changed','Projects':'project'}[label]||label.toLowerCase()):label.toLowerCase())).join(' · ')}</p>`:''}</div>
       ${gallery?`<div class="run-media-slot"><div class="post-media-empty" data-photo-placeholder>${noImage?(root.StrivePlaceholders?.render('screenshot',{story:r.caption||title,owner,seed:id,harness:r.harness,model:(Array.isArray(r.capture_metadata?.models)?r.capture_metadata.models:[]).join(', ')})||''):'<div class="media-loading" role="status" aria-label="Loading run images"></div>'}</div></div>`:''}

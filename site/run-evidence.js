@@ -9,7 +9,7 @@
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  function basis(r){
   const declared=r.trace_basis==='typed-by-author',history=r.trace_basis==='historical-reconstruction';
-  return {label:history?'Historical reconstruction · client-reported':declared?'Manual · unmeasured':observed(r)?'Imported · client-reported · observed subset':'Imported · client-reported',
+  return {label:history?'Historical reconstruction · client-reported':declared?'Non-verified · Manual · unmeasured':observed(r)?'Imported · client-reported · observed subset':'Imported · client-reported',
    explanation:history?'Recovered from history and repository references, not a complete session transcript.':declared?'No captured measurements.':observed(r)?'Only visible requests are counted. Missing records may be omitted; counts are a lower bound. STRIVE has not independently verified the source or outcome.':'The capture supplied these numbers. STRIVE has not independently verified the source or outcome.',
    time:declared?'No session time or usage was measured.':seconds(r)===null?'Duration unknown':'Recorded session span; may include idle time. Not human effort.',
    date:declared?'The update date comes from the author’s browser, not a captured session.':Number.isFinite(start(r))?'Session date supplied by the capture.':'Session date unknown. Upload date is not a session date.',
