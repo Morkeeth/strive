@@ -60,7 +60,7 @@ def test_card_shows_builder_project_session_caption_and_output():
     assert ">Project<" in card
     assert "Code activity" in card
     # The fold was "Explore this run" until 00bdaf8 renamed it for what it holds.
-    assert '<summary>Receipts and measurements</summary>' in card and "Explore this run" not in INDEX
+    assert "<summary>${typedOnlyRun(r)?'Update details':'Receipts and measurements'}</summary>" in card and "Explore this run" not in INDEX
     assert card.index("${visual}") < card.index("${explore}</div>`; }")
     assert "card-follow" in card
     assert "runHeroChoices" in INDEX

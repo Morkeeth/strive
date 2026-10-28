@@ -106,10 +106,11 @@ process.stdout.write(JSON.stringify({bare:Row.build({turns_typed:3},opts),full:R
     # the card's face. The summary read "Explore this run" until 00bdaf8 (11 Oct 2026).
     card = html[html.index("function runCard("):html.index("function wireKudos(")]
     inner = card[card.index("const exploreInner=["):card.index("].filter(Boolean).join('');")]
-    assert "coachBlock(r)," in inner and card.count("coachBlock(r)") == 1
+    assert "typedOnlyRun(r)?'':coachBlock(r)," in inner and card.count("coachBlock(r)") == 1
     assert ('<details class="ridge-more run-explore" id="run-detail-${esc(r.id)}" data-run-detail="1">'
-            '<summary>Receipts and measurements</summary><div class="run-detail-body">${exploreInner}</div></details>') in card
-    assert card.index("const exploreInner=[") < card.index("<summary>Receipts and measurements</summary>")
+            "<summary>${typedOnlyRun(r)?'Update details':'Receipts and measurements'}</summary><div class=\"run-detail-body\">${exploreInner}</div></details>") in card
+    assert card.index("const exploreInner=[") < card.index("<summary>${typedOnlyRun(r)?'Update details':'Receipts and measurements'}</summary>")
+    subprocess.run(["node", "scripts/test-detail-headline.mjs"], cwd=REPO, check=True)
 
 
 def test_migration_is_additive_and_nullable():

@@ -39,7 +39,7 @@ def test_no_fake_ranked_metrics_or_unknown_disclaimers():
     assert "if(!v&&!pv) return '';" in INDEX
     # The fold that holds the receipts says what it holds; 00bdaf8 renamed it from
     # "Explore this run". It is drawn only when the run has something to put in it.
-    assert '<summary>Receipts and measurements</summary>' in card and "Explore this run" not in INDEX
+    assert "<summary>${typedOnlyRun(r)?'Update details':'Receipts and measurements'}</summary>" in card and "Explore this run" not in INDEX
     assert "const explore=exploreInner?`<details class=\"ridge-more run-explore\"" in card
     assert "Followers. Signed-in followers and close friends can open it" in INDEX
 
