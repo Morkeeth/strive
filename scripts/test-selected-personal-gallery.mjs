@@ -89,10 +89,15 @@ console.log('PASS native detail: full-image control opens authorized source; uns
  const d=new JSDOM('<div id="detail"></div>',{url:'https://striverun.app',runScripts:'outside-only'}),w=d.window;
  w.fetch=async()=>({ok:true,json:async()=>({photos:[]})});
  for(const file of ['run-contract.js','run-estimates.js','run-context.js','story-tile.js','run-placeholders.js','run-photos.js'])w.eval(fs.readFileSync('site/'+file,'utf8'));
- const noImage={...current,harness:'Codex',caption:'Author describes the measured comparison.',capture_metadata:{...full,models:['test-model']}};
+ const noImage={...current,harness:'Codex',tool_calls:12,caption:'Author describes the measured comparison.',capture_metadata:{...full,models:['test-model']}};
  await w.StriveRunPhotos.mount({client:null,run:noImage,slot:w.document.querySelector('#detail'),owner:false,status(){}});
  const native=w.document.querySelector('.run-detail-story');assert.ok(native.querySelector('.harness-mark'));assert.match(native.textContent,/test-model/);assert.ok(!native.textContent.includes('Project image not added'));assert.equal(native.querySelectorAll('.empty-source').length,0);
- const shared=new JSDOM(html(noImage,{photos:[]})).window.document;assert.ok(shared.querySelector('.share-quote'));assert.match(JSON.stringify(linkPreviewCard(noImage)),/Author describes the measured comparison/);assert.match(shared.querySelector('.share-chips').textContent,/test-model/);assert.ok(!shared.body.textContent.includes('Project image not added'));w.StriveRunPhotos.disposeAll();
+ const shared=new JSDOM(html(noImage,{photos:[]})).window.document;
+ const authored=shared.querySelector('.project-highlights'),facts=shared.querySelector('.share-stats');
+ assert.ok(authored,'no-image public page retains the authored project context');assert.ok(facts,'recorded facts remain supporting evidence');assert.match(facts.textContent,/Tool calls\s*12/,'explicit synthetic tool count stays available');
+ assert.equal(shared.body.textContent.split(noImage.caption).length-1,1,'author context appears once, without a duplicate quote hero');
+ assert.match(authored.textContent,/Author describes the measured comparison/);assert.ok(authored.compareDocumentPosition(facts)&4,'project context precedes recorded facts');
+ assert.equal(shared.querySelector('.share-quote'),null);assert.match(JSON.stringify(linkPreviewCard(noImage)),/Author describes the measured comparison/);assert.match(shared.querySelector('.share-chips').textContent,/test-model/);assert.ok(!shared.body.textContent.includes('Project image not added'));w.StriveRunPhotos.disposeAll();
 }
 console.log('PASS no-image native detail and share use authored story, with harness/model and no owner request.');
 
