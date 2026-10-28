@@ -38,7 +38,12 @@ async function insert(values){const entries=Object.entries(values);return (await
 const captured=(extra={})=>({profile_id:owner,title:'TEST DATA capture',visibility:'private',schema_version:1,measurement_revision:(seq++).toString(16).padStart(64,'0'),harness:'Codex',trace_basis:'elapsed',rhythm:[1,2],tool_calls:3,model:'test-model',capture_metadata:{basis:'codex-records',models:['test-model'],input_tokens:10,output_tokens:4},...extra});
 const manual=(extra={})=>({profile_id:owner,title:'TEST DATA manual app',project:'TEST DATA project',story_result:'TEST DATA what changed',trace_basis:'typed-by-author',visibility:'private',...extra});
 try{
- const saved=await insert(manual());assert.equal(saved.activity_trace_omitted,false);
+ const carried={v:1,counts:{'human-typed':0,'human-via-tool':0,'agent-to-agent':0,automation:0,unknown:1},human_turns:0,known_autonomous_turns:0,unknown_turns:1,relays:{}};
+ await db.query("select set_config('strive.prompt_provenance',$1,false)",[JSON.stringify(carried)]);
+ const saved=await insert(manual());assert.equal(saved.activity_trace_omitted,false);assert.equal(saved.prompt_provenance,null,'manual row ignores stale agent transaction carry');
+ const carriedCapture=await insert(captured());assert.deepEqual(carriedCapture.prompt_provenance,carried,'recorded capture retains existing transaction carry');
+ await db.query("select set_config('strive.prompt_provenance','',false)");
+ await db.query("update strava.runs set title='TEST DATA edited title',story_result='TEST DATA revised result' where id=$1",[saved.id]);assert.equal((await db.query('select story_result from strava.runs where id=$1',[saved.id])).rows[0].story_result,'TEST DATA revised result');
  const photo=(await db.query('insert into strava.run_photos(run_id,width,height,byte_size) values($1,120,100,1000) returning id',[saved.id])).rows[0].id;
  await assert.rejects(insert(manual({visibility:'public'})),/start private/);
  for(const fields of [{tool_calls:1},{capture_metadata:{basis:'codex-records',models:[]}},{activity_trace_omitted:true},{harness:'Codex'},{history_evidence:{}},{measurement_revision:'a'.repeat(64)}])await assert.rejects(insert(manual(fields)),/unmeasured/);
