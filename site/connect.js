@@ -51,14 +51,18 @@ window.GrinderConnect = function ({ db, me, app, frame, status, signInGitHub, si
     </section>`;
   }
 
-  function listHtml(rows) {
-    if (!rows.length) {
-      return `<p class="account-hint">No connected agents yet. Name one below.</p>`;
+  function listHtml(rows, failed) {
+    // A failed read is not an empty account: say it could not load, and offer a retry.
+    if (failed) {
+      return `<p class="account-hint" role="alert">Your connections could not load, so this list may be incomplete. <button type="button" class="act" id="connect-list-retry">Try again</button></p>`;
     }
-    return `<ul class="connect-tokens" aria-label="Connected agents">${rows
+    if (!rows.length) {
+      return `<p class="account-hint">No upload keys yet. Name an agent below to create one.</p>`;
+    }
+    return `<ul class="connect-tokens" aria-label="Upload keys">${rows
       .map((row) => {
         const revoked = row.revoked === true;
-        const label = row.label || "Connected agent";
+        const label = row.label || "Upload key";
         const prefix = row.token_prefix || "********";
         const exp = row.expires_at ? new Date(row.expires_at).toLocaleDateString() : "";
         return `<li class="connect-token${revoked ? " is-revoked" : ""}">
@@ -83,7 +87,7 @@ window.GrinderConnect = function ({ db, me, app, frame, status, signInGitHub, si
       </section>`;
   }
 
-  function panelHtml(rows, issued, agent) {
+  function panelHtml(rows, issued, agent, failed) {
     const once = issued
       ? `<section class="connect-once" role="status" aria-live="polite">
           <h2>Save this credential now</h2>
@@ -114,7 +118,7 @@ window.GrinderConnect = function ({ db, me, app, frame, status, signInGitHub, si
       ${agentVisibilityHtml(agent || null)}
       <section class="card pad account-section" aria-labelledby="connect-list-title">
         <h2 id="connect-list-title">Your connections</h2>
-        <div id="connect-list">${listHtml(rows)}</div>
+        <div id="connect-list">${listHtml(rows, failed)}</div>
         <p id="connect-list-state" class="account-state" role="status" aria-live="polite"></p>
       </section>
       <section class="card pad account-section">
@@ -192,17 +196,24 @@ window.GrinderConnect = function ({ db, me, app, frame, status, signInGitHub, si
     }
     let rows = [];
     let agent = null;
+    let failed = false;
     try {
       rows = await rpcList();
-      agent = await loadConnectAgent();
     } catch (error) {
       if (isMissingRpc(error)) {
         root.innerHTML = unavailableHtml(error.message);
         return;
       }
+      failed = true;
       say(error.message || "Connections could not load.", true);
     }
-    root.innerHTML = panelHtml(rows, issued || null, agent);
+    try {
+      agent = await loadConnectAgent();
+    } catch (error) {
+      say(error.message || "The Connect agent could not load.", true);
+    }
+    root.innerHTML = panelHtml(rows, issued || null, agent, failed);
+    byId("connect-list-retry")?.addEventListener("click", () => view(issued));
     wire(issued || null, agent);
   }
 

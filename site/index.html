@@ -1692,7 +1692,7 @@ function connectionsHtml(){
 async function loadConnections(){
   const box=$('connect-connections');if(!box||!ME||!sb)return;
   const actions=`<div class="account-actions"><a class="act" href="/?connect=auto">Manage upload keys</a><a class="act" href="#post-source-grid" data-connections-add>Add a connection</a></div>`;
-  const local='<p class="hint">Editor tools (MCP and the plugin) run on your computer, so STRIVE cannot see them. A connection shows here once an agent uploads with a key.</p>';
+  const local='<p class="hint">Editor tools (MCP and the plugin) run on your computer, so STRIVE cannot see them. Only an active upload key lets an agent save to your account; past uploads are history, not a connection.</p>';
   try{
     const [keys,runs]=await Promise.all([
       sb.rpc('agent_token_list'),
@@ -1703,12 +1703,14 @@ async function loadConnections(){
     const last=(runs.data||[]).find(r=>r.trace_basis!=='historical-reconstruction');
     const day=v=>v?new Date(v).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}):'';
     const list=active.length?`<ul class="connect-tokens" aria-label="Active upload keys">${active.map(k=>`<li class="connect-token"><div><strong>${esc(k.label||'Upload key')}</strong><span class="account-hint">${esc(k.token_prefix||'')}… · created ${esc(day(k.created_at))}${k.expires_at?' · expires '+esc(day(k.expires_at)):''}</span></div></li>`).join('')}</ul>`:'';
-    const used=last?`<p>Last agent upload: <a href="/r/${esc(last.id)}">${esc(last.title||'Untitled run')}</a> · ${esc(day(last.created_at))}${last.agent_name?' · '+esc(last.agent_name):''}</p>`:active.length?'<p>No agent has uploaded with these keys yet.</p>':'';
-    const lead=active.length||last?'':'<p>No agent is connected to your account yet. Choose your agent below to start.</p>';
+    // An active key is the only current grant. A past upload is history: it never makes an agent read as connected.
+    const used=last?`<p>${active.length?'Last agent upload':'Past agent upload, from a key that is no longer active'}: <a href="/r/${esc(last.id)}">${esc(last.title||'Untitled run')}</a> · ${esc(day(last.created_at))}${last.agent_name?' · '+esc(last.agent_name):''}</p>`:active.length?'<p>No agent has uploaded with these keys yet.</p>':'';
+    const lead=active.length?'<p>Active upload keys. Each lets one agent save runs to your account as Only me.</p>':'<p>No active upload key. No agent can upload to your account right now. Choose your agent below to start.</p>';
     const gone=ended?`<p class="hint">${ended} revoked or expired key${ended===1?'':'s'}.</p>`:'';
     box.innerHTML=`<h2 id="connect-connections-h">Your connections</h2>${lead}${list}${used}${gone}${local}${actions}`;
   }catch(_){
-    box.innerHTML=`<h2 id="connect-connections-h">Your connections</h2><p class="hint" role="alert">Your connections could not load. Reload the page to try again.</p>${actions}`;
+    box.innerHTML=`<h2 id="connect-connections-h">Your connections</h2><p class="hint" role="alert">Your connections could not load, so this is not a full list. <button type="button" class="act" data-connections-retry>Try again</button></p>${actions}`;
+    box.querySelector('[data-connections-retry]')?.addEventListener('click',()=>{box.innerHTML='<h2 id="connect-connections-h">Your connections</h2><p class="hint" role="status">Checking what STRIVE has on record…</p>';loadConnections();});
   }
 }
 async function viewConnect(){

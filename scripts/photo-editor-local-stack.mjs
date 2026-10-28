@@ -31,9 +31,11 @@ if(process.env.STRIVE_TEST_CONNECTIONS){
   // Connect page records, TEST DATA: one live key, one revoked, one expired; an agent upload and a historical import.
   const agent='a1000000-0000-0000-0000-000000000091';
   await db.query("insert into strava.grinder_agents(id,owner_id,name,visibility) values($1,$2,'Connect','private')",[agent,CASEY]);
-  for(const [hash,label,prefix,revoked,expires] of [['test-hash-live','TEST DATA laptop','ag_live1',false,"now()+interval '20 days'"],['test-hash-revoked','TEST DATA old','ag_old01',true,"now()+interval '20 days'"],['test-hash-expired','TEST DATA expired','ag_exp01',false,"now()-interval '1 day'"]])
+  // In 'history' mode the live key is revoked too: past uploads remain, no grant does.
+  const liveRevoked=process.env.STRIVE_TEST_CONNECTIONS==='history';
+  for(const [hash,label,prefix,revoked,expires] of [['test-hash-live','TEST DATA laptop','ag_live1',liveRevoked,"now()+interval '20 days'"],['test-hash-revoked','TEST DATA old','ag_old01',true,"now()+interval '20 days'"],['test-hash-expired','TEST DATA expired','ag_exp01',false,"now()-interval '1 day'"]])
     await db.query(`insert into strava.grinder_agent_tokens(agent_id,token_hash,scopes,audiences,expires_at,revoked,label,token_prefix) values($1,$2,array['draft','publish'],array['private'],${expires},$3,$4,$5)`,[agent,hash,revoked,label,prefix]);
-  if(process.env.STRIVE_TEST_CONNECTIONS==='used'){
+  if(['used','history'].includes(process.env.STRIVE_TEST_CONNECTIONS)){
     // The newer run is a plain session import with no uploading agent: it must not read as a connection.
     for(const [id,title,source,created] of [['a2000000-0000-0000-0000-000000000091','TEST DATA agent upload',agent,"now()-interval '2 days'"],['a2000000-0000-0000-0000-000000000092','TEST DATA session import',null,"now()"]])
       await db.query(`insert into strava.runs(id,profile_id,title,visibility,source_actor_id,agent_name,started_at,harness,schema_version,trace_basis,prompts,rhythm,measurement_revision,created_at) values($1,$2,$3,'private',$4,'TEST DATA Connect',now(),'Claude Code',1,'elapsed-agent-tool-calls',1,'[1]'::jsonb,repeat(md5(($1::uuid)::text),2),${created})`,[id,CASEY,title,source]);

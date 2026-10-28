@@ -16,7 +16,7 @@ READ = """() => { const box = document.getElementById('connect-connections'); co
 failures, result = [], {}
 def check(name, ok, detail):
     if not ok: failures.append(f'{name}: {detail}')
-for mode in ('fresh', 'used', 'keys'):
+for mode in ('fresh', 'used', 'keys', 'history'):
     env = {**os.environ, 'STRIVE_TEST_CONNECTIONS': mode} if mode != 'fresh' else dict(os.environ)
     proc = subprocess.Popen(['node', 'scripts/photo-editor-local-stack.mjs'], stdout=subprocess.PIPE, stderr=open(out / f'stack-{mode}.log', 'w'), text=True, env=env)
     try:
@@ -32,6 +32,10 @@ for mode in ('fresh', 'used', 'keys'):
                     seen = page.evaluate(READ)
                     page.locator('[data-post-source="codex"]').click(); page.wait_for_timeout(300)
                     seen['steps_after_pick'] = page.evaluate(READ)['steps']
+                    if signed_in and mode in ('keys', 'fresh'):
+                        # The key manager (/?connect=auto) must not turn a failed read into an empty account.
+                        page.goto(stack['site'] + '/?connect=auto'); page.wait_for_timeout(2500)
+                        seen['manager'] = page.evaluate("() => { const l = document.getElementById('connect-list'); return l ? {text: l.textContent.replace(/\\s+/g, ' ').trim(), retry: !!l.querySelector('#connect-list-retry')} : null }")
                     key = f"{mode}_{'in' if signed_in else 'out'}{'_failed' if broken else ''}"
                     result[key] = seen; ctx.close()
                     check(key, all(c == 'Copy a Terminal command' for c in seen['cards'][:3]), f"card text {seen['cards'][:3]}")
@@ -40,11 +44,18 @@ for mode in ('fresh', 'used', 'keys'):
                         check(key, not seen['present'], 'connections panel shown while signed out'); continue
                     check(key, seen['present'] and seen['manage'] and seen['add'], 'panel or its actions missing')
                     text = seen['text'] or ''
+                    manager = seen.get('manager') or {}
                     if broken:
-                        check(key, 'could not load' in text and not seen['keys'], text)
+                        check(key, 'could not load' in text and 'Try again' in text and not seen['keys'] and 'No active upload key' not in text, text)
+                        check(key + ' manager', 'could not load' in manager.get('text', '') and manager.get('retry') and 'No upload keys yet' not in manager.get('text', ''), manager)
                     elif mode == 'fresh':
-                        check(key, 'No agent is connected to your account yet' in text and not seen['keys'], text)
+                        check(key, 'No active upload key' in text and not seen['keys'] and 'Past agent upload' not in text, text)
+                        check(key + ' manager', 'No upload keys yet' in manager.get('text', '') and not manager.get('retry'), manager)
+                    elif mode == 'history':
+                        check(key, not seen['keys'] and 'No active upload key' in text and 'Past agent upload, from a key that is no longer active: TEST DATA agent upload' in text
+                              and 'Active upload keys' not in text and '3 revoked or expired keys' in text and 'session import' not in text, text)
                     elif mode == 'keys':
+                        check(key + ' manager', 'TEST DATA laptop' in manager.get('text', ''), manager)
                         check(key, seen['keys'] == ['TEST DATA laptop'] and 'No agent has uploaded with these keys yet' in text and '2 revoked or expired keys' in text, text)
                     else:
                         check(key, 'Last agent upload: TEST DATA agent upload' in text and 'session import' not in text, text)
