@@ -2272,11 +2272,11 @@ function wireComposer(){
   const owner=ME?.id,fields=['f_title','f_project','f_caption','f_output_url','f_problem','f_feedback'],key='ag_manual_post_draft';
   let attemptId=crypto.randomUUID();
   try{const saved=JSON.parse(sessionStorage.getItem(key)||'null');if(saved&&(saved.profileId==null||saved.profileId===owner)&&typeof saved.id==='string'){attemptId=saved.id;for(const id of fields)if(typeof saved[id]==='string')$(id).value=saved[id];}}catch(_){}
-  applyAgentDraft();
   const ro=$('research-optin');if(ro&&window.StriveSelfMark){ro.checked=StriveSelfMark.research()==='yes';ro.onchange=()=>{StriveSelfMark.setResearch(ro.checked);$('research-note').textContent=ro.checked?'Your yes is saved on this device only. STRIVE does not collect research data yet; nothing is sent.':'Saved on this device only. Nothing is sent or collected.';};}
   const token='manual-project:'+attemptId,current=()=>$('publish')===pb&&ME?.id===owner;
   const keep=()=>{try{sessionStorage.setItem(key,JSON.stringify({id:attemptId,profileId:owner,...Object.fromEntries(fields.map(id=>[id,$(id).value]))}))}catch(_){}};
   fields.forEach(id=>$(id).addEventListener('input',keep));
+  applyAgentDraft();  // after the listeners, so the draft is kept across sign-in
   window.StrivePhotoDraft?.mount({slot:$('manual-photos'),token,profileId:owner,eligible:true,isCurrent:current,audience:()=> 'private'});
   const build=async()=>StriveProjectUpdate.row({title:$('f_title').value,project:$('f_project').value,changed:$('f_caption').value,problem:$('f_problem').value,feedback:$('f_feedback').value,link:$('f_output_url').value,hasImage:await window.StrivePhotoDraft?.hasDraft(token)});
   $('manual-preview').onclick=async()=>{try{const row=await build(),slot=$('manual-preview-content');slot.hidden=false;slot.innerHTML='<article class="card pad"><p class="meta">Manual · unmeasured · private draft</p><p class="meta">Update date: '+esc(new Date(row.started_at).toLocaleDateString())+' · browser clock</p><h3>'+esc(row.project)+' · '+esc(row.title)+'</h3>'+StriveStory.highlights(row,{conversation:false})+(row.output_url?'<a target="_blank" rel="noopener noreferrer" href="'+esc(row.output_url)+'">Open project link</a>':'')+'</article>';}catch(e){status(e.message,true)}};

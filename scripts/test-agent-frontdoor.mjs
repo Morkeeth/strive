@@ -26,6 +26,7 @@ assert.match(guide,/strive sessions --all --open --site/);
 assert.match(guide,/Select an opaque session choice, inspect its sittings/);
 assert.match(guide,/only list_sessions and preview_session/);
 assert.match(guide,/It cannot publish or send/);
+assert.match(guide,/pasted this domain[\s\S]*Draft only\. Do not save or publish/);
 assert.ok(guide.indexOf('## Choose your harness') < guide.indexOf('    python3 '));
 assert.ok(guide.indexOf('--format projection --bounds') < guide.indexOf('--format native --bounds'));
 assert.match(guide,/One-time capture does not require writing a skill/);

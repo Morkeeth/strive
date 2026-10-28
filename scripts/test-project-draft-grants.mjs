@@ -65,3 +65,21 @@ assert.match(front,/project_update_draft:\{default:'draft_only'/);
 assert.match(front,/saves:false,publishes:false/);
 for(const g of ['read_local','save_private','publish','research'])assert.match(front,new RegExp(g+':'),g);
 console.log('project draft, grants, research and self mark: ok');
+
+// The real path: open the draft link signed out, sign in, the composer re-renders, the draft is still there.
+const {JSDOM}=await import('jsdom');
+const enc=Draft.toBase64Url(draft);
+const dom=new JSDOM('<main id="app"></main>',{url:'https://strive.example.com/?post#project-draft='+enc,runScripts:'outside-only'}),w=dom.window;
+for(const file of ['project-update.js','run-story.js','agent-draft.js'])w.eval(await readFile('site/'+file,'utf8'));
+w.eval(`var ME=null,sb;var StrivePhotoDraft={mount(){},hasDraft:async()=>false,saveIfDraft:async()=>false};var $=id=>document.getElementById(id);var status=()=>{};var showSignIn=()=>{};var viewRun=async()=>{};var fairConfirmRun=()=>{};var esc=s=>String(s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));`);
+w.eval(html.slice(html.indexOf('function postComposerHtml('),html.indexOf('\nasync function viewPost()')));
+w.eval(html.slice(html.indexOf('function wireComposer()'),html.indexOf('// GitHub is provider-backed')));
+const paint=()=>{w.document.getElementById('app').innerHTML=w.postComposerHtml();w.wireComposer()};
+paint();
+assert.equal(w.document.getElementById('f_title').value,'Faster sync');
+assert.equal(w.location.hash,'','fragment cleared');
+assert.match(w.document.getElementById('agent-draft-note').textContent,/Drafted by Codex\. Nothing is saved or published/);
+w.eval("ME={id:'signed-in-owner'}");paint();
+assert.equal(w.document.getElementById('f_title').value,'Faster sync','draft survives sign-in re-render');
+assert.equal(w.document.getElementById('f_caption').value,'Sync now resumes.');
+console.log('draft link survives sign-in: ok');
