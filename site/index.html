@@ -1411,13 +1411,13 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     ?`<div class="run-agent-chip">with <a href="/?agent=${encodeURIComponent(r.source_actor_id)}">${esc(r.agent_name)}</a>${r.harness?` · <span class="card-harness">${esc((globalThis.StriveAgents?.agentName(r.harness)||r.harness||''))}</span>`:''}</div>`
     :'';
   const exploreInner=[
-    opts.detail?StriveContext.context(r,{shownText:r.caption||r.note||''}):'',
+
     opts.detail?'<section id="run-journey"></section>':'',
     story,
     StriveEvidence.summary(r),
     runUploadIdentity(r),
     StriveContext.setup(r),
-    typedOnlyRun(r)?'<div class="sub run-effort-context">Manual · unmeasured · owner-provided update</div>':`<div class="sub run-effort-context"><span class="card-harness">${esc((globalThis.StriveAgents?.agentName(r.harness)||r.harness||'')||'Coding agent')}</span>${r.harness==='Grok Bot'?' · bot activity':''} · ${esc(started)}</div>`,
+    typedOnlyRun(r)?'<div class="sub run-effort-context">Non-verified · Manual · unmeasured · owner-provided update</div>':`<div class="sub run-effort-context"><span class="card-harness">${esc((globalThis.StriveAgents?.agentName(r.harness)||r.harness||'')||'Coding agent')}</span>${r.harness==='Grok Bot'?' · bot activity':''} · ${esc(started)}</div>`,
     typedOnlyRun(r)?'':codeRoute?codeRouteDetail:'<p class="run-route-source">No work route was captured for this run. Activity bins do not identify which files, tasks or build steps happened.</p>',
     !typedOnlyRun(r)&&codeRoute&&ridge?ridge:'',
     fiveRow(r),
@@ -1442,7 +1442,8 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
       <div class="who">${whoLink}${anonTag}<small>${att.ghost?'metrics only ·':`@${esc(h)} ·`} ${opts.preview?esc(date):`<a href="${esc(StriveLinks.runHref(r))}">${esc(date)}</a>`}</small></div></div>
 
     <div class="run-title-row"><div class="title">${opts.preview?esc(r.title):`<a href="${esc(StriveLinks.runHref(r))}">${esc(r.title)}</a>`}</div>${ownerActions}</div>
-    ${r.caption?`<div class="note">${esc(r.caption)}</div>`:r.note?`<div class="note">${esc(r.note)}</div>`:''}
+    ${StriveStory.highlights(r)}
+    <p class="project-source">${esc(StriveStory.source(r))}</p>
     ${audienceNote}
     ${eventChip}
     ${agentChip}
@@ -1452,7 +1453,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     ${StriveStory.visual(r)}
     ${visual}
     ${output?`<p class="run-output"><a href="${esc(output)}" target="_blank" rel="noopener noreferrer">See the work ↗</a></p>`:''}
-    ${opts.detail?StriveStory.detail({...r,story_result:null}):''}
+
     ${opts.detail?'':StriveEvidence.summary(r)}
     ${xudosTip}
     ${opts.preview?'<div class="foot"><span class="meta">Preview · not saved</span></div>':`${followSlot||detailLink?`<div class="foot run-social-actions"><span class="acts">${followSlot}${detailLink}</span></div>`:''}

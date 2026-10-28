@@ -36,9 +36,10 @@
     const C=root.GrinderContract,F=root.GrinderFeed,clean=root.StriveDayCard.clean(choices),id=String(r.id),href=links.runHref(r),p=r.profiles||{},handle=p.handle||p.github_handle,name=p.display_name||p.name||handle||'Builder';
     const project=root.StriveActivity.project(r.project),title=F.titleOf({...r,created_at:null});
     const caption=String(r.caption||F.cardSummary(r)||r.story_result||'').trim();
-    const work=C.heroStats(r).filter(([label])=>label!=='Elapsed');
+    const story=root.StriveStory,manual=r.trace_basis==='typed-by-author';
+    const work=(manual?[]:C.heroStats(r)).filter(([label])=>label!=='Elapsed');
     const files=r.files_touched??(r.code_route?.v===1&&!r.code_route.unavailable?r.code_route.stats?.files_changed:null);
-    if(Number.isSafeInteger(files)&&files>0&&!work.some(([label])=>/^Files /.test(label)))work.push([r.files_touched!=null?'Files touched':'Files changed',String(files)]);
+    if(!manual&&Number.isSafeInteger(files)&&files>0&&!work.some(([label])=>/^Files /.test(label)))work.push([r.files_touched!=null?'Files touched':'Files changed',String(files)]);
     const pick=clean.projectVisuals[token],legacy=clean.photo?.run===id?{visual:clean.visual,photo:clean.photo,focus:clean.focus}:null;
     const choice=pick?.visual==='data'?pick:pick?.photo?.run===id?pick:legacy;
     const dataOnly=choice?.visual==='data'||(!pick&&clean.photo&&clean.visual==='data');
@@ -53,12 +54,14 @@
       ${F.privateMarker(r)}
       <header class="dc-head">${F.face(r,36)}<div class="dc-identity">${handle?`<a class="dc-author" href="${esc(links.profileHref(handle))}">${esc(name)}</a>`:`<strong class="dc-author">${esc(name)}</strong>`}<p class="meta">${esc(dateLabel)}${r.harness?' · '+esc(F.harnessName(r)):''}</p></div><details class="post-options"><summary aria-label="Run options">•••</summary><div><a href="${esc(href)}">Open run</a>${owner?`<a href="${esc(href)}#run-edit">Edit this run</a>`:''}${day?`<a href="/?day=${day}${owner?'':'&p='+encodeURIComponent(r.profile_id)}">Day summary</a>`:''}${root.StriveContext?.measurementDetails?.(r)||''}</div></details></header>
       ${audience?`<p class="dc-audience">${esc(audience)}</p>`:''}
-      <div class="post-story">${project?`<a class="post-project" href="/?project=${encodeURIComponent(r.project)}&scope=${owner?'mine':'public'}">${esc(project)}</a>`:''}<h2><a href="${esc(href)}">${esc(title)}</a></h2>${caption&&caption!==title?`<p class="post-caption">${esc(caption)}</p>`:!caption?(root.StrivePlaceholders?.render('description',{compact:true})||''):''}</div>
-      ${root.StriveContext?.shareHtml?.(r)||''}
-      ${trail(r)}
-      <div class="post-workline">${!noImage?(root.StriveContext?.cardSecondary?.(r,{omitUnknown:true})||''):''}
+      <div class="post-story">${project?`<a class="post-project" href="/?project=${encodeURIComponent(r.project)}&scope=${owner?'mine':'public'}">${esc(project)}</a>`:''}<h2><a href="${esc(href)}">${esc(title)}</a></h2>${!story?.highlights&&caption&&caption!==title?`<p class="post-caption">${esc(caption)}</p>`:!caption?(root.StrivePlaceholders?.render('description',{compact:true})||''):''}</div>
+      <p class="project-source">${esc(story?.source?.(r)||'Recorded activity · client-reported')}</p>
+      ${story?.highlights?.(r)||''}
+      <div class="post-workline">${!manual&&!noImage?(root.StriveContext?.cardSecondary?.(r,{omitUnknown:true})||''):''}
       ${work.length?`<p class="post-work">Recorded work · ${work.map(([label,value])=>esc(value)+' '+esc(value==='1'?({'Commits':'commit','Files touched':'file touched','Files changed':'file changed','Projects':'project'}[label]||label.toLowerCase()):label.toLowerCase())).join(' · ')}</p>`:''}</div>
-      ${gallery?`<div class="run-media-slot"><div class="post-media-empty" data-photo-placeholder>${noImage?(root.StrivePlaceholders?.render('screenshot',{story:r.caption||title,owner,seed:id,harness:r.harness,model:(Array.isArray(r.capture_metadata?.models)?r.capture_metadata.models:[]).join(', ')})||''):'<div class="media-loading" role="status" aria-label="Loading run images"></div>'}</div></div>`:''}${r.feedback_question?`<p class="post-question">${esc(r.feedback_question)}</p>`:''}
+      ${gallery?`<div class="run-media-slot"><div class="post-media-empty" data-photo-placeholder>${noImage?(root.StrivePlaceholders?.render('screenshot',{story:r.caption||title,owner,seed:id,harness:r.harness,model:(Array.isArray(r.capture_metadata?.models)?r.capture_metadata.models:[]).join(', ')})||''):'<div class="media-loading" role="status" aria-label="Loading run images"></div>'}</div></div>`:''}
+      ${manual?'':root.StriveContext?.shareHtml?.(r)||''}
+      ${manual?'':trail(r)}
       <p class="post-open"><a href="${esc(href)}">View full run <span aria-hidden="true">→</span></a></p><footer class="fc-foot"${review?' aria-disabled="true"':''}>${actions}</footer>${review?'<p class="post-review-reactions">Readers can react here</p>':''}<section class="dc-comments" hidden aria-label="Comments on this run"></section>
     </article>`;
     // Keep the post readable to assistive technology; only unsaved destinations are disabled.

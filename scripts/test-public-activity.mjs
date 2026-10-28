@@ -7,7 +7,8 @@ assert.equal(photos[1].is_cover,true,'public reader keeps the author-selected co
 const page=html(run,{photos,kudos:0});
 assert.ok(page.indexOf('class="share-author"')<page.indexOf('class="public-run-photo-grid"'),'builder identity precedes the selected image mosaic');
 assert.ok(page.includes(`/api/og?run=${id}&v=5`),'the public page requests the current share-card image');
-assert.ok(page.indexOf('class="public-run-photos"')<page.indexOf('class="share-copy"'),'selected photos lead the public story');
+assert.ok(page.indexOf('aria-label="Project highlights"')<page.indexOf('class="public-run-photos"'),'authored project highlights precede selected photos');
+assert.ok(page.indexOf('class="public-run-photos"')<page.indexOf('aria-label="Recorded facts"'),'selected photos still precede supporting metrics');
 assert.ok(page.includes('href="/?legacy=1&run='+id+'">Open in STRIVE'),'entry opens this exact run in the interactive app');
 assert.ok(page.includes('<link rel="canonical" href="https://striverun.app/test-author/11111111-test-data-work">'),'shared address stays clean');
 assert.ok(page.indexOf('aria-label="Recorded facts"')<page.indexOf('class="share-route"'),'measured stats precede the activity bars');
@@ -25,7 +26,8 @@ const noImage=html(run,{photos:[],moreRuns:[
  {id:extra,visibility:'public',title:'Another build',profiles:{handle:'test-author'}},
  {id:'55555555-5555-4555-8555-555555555555',visibility:'private',title:'Private note',profiles:{handle:'test-author'}}
 ]});
-assert.ok(noImage.includes('class="share-quote"'),'runs without selected images use an authored blue quote card');
+assert.ok(!noImage.includes('class="share-quote"'),'no image does not repeat the authored context in a second quote card');
+assert.ok(noImage.includes('aria-label="Project highlights"'),'authored context stays visible without images');
 assert.ok(noImage.includes('Another build'),'another public run is linked below the activity');
 assert.ok(!noImage.includes('Private note'),'private related runs never appear');
 const candid=[{id:first,run_id:id,role:'personal',is_cover:false},{id:cover,run_id:id,role:'personal',personal_public_selected:true,is_cover:true},{id:extra,run_id:id,role:'result',is_cover:false}];
