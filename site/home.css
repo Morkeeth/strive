@@ -17,9 +17,10 @@
 .wk-ev{position:absolute;left:50%;bottom:6px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--box);border:2.5px solid var(--blue)}
 .wk-ev:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .wk-d{font-size:11px;color:var(--soft);line-height:1}
-.wk-n{font-size:13px;font-variant-numeric:tabular-nums;line-height:1.3;color:var(--ink)}
+/* Every date sits in the same centred box, so today's pill only changes colour, never position or size. */
+.wk-n{display:inline-grid;place-items:center;box-sizing:border-box;min-width:24px;height:24px;padding:0 4px;border-radius:999px;font-size:13px;font-variant-numeric:tabular-nums;line-height:1;color:var(--ink)}
 .wk-day.past .wk-n{color:var(--soft)}
-.wk-day.today .wk-n{color:#fff;background:var(--blue);border-radius:999px;padding:0 6px}
+.wk-day.today .wk-n{color:#fff;background:var(--blue)}
 .wk-line{margin:8px 0 0;font-size:13px;color:var(--soft)}
 .wk-skel{height:92px;border-top:1px solid var(--rule-2)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -43,7 +44,7 @@
 .home-join p{margin:0 0 14px;color:var(--soft)}
 .home-join .act.primary{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;font-size:15px;background:var(--blue);border-color:var(--blue);color:#fff}
 @keyframes wk-rise{from{transform:scaleY(0)}}
-@media(max-width:420px){.wk{gap:2px}.wk-d{font-size:10px}.wk-n{font-size:12px}.wk-day.today .wk-n{padding:0 4px}}
+@media(max-width:420px){.wk{gap:2px}.wk-d{font-size:10px}.wk-n{font-size:12px;min-width:22px;height:22px;padding:0 3px}}
 @media (prefers-reduced-motion:reduce){.wk-bar{animation:none}.ev,.club{transition:none}}
 /* The page column may shrink below its content's widest word; the run address wraps here. */
 .home{min-width:0;width:100%}

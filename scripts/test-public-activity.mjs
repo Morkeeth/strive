@@ -18,7 +18,8 @@ assert.ok(page.includes('Human messages'),'recorded turns remain available in de
 assert.ok(page.includes('Tool requests'),'recorded tools remain available in details');
 assert.ok(page.indexOf('/api/run-photos?id='+cover)<page.indexOf('/api/run-photos?id='+first),'selected cover leads the public gallery even when metadata is unordered');
 assert.ok(!page.includes('<script'),'shared public page stays script-free');
-assert.match(page,/<footer class="site-foot share-foot"><details><summary>Info<\/summary><nav aria-label="Information and policies">/,'share footer hides the link row behind Info');
+assert.match(page,/<footer class="site-foot share-foot"><nav aria-label="Information and policies"><a href="\/about">About<\/a><a href="\/privacy">Privacy<\/a><a href="\/terms">Terms<\/a>/,'share footer shows its policy links in view');
+assert.ok(!/<footer class="site-foot share-foot">[^]*?<details/.test(page),'no policy link hides behind a toggle');
 const extra='44444444-4444-4444-8444-444444444444';
 const noImage=html(run,{photos:[],moreRuns:[
  {id:extra,visibility:'public',title:'Another build',profiles:{handle:'test-author'}},

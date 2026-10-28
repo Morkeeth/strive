@@ -223,6 +223,8 @@ html[data-auth-boot="pending"] #app{min-height:100vh}
 @media(max-width:520px){.activity-post .post-share-facts{gap:0 10px!important}.activity-post .post-share-facts dd{font-size:18px!important}}
 /* Space is held before data arrives, so nothing below the feed moves when cards land. */
 #app{min-height:calc(100vh - 64px)}
+/* Once a page has no loading placeholder left, a short page such as Feedback lets its footer links into view. */
+#app:not(:has(.loading-card,.feed-skeleton,.feed-loading,[data-first-paint])){min-height:calc(100vh - 260px)}
 .home #landing-feature-body.feed-loading,.home .feed-loading{min-height:120vh}
 .home .land-head .first-paint-title{font-size:24px;letter-spacing:-.5px;margin:0}
 .feed-skeleton{display:grid;gap:12px;height:560px;box-sizing:border-box;padding:18px 20px;margin:0 0 16px;background:#fff;border:1px solid var(--rule);border-radius:12px;grid-template-rows:36px 44px 52px 1fr}
