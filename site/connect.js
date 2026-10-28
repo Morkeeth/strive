@@ -101,11 +101,11 @@ window.GrinderConnect = function ({ db, me, app, frame, status, signInGitHub, si
     return `<div class="connect" id="connect-body">
       <section class="card pad account-section">
         <h1>Connect an agent</h1>
-        <p class="account-lead">One step: name it, connect, paste the credential once. Private uploads appear in <a href="/?mine">My runs</a>. Choose Public when you want a run on the feed.</p>
+        <p class="account-lead">Name the agent and create an upload key, then paste it into the agent once. Its uploads arrive as Only me in <a href="/?mine">My runs</a>. Nothing reaches the feed until you choose Public on a run.</p>
         <form id="connect-create" class="account-form" novalidate>
           <label for="connect-label">Agent name</label>
           <input id="connect-label" name="label" maxlength="80" required placeholder="Grok laptop" autocomplete="off">
-          <p class="account-hint">Private draft and publish for 30 days. Other audiences stay on <a href="/?agents">Advanced Agents</a>.</p>
+          <p class="account-hint">The key lets this agent save runs to your account as Only me for 30 days. It cannot make a run public or share it; you choose the audience later. Revoke it here any time. Other audiences stay on <a href="/?agents">Advanced Agents</a>.</p>
           <p id="connect-create-state" class="account-state" role="status" aria-live="polite"></p>
           <div class="account-actions"><button type="submit" class="act blue" id="connect-create-go">Connect</button></div>
         </form>

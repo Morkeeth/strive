@@ -259,18 +259,18 @@ def test_sign_in_explains_github_and_private_runs():
 
 
 def test_capture_command_points_to_the_public_product():
-    # 0255f90 moved the install line out of the page into the Add run setup (site/post-flow.js).
-    clone = 'git clone --depth 1 https://github.com/Morkeeth/strive.git strive-plugin-source'
-    install = 'python3 strive-plugin-source/scripts/strive-plugin.py install cursor'
+    # 28 Oct: each editor uses its own supported route, with the pinned local MCP server where there is one.
+    # Cursor opens its own MCP install dialog, Claude Code installs the plugin, Codex adds the MCP server.
     page = node(RENDER_CONNECT)
-    assert page["plugin"]["initial"] == clone + install  # two lines joined by <br>
+    assert page["plugin"]["initial"] == '{"mcpServers":{"strive":{"command":"uvx","args":["--from","__STRIVE_MCP_SPEC__","strive-mcp"]}}}'
     assert page["plugin"]["claude"] == 'claude plugin marketplace add Morkeeth/striveclaude plugin install strive@strive'
     assert page["plugin"]["copy"] == 'claude plugin marketplace add Morkeeth/strive\nclaude plugin install strive@strive'
-    assert f'data-copy="{clone}&#10;{install}"' in POSTFLOW
+    assert '<option value="codex">Codex</option>' in POSTFLOW
+    assert "`codex mcp add strive -- uvx --from ${mcpSpec} strive-mcp`" in POSTFLOW
+    assert "mcpSpec:'__STRIVE_MCP_SPEC__',cursorMcpLink:'__STRIVE_MCP_INSTALL_LINK__'" in HTML
+    assert 'git clone --depth 1' not in POSTFLOW
     assert page["source"] == 'https://github.com/Morkeeth/strive'
-    assert 'git clone &lt;repo&gt;' not in HTML and 'git clone &lt;repo&gt;' not in POSTFLOW
-    assert '<repo>' not in page["plugin"]["initial"]
-
+    assert 'Your agent can list recent sessions from every project on this computer, by project name and time only.' in POSTFLOW
 
 def test_landing_has_one_action_and_no_numbered_steps():
     seen = node(RENDER_LANDING)

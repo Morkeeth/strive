@@ -1674,7 +1674,7 @@ function connectBodyHtml(){
   const capture=ONE_LINE('auto');
   const picker=h=>`uvx --from __CAPTURE_PACKAGE__ strive sessions --harness ${h} --open --site __ORIGIN__`;
   const agentPrompt=`Open ${location.origin}/agents.md and help me preview this session on STRIVE. Keep it local until I choose to save it.`;
-  return StrivePostFlow.setupHtml({agentPrompt,capture,syncHtml:autoSyncHtml(),dropHtml:dropZoneHtml(),agentFiles:AGENT_FILES,agentCommands:Object.fromEntries(['cursor','claude','codex'].map(h=>[h,picker(h)]))});
+  return StrivePostFlow.setupHtml({agentPrompt,capture,syncHtml:autoSyncHtml(),dropHtml:dropZoneHtml(),agentFiles:AGENT_FILES,agentCommands:Object.fromEntries(['cursor','claude','codex'].map(h=>[h,picker(h)])),mcpSpec:'__STRIVE_MCP_SPEC__',cursorMcpLink:'__STRIVE_MCP_INSTALL_LINK__'});
 }
 function wireConnectCopies(root){
   window.StrivePostFlow?.mountSetup(root||document);
@@ -1682,16 +1682,44 @@ function wireConnectCopies(root){
   (root||document).querySelectorAll('[data-copy]').forEach(b=>{ if(b.dataset.wired) return; b.dataset.wired='1';
     b.addEventListener('click',async()=>{const label=b.textContent;try{await navigator.clipboard.writeText(b.dataset.copy);b.textContent='Copied ✓';b.setAttribute('aria-label','Copied to clipboard')}catch(_){b.textContent='Select and copy'}setTimeout(()=>{b.textContent=label;b.removeAttribute('aria-label')},1600)});});
 }
+// What STRIVE has on record for this account: upload keys, and the newest run an agent actually uploaded.
+// Editor tools (MCP, plugin) stay on the computer, and historical imports are not connections, so neither counts.
+function connectionsHtml(){
+  if(!ME)return '';
+  return `<section class="connect-connections" id="connect-connections" aria-labelledby="connect-connections-h"><h2 id="connect-connections-h">Your connections</h2><p class="hint" data-connections-state role="status">Checking what STRIVE has on record…</p></section>`;
+}
+async function loadConnections(){
+  const box=$('connect-connections');if(!box||!ME||!sb)return;
+  const actions=`<div class="account-actions"><a class="act" href="/?connect=auto">Manage upload keys</a><a class="act" href="#post-source-grid" data-connections-add>Add a connection</a></div>`;
+  const local='<p class="hint">Editor tools (MCP and the plugin) run on your computer, so STRIVE cannot see them. A connection shows here once an agent uploads with a key.</p>';
+  try{
+    const [keys,runs]=await Promise.all([
+      sb.rpc('agent_token_list'),
+      sb.from('runs').select('id,title,created_at,agent_name,trace_basis').eq('profile_id',ME.id).not('source_actor_id','is',null).order('created_at',{ascending:false}).limit(10)]);
+    if(keys.error)throw keys.error;if(runs.error)throw runs.error;
+    const now=Date.now(),rows=Array.isArray(keys.data)?keys.data:[];
+    const active=rows.filter(k=>k.revoked!==true&&(!k.expires_at||Date.parse(k.expires_at)>now)),ended=rows.length-active.length;
+    const last=(runs.data||[]).find(r=>r.trace_basis!=='historical-reconstruction');
+    const day=v=>v?new Date(v).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}):'';
+    const list=active.length?`<ul class="connect-tokens" aria-label="Active upload keys">${active.map(k=>`<li class="connect-token"><div><strong>${esc(k.label||'Upload key')}</strong><span class="account-hint">${esc(k.token_prefix||'')}… · created ${esc(day(k.created_at))}${k.expires_at?' · expires '+esc(day(k.expires_at)):''}</span></div></li>`).join('')}</ul>`:'';
+    const used=last?`<p>Last agent upload: <a href="/r/${esc(last.id)}">${esc(last.title||'Untitled run')}</a> · ${esc(day(last.created_at))}${last.agent_name?' · '+esc(last.agent_name):''}</p>`:active.length?'<p>No agent has uploaded with these keys yet.</p>':'';
+    const lead=active.length||last?'':'<p>No agent is connected to your account yet. Choose your agent below to start.</p>';
+    const gone=ended?`<p class="hint">${ended} revoked or expired key${ended===1?'':'s'}.</p>`:'';
+    box.innerHTML=`<h2 id="connect-connections-h">Your connections</h2>${lead}${list}${used}${gone}${local}${actions}`;
+  }catch(_){
+    box.innerHTML=`<h2 id="connect-connections-h">Your connections</h2><p class="hint" role="alert">Your connections could not load. Reload the page to try again.</p>${actions}`;
+  }
+}
 async function viewConnect(){
   const q=new URLSearchParams(location.search);
   if(q.get('onboard')==='agent') return viewOnboardAgent();
   const app=$('app');
   frame(railHtml('post'),null);
-  app.innerHTML=`<div class="head"><h1>Connect your agent</h1><span class="meta">Start with one run</span></div>${connectBodyHtml()}`;
+  app.innerHTML=`<div class="head"><h1>Connect your agent</h1><span class="meta">Start with one run</span></div>${connectionsHtml()}${connectBodyHtml()}`;
   if(window.GrinderDropinUI) GrinderDropinUI.mount({privateFirst:true,post:token=>{history.pushState(null,'','/#import='+token);route();}});
   $('select-export')?.addEventListener('click',event=>{event.preventDefault();$('drop-file')?.click()});
   wireConnectCopies(app); wireAutoSync(app);
-  await loadLatestCardPreview();
+  await Promise.all([loadConnections(),loadLatestCardPreview()]);
 }
 async function viewOnboard(){ return viewConnect(); }
 async function viewOnboardAgent(){

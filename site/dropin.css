@@ -111,6 +111,7 @@
 .post-flow-steps li>span,.post-flow-nav button>span{display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:var(--box);border:1px solid var(--rule);font-size:11px;font-weight:600}
 .post-flow-steps [aria-current],.post-flow-nav [aria-current]{color:var(--ink);font-weight:600}
 .post-flow-steps [aria-current]>span,.post-flow-nav [aria-current]>span{background:var(--blue);border-color:var(--blue);color:#fff}
+.post-flow-steps li.is-done{color:var(--ink)}.post-flow-steps li.is-done>span{background:var(--blue-wash,#edf3ff);border-color:var(--blue);color:var(--blue)}
 .post-file-entry #drop-stage{max-width:none}
 .post-file-entry .drop-zone{border:1px solid var(--rule);border-radius:16px;padding:24px;background:var(--box);gap:12px}
 .post-file-entry .drop-ghost{height:38px;opacity:.75}
@@ -208,3 +209,4 @@ html:has(.post-composer),body:has(.post-composer){overflow-x:clip}
 @media(max-width:700px){.sharing-review>[data-share-card]{margin-left:-16px;margin-right:-16px;width:calc(100% + 32px)}}
 
 .post-review-reactions{font-size:11px;color:var(--soft);text-align:center;padding:4px 0 8px;margin:0}.activity-post[data-review-card] .fc-foot{pointer-events:none;opacity:.58}.activity-post[data-review-card] .fc-act{cursor:default}.activity-post[data-review-card] .fc-act:hover{background:transparent;transform:none}.sharing-story-shortcut{display:block;max-width:640px;margin:0 auto 12px;background:none;border:0;padding:0;color:var(--blue);font-size:13px;min-height:40px;cursor:pointer;text-decoration:underline}.sharing-story-shortcut[hidden]{display:none}.post-flow-pane{padding-bottom:calc(var(--post-action-height,68px) + 24px)}@media(max-width:700px){.post-flow-pane{padding-bottom:calc(var(--post-action-height,68px) + 90px + env(safe-area-inset-bottom))}}
+.connect-connections{margin:0 0 20px;padding:16px 20px;border:1px solid var(--rule);border-radius:12px;background:#fff}.connect-connections h2{font-size:16px;margin:0 0 8px}.connect-connections p{margin:6px 0}.connect-connections .account-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}

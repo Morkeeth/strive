@@ -75,7 +75,7 @@ def test_capture_is_primary_and_manual_import_is_advanced():
     assert "return StrivePostFlow.setupHtml({agentPrompt,capture,syncHtml:autoSyncHtml(),dropHtml:dropZoneHtml()," in connect
     page = node(ADD_RUN)
     assert page["blocks"] == ["section.post-start", "details.post-file-entry", "p.post-sample", "details.post-setup"]
-    assert page["intro"] == "Open a local session picker, then check your private preview. Nothing is saved online yet."
+    assert page["intro"] == "Choose your agent and copy one command. It opens a session list on your own computer; the session you pick opens here as a private preview. Nothing is saved online yet."
     picker = "uvx --from __CAPTURE_PACKAGE__ strive sessions --harness {} --open --site __ORIGIN__"
     assert page["sources"] == [
         ["cursor", "Cursor", picker.format("cursor")],

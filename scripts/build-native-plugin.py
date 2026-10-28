@@ -150,10 +150,12 @@ _page_spec.loader.exec_module(plugin_install_page)
 print('Built STRIVE native plugin '+manifest['version']+' '+sha)
 
 # The visual install page carries the same pinned server; dist/install.html is the copy build-site made.
-page = ROOT/'dist/install.html'
-html = page.read_text()
-for token, value in (('__STRIVE_MCP_SPEC__', PACKAGE_SPEC), ('__STRIVE_MCP_INSTALL_LINK__', MCP_INSTALL_LINK.replace('&', '&amp;'))):
-    if token not in html:
-        raise ValueError(f'install.html lost its {token} marker')
-    html = html.replace(token, value)
-page.write_text(html)
+# The Add run editor routes in dist/index.html carry it too; there the values sit in a script string, so no HTML escaping.
+for name, link in (('install.html', MCP_INSTALL_LINK.replace('&', '&amp;')), ('index.html', MCP_INSTALL_LINK)):
+    page = ROOT/'dist'/name
+    html = page.read_text()
+    for token, value in (('__STRIVE_MCP_SPEC__', PACKAGE_SPEC), ('__STRIVE_MCP_INSTALL_LINK__', link)):
+        if token not in html:
+            raise ValueError(f'{name} lost its {token} marker')
+        html = html.replace(token, value)
+    page.write_text(html)

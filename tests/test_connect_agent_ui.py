@@ -27,7 +27,8 @@ def test_connect_calls_thin_wrappers_exactly():
 def test_connect_primary_next_is_mine_for_private_uploads():
     assert 'href="/?mine">See my runs</a>' in CONNECT
     assert "Private uploads appear in" in CONNECT
-    assert "Choose Public when you want a run on the feed." in CONNECT
+    assert "Nothing reaches the feed until you choose Public on a run." in CONNECT
+    assert "It cannot make a run public or share it" in CONNECT
     # Draw the real page for a signed-in owner with no connections, and for a signed-out visitor.
     script = r"""
 const fs=require('fs'),{JSDOM}=require('jsdom');
@@ -58,10 +59,11 @@ const draw=async me=>{w.document.getElementById('app').innerHTML='';
     assert [a["href"] for a in owner["next"]] == ["/?mine", "/", "/?agents", "/?account"]
     assert [a["href"] for a in owner["next"] if a["blue"]] == ["/?mine"]
     assert "/?explore" not in [a["href"] for a in owner["links"]]
-    assert owner["lead"] == ("One step: name it, connect, paste the credential once. Private uploads appear in "
-                             "My runs. Choose Public when you want a run on the feed.")
+    assert owner["lead"] == ("Name the agent and create an upload key, then paste it into the agent once. Its uploads arrive as Only me in "
+                             "My runs. Nothing reaches the feed until you choose Public on a run.")
     assert {"href": "/?mine", "text": "My runs", "blue": False} in owner["links"]
-    assert "Private draft and publish for 30 days. Other audiences stay on Advanced Agents." in owner["hints"]
+    assert ("The key lets this agent save runs to your account as Only me for 30 days. It cannot make a run public or share it; "
+            "you choose the audience later. Revoke it here any time. Other audiences stay on Advanced Agents.") in owner["hints"]
     # Signed out, the same promise, the same destination, and nothing is created by looking.
     assert {"href": "/?mine", "text": "See my runs", "blue": False} in visitor["links"]
     assert "Private uploads appear in My runs. Choose Public to add one to the feed." in visitor["lead"]

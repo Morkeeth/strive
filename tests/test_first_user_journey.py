@@ -42,7 +42,7 @@ def test_signed_in_builder_lands_on_the_feed_not_a_tour():
     assert "function connectBodyHtml()" in INDEX
     assert "const capture=ONE_LINE('auto')" in INDEX
     assert "agentCommands:Object.fromEntries(['cursor','claude','codex'].map(h=>[h,picker(h)]))" in INDEX
-    assert '<details class="post-setup" id="post-setup"><summary><span>Import setup</span>' in POSTFLOW
+    assert '<details class="post-setup" id="post-setup" data-mcp-spec="${esc(mcpSpec)}" data-cursor-mcp-link="${esc(cursorMcpLink)}"><summary><span>Import setup</span>' in POSTFLOW
     assert POSTFLOW.index('class="post-source-grid"') < POSTFLOW.index('id="post-setup"') < POSTFLOW.index('<code class="c">${esc(capture)}</code>')
     # ba3cf50 moved the Grok Bot guide link from the page to the My runs empty state.
     assert "docs/GROK-PUSH.md" in PROGRESS

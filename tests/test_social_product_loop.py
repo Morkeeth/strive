@@ -38,7 +38,7 @@ def test_post_page_exposes_priority_harnesses_and_private_preview():
     assert page["setup"]["summary"] == "Import setupEditor plugins, terminal and other sources"
     assert "agentgrinder grind --harness auto --push" in page["setup"]["terminalCommand"]
     # Private preview: nothing is saved by looking, and a saved import starts as Only me.
-    assert page["intro"] == "Open a local session picker, then check your private preview. Nothing is saved online yet."
+    assert page["intro"] == "Choose your agent and copy one command. It opens a session list on your own computer; the session you pick opens here as a private preview. Nothing is saved online yet."
     assert page["hints"] == ["You can preview without signing in. Nothing is saved until you choose to save it."]
     assert '<option value="private" selected>Only me</option>' in importer
     assert "The run stays private unless you choose another audience and save." in importer
