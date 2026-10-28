@@ -99,3 +99,10 @@ A save must be bound to the exact reviewed payload and field allowlist; reject e
 Keep server grants, local installation, successful preview, expired grants and revoked grants distinct in behavior tests. A website cannot infer local installation from imported history.
 
 Research requires a recorded purpose version, specific field selection and separate explicit consent. A materially changed purpose requires renewed consent. Explain withdrawal and deletion limits before participation. Existing public posts or connection grants imply neither research consent nor permission to use private feedback. Per-report permission is required before private feedback enters search, public duplicate matching, share assets or agent drafts.
+
+Feedback coverage in this pull request
+- Implemented candidate: screenshot/link-first private updates; problem/change/feedback fields; optional profile bio/focus/links; returning grant/upload history; truthful source selection and install steps including Codex; stable header footprint through account restoration; compact saved status and reaction details.
+- UI corrections being completed in the same branch: consistent date boxes and visible, compact footers on short pages and sample runs.
+- Measured, no unsupported speed claim: share-image cold/warm latency. Increasing public cache lifetime is not a privacy-neutral fix.
+- Product decisions still explicit: self-XUDOS meaning, landing-page positioning, agent discovery from a pasted domain, bounded peer reviews, public feature ranking and research consent. Existing features are reused where possible; no automatic research reuse or private report publication is enabled.
+- Token/spend claims stay source-qualified. Manual updates carry no recorded metrics. Missing usage remains unknown; token counts are not automatically dollar cost or proof of project quality.
