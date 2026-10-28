@@ -42,6 +42,7 @@ w.confirm=()=>true;
 for(const f of ['project-update.js','feature-requests.js','research-consent.js','self-mark.js'])w.eval(readFileSync('site/'+f,'utf8'));
 const $=s=>w.document.querySelector(s),$$=s=>[...w.document.querySelectorAll(s)];
 const until=async(fn,what)=>{for(let i=0;i<200;i++){if(await fn())return;await new Promise(r=>setTimeout(r,10))}throw Error('Timed out: '+what)};
+const one_grant=async()=>{await asUser();await db.query("select strava.grant_research_consent('update_text')")};
 const n=async(q,p=[])=>{await db.exec('reset role');return (await db.query(q,p)).rows[0].n};
 const app=$('#app');let signIns=0;
 const mountBoard=async()=>{app.innerHTML='<div id="fr"></div>';await w.StriveRequests({client,me:()=>user?{id:user}:null,slot:$('#fr'),signIn:()=>signIns++})};
@@ -106,6 +107,16 @@ await w.StriveResearchConsent({client:absent,slot:$('#rc'),profileId:A});assert.
 await w.StriveRequests({client:absent,me:()=>({id:A}),slot:$('#fr')});assert.match($('#fr-list').textContent,/not available yet/);
 assert.equal(await w.StriveSelfMark.connect(absent,A),'device','self mark falls back to this browser, labelled as such');
 assert.equal(w.localStorage.length,0,'nothing was written to the browser');
+
+// A failed read is not "off": with a real consent on the account, a network error must not say so.
+user=A;await one_grant();
+const flaky={rpc:async()=>({data:null,error:{code:'',message:'Failed to fetch'}}),from:()=>{const q={select:()=>q,order:()=>q,eq:()=>q,not:()=>q,limit:()=>q,then:r=>r({data:null,error:{code:'',message:'Failed to fetch'}})};return q}};
+app.innerHTML='<section id="rc"></section>';await w.StriveResearchConsent({client:flaky,slot:$('#rc'),profileId:A});
+assert.match($('#rc').textContent,/could not be confirmed/);assert.doesNotMatch($('#rc').textContent,/stays off|\bOff\b/);
+// Self marks: a transient failure is 'unavailable', not the browser; tapping writes nothing anywhere.
+assert.equal(await w.StriveSelfMark.connect(flaky,A),'unavailable');
+await assert.rejects(w.StriveSelfMark.toggle(RUN),/could not be loaded/);assert.equal(w.localStorage.length,0);
+assert.equal(await w.StriveSelfMark.connect(null,null),'device');
 console.log('PASS request board, research consent and self mark against migrated SQL through the DOM');
 
 // Twenty buttons on one page share one load.

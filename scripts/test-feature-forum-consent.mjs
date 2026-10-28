@@ -42,6 +42,17 @@ async function suite(sql,label){
  for(const bad of [[{label:'x',url:'javascript:alert(1)'}],[{label:'x',url:'https://a.b',extra:1}],Array(6).fill({label:'x',url:'https://a.b'}),[{label:'x',url:'https://user@a.b'}]])
   await assert.rejects(db.query('select create_feature_request($1,$2,$3,$4)',[randomUUID(),'Valid title','Body',JSON.stringify(bad)]),/Evidence/,JSON.stringify(bad));
  await assert.rejects(db.query('select create_feature_request($1,$2,$3)',[randomUUID(),'abc','Body']),/title/);
+ // Missing keys, wrong types and non-arrays are false, never NULL.
+ await root(db);
+ const ok=async v=>(await one(db,'select strava.feature_evidence_ok($1::jsonb) as v',[v===undefined?null:JSON.stringify(v)])).v;
+ for(const bad of [[{url:'https://example.com',other:'x'}],[{label:'x',other:'y'}],[{label:null,url:'https://example.com'}],[{label:1,url:'https://example.com'}],[{label:'x',url:null}],[{label:'x',url:['https://example.com']}],[{label:'x'}],[{url:'https://example.com'}],[{}],['https://example.com'],[null],[1],
+   [{label:'x',url:'https://localhost/a'}],[{label:'x',url:'http://127.0.0.1/'}],[{label:'x',url:'http://thing.local/'}],[{label:'x',url:'https://api.internal/x'}],[{label:'x',url:'https://intranet/'}],[{label:'',url:'https://example.com'}]])
+  assert.equal(await ok(bad),false,JSON.stringify(bad));
+ for(const bad of ['x',1,true,{},{label:'x',url:'https://example.com'}])assert.equal(await ok(bad),false,'not an array: '+JSON.stringify(bad));
+ assert.equal(await ok(undefined),false,'SQL null');
+ assert.equal(await ok([]),true);assert.equal(await ok([{label:'Issue',url:'https://github.com/a/b/issues/1?x=1#y'}]),true);
+ await as(db,A);await assert.rejects(db.query('select create_feature_request($1,$2,$3,$4)',[randomUUID(),'Valid title','Body',JSON.stringify([{url:'https://example.com',other:'x'}])]),/Evidence/,'two keys but no label');
+ await assert.rejects(db.query('select create_feature_request($1,$2,$3,$4)',[randomUUID(),'Valid title','Body','"https://example.com"']),/Evidence/,'scalar evidence');
  await as(db,B);await assert.rejects(db.query('select create_feature_request($1,$2,$3)',[r1,'Steal the id','Body']),/already used/);
  // Clients cannot write the tables directly or move state.
  await assert.rejects(db.query("insert into feature_requests(id,author_profile,title,body) values($1,$2,'Direct insert','b')",[randomUUID(),B]));
@@ -91,6 +102,11 @@ async function suite(sql,label){
  await as(db,B);await assert.rejects(db.query('select vote_feature_request($1)',[posted.x.id]),/closed/);
  assert.equal((await all(db,'select id from feature_request_board()'))[0].id,r1,'closed requests sort after open ones');
 
+ // Closed or decided requests keep their thread and votes.
+ await root(db);await assert.rejects(db.query("select set_feature_request_state($1,'done')",[r1]),/Unknown state/);
+ await assert.rejects(db.query("select set_feature_request_state($1,'duplicate')",[r1]),/duplicate_of/);
+ await as(db,A);assert.equal((await db.query('delete from feature_requests where id=$1',[r1])).affectedRows,0,'no withdraw once planned');
+ await as(db,A);assert.equal((await db.query('delete from feature_votes where request_id=$1',[posted.x.id])).affectedRows,0,'no unvote once shipped');
  // Withdraw: only the author.
  const r2=randomUUID();await as(db,B);await one(db,'select create_feature_request($1,$2,$3)',[r2,'Temporary ask','Body']);
  await as(db,A);assert.equal((await db.query('delete from feature_requests where id=$1',[r2])).affectedRows,0);

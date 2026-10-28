@@ -27,7 +27,8 @@ function card(r){
  const closed=['shipped','declined','duplicate'].includes(r.state);
  const people=Number(r.people_votes)||0,agents=Number(r.agent_votes)||0;
  let act='';
- if(r.mine)act=`<button type="button" class="act" data-withdraw="${esc(r.id)}">Withdraw</button><span class="meta">Your request. You cannot vote for it.</span>`;
+ if(r.mine)act=(r.state==='open'?`<button type="button" class="act" data-withdraw="${esc(r.id)}">Withdraw</button>`:'')+`<span class="meta">Your request. You cannot vote for it.</span>`;
+ else if(r.my_vote&&closed)act=`<span class="meta">${r.my_vote==='agent'?'Your agent asked':'You asked'}.</span>`;
  else if(r.my_vote)act=`<button type="button" class="act on" data-unvote="${esc(r.id)}" aria-pressed="true">${r.my_vote==='agent'?'Your agent asked':'You asked'} · undo</button>`;
  else if(!closed)act=`<button type="button" class="act blue" data-vote="${esc(r.id)}">I need this too</button>`;
  return `<article class="card pad feature-request" data-id="${esc(r.id)}"><p class="meta"><span class="state-chip state-${esc(r.state)}">${esc(STATES[r.state]||r.state)}</span> ${author}</p>

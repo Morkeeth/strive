@@ -13,15 +13,23 @@
 -- public audience and a public agent profile, the same bar as an agent reply. No minting change.
 begin;
 
+-- Every check is written so a missing key or wrong type is false, never NULL: a NULL inside
+-- NOT EXISTS would let the item through. Hosts need a dotted public name; no IPs, localhost,
+-- .local or .internal, no credentials.
 create or replace function strava.feature_evidence_ok(evidence jsonb) returns boolean
 language sql immutable set search_path=strava,pg_temp as $$
- select jsonb_typeof(evidence)='array' and jsonb_array_length(evidence)<=5 and not exists(
-  select 1 from jsonb_array_elements(evidence) e
-  where jsonb_typeof(e)<>'object'
-   or jsonb_typeof(e->'label')<>'string' or char_length(e->>'label') not between 1 and 120
-   or jsonb_typeof(e->'url')<>'string' or char_length(e->>'url')>2048
-   or (e->>'url') !~ '^https?://[^/@[:space:]]+(/[^[:space:]]*)?$'
-   or (select count(*) from jsonb_object_keys(e))<>2)
+ select case
+  when evidence is null or jsonb_typeof(evidence) is distinct from 'array' then false
+  when jsonb_array_length(evidence)>5 then false
+  else not exists(select 1 from jsonb_array_elements(evidence) e where not coalesce(case
+   when jsonb_typeof(e) is distinct from 'object' then false
+   else (select coalesce(array_agg(k order by k),'{}')=array['label','url'] from jsonb_object_keys(e) k)
+    and jsonb_typeof(e->'label') is not distinct from 'string' and char_length(e->>'label') between 1 and 120
+    and jsonb_typeof(e->'url') is not distinct from 'string' and char_length(e->>'url')<=2048
+    and (e->>'url') ~* '^https?://[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}(:[0-9]{1,5})?([/?#][^[:space:]]*)?$'
+    and lower(substring(e->>'url' from '^[a-zA-Z]+://([^/:?#]+)')) !~ '(^|\.)(localhost|local|internal)$'
+   end,false))
+ end
 $$;
 
 create table if not exists strava.feature_requests (
@@ -63,14 +71,17 @@ create policy feature_requests_read on strava.feature_requests for select to ano
 -- An author may withdraw their own request. Its votes go with it.
 grant delete on strava.feature_requests to authenticated;
 drop policy if exists feature_requests_withdraw on strava.feature_requests;
+-- Only while open: once STRIVE has planned, built or answered it, the thread stays.
 create policy feature_requests_withdraw on strava.feature_requests for delete to authenticated
- using(author_profile=strava.grinder_profile_id());
+ using(author_profile=strava.grinder_profile_id() and state='open');
 -- A person can see and remove only their own vote.
 grant select, delete on strava.feature_votes to authenticated;
 drop policy if exists feature_votes_own on strava.feature_votes;
 create policy feature_votes_own on strava.feature_votes for select to authenticated using(voter_profile=strava.grinder_profile_id());
 drop policy if exists feature_votes_unvote on strava.feature_votes;
-create policy feature_votes_unvote on strava.feature_votes for delete to authenticated using(voter_profile=strava.grinder_profile_id());
+-- A vote can be taken back while the request is still being decided, not after it closed.
+create policy feature_votes_unvote on strava.feature_votes for delete to authenticated using(voter_profile=strava.grinder_profile_id()
+ and exists(select 1 from strava.feature_requests r where r.id=request_id and r.state in ('open','planned','building')));
 
 -- Shared write path for people and agents. Not callable by clients directly.
 create or replace function strava.feature_write(owner uuid, actor strava.grinder_agents, action text, p_id uuid, payload jsonb)
@@ -195,6 +206,8 @@ grant execute on function strava.feature_request_board(text,integer,integer) to 
 create or replace function strava.set_feature_request_state(p_id uuid, p_state text, p_note text default null, p_duplicate_of uuid default null)
 returns void language plpgsql security definer set search_path=strava,pg_temp as $$
 begin
+ if p_state is null or p_state not in ('open','planned','building','shipped','declined','duplicate') then raise exception 'Unknown state %',p_state using errcode='22023'; end if;
+ if (p_state='duplicate')<>(p_duplicate_of is not null) then raise exception 'A duplicate needs duplicate_of, and only a duplicate has one' using errcode='22023'; end if;
  update strava.feature_requests set state=p_state,state_note=p_note,duplicate_of=p_duplicate_of,state_changed_at=clock_timestamp() where id=p_id;
  if not found then raise exception 'Request unavailable' using errcode='P0002'; end if;
 end $$;

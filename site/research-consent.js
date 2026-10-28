@@ -19,7 +19,7 @@ async function StriveResearchConsent({client,slot,profileId,current=()=>true,dow
    client.from('research_consents').select('id,scope,project,granted_at,revoked_at').order('granted_at',{ascending:false}),
    client.from('runs').select('project').eq('profile_id',profileId).not('project','is',null).limit(500)]);
   if(!current())return;
-  if(error){slot.innerHTML=`<h2 id="account-research-title">Research use</h2><p>${missing(error)?'Research choices are not available yet. Nothing is recorded, and research use stays off.':'Research choices could not load. Reload to try again. Research use stays off.'}</p>`;return}
+  if(error){slot.innerHTML=`<h2 id="account-research-title">Research use</h2><p>${missing(error)?'Research choices are not available yet. Nothing is recorded, and research use stays off.':'Your research choice could not be confirmed right now. It is unchanged: if you allowed research use before, it is still allowed. Reload to check.'}</p>`;return}
   const active=rows.filter(r=>!r.revoked_at),ended=rows.filter(r=>r.revoked_at);
   const projects=[...new Set((runs||[]).map(r=>r.project).filter(Boolean))].sort();
   slot.innerHTML=`<h2 id="account-research-title">Research use</h2>
