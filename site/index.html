@@ -2204,7 +2204,7 @@ async function viewPost(){
   $('app').innerHTML=`<div class="head post-page-head"><h1>Add a project update</h1><span class="meta">Start with a screenshot or link. Recorded agent sessions are optional.</span></div>
     ${postComposerHtml()}
     <details class="recorded-update-entry"><summary>Use a recorded agent session instead</summary>${connectBodyHtml()}</details>
-    ${ME?'':'<div class="panel pad auth-empty"><h3>Sign in to save</h3><p>Preview a project update or recorded session without an account. Sign in when you choose to save privately.</p><button id="post-signin" class="act blue">'+signInLabel()+'</button></div>'}`;
+    ${ME?'':'<div class="panel pad auth-empty"><h3>No account needed to start</h3><p>Preview a project update or recorded session without an account. Sign in when you choose to save privately.</p><button id="post-signin" class="act blue">'+signInLabel()+'</button></div>'}`;
   wireComposer();
   if(window.GrinderDropinUI) GrinderDropinUI.mount({privateFirst:true,post:token=>{history.pushState(null,'','/#import='+token);route();}});
   $('select-export')?.addEventListener('click',event=>{event.preventDefault();$('drop-file')?.click()});

@@ -13,12 +13,16 @@ def view_post_head():
 
 def test_add_run_page_names_connect_your_agent():
     head = view_post_head()
-    assert "<h1>Add a run</h1>" in head
-    assert "Connect your agent" in head
+    assert "<h1>Add a project update</h1>" in head
+    assert "Recorded agent sessions are optional" in head
 
 
 def test_add_run_page_links_the_install_guide():
-    assert 'href="/install"' in view_post_head()
+    body = INDEX.split("async function viewPost(){", 1)[1].split("\n}\n", 1)[0]
+    assert '<details class="recorded-update-entry">' in body
+    assert "Use a recorded agent session instead" in body
+    assert "${connectBodyHtml()}" in body
+    assert 'href="/install"' in INDEX
 
 
 def test_sign_in_panel_says_it_is_not_needed_to_start():
@@ -26,7 +30,7 @@ def test_sign_in_panel_says_it_is_not_needed_to_start():
     body = INDEX.split("async function viewPost(){", 1)[1].split("\n}\n", 1)[0]
     panel = body.split('<div class="panel pad auth-empty">', 1)[1].split("</div>", 1)[0]
     assert "No account needed to start" in panel
-    assert panel.index("No account needed to start") < panel.index("Sign in to save the run")
+    assert panel.index("No account needed to start") < panel.index("Sign in when you choose to save privately.")
 
 
 def test_empty_feed_points_to_add_run():

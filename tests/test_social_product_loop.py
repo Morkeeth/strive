@@ -16,7 +16,9 @@ def test_post_page_exposes_priority_harnesses_and_private_preview():
     importer = INDEX[INDEX.index("async function importRun(){") : INDEX.index("async function viewShareRun(")]
     assert "${connectBodyHtml()}" in block
     assert "capture → preview → share" not in block
-    assert "Add a run" in block
+    assert "Add a project update" in block
+    assert "${postComposerHtml()}" in block
+    assert "wireComposer();" in block
     # Draw the page body with the shipped code (site/post-flow.js since b803b86).
     page = json.loads(subprocess.check_output(
         ["node", str(ROOT / "tests/fixtures/connect_body_probe.mjs"), str(ROOT)], cwd=ROOT, text=True))

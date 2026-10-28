@@ -50,7 +50,7 @@ def test_signed_in_builder_lands_on_the_feed_not_a_tour():
 
 def test_zero_run_surfaces_connect_and_deliberate_save():
     assert "Preview stays private on this device" not in INDEX
-    assert "Sign in to save the run and choose who can read it." in INDEX
+    assert "Sign in when you choose to save privately." in INDEX
     assert "Your first run starts private" in PROGRESS
     assert 'href="/?connect">Connect an agent</a>' in PROGRESS
     assert "Private uploads appear here" in PROGRESS
