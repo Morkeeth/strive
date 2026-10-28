@@ -150,7 +150,7 @@ def test_neutral_body_has_one_message_without_repeating_the_og_card():
 
 
 def test_public_page_exposes_recorded_metrics_as_readable_html():
-    # The public page shows up to three recorded facts in a large stats row.
+    # The project story leads; up to three known recorded facts remain readable below it.
     row = {"id": MISSING, "visibility": "public", "title": "A real sitting",
            "caption": "Built the import.\nThen checked the save.",
            "prompts": 6, "tool_calls": 0, "ridge_tool_calls": 28,
@@ -166,7 +166,14 @@ def test_public_page_exposes_recorded_metrics_as_readable_html():
     assert 'href="/builder"' in visible
     assert 'aria-label="STRIVE home"' in visible
     assert '♥ XUDOS' in visible and 'Comments' in visible
-    assert 'class="share-quote"' in visible
+    # Context is shown once as authored highlights, not repeated as a quote hero.
+    assert 'aria-label="Project highlights"' in visible
+    assert visible.count('Built the import.') == 1
+    assert 'Then checked the save.' in visible
+    assert 'class="share-quote"' not in visible
+    highlights = visible.index('aria-label="Project highlights"')
+    facts = visible.index('aria-label="Recorded facts"')
+    assert highlights < facts
 
 
 def test_unrecorded_metrics_are_not_guessed_and_recorded_zero_is_preserved():
@@ -204,7 +211,10 @@ def test_public_page_keeps_og_preview_but_draws_the_activity_line_natively():
            "ridge_basis": "turn-order", "commit_bins": [12]}
     page = serve(MISSING, [row])["body"]
     visible = body(page)
-    assert 'class="share-quote"' in visible
+    # A title-only record stays readable without inventing project context or a quote.
+    assert '<h1>Measured run</h1>' in visible
+    assert 'class="share-quote"' not in visible
+    assert 'aria-label="Project highlights"' not in visible
     assert 'property="og:image"' in page and 'name="twitter:image"' in page
     assert '<div class="share-route-bars"' in visible
     assert 'Open in STRIVE' in visible

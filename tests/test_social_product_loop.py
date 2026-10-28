@@ -54,9 +54,12 @@ def test_card_shows_builder_project_session_caption_and_output():
         assert field in card
     assert "Open ${esc(ridgeOutput||'output')}" in card
     assert "chosenRunHero" in card
-    # The author's words come first. Since 5fba4b2 the recorded facts sit between the caption
-    # and the visual (before that the visual came second).
-    assert card.index("${r.caption?") < card.index("${metricStrip()}") < card.index("${visual}")
+    # Authored highlights (or the existing context/missing-description fallback) lead.
+    # Recorded facts and the activity visual remain supporting evidence.
+    assert 'StriveStory.highlights(r,' in card
+    assert 'highlights||StriveContext.context(r,' in card
+    order = [card.index(mark) for mark in ('${projectContext}', '${metricStrip()}', '${visual}')]
+    assert order == sorted(order)
     assert ">Project<" in card
     assert "Code activity" in card
     # The fold was "Explore this run" until 00bdaf8 renamed it for what it holds.
