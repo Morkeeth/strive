@@ -323,6 +323,10 @@
         if (str(patch.avatar_url) && !a) throw fail({ code: "23514", message: "check constraint avatar" });
         row.avatar_url = a;
       }
+      if (patch.profile_details !== undefined) {
+        const validator = typeof module !== 'undefined' && module.exports ? require('./project-update.js') : globalThis.StriveProjectUpdate;
+        row.rig = {...(p.rig || {}), profile_details: validator.details(patch.profile_details)};
+      }
       if (!Object.keys(row).length) return p;
       const { error } = await client.from("profiles").update(row).eq("id", p.id).select("id").single();
       if (error) throw fail(error);

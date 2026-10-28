@@ -484,7 +484,7 @@
     ${page||checkpoints||r.capture_metadata?`${context?.headlineHtml?.(r,'fc-activity-stats',{preview})||''}${context?.cardSecondary?.(r,{commits:true,preview})||''}`:''}
     ${story?story.visual(r):''}
     ${r.feedback_question?`<p class="fc-question"><span>Feedback welcome</span>${esc(r.feedback_question)}</p>`:''}
-    ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Typed by the author. No capture.</p>' : ''}${evidence&&!page&&!preview?evidence.summary(r):''}
+    ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author' ? '<p class="fc-source">Manual · unmeasured. Provided by the author.</p>' : ''}${evidence&&!page&&!preview?evidence.summary(r):''}
     ${page&&context?`<details class="public-receipts"><summary>Receipts and scope</summary>${context.context(r,{shownText:cardSummary(r)})}</details>`:''}
     <div class="fc-route-secondary">${checkpoints?"":(page?(typeof module!=="undefined"&&module.exports?require("./activity-post.js"):root.StrivePost)?.trail(r)||"":heroVisual(r))}</div>
     ${checkpoints||preview?'':`<p class="fc-open">Open the story →</p>`}
