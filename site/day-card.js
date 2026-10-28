@@ -323,6 +323,10 @@
   // choices only: it never touches a run and never changes who can see one.
   // The state is one of four words, shown beside the buttons: saved, unsaved, saving, error.
   let pending=null;
+  // Oscar, 25 Oct: "Automatic framing, don't display the options for the user." 26 Oct, on this form: "why would
+  // the user need to switch if it's data, photo, or screenshot ... Why are we giving so many options?" The form
+  // asks for a headline, the projects and a picture. The kind of visual follows the picture, framing is automatic,
+  // and order, numbers, highlights and per-page pictures keep whatever was saved before.
   function mountSetup({slot,model,tokens,saved,esc,save,renderOpts,readerHref,onPreview,photos,menu=null,focusOn=''}){
     const all=model.groups.filter(g=>g.label),tk=g=>tokens.get(g.label)||'',name=t=>all.find(g=>tk(g)===t).label;
     let projectVisuals={},visualTarget='',globalVisual=null,visualTouched=false;
@@ -337,20 +341,9 @@
     slot.innerHTML=`<div class="head cs-head"><h1>Edit card</h1>${ownerMenu(menu,esc,focusOn==='visual'?'visual':'edit')}</div>
       <p class="hint">This changes what the card shows and in which order. It changes no measurement and it shares nothing: who can see a run is set under Sharing.</p>
       <div class="card ds-form"><h2>Headline of the overview</h2><input id="cs-title" class="cs-title" maxlength="140" placeholder="Left empty: One run across the number of projects" aria-label="Headline of the overview"><h2>Projects</h2><ol class="cs-list" id="cs-list"></ol>
-        <h2 id="visual" tabindex="-1">Main visual <span class="meta">one per page</span></h2>
-        <label>Choose a page<select id="cs-visual-target"><option value="">Overview and default picture</option>${all.map(g=>`<option value="${tk(g)}">${esc(g.label)}</option>`).join('')}</select></label>
-        <div class="cs-modes" role="radiogroup" aria-label="Main visual">
-          <label class="cs-mode"><input type="radio" name="cs-visual" value="data"> <b>Data</b><span>The measured trace of the sessions and commits. Nothing to add.</span></label>
-          <label class="cs-mode"><input type="radio" name="cs-visual" value="photo"> <b>Photo</b><span>A photograph you took. It fills the frame, cropped where you say. It is atmosphere, not proof.</span></label>
-          <label class="cs-mode"><input type="radio" name="cs-visual" value="screenshot"> <b>Screenshot</b><span>A capture of a screen. It is shown whole, never cropped.</span></label></div>
-        <button type="button" class="act" id="cs-default">Use default visual</button>
+        <h2 id="visual" tabindex="-1">Picture</h2>
         <p class="hint" id="cs-visual-note" role="status" aria-label="What the card will show"></p>
         <div id="cs-photos"></div>
-        <div class="cs-frame" id="cs-frame" role="radiogroup" aria-label="Part of the photo to keep in the frame"><span class="meta">Keep in the frame</span>${Object.keys(FOCUS).map(k=>`<label><input type="radio" name="cs-focus" value="${k}"> ${k==='center'?'Centre':k[0].toUpperCase()+k.slice(1)}</label>`).join('')}</div>
-        <label class="cs-opt" id="cs-hero-row"><input type="checkbox" id="cs-hero"> Lead the overview with this picture too. Left off, the overview keeps the measured trace.</label>
-        <h2>Numbers on the run's view <span class="meta">up to three</span></h2><div class="cs-facts" data-k="whole"></div>
-        <h2>Numbers on a project's view <span class="meta">up to three</span></h2><div class="cs-facts" data-k="project"></div>
-        <label class="cs-opt"><input type="checkbox" id="cs-high"> Show short highlights under the result</label>
         <div class="dd-foot cs-foot"><button type="button" class="act blue" id="cs-save">Save</button><button type="button" class="act" id="cs-cancel">Cancel</button><span id="cs-state" class="cs-state" role="status" aria-label="Save state" data-state="saved"></span>${readerHref?`<a href="${esc(readerHref)}">Preview as reader</a>`:''}</div></div>
       <div class="head"><h2>Preview</h2><span class="meta">the card as it will show, not saved until you press Save</span></div><div id="cs-preview" role="region" aria-label="Preview of the card"></div>`;
     wireMenu(slot);
@@ -370,34 +363,22 @@
     }
     function paint(){
       keepVisual();
-      slot.querySelector('#cs-title').value=title;slot.querySelector('#cs-visual-target').value=visualTarget;slot.querySelector('#cs-default').hidden=!visualTarget;slot.querySelector('#cs-default').disabled=!projectVisuals[visualTarget];
-      list.innerHTML=order.map((t,i)=>`<li data-t="${t}"><label><input type="checkbox" data-inc ${hidden.has(t)?'':'checked'} aria-label="Include ${esc(name(t))}"> <b>${esc(name(t))}</b></label>
-        <label class="cs-lead"><input type="radio" name="cs-lead" value="${t}" ${lead===t&&!hidden.has(t)?'checked':''} ${hidden.has(t)?'disabled':''}> main project</label>
-        <span class="cs-move"><button type="button" data-move="-1" ${i===0?'disabled':''} aria-label="Move ${esc(name(t))} up">↑</button><button type="button" data-move="1" ${i===order.length-1?'disabled':''} aria-label="Move ${esc(name(t))} down">↓</button></span></li>`).join('');
-      slot.querySelector('#cs-high').checked=highlights;
-      slot.querySelectorAll('.cs-facts').forEach(box=>{const k=box.dataset.k;box.innerHTML=Object.entries(FACTS).filter(([,f])=>k==='whole'||!f.whole).map(([id,f])=>`<label class="cs-opt"><input type="checkbox" data-fact="${id}" ${facts[k].includes(id)?'checked':''} ${!facts[k].includes(id)&&facts[k].length>=3?'disabled':''}> ${esc(f.label)}</label>`).join('')});
-      // The visual: the mode the author asked for, and what the card can honestly show with it.
-      const shown=photo?visualKind:'data';slot.querySelectorAll('[name=cs-visual]').forEach(r=>{r.checked=r.value===visualKind});
-      slot.querySelectorAll('[name=cs-focus]').forEach(r=>{r.checked=r.value===focus});slot.querySelector('#cs-frame').hidden=shown!=='photo';
-      slot.querySelector('#cs-hero').checked=hero;slot.querySelector('#cs-hero-row').hidden=!!visualTarget||shown==='data';
-      slot.querySelector('#cs-visual-note').textContent=visualKind==='data'?(photo?'The card shows the measured trace. Your picture stays chosen in case you switch back.':'The card shows the measured trace.')
-        :photo?(visualKind==='photo'?'The photo leads the page of its own project. Check the crop in the preview below.':'The screenshot leads the page of its own project, shown whole.')+(lone()?' Its run is Only you, so readers get the measured trace instead. The preview below shows it to you alone.':'')
-        :'Pick a picture below. Until then the card keeps the measured trace, and nothing stops you saving.';
-      if(visualTarget&&!projectVisuals[visualTarget]&&!visualTouched)slot.querySelector('#cs-visual-note').textContent='Using the default visual for this project. Choose a picture or Data to override it.';
-      if(!visualTarget&&Object.keys(projectVisuals).length){const own=all.find(g=>g.runs.some(i=>i.run.id===photo?.run)||g.marks.some(m=>m.run.id===photo?.run));if(own&&projectVisuals[tk(own)]&&visualKind!=='data')slot.querySelector('#cs-visual-note').textContent='This default picture is overridden on its project page. It can still lead the overview if you choose that below.';else slot.querySelector('#cs-visual-note').textContent+=' Projects with their own choice keep that choice.';}
+      slot.querySelector('#cs-title').value=title;
+      list.innerHTML=order.map(t=>`<li data-t="${t}"><label><input type="checkbox" data-inc ${hidden.has(t)?'':'checked'} aria-label="Include ${esc(name(t))}"> <b>${esc(name(t))}</b></label>
+        <label class="cs-lead"><input type="radio" name="cs-lead" value="${t}" ${lead===t&&!hidden.has(t)?'checked':''} ${hidden.has(t)?'disabled':''}> main project</label></li>`).join('');
+      // What the card will show follows the picture: none keeps the measured trace, a personal photo fills the frame,
+      // anything else is a screenshot shown whole. Framing is automatic.
+      slot.querySelector('#cs-visual-note').textContent=photo
+        ?(lone()?'This picture leads its project page for you. Its run is Only you, so readers get the measured trace instead.':'This picture leads its project page, framed automatically.')
+        :'No picture chosen: the card shows the measured trace.';
       preview();mark();
     }
     slot.querySelector('#cs-title').addEventListener('input',e=>{title=e.target.value.replace(/\s+/g,' ').trim().slice(0,140);preview();mark()});
     slot.addEventListener('change',e=>{if(e.target.id==='cs-title')return;const t=e.target,li=t.closest('li[data-t]');
-      if(t.id==='cs-visual-target'){keepVisual();visualTarget=t.value;visualTouched=false;const v=visualTarget?(projectVisuals[visualTarget]||{photo:null,visual:'data',focus:'center'}):globalVisual;photo=v.photo;visualKind=v.visual;focus=v.focus;mountPhotos();paint();return}
       if(t.dataset.inc!==undefined){t.checked?hidden.delete(li.dataset.t):hidden.add(li.dataset.t)}
-      else if(t.name==='cs-lead'){lead=t.value}else if(t.id==='cs-high'){highlights=t.checked}else if(t.id==='cs-hero'){hero=t.checked}
-      else if(t.name==='cs-visual'){visualKind=t.value;visualTouched=true}else if(t.name==='cs-focus'){focus=t.value;visualTouched=true}
-      else if(t.dataset.fact){const k=t.closest('.cs-facts').dataset.k;facts[k]=t.checked?[...facts[k],t.dataset.fact].slice(0,3):facts[k].filter(f=>f!==t.dataset.fact)}
+      else if(t.name==='cs-lead'){lead=t.value}
       else return;paint()});
-    slot.addEventListener('click',async e=>{const m=e.target.closest('[data-move]');
-      if(m){const li=m.closest('li'),i=order.indexOf(li.dataset.t),j=i+ +m.dataset.move;if(j<0||j>=order.length)return;[order[i],order[j]]=[order[j],order[i]];paint();slot.querySelector(`li[data-t="${order[j]}"] [data-move="${m.dataset.move}"]`)?.focus();return}
-      if(e.target.id==='cs-default'){delete projectVisuals[visualTarget];visualTouched=false;photo=null;visualKind='data';focus='center';mountPhotos();paint();return}
+    slot.addEventListener('click',async e=>{
       if(e.target===cancelBtn){load(kept);state='saved';failure='';paint();mountPhotos();return}
       if(e.target===saveBtn){const sending=current();state='saving';mark();let error;try{error=await save(sending)}catch(err){error=String(err&&err.message||err||'the service could not be reached')}
         if(error){state='error';failure=String(error).replace(/[.\s]+$/,'')}else{state='saved';kept=sending;base=JSON.stringify(sending)}mark()}});
@@ -407,7 +388,7 @@
     paint();
     // A picture is picked from the pictures already on these runs. One the author marked as a personal photo starts
     // as a photo, any other starts as a screenshot, shown whole. Both are the author's own earlier words and both can be changed above.
-    function mountPhotos(){if(photos)repaintPhotos=photos(slot.querySelector('#cs-photos'),all.filter(g=>!visualTarget||tk(g)===visualTarget).flatMap(g=>[...g.runs.map(i=>i.run),...g.marks.map(m=>m.run)].map(r=>({id:r.id,label:g.label}))),photo,(pick,meta)=>{visualTouched=true;photo=pick;if(pick&&visualKind==='data')visualKind=meta&&meta.role==='personal'?'photo':'screenshot';paint()});}
+    function mountPhotos(){if(photos)repaintPhotos=photos(slot.querySelector('#cs-photos'),all.filter(g=>!visualTarget||tk(g)===visualTarget).flatMap(g=>[...g.runs.map(i=>i.run),...g.marks.map(m=>m.run)].map(r=>({id:r.id,label:g.label}))),photo,(pick,meta)=>{visualTouched=true;photo=pick;visualKind=!pick?'data':meta&&meta.role==='personal'?'photo':'screenshot';paint()});}
     mountPhotos();
     if(focusOn==='visual'){const h=slot.querySelector('#visual');h.scrollIntoView({block:'start'});h.focus({preventScroll:true})}
     return {state:()=>state,current};
