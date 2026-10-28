@@ -23,19 +23,20 @@ function context(r,{shownText=''}={}){const goal=String(r.caption||r.note||'').t
 if(result&&result===String(shownText).trim())return '';
 if(!result)return goal?'':'<p class="meta run-context-none">The author has not described this run. Activity alone cannot tell us what was achieved.</p>';
 return `<section class="run-context" aria-label="What changed"><h3>What changed</h3><p>${esc(result)}</p></section>`;}
-function setup(r){let m=null;try{m=validate(r.capture_metadata)}catch{}
+function setup(r){if(r.trace_basis==='typed-by-author')return '';let m=null;try{m=validate(r.capture_metadata)}catch{}
  const recorded=m?.models?.length?[...new Set(m.models)]:[];
  const models=recorded.length?modelNames(r,m).join(', '):'Unknown — not recorded';
  const harness=(agents()?.agentName(r.harness))||r.harness||'Unknown — not recorded';
  const total=m&&count(m.input_tokens)&&count(m.output_tokens)?(m.input_tokens+m.output_tokens).toLocaleString('en-US'):'Unknown — not recorded';
  return `<section class="run-setup" aria-label="Models and usage"><h3>Models and usage</h3><dl class="run-evidence-facts"><div><dt>Platform / harness</dt><dd>${esc(harness)}</dd></div><div><dt>Recorded models</dt><dd>${esc(models)}</dd></div><div><dt>Recorded tokens</dt><dd>${esc(total)}</dd></div>${r.model?`<div><dt>Author’s model label</dt><dd title="${esc(r.model)}">${esc(agents()?.modelName(r.model)||r.model)}</dd></div>`:''}</dl><details><summary>Where these numbers come from</summary><p>Model names and usage come from the imported capture. STRIVE has not verified them with the provider.${m?' Source: '+esc(m.basis)+'.':''}${recorded.length?' Recorded as '+esc(recorded.join(', '))+'.':''}</p>${total.startsWith('Unknown')?'<p>This capture does not include complete input and output token counts.</p>':`<p>${m.input_tokens.toLocaleString('en-US')} input + ${m.output_tokens.toLocaleString('en-US')} output tokens. Cached input and reasoning tokens are already included, and are not added again. Only calls with recorded usage are included; missing usage remains unknown. This is not a bill or a measure of wasted work.</p>`}</details></section>`;
 }
-function metrics(r){const rows=[['Human messages',r.prompts??r.turns_typed,'Messages typed or queued by a person; excludes tool results and injected context.'],['Tool requests',r.tool_calls??r.ridge_tool_calls,'Requests the agent made to tools. A request does not prove a successful action.'],['Files present after writes',r.artifacts_produced,'Files the capture says were written and existed when checked. This does not prove they work.']].filter(x=>count(x[1]));
+function metrics(r){if(r.trace_basis==='typed-by-author')return '';const rows=[['Human messages',r.prompts??r.turns_typed,'Messages typed or queued by a person; excludes tool results and injected context.'],['Tool requests',r.tool_calls??r.ridge_tool_calls,'Requests the agent made to tools. A request does not prove a successful action.'],['Files present after writes',r.artifacts_produced,'Files the capture says were written and existed when checked. This does not prove they work.']].filter(x=>count(x[1]));
  if(count(r.claims_verified)&&count(r.claims))rows.push(['Claims with matching evidence',`${r.claims_verified} of ${r.claims}`,'An automatic rule found evidence in the same turn as a claim. It does not establish successful work or independently verify the claim.']);
  return rows.length?`<section class="run-measurements"><h3>Recorded activity</h3>${rows.map(([label,value,why])=>`<details><summary>${esc(label)}: <strong>${esc(value)}</strong></summary><p>${esc(why)}</p></details>`).join('')}</section>`:'';
 }
 // Only stored, validated inputs can supply optional estimate metrics.
 function cardFacts(r){
+ if(r.trace_basis==='typed-by-author')return [];
  let m=null,inconsistent=false;try{m=validate(r.capture_metadata)}catch{inconsistent=true}
  const total=m&&count(m.input_tokens)&&count(m.output_tokens)?m.input_tokens+m.output_tokens:null;
  const number=v=>v.toLocaleString('en-US');
@@ -49,6 +50,7 @@ function cardFacts(r){
  ];
 }
   function shareFacts(run){
+    if(run.trace_basis==='typed-by-author')return [];
     const recorded=cardFacts(run)||[],find=label=>recorded.find(r=>r[0]===label);
     let m;try{m=validate(run.capture_metadata)}catch{}
     const source=m?.estimates?.source;
@@ -60,6 +62,7 @@ function cardFacts(r){
 // The three facts a card shows, the same pick as the share page: tokens, est. dollars, elapsed,
 // then you typed, model, files changed. A missing fact is left out, never shown as 'Not recorded'.
 function shownFacts(run){
+ if(run.trace_basis==='typed-by-author')return [];
  const all=shareFacts(run),card=cardFacts(run)||[],get=(rows,label)=>rows.find(row=>row[0]===label),known=row=>row&&typeof row[1]==='string'&&row[1]&&row[1]!=='Not recorded';
  const agents=root.StriveAgents||(typeof require==='function'?require('./agent-names.js'):null),names=agents?.recordedModels?.(run)?.map(m=>m.name).join(', ')||(run.model?agents?.modelName?.(run.model):'');
  const model=names?['Model',names,'Model names from the capture.']:get(all,'Model');
@@ -70,6 +73,7 @@ function shareHtml(run){const rows=shownFacts(run);return rows.length?'<dl class
 // Three headline facts from the same run; elapsed span is never active time.
 const meanings={'Recorded tokens':'Text the model read and wrote.','Typed turns':'Messages you wrote.','Tool calls':'Actions the agent took.','Files touched':'Files the capture says it changed.','Commits':'Git commits recorded in this capture.','Est. dollars':'List-price cost of the recorded model usage.','Tool-active time · proxy':'Minutes with at least one recorded agent tool action.','Elapsed':'Time between the first and last captured event, including waiting.'};
 function headlineFacts(r,{preview=false}={}){
+ if(r.trace_basis==='typed-by-author')return [];
  const facts=cardFacts(r),known=label=>facts.find(row=>row[0]===label&&row[1]!=='Not recorded');
  const numeric=(label,value)=>count(value)?[label,value.toLocaleString('en-US'),meanings[label]]:null;
  const missing=label=>[label,'Not captured',meanings[label]+' This run does not include it.','missing'];
@@ -84,6 +88,7 @@ function headlineFacts(r,{preview=false}={}){
 }
 
 function headlineHtml(r,className='post-facts',{preview=false,omitUnknown=false}={}){
+ if(r.trace_basis==='typed-by-author')return '';
  const rows=headlineFacts(r,{preview}).filter(row=>!omitUnknown||row[3]!=='missing');
  if(omitUnknown&&!rows.length)return '';
  const tokenNote=!preview&&rows[0]?.[0]==='Typed turns'?`<p class="post-token-note">${r.capture_metadata?.basis==='cursor-model-info'?(preview?'This source does not record tokens':'Cursor does not record tokens'):'This capture does not include tokens'}</p>`:'';
@@ -94,6 +99,7 @@ function headlineHtml(r,className='post-facts',{preview=false,omitUnknown=false}
 }
 function factLabel(label){return esc(label.replace(' · proxy',''))+(label==='Est. dollars'?'<sup aria-label="See measurement basis">*</sup>':'');}
 function cardSecondary(r,{commits=false,preview=false,omitUnknown=false}={}){
+ if(r.trace_basis==='typed-by-author')return '';
  const facts=cardFacts(r),model=facts.find(row=>row[0]==='Model'),names=agents(),who=names?.agent(r.harness);
  const harness=who?.name||({codex:'Codex',claude:'Claude Code','claude code':'Claude Code',cursor:'Cursor','grok bot':'Grok Bot'})[String(r.harness||'').toLowerCase()]||r.harness||'Agent';
  const glyph=({Codex:'M5 8l5 4-5 4m8 0h6',Cursor:'M6 4l13 9-7 1-3 6z','Claude Code':'M12 3v18M3 12h18M5 5l14 14M5 19L19 5'})[harness]||'M5 5h14v14H5z';
@@ -110,7 +116,7 @@ function measurementNotes(r){
  const facts=[...new Map([...cardFacts(r),...headlineFacts(r)].map(row=>[row[0],row])).values()];
  return [...facts.filter(row=>row[2]).map(([label,,detail])=>[label,detail]),...missing];
 }
-function measurementDetails(r,{preview=false}={}){const evidence=preview?(root.StriveEvidence||(typeof require==='function'?require('./run-evidence.js'):null)):null,provenance=root.StriveProvenance||(typeof require==='function'?require('./provenance.js'):null),promptLine=provenance?.line?.(r.prompt_provenance)||'';return `<details class="post-measurement-note"><summary>About these measurements</summary>${evidence?`<p>${esc(evidence.basis(r).explanation)}</p>`:''}${promptLine?`<p><strong>Prompt origins.</strong> ${esc(promptLine)}</p>`:''}${measurementNotes(r).map(([label,detail])=>`<p><strong>${esc(label)}.</strong> ${esc(detail)}</p>`).join('')}</details>`;}
+function measurementDetails(r,{preview=false}={}){if(r.trace_basis==='typed-by-author')return '';const evidence=preview?(root.StriveEvidence||(typeof require==='function'?require('./run-evidence.js'):null)):null,provenance=root.StriveProvenance||(typeof require==='function'?require('./provenance.js'):null),promptLine=provenance?.line?.(r.prompt_provenance)||'';return `<details class="post-measurement-note"><summary>About these measurements</summary>${evidence?`<p>${esc(evidence.basis(r).explanation)}</p>`:''}${promptLine?`<p><strong>Prompt origins.</strong> ${esc(promptLine)}</p>`:''}${measurementNotes(r).map(([label,detail])=>`<p><strong>${esc(label)}.</strong> ${esc(detail)}</p>`).join('')}</details>`;}
 function prepareForStorage(m){return estimates()?.prepare(m)||m;}
 function profileFacts(runs){
  const rows=[...new Map((runs||[]).map((r,i)=>[r.id||'row-'+i,r])).values()];

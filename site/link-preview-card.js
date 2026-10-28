@@ -25,6 +25,7 @@ const ridgeSeries=run=>{
  return{values,label:run.trace_basis==='observed native events; timestamps unavailable'?'Observed message order':'Agent ridge',filled:true};
 };
 const series=run=>{
+ if(run.trace_basis==='typed-by-author')return null;
  const ridge=ridgeSeries(run);
  if(ridge)return ridge;
  // A legacy rhythm remains readable when no ridge bins exist. A flat all-zero leftover rhythm is
@@ -95,11 +96,12 @@ const dayOf=run=>{const t=Date.parse(run.started_at||run.created_at);if(!Number.
 // PRODUCT.md: at most three recorded facts, in its order — commits, the labelled elapsed span and
 // files touched. Tool-call and turn totals are not hero facts. A recorded zero is left off, and a
 // field the row did not record is never drawn.
-const previewMetrics=run=>[['Commits',run.commits],['Elapsed',shareDuration(run.wall_time_s??run.duration_s)],['Files',run.files_touched]]
+const previewMetrics=run=>run.trace_basis==='typed-by-author'?[]:[['Commits',run.commits],['Elapsed',shareDuration(run.wall_time_s??run.duration_s)],['Files',run.files_touched]]
  .filter(([,value])=>typeof value==='string'?value.length>0:Number.isFinite(value)&&value>0)
  .map(([label,value])=>[label,typeof value==='number'?value.toLocaleString('en-US'):value]);
 // The agent and its recorded models, by the names a person reads, each with its maker.
 function tools(run){
+ if(run.trace_basis==='typed-by-author')return [];
  const names=agents();
  const all=[run.harness?names?names.agent(run.harness):{name:String(run.harness),maker:null}:null,
   ...(names?names.recordedModels(run):[]),

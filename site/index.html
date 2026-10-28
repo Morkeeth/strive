@@ -1270,7 +1270,7 @@ async function loadSegmentChoices(id,selected){
   return GrinderSegments.loadChoices(sb,select,selected);
 }
 function runContinuation(r,opts={}){
-  if(opts.preview||typeof StriveFork!=='object')return '';
+  if(opts.preview||typedOnlyRun(r)||typeof StriveFork!=='object')return '';
   const prompt=StriveFork.buildPrompt(r);
   if(!prompt)return '';
   const link=StriveFork.harnessLink(r);
@@ -1284,6 +1284,7 @@ function connectWrapperName(name){
   return !n || /^connect$/i.test(n);
 }
 function runUploadIdentity(r){
+  if(typedOnlyRun(r))return '';
   if(!r.source_actor_id) return '';
   const agentHref='/?agent='+encodeURIComponent(r.source_actor_id);
   if(connectWrapperName(r.agent_name)){
@@ -1362,6 +1363,7 @@ const typedOnlyRun=r=>r&&r.trace_basis==='typed-by-author';
 function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handle;
   const projectName=()=>StriveActivity.project(r.project);
   const codeFacts=()=>{
+    if(typedOnlyRun(r))return [];
     const facts=[];
     if(r.shell_calls!=null)facts.push(['Shell calls',r.shell_calls]);
     if(r.files_touched!=null)facts.push(['Files touched',r.files_touched]);
@@ -1381,7 +1383,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     const html=cells.map(([label,value])=>`<div class="run-metric"><dt>${esc(label)}</dt><dd class="num">${esc(value)}</dd></div>`).join('');
     return `<dl class="run-metrics" aria-label="Recorded facts">${html}</dl>`;
   };
-  const declared=()=>typeof GrinderContract!=='undefined'&&GrinderContract.outcome?GrinderContract.outcome(r):'';
+  const declared=()=>!typedOnlyRun(r)&&typeof GrinderContract!=='undefined'&&GrinderContract.outcome?GrinderContract.outcome(r):'';
   const selfAck=ME&&ME.id===r.profile_id;
   let xudosTip='';
   const ackBtn=selfAck?'':`<button class="act kudo ${acked?'on':''}" data-run="${r.id}" data-to="${r.profile_id}" title="Send XUDOS" aria-label="${acked?'XUDOS sent':'Send XUDOS'}">XUDOS${count?' <span class="n num">'+count+'</span>':''}</button>`;
@@ -1392,7 +1394,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
   const date=StriveActivity.label(r);
   const codeRoute=typeof GrinderContract==='object'&&GrinderContract.codeRoute?GrinderContract.codeRoute(r):'';
   const codeRouteDetail=typeof GrinderContract==='object'&&GrinderContract.codeRouteDetail?GrinderContract.codeRouteDetail(r):'';
-  const eventChip=typeof GrinderContract==='object'&&GrinderContract.eventChip?GrinderContract.eventChip(r):'';
+  const eventChip=!typedOnlyRun(r)&&typeof GrinderContract==='object'&&GrinderContract.eventChip?GrinderContract.eventChip(r):'';
   const ridge=typeof GrinderContract==='object'&&GrinderContract.ridge?GrinderContract.ridge(r):'';
   const ridgeOutput=output?(/github\.com\/[^/]+\/[^/]+\/pull\/\d+/i.test(output)?'PR':/\.(png|jpe?g|webp)(?:[?#]|$)/i.test(output)?'Screenshot':'Output'):null;
   const code=codeFacts();
@@ -1405,7 +1407,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     ${declared()}`;
   const recorded=StriveEvidence.detail(r);
   const audienceNote=r.visibility==='link'?'<p class="meta run-audience-note">Followers. Signed-in followers and close friends can open it; it does not appear on the public profile or Feed.</p>':'';
-  const agentChip=(!opts.preview&&r.source_actor_id&&!connectWrapperName(r.agent_name))
+  const agentChip=(!typedOnlyRun(r)&&!opts.preview&&r.source_actor_id&&!connectWrapperName(r.agent_name))
     ?`<div class="run-agent-chip">with <a href="/?agent=${encodeURIComponent(r.source_actor_id)}">${esc(r.agent_name)}</a>${r.harness?` · <span class="card-harness">${esc((globalThis.StriveAgents?.agentName(r.harness)||r.harness||''))}</span>`:''}</div>`
     :'';
   const exploreInner=[
@@ -1416,17 +1418,17 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     runUploadIdentity(r),
     StriveContext.setup(r),
     typedOnlyRun(r)?'<div class="sub run-effort-context">Manual · unmeasured · owner-provided update</div>':`<div class="sub run-effort-context"><span class="card-harness">${esc((globalThis.StriveAgents?.agentName(r.harness)||r.harness||'')||'Coding agent')}</span>${r.harness==='Grok Bot'?' · bot activity':''} · ${esc(started)}</div>`,
-    codeRoute?codeRouteDetail:'<p class="run-route-source">No work route was captured for this run. Activity bins do not identify which files, tasks or build steps happened.</p>',
-    codeRoute&&ridge?ridge:'',
+    typedOnlyRun(r)?'':codeRoute?codeRouteDetail:'<p class="run-route-source">No work route was captured for this run. Activity bins do not identify which files, tasks or build steps happened.</p>',
+    !typedOnlyRun(r)&&codeRoute&&ridge?ridge:'',
     fiveRow(r),
-    coachBlock(r),
-    r.tree?GrinderContract.tree(r.tree):'',
+    typedOnlyRun(r)?'':coachBlock(r),
+    !typedOnlyRun(r)&&r.tree?GrinderContract.tree(r.tree):'',
     recorded,
     typeof runContinuation==='function'?runContinuation(r,opts):'',
   ].filter(Boolean).join('');
   // Full receipts stay in the HTML for humans and agents. Collapsed for people; still in the
   // document for scrapers until a visibility-safe /runs/{id}.json exists.
-  const explore=exploreInner?`<details class="ridge-more run-explore" id="run-detail-${esc(r.id)}" data-run-detail="1"><summary>Receipts and measurements</summary><div class="run-detail-body">${exploreInner}</div></details>`:'';
+  const explore=exploreInner?`<details class="ridge-more run-explore" id="run-detail-${esc(r.id)}" data-run-detail="1"><summary>${typedOnlyRun(r)?'Update details':'Receipts and measurements'}</summary><div class="run-detail-body">${exploreInner}</div></details>`:'';
   const chosen=typedOnlyRun(r)?null:chosenRunHero(r,{codeRoute,ridge});
   const visual=StriveHistory.historical(r)?StriveHistory.facts(r):typedOnlyRun(r)?'<p class="meta run-source-note">Typed by the author. No capture.</p>':codeRoute||StrivePost.trail(r);
   const followSlot=(!opts.preview&&!selfAck&&r.profile_id)
@@ -2262,7 +2264,7 @@ function wireComposer(){
   fields.forEach(id=>$(id).addEventListener('input',keep));
   window.StrivePhotoDraft?.mount({slot:$('manual-photos'),token,profileId:owner,eligible:true,isCurrent:current,audience:()=> 'private'});
   const build=async()=>StriveProjectUpdate.row({title:$('f_title').value,project:$('f_project').value,changed:$('f_caption').value,problem:$('f_problem').value,feedback:$('f_feedback').value,link:$('f_output_url').value,hasImage:await window.StrivePhotoDraft?.hasDraft(token)});
-  $('manual-preview').onclick=async()=>{try{const row=await build(),slot=$('manual-preview-content');slot.hidden=false;slot.innerHTML='<article class="card pad"><p class="meta">Manual · unmeasured · private draft</p><h3>'+esc(row.project)+' · '+esc(row.title)+'</h3>'+StriveStory.detail(row,{conversation:false})+(row.output_url?'<a target="_blank" rel="noopener noreferrer" href="'+esc(row.output_url)+'">Open project link</a>':'')+'</article>';}catch(e){status(e.message,true)}};
+  $('manual-preview').onclick=async()=>{try{const row=await build(),slot=$('manual-preview-content');slot.hidden=false;slot.innerHTML='<article class="card pad"><p class="meta">Manual · unmeasured · private draft</p><p class="meta">Update date: '+esc(new Date(row.started_at).toLocaleDateString())+' · browser clock</p><h3>'+esc(row.project)+' · '+esc(row.title)+'</h3>'+StriveStory.detail(row,{conversation:false})+(row.output_url?'<a target="_blank" rel="noopener noreferrer" href="'+esc(row.output_url)+'">Open project link</a>':'')+'</article>';}catch(e){status(e.message,true)}};
   pb.onclick=async()=>{
     if(!ME){keep();showSignIn();return;}
     if(!current())return;

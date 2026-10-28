@@ -79,4 +79,9 @@ end $$;
 drop trigger if exists profile_details_guard on strava.profiles;
 drop function if exists strava.guard_profile_details();
 drop function if exists strava.manual_public_link(text);
+-- Restore the exact pre-058 insert policy from018. Other photo policies remain untouched.
+drop policy if exists run_photos_add on strava.run_photos;
+create policy run_photos_add on strava.run_photos for insert to authenticated
+ with check(exists(select 1 from strava.runs r where r.id=run_id and r.profile_id=strava.grinder_profile_id()
+   and r.measurement_revision is not null and r.trace_basis is distinct from 'typed-by-author'));
 commit;

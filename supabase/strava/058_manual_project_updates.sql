@@ -122,4 +122,10 @@ end $$;
 revoke all on function strava.guard_profile_details() from public,anon,authenticated;
 drop trigger if exists profile_details_guard on strava.profiles;
 create trigger profile_details_guard before insert or update of rig on strava.profiles for each row execute function strava.guard_profile_details();
+-- Keep ownership and all latest read/privacy/limit policies; permit unmeasured manual media.
+drop policy if exists run_photos_add on strava.run_photos;
+create policy run_photos_add on strava.run_photos for insert to authenticated
+ with check(exists(select 1 from strava.runs r where r.id=run_id and r.profile_id=strava.grinder_profile_id()
+   and ((r.measurement_revision is not null and r.trace_basis is distinct from 'typed-by-author')
+     or (r.trace_basis='typed-by-author' and r.measurement_revision is null))));
 commit;

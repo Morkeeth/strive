@@ -57,6 +57,7 @@
       !t || /(^|·\s*)-?Users-\S/.test(t) || /(^|·\s*)-?home-[a-z0-9_]+(\s*·|$)/.test(t) ||
       /(^|·\s*)(Cursor|Claude Code|Claude|Codex|Grok Bot|Agent) sitting$/i.test(t) || /^(untitled run|a run|agent run)$/i.test(t);
     if (!generic) return t;
+    if(r.trace_basis==='typed-by-author')return 'Project update';
     const day = dayOf(r.started_at || r.started || (observedProjection(r) ? null : r.created_at));
     return `${harnessName(r) || "Agent"} session${day ? `, ${day}` : ""}`;
   }
@@ -65,6 +66,7 @@
   // Code. The row keeps the raw value.
   const agents = () => (typeof module !== "undefined" && module.exports ? require("./agent-names.js") : root.StriveAgents) || null;
   function harnessName(r) {
+    if(r?.trace_basis==='typed-by-author')return '';
     const h = r.harness ? String(r.harness) : "";
     const names = agents();
     return names ? names.agentName(h) : h === "claude-agent" ? "Claude Code" : h;
