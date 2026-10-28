@@ -1,4 +1,4 @@
--- Manual unmeasured updates, preserving the current 027 historical/capture guard.
+-- Manual unmeasured updates, preserving the production 043 privacy/redaction guard.
 begin;
 create or replace function strava.manual_public_link(u text) returns boolean
 language sql immutable set search_path=strava,pg_temp as $$
@@ -11,6 +11,7 @@ revoke all on function strava.manual_public_link(text) from public,anon,authenti
 create or replace function strava.run_capture_guard() returns trigger
 language plpgsql security definer set search_path = strava, pg_temp as $$
 declare field text; trace jsonb;
+ redactable text[] := array['model','duration_s','wall_time_s','tool_calls','shell_calls','files_touched','commits','artifacts_produced','rhythm','route','ridge','worker_bins','commit_bins','ridge_basis','ridge_wall_seconds','ridge_tool_calls','code_route'];
 begin
   if new.trace_basis='typed-by-author' then
    if nullif(trim(new.project),'') is null or nullif(trim(new.title),'') is null or nullif(trim(new.story_result),'') is null then
@@ -24,10 +25,20 @@ begin
    -- Normal database boolean defaults are accepted only with their ordinary false value.
    for field in select key from jsonb_each(to_jsonb(new)) where value <> 'null'::jsonb loop
     if field=any(array['id','profile_id','title','project','caption','story_result','story_next','feedback_question','output_url','trace_basis','visibility','created_at','started_at','pinned_at','photo_layout']) then continue; end if;
-    if field=any(array['is_ship','crew_shared']) and to_jsonb(new)->field='false'::jsonb then continue; end if;
+    if field=any(array['is_ship','crew_shared','activity_trace_omitted']) and to_jsonb(new)->field='false'::jsonb then continue; end if;
     raise exception 'Manual updates are unmeasured: % must be empty',field;
    end loop;
   end if;
+ -- This marker records an explicit omission choice, never a metric or verification of activity.
+ if new.activity_trace_omitted then
+  if new.trace_basis='historical-reconstruction' then raise exception 'Historical summaries have no session trace to omit'; end if;
+  foreach field in array array['rhythm','ridge','ridge_basis','ridge_wall_seconds','worker_bins','commit_bins','ridge_tool_calls'] loop
+   if to_jsonb(new)->field <> 'null'::jsonb then raise exception 'Omitted activity trace must not be saved'; end if;
+  end loop;
+  -- capture_metadata.estimates restates the trace (tool_activity minute bins) and per-model usage.
+  -- The client strips the whole object on any untick; the guard holds the same line.
+  if new.capture_metadata ? 'estimates' then raise exception 'Omitted activity trace must not be saved'; end if;
+ end if;
  if tg_op='INSERT' then
   if new.trace_basis='typed-by-author' then
    null; -- Validated above; no recorded or historical facts are claimed.
@@ -54,9 +65,10 @@ begin
        ('elapsed','position','typed-turn order','elapsed-agent-tool-calls','timestamped native events','timestamps unavailable','observed native events; timestamps unavailable',
         'typed-turn order; spacing is not elapsed time; sessions split on human-turn gaps, not measured idle',
         'typed-turn order; Grok Bot export has no top-level event timestamps')
-     or (jsonb_typeof(new.rhythm) is distinct from 'array' and jsonb_typeof(new.ridge) is distinct from 'array') then
+     or (not new.activity_trace_omitted and jsonb_typeof(new.rhythm) is distinct from 'array' and jsonb_typeof(new.ridge) is distinct from 'array') then
    raise exception 'Import a recorded session before saving a run. Manual runs are not supported.';
   end if;
+  if not new.activity_trace_omitted then
   trace:=case when jsonb_typeof(new.rhythm)='array' and jsonb_array_length(new.rhythm)>0 then new.rhythm else new.ridge end;
   if jsonb_typeof(trace) is distinct from 'array' or jsonb_array_length(trace) not between 1 and 1000 then
    raise exception 'Import a recorded session with an activity trace.';
@@ -64,6 +76,7 @@ begin
   if exists(select 1 from jsonb_array_elements(trace) v where strava.grinder_is_safe_count(v) is not true)
      or not exists(select 1 from jsonb_array_elements(trace) v where jsonb_typeof(v)='number' and (v::text)::numeric>0) then
    raise exception 'The recorded session must contain activity.';
+  end if;
   end if;
   end if;
   if new.image_url is not null then raise exception 'Use Add photos to upload a photo for this run.'; end if;
@@ -78,30 +91,37 @@ begin
    'measurement_revision','baseline_revision','trace_basis','history_evidence','prompts','duration_s','wall_time_s',
    'tool_calls','shell_calls','files_touched','commits','claims','claims_verified','artifacts_produced',
    'rhythm','route','tool_mix','ridge','worker_bins','commit_bins','ridge_basis','ridge_wall_seconds',
-   'ridge_tool_calls','source_actor_id','agent_name','code_route','progress_delta'] loop
+   'ridge_tool_calls','source_actor_id','agent_name','code_route','progress_delta','activity_trace_omitted'] loop
    if to_jsonb(new)->field is distinct from to_jsonb(old)->field then
+    -- Only removal is permitted before the owner publishes. A value cannot be added or replaced.
+    if old.visibility='private' and ((field=any(redactable) and to_jsonb(new)->field='null'::jsonb)
+      or (field='activity_trace_omitted' and new.activity_trace_omitted)) then continue; end if;
     raise exception 'Recorded session facts cannot be edited. Edit the description, photos or audience instead.';
    end if;
   end loop;
  end if;
  return new;
 end $$;
-create or replace function strava.guard_prompt_provenance() returns trigger
-language plpgsql security definer set search_path=strava,pg_temp as $$
-declare carried text;
-begin
- if tg_op='INSERT' and new.prompt_provenance is null and new.trace_basis is distinct from 'typed-by-author' then
-  carried:=current_setting('strive.prompt_provenance',true);
-  if carried is not null and carried not in ('','null') then new.prompt_provenance:=carried::jsonb; end if;
- end if;
- if tg_op='UPDATE' and new.prompt_provenance is distinct from old.prompt_provenance then raise exception 'Prompt provenance cannot be edited'; end if;
- perform strava.check_prompt_provenance(new.prompt_provenance);
- if new.prompt_provenance is not null then
-  if (new.prompt_provenance->>'unknown_turns')::numeric>0 and new.prompts is not null then raise exception 'Unknown prompt origins require an unknown human count'; end if;
-  if (new.prompt_provenance->>'unknown_turns')::numeric=0 and new.prompts is distinct from (new.prompt_provenance->>'human_turns')::integer then raise exception 'Human count does not match prompt provenance'; end if;
- end if;
- return new;
-end $$;
+CREATE OR REPLACE FUNCTION strava.guard_prompt_provenance()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'strava', 'pg_temp'
+AS $function$
+                             declare carried text;
+                             begin
+                              if tg_op='INSERT' and new.prompt_provenance is null and new.trace_basis is distinct from 'typed-by-author' then
+                                carried:=current_setting('strive.prompt_provenance',true);
+                                  if carried is not null and carried not in ('','null') then new.prompt_provenance:=carried::jsonb; end if;
+                                   end if;
+                                    if tg_op='UPDATE' and new.prompt_provenance is distinct from old.prompt_provenance then raise exception 'Prompt provenance cannot be edited'; end if;
+                                     perform strava.check_prompt_provenance(new.prompt_provenance);
+                                      if new.prompt_provenance is not null then
+                                        if (new.prompt_provenance->>'unknown_turns')::numeric>0 and new.prompts is not null then raise exception 'Unknown prompt origins require an unknown human count'; end if;
+                                          if (new.prompt_provenance->>'unknown_turns')::numeric=0 and new.prompts is distinct from (new.prompt_provenance->>'human_turns')::integer then raise exception 'Human count does not match prompt provenance'; end if;
+                                           end if;
+                                            return new;
+                                            end $function$;
 create or replace function strava.guard_profile_details() returns trigger
 language plpgsql security definer set search_path=strava,pg_temp as $$
 declare d jsonb; k text; v jsonb;
