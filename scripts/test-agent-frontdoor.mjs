@@ -11,6 +11,7 @@ const manifest=JSON.parse(await readFile('dist/.well-known/agent-grinder.json','
 assert.equal(manifest.agent_instructions,'/agents.md');
 assert.equal(manifest.project_update_draft.default,'draft_only');assert.equal(manifest.project_update_draft.saves,false);assert.equal(manifest.project_update_draft.publishes,false);
 assert.deepEqual(Object.keys(manifest.grants).sort(),['publish','read_local','research','save_private']);
+assert.match(manifest.grants.research,/Agents cannot grant it/);assert.equal(manifest.feature_requests.agent_rpc,'feature_agent_action');assert.match(guide,/## Feature requests[\s\S]*never ranks a request/);
 assert.equal(JSON.parse(await readFile('dist/schemas/project-update-draft.v1.json','utf8')).properties.format.const,'strive-project-update-draft-v1');
 const release=JSON.parse(await readFile('dist/capture/release.json','utf8'));
 const bytes=await readFile('dist'+release.package);

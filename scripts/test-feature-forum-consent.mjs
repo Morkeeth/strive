@@ -72,6 +72,8 @@ async function suite(sql,label){
  const posted=await one(db,'select feature_agent_action($1,$2,$3,$4) as x',[cAgent.token,'request',payload,rq]);
  assert.equal((await one(db,'select feature_agent_action($1,$2,$3,$4) as x',[cAgent.token,'request',payload,rq])).x.id,posted.x.id,'agent retry replays');
  await assert.rejects(db.query('select feature_agent_action($1,$2,$3,$4)',[cAgent.token,'vote',JSON.stringify({feature_request_id:r1}),rq]),/reused/);
+ await assert.rejects(db.query('select feature_agent_action($1,$2,$3,$4)',[cAgent.token,'vote',JSON.stringify({feature_request_id:posted.x.id}),randomUUID()]),/own request/,'an agent cannot vote for its owner');
+ await as(db,B);await assert.rejects(db.query('insert into feature_votes(request_id,voter_profile,kind) values($1,$2,$3)',[posted.x.id,B,'person']),/permission denied/);await as(db,null);
  row=(await all(db,'select * from feature_request_board() where id=$1',[posted.x.id]))[0];assert.equal(row.author_kind,'agent');assert.equal(row.agent_name,'Scout');assert.equal(row.author_name,'Cy');
  for(const opts of [{visibility:'private'},{scopes:['draft','publish']},{audiences:['private']},{revoked:true}]){
   const t=await agent(db,B,opts);await as(db,null);

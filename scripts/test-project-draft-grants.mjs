@@ -32,22 +32,18 @@ assert.equal(Draft.parse('#project-draft='+Draft.toBase64Url({...draft,evidence:
 const html=await readFile('site/index.html','utf8');
 for(const id of Object.values(Draft.FORM))assert.match(html,new RegExp(`id="${id}"`),id);
 
-// Self mark: one toggle, local only.
+// Self mark: one toggle. Signed out it stays in this browser.
+assert.equal(await Mark.connect(null,null),'device');
 assert.equal(Mark.marked('run-1'),false);
-assert.equal(Mark.toggle('run-1'),true);assert.equal(Mark.marked('run-1'),true);
-assert.equal(Mark.toggle('run-1'),false);assert.equal(Mark.marked('run-1'),false);
+assert.equal(await Mark.toggle('run-1'),true);assert.equal(Mark.marked('run-1'),true);
+assert.equal(await Mark.toggle('run-1'),false);assert.equal(Mark.marked('run-1'),false);
 assert.ok(!/xudos|kudos|ack/i.test(store.get(Mark.SELF)),'self marks are not stored as XUDOS');
 
-// Research: off until the person turns it on, and it says where the choice lives.
-store.clear();assert.equal(Mark.research(),'no');
-Mark.setResearch(true);assert.equal(Mark.research(),'yes');assert.equal(JSON.parse(store.get(Mark.RESEARCH)).stored,'this browser only');
-Mark.setResearch(false);assert.equal(Mark.research(),'no');
-
-// The composer shows four separate permissions and a research box that is unchecked in markup.
+// The composer shows four separate permissions; research is chosen in Settings, not here.
 assert.match(html,/class="grant-steps"/);
 for(const step of ['Read on your computer','Save privately','Publish','Research use'])assert.ok(html.includes(step),step);
-assert.match(html,/id="research-optin"(?![^>]*\bchecked\b)[^>]*>/);
-assert.match(html,/Nothing is sent or collected/);
+assert.doesNotMatch(html,/id="research-optin"/,'no device-only research box any more');
+assert.match(html,/Off unless you choose it in <a href="\/\?account#account-research">Settings<\/a>/);
 assert.match(html,/data-self-mark="\$\{r\.id\}"/);
 assert.match(html,/It is not a XUDOS and is not counted/);
 assert.match(html,/history\.replaceState/);
