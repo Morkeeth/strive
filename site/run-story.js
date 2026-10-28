@@ -15,7 +15,7 @@ function highlights(r,{className='project-highlights',conversation=false}={}){
  if(ask)rows.push(['Feedback wanted',ask]);
  return rows.length?`<section class="${esc(className)}" aria-label="Project highlights">${rows.map(([label,text])=>`<div class="project-highlight${label==='Feedback wanted'?' project-feedback':''}"><h3>${esc(label)}</h3><p>${esc(text)}</p>${label==='Feedback wanted'&&conversation?'<a class="project-conversation" href="#grind-thread">Join the conversation</a>':''}</div>`).join('')}</section>`:'';
 }
-function editor(r){return `<fieldset class="run-story-editor"><legend>The story behind the run</legend><p class="hint">Optional. A useful attempt or an open question belongs here too.</p>${fields.map(([k,label,max])=>`<label>${label}<textarea id="${k}" name="${k}" maxlength="${max}" rows="3">${esc(r[k]||'')}</textarea></label>`).join('')}</fieldset>`;}
+function editor(r){return `<fieldset class="run-story-editor"><legend>What did you build?</legend><p class="hint">Use plain words: what it does, the key feature, and the feedback you need. An unfinished attempt belongs here too.</p>${fields.map(([k,label,max])=>`<label>${label}<textarea id="${k}" name="${k}" maxlength="${max}" rows="3">${esc(r[k]||'')}</textarea></label>`).join('')}</fieldset>`;}
 function read(root){return Object.fromEntries(fields.map(([k,,max])=>{const value=root.querySelector('#'+k).value.trim();if(value.length>max)throw Error('Please shorten your story.');return [k,value||null]}));}
 function summary(r){const text=String(r.story_result||r.caption||r.note||'').trim();return text.length>240?text.slice(0,237).trimEnd()+'…':text;}
 // Images are served through the run photo API, under the run audience. Working links stay links.
