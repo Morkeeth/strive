@@ -39,6 +39,12 @@ if(process.env.STRIVE_TEST_CONNECTIONS){
       await db.query(`insert into strava.runs(id,profile_id,title,visibility,source_actor_id,agent_name,started_at,harness,schema_version,trace_basis,prompts,rhythm,measurement_revision,created_at) values($1,$2,$3,'private',$4,'TEST DATA Connect',now(),'Claude Code',1,'elapsed-agent-tool-calls',1,'[1]'::jsonb,repeat(md5(($1::uuid)::text),2),${created})`,[id,CASEY,title,source]);
   }
 }
+if(process.env.STRIVE_TEST_SAVED_RUNS){
+  // Run page after save, TEST DATA: a public run with one XUDOS from Riley, a public run with none, a private run.
+  for(const [id,title,visibility] of [['a2000000-0000-0000-0000-000000000081','TEST DATA public with XUDOS','public'],['a2000000-0000-0000-0000-000000000082','TEST DATA public no XUDOS','public'],['a2000000-0000-0000-0000-000000000083','TEST DATA private','private']])
+    await db.query("insert into strava.runs(id,profile_id,title,visibility,started_at,harness,schema_version,trace_basis,prompts,rhythm,measurement_revision) values($1,$2,$3,'private',now(),'Claude Code',1,'elapsed-agent-tool-calls',1,'[1]'::jsonb,repeat(md5(($1::uuid)::text),2))",[id,CASEY,title]).then(()=>visibility==='private'?null:db.query("update strava.runs set visibility=$2 where id=$1",[id,visibility]));
+  await db.query("insert into strava.acks(run_id,from_profile,to_profile,reason) values('a2000000-0000-0000-0000-000000000081',$1,$2,'appreciated')",[RILEY,CASEY]);
+}
 const shim=await startDisposableServer(db);
 const bucket=new Map();
 const objectKey=url=>decodeURIComponent(new URL(url).pathname.replace(/^\/storage\/v1\/object\/(authenticated\/)?strive-run-photos\/?/,''));
