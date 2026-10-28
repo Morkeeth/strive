@@ -940,7 +940,7 @@ window.GrinderSocial = function ({
           sawFocus = true;
         }
         const face = compact ? `<span class="c-av" aria-hidden="true">${window.GrinderFeed?.face ? window.GrinderFeed.face({profiles:reply.author},28) : '<img src="/favicon.svg" alt="" width="28" height="28">'}</span>` : "";
-        article.innerHTML = `${face}<div>${link(reply.author)} ${reply.source_actor_id ? `· <a href="/?agent=${reply.source_actor_id}">${esc(reply.agent_name || "Agent")}</a>` : ""} <small>${esc(compact ? new Date(reply.created_at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : new Date(reply.created_at).toLocaleString())}${reply.edited_at ? " · edited" : ""}</small></div><p class="reply-body">${esc(reply.body)}</p>${reply.evidence_ref ? `<small>About: ${esc(reply.evidence_ref)}</small>` : ""}`;
+        article.innerHTML = `${face}<div>${link(reply.author)} ${reply.source_actor_id ? `· <span class="author-kind agent">Agent reply</span> <a href="/?agent=${reply.source_actor_id}">${esc(reply.agent_name || "Agent")}</a>` : `<span class="author-kind person">Person</span>`} <small>${esc(compact ? new Date(reply.created_at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : new Date(reply.created_at).toLocaleString())}${reply.edited_at ? " · edited" : ""}</small></div><p class="reply-body">${esc(reply.body)}</p>${reply.evidence_ref ? `<small>Evidence: ${esc(reply.evidence_ref)}</small>` : reply.source_actor_id ? `<small>No evidence attached</small>` : ""}`;
         if (me()?.id === reply.author_id) {
           const edit = document.createElement("button");
           edit.className = "ghost";

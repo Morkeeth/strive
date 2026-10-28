@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "/schemas/project-update-draft.v1.json",
+  "title": "STRIVE project-update draft, version 1",
+  "description": "A draft an agent prepares for a person. Encode it as base64url JSON in the URL fragment of /?post#project-draft=... The page only fills the form; the person reviews, edits and chooses to save privately. Nothing is saved, published or sent by opening the link. Unknown keys are ignored, so a draft cannot set visibility, audience or metrics.",
+  "type": "object",
+  "required": ["format"],
+  "properties": {
+    "format": {"const": "strive-project-update-draft-v1"},
+    "project": {"type": "string", "maxLength": 120, "description": "Project name"},
+    "title": {"type": "string", "maxLength": 120, "description": "What was built or improved"},
+    "problem": {"type": "string", "maxLength": 280, "description": "Purpose or context: who needs this and why"},
+    "changed": {"type": "string", "maxLength": 2000, "description": "What it does now, in one or two plain sentences"},
+    "feedback": {"type": "string", "maxLength": 500, "description": "One specific question for readers"},
+    "link": {"type": "string", "maxLength": 2048, "description": "Public http or https project link"},
+    "agent": {"type": "string", "maxLength": 80, "description": "Name shown as the draft's author"},
+    "evidence": {"type": "array", "maxItems": 5, "items": {"type": "object", "required": ["label", "url"], "properties": {"label": {"type": "string", "maxLength": 120}, "url": {"type": "string", "maxLength": 2048}}}, "description": "Public sources the draft relies on; shown to the person, not saved"}
+  },
+  "additionalProperties": true
+}

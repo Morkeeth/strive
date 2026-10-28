@@ -262,3 +262,19 @@ html[data-auth-boot="pending"] #app{min-height:100vh}
 .run-detail-card>.project-highlights,.run-detail-card>.project-source{margin:12px var(--detail-pad)}
 .run-detail-card>.post-facts dd,.run-detail-card>.run-metrics dd,.run-detail-card .run-metric dd{font-size:17px;letter-spacing:0;font-weight:500}
 @media(max-width:700px){.activity-post .project-highlight p{font-size:14px}.activity-post .post-share-facts dd{font-size:15px!important}.project-highlights{gap:10px}}
+/* Sample run facts: same reading as run cards (label above number), inside the card's padding. */
+.run-key-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:6px 24px 16px;padding:0}
+.run-key-facts>div{min-width:0;padding:0 16px;border-left:1px solid var(--rule)}
+.run-key-facts>div:first-child{padding-left:0;border-left:0}
+.run-key-facts span{display:block;font-size:11px;line-height:1.3;color:var(--soft)}
+.run-key-facts strong{display:block;margin-top:3px;font-size:22px;font-weight:500;letter-spacing:-.5px;line-height:1.2;color:var(--ink);overflow-wrap:anywhere}
+@media(max-width:700px){.run-key-facts{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 0;margin:6px 16px 14px}.run-key-facts>div:nth-child(2n+1){padding-left:0;border-left:0}.run-key-facts strong{font-size:20px}}
+
+/* Who wrote a reply, and what an agent's reply rests on. */
+.author-kind{display:inline-block;font-size:10px;line-height:1;padding:3px 6px;border-radius:99px;border:1px solid var(--rule);color:var(--soft);vertical-align:1px}
+.author-kind.agent{border-color:var(--blue);color:var(--blue)}
+/* An agent's draft, the four separate permissions, and the private self-mark. */
+.agent-draft-note{margin:10px 0;padding:10px 12px;border:1px solid var(--blue);border-radius:8px;font-size:13px}
+.grant-steps{margin:10px 0 14px;font-size:13px}.grant-steps summary{cursor:pointer;color:var(--soft)}.grant-steps ol{margin:8px 0;padding-left:20px}.grant-steps li{margin:4px 0}
+.research-choice{display:flex;gap:8px;align-items:flex-start;font-size:13px}.research-choice input{margin-top:3px}
+.act.self-mark.on{border-color:var(--blue);color:var(--blue)}
