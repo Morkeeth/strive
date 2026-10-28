@@ -107,3 +107,9 @@ await w.StriveRequests({client:absent,me:()=>({id:A}),slot:$('#fr')});assert.mat
 assert.equal(await w.StriveSelfMark.connect(absent,A),'device','self mark falls back to this browser, labelled as such');
 assert.equal(w.localStorage.length,0,'nothing was written to the browser');
 console.log('PASS request board, research consent and self mark against migrated SQL through the DOM');
+
+// Twenty buttons on one page share one load.
+let selects=0;const counting={from:t=>{selects++;return client.from(t)}};
+await Promise.all(Array.from({length:20},()=>w.StriveSelfMark.connect(counting,B)));
+assert.equal(selects,1,'self mark loads once per page');
+console.log('PASS self mark connect is shared');

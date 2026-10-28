@@ -7,12 +7,18 @@
 'use strict';
 const SELF='strive-self-marks-v1';
 let server=null;  // {client, profileId, marks:Set}
+let pending=null;  // one in-flight load shared by every button on the page
 function read(){try{const v=JSON.parse(root.localStorage.getItem(SELF)||'null');return v&&typeof v==='object'?v:{};}catch(_){return {};}}
 function write(value){try{root.localStorage.setItem(SELF,JSON.stringify(value));return true;}catch(_){return false;}}
 /* Use the account when the table answers; otherwise this browser. Returns 'account' or 'device'. */
-async function connect(client,profileId){
- if(!client||!profileId){server=null;return 'device';}
- if(server&&server.client===client&&server.profileId===profileId)return 'account';
+function connect(client,profileId){
+ if(!client||!profileId){server=null;return Promise.resolve('device');}
+ if(server&&server.client===client&&server.profileId===profileId)return Promise.resolve('account');
+ if(pending&&pending.client===client&&pending.profileId===profileId)return pending.promise;
+ const promise=load(client,profileId).finally(()=>{if(pending?.promise===promise)pending=null;});
+ pending={client,profileId,promise};return promise;
+}
+async function load(client,profileId){
  try{const {data,error}=await client.from('run_self_marks').select('run_id');if(error)throw error;
   server={client,profileId,marks:new Set((data||[]).map(r=>r.run_id))};return 'account';}
  catch(_){server=null;return 'device';}

@@ -181,6 +181,7 @@ window.GrinderAccount = function ({
     origin?.mount?.(root, { signedIn: true });
     if (typeof researchConsent === "function") researchConsent(byId("account-research"), profile.id, isCurrent);
     if (location.hash === "#danger") byId("danger")?.scrollIntoView();
+    if (location.hash === "#account-research") byId("account-research")?.scrollIntoView();
   }
 
   function wireSignedOut() {
