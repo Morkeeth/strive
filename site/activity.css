@@ -262,3 +262,10 @@ html[data-auth-boot="pending"] #app{min-height:100vh}
 .run-detail-card>.project-highlights,.run-detail-card>.project-source{margin:12px var(--detail-pad)}
 .run-detail-card>.post-facts dd,.run-detail-card>.run-metrics dd,.run-detail-card .run-metric dd{font-size:17px;letter-spacing:0;font-weight:500}
 @media(max-width:700px){.activity-post .project-highlight p{font-size:14px}.activity-post .post-share-facts dd{font-size:15px!important}.project-highlights{gap:10px}}
+/* Sample run facts: same reading as run cards (label above number), inside the card's padding. */
+.run-key-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:6px 24px 16px;padding:0}
+.run-key-facts>div{min-width:0;padding:0 16px;border-left:1px solid var(--rule)}
+.run-key-facts>div:first-child{padding-left:0;border-left:0}
+.run-key-facts span{display:block;font-size:11px;line-height:1.3;color:var(--soft)}
+.run-key-facts strong{display:block;margin-top:3px;font-size:22px;font-weight:500;letter-spacing:-.5px;line-height:1.2;color:var(--ink);overflow-wrap:anywhere}
+@media(max-width:700px){.run-key-facts{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 0;margin:6px 16px 14px}.run-key-facts>div:nth-child(2n+1){padding-left:0;border-left:0}.run-key-facts strong{font-size:20px}}
