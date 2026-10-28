@@ -1437,7 +1437,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     :'';
   const detailLink='';
   const ownerActions=opts.ownerActions&&!opts.preview?`<span class="run-owner-actions"><a href="#run-edit">Edit run</a><a href="#run-photos">Add photos</a></span>`:'';
-  return `<div class="card run-detail-card" id="card-${r.id}" data-run-id="${esc(r.id)}" data-run-visibility="${esc(r.visibility||'')}" data-media-story="${esc(r.caption||r.title)}" data-photo-layout="${esc(r.photo_layout||'cover')}"${r.photo_layout==='result'&&r.capture_metadata?.estimates?.v===1?' data-project-gallery':''}>
+  return `<div class="card run-detail-card" id="card-${r.id}" data-route-key="${esc(location.pathname+location.search)}" data-run-id="${esc(r.id)}" data-run-visibility="${esc(r.visibility||'')}" data-media-story="${esc(r.caption||r.title)}" data-photo-layout="${esc(r.photo_layout||'cover')}"${r.photo_layout==='result'&&r.capture_metadata?.estimates?.v===1?' data-project-gallery':''}>
     ${GrinderFeed.privateMarker(r)}
     <div class="runtop">${!att.ghost&&GrinderFeed.face?GrinderFeed.face(r,40):avatar(h,{rhythm:r.rhythm,ghost:att.ghost})}
       <div class="who">${whoLink}${anonTag}<small>${att.ghost?'metrics only ·':`@${esc(h)} ·`} ${opts.preview?esc(date):`<a href="${esc(StriveLinks.runHref(r))}">${esc(date)}</a>`}</small></div></div>
@@ -3121,12 +3121,19 @@ document.addEventListener('DOMContentLoaded',()=>{
     const runLink=e.target.closest('a[href]');
     if(runLink&&!e.defaultPrevented&&e.button===0&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey&&runLink.target!=='_blank'){
       const url=new URL(runLink.href,location.origin),id=url.origin===location.origin?StriveLinks.knownRunId(url.pathname):null;
-      if(id){e.preventDefault();history.pushState({striveRunId:id},'',url.pathname+url.hash);void viewRun(id);return;}
+      const sameDocumentFragment=url.hash&&url.pathname===location.pathname&&url.search===location.search;
+      if(id&&!sameDocumentFragment){e.preventDefault();history.pushState({striveRunId:id},'',url.pathname+url.hash);void viewRun(id);return;}
     }
     if(e.target.closest('[data-signin]')){ e.preventDefault(); menus.forEach(m=>m.open=false); showSignIn(); return; }
     if(e.target.closest('[data-signout]')){ e.preventDefault(); auth.signOutLocal().then(()=>location.href='/').catch(err=>status(err.detail?.message||'Sign-out failed. Try again.',true)); }
   });
   window.addEventListener('popstate',event=>{
+    // WebKit also sends popstate for an ordinary fragment change. Rebuilding the
+    // same run removes the anchor after the browser has tried to scroll to it.
+    const activeCard=app.querySelector('.run-detail-card'),thread=$('grind-thread');
+    if(location.hash==='#grind-thread'&&thread&&activeCard?.dataset.routeKey===location.pathname+location.search){
+      thread.scrollIntoView({block:'start'});return;
+    }
     if(event.state?.striveRunId){void viewRun(event.state.striveRunId);return;}
     if(location.pathname==='/')void route();
     else location.reload();
