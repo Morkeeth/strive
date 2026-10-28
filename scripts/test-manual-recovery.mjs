@@ -12,4 +12,15 @@ await w.document.getElementById('publish').onclick();assert.equal(inserts.length
 render();assert.equal(w.document.getElementById('f_title').value,'Synthetic update');await w.document.getElementById('publish').onclick();assert.equal(inserts.length,1,'retry never duplicates a received insert');assert.deepEqual([...w.opened],[first]);assert.equal(w.confirmed.length,0,'existing save is not a new visit action');assert(w.notices.at(-1).text.includes('no duplicate'));
 // A delayed old-account lookup cannot insert after the account changes.
 rows.clear();inserts.length=0;render();for(const [id,value] of Object.entries({f_project:'Synthetic project',f_title:'Synthetic update',f_caption:'Changed',f_output_url:'https://example.com'}))w.document.getElementById(id).value=value;let resume;pauseLookup=new Promise(r=>resume=r);const pending=w.document.getElementById('publish').onclick();await new Promise(r=>setTimeout(r,0));w.ME={id:'different-owner'};resume();await pending;assert.equal(inserts.length,0,'account switch cancels save');
-console.log('PASS real manual composer: uncertain save, stable ID after refresh, duplicate refusal, no false fair confirmation, account switch cancellation');
+// The real auth invalidation clears visible private text synchronously. Storage does not
+// restore one account's draft into another account or a signed-out composer.
+w.eval(`var AUTH_GENERATION=0,RUN_VIEW_GENERATION=0,AUTH_USER={id:'synthetic-auth'},IDENTITY_SETUP=null;var skeletonCard=()=>'<div class="skeleton"></div>';`);
+w.document.documentElement.dataset.authBoot='ready';
+w.eval(source.slice(source.indexOf('function invalidatePrivateView()'),source.indexOf('// The social feeds')));
+w.handleAuthStateChange('SIGNED_OUT',null,()=>{});assert.equal(w.document.getElementById('f_project'),null,'sign-out immediately removes visible draft');
+render();assert.equal(w.document.getElementById('f_project').value,'','signed-out composer cannot restore owned draft');
+w.ME={id:'different-owner'};render();assert.equal(w.document.getElementById('f_project').value,'','other account cannot restore owned draft');
+// Returning to the owner deliberately restores their own draft, including its stable ID.
+w.ME={id:'synthetic-owner'};render();assert.equal(w.document.getElementById('f_project').value,'Synthetic project');
+w.handleAuthStateChange('SIGNED_IN',{user:{id:'different-auth'}},()=>{});assert.equal(w.document.getElementById('f_project'),null,'account switch immediately removes visible draft');
+console.log('PASS real manual composer: uncertain save, stable ID after refresh, duplicate refusal, no false fair confirmation, delayed-save cancellation, synchronous sign-out/account-switch hiding and owner-only draft restore');
