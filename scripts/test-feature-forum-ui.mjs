@@ -69,6 +69,13 @@ assert.match($('.feature-request').textContent,/1 person asked/);assert.match($(
 assert.doesNotMatch($('.feature-request').textContent,/agent vote/,'no agent chip without agent votes');
 $('[data-unvote]').click();await until(()=>$('[data-vote]'),'unvote');assert.match($('.feature-request').textContent,/0 people asked/);
 
+// A stale card: the request was planned after it rendered. Withdraw says why nothing happened.
+const notes=[];user=A;app.innerHTML='<div id="fr"></div>';await w.StriveRequests({client,me:()=>({id:A}),slot:$('#fr'),status:t=>notes.push(t)});
+await db.exec('reset role');await db.query("update strava.feature_requests set state='planned'");
+$('[data-withdraw]').click();await until(()=>notes.length,'stale withdraw');assert.match(notes[0],/no longer open/);
+assert.equal(await n('select count(*)::int n from strava.feature_requests'),1);assert.ok(!$('[data-withdraw]'),'withdraw hidden once planned');
+await db.exec('reset role');await db.query("update strava.feature_requests set state='open'");
+user=B;await mountBoard();
 // Ana withdraws; the request and its votes are gone.
 user=B;$('[data-vote]').click();await until(()=>$('[data-unvote]'),'vote again');
 user=A;await mountBoard();$('[data-withdraw]').click();await until(()=>/No requests yet/.test($('#fr-list').textContent),'withdraw');

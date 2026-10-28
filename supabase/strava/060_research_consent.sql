@@ -51,7 +51,7 @@ declare me uuid:=strava.grinder_profile_id(); row strava.research_consents; v_pr
 begin
  if me is null then raise exception 'Sign in to choose research use.' using errcode='42501'; end if;
  if p_scope is null or p_scope not in ('update_text','run_measurements') then raise exception 'Choose a supported research scope.' using errcode='22023'; end if;
- if v_project is not null and not exists(select 1 from strava.runs r where r.profile_id=me and r.project=v_project) then
+ if v_project is not null and not exists(select 1 from strava.runs r where r.profile_id=me and nullif(trim(r.project),'')=v_project) then
   raise exception 'You can only choose research use for one of your own projects.' using errcode='42501';
  end if;
  perform 1 from strava.profiles where id=me for update;
@@ -84,6 +84,16 @@ begin
  return n;
 end $$;
 
+-- Self marks live in 061. Read them through dynamic SQL so export still works if 061 is rolled back.
+create or replace function strava.export_my_self_marks(me uuid) returns jsonb
+language plpgsql stable security definer set search_path=strava,pg_temp as $$
+declare out jsonb;
+begin
+ execute 'select coalesce(jsonb_agg(to_jsonb(m) order by m.created_at),''[]''::jsonb) from strava.run_self_marks m where m.profile_id=$1' into out using me;
+ return out;
+end $$;
+revoke all on function strava.export_my_self_marks(uuid) from public,anon,authenticated;
+
 -- Everything 059, 060 and 061 hold about the caller, as one JSON document.
 create or replace function strava.export_my_feedback_and_consent()
 returns jsonb language plpgsql stable security definer set search_path=strava,pg_temp as $$
@@ -96,7 +106,8 @@ begin
   'research_consent_events',coalesce((select jsonb_agg(to_jsonb(e) order by e.id) from strava.research_consent_events e where e.profile_id=me),'[]'::jsonb),
   'feature_requests',coalesce((select jsonb_agg(to_jsonb(r) order by r.created_at) from strava.feature_requests r where r.author_profile=me),'[]'::jsonb),
   'feature_votes',coalesce((select jsonb_agg(to_jsonb(v) order by v.created_at) from strava.feature_votes v where v.voter_profile=me),'[]'::jsonb),
-  'self_marks',coalesce((select jsonb_agg(to_jsonb(m) order by m.created_at) from strava.run_self_marks m where m.profile_id=me),'[]'::jsonb));
+  'self_marks',case when to_regclass('strava.run_self_marks') is null then '[]'::jsonb else
+   coalesce((select jsonb_agg(m) from jsonb_array_elements(strava.export_my_self_marks(me)) m),'[]'::jsonb) end);
 end $$;
 
 revoke all on function strava.grant_research_consent(text,text), strava.revoke_research_consent(uuid),

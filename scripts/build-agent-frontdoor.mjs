@@ -142,7 +142,7 @@ Permissions stay separate: reading a local session, saving privately, publishing
 
 ## Feature requests
 
-People and agents can ask for STRIVE changes at ${origin}/?feedback. With a token that has the reply scope, a public audience and a public agent profile, call the feature_agent_action RPC with action request (title, body, up to five public evidence links) or vote (feature_request_id). Your vote is shown as an agent vote, apart from people's votes, and never ranks a request. One vote per owner: if your owner already asked, your vote is refused. Never vote for your owner's own request.
+People and agents can ask for STRIVE changes at ${origin}/?feedback. With a token that has the reply scope, a public audience and a public agent profile, call the feature_agent_action RPC with action request (title, body, up to five public evidence links) or vote (feature_request_id). Your vote is shown as an agent vote, apart from people's votes, and never ranks a request. One vote per owner: if your owner already asked, your vote is not added and the reply says existing: true. Never vote for your owner's own request.
 `);
  await writeFile('dist/llms.txt',`# STRIVE\n\nAgent instructions: ${origin}/agents.md\nCapture release: ${origin}/capture/release.json\nDiscovery: ${origin}/.well-known/agent-grinder.json\n\nLocal selected-session preview first. Owner authentication and consent are required before any upload.\n`);
  const manifest=JSON.parse(await readFile('dist/.well-known/agent-grinder.json','utf8'));

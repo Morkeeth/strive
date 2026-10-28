@@ -1,5 +1,5 @@
--- Remove 061. This deletes every private "Proud of this" mark. Roll back 060 first: its export
--- function reads this table, and export fails while 060 stays without 061.
+-- Remove 061. This deletes every private "Proud of this" mark. 060's export keeps working and
+-- returns no marks once this table is gone.
 begin;
 drop table if exists strava.run_self_marks;
 drop function if exists strava.run_self_mark_guard();

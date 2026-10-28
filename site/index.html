@@ -1388,7 +1388,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
   const declared=()=>!typedOnlyRun(r)&&typeof GrinderContract!=='undefined'&&GrinderContract.outcome?GrinderContract.outcome(r):'';
   const selfAck=ME&&ME.id===r.profile_id;
   let xudosTip='';
-  const ackBtn=selfAck?`<button class="act self-mark" data-self-mark="${r.id}" aria-pressed="false" title="Only you see this. It is not a XUDOS and is not counted.">Proud of this</button>`:`<button class="act kudo ${acked?'on':''}" data-run="${r.id}" data-to="${r.profile_id}" title="Send XUDOS" aria-label="${acked?'XUDOS sent':'Send XUDOS'}">XUDOS${count?' <span class="n num">'+count+'</span>':''}</button>`;
+  const ackBtn=selfAck?'':`<button class="act kudo ${acked?'on':''}" data-run="${r.id}" data-to="${r.profile_id}" title="Send XUDOS" aria-label="${acked?'XUDOS sent':'Send XUDOS'}">XUDOS${count?' <span class="n num">'+count+'</span>':''}</button>`;
   const whoLink=att.link&&!opts.preview?`<a href="${att.link}">${esc(att.name)}</a>`:`<span>${esc(att.name)}</span>`;
   const anonTag=att.ghost?'<span class="ghost-tag">anon</span>':'';
   const started=r.started_at&&Number.isFinite(Date.parse(r.started_at))?new Date(r.started_at).toLocaleString([], {dateStyle:'medium',timeStyle:'short'}):'Start time unknown';
@@ -1464,7 +1464,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
 function wireKudos(){
   window.StriveCardMotion?.mount(document);
   document.querySelectorAll('[data-self-mark]:not([data-wired])').forEach(b=>{b.dataset.wired='true';
-    const paint=on=>{b.setAttribute('aria-pressed',String(on));b.classList.toggle('on',on);b.textContent=on?'Proud of this · only you see it':'Proud of this';};
+    const paint=on=>{b.setAttribute('aria-pressed',String(on));b.classList.toggle('on',on);b.textContent=on?'✓ Proud':'Proud';b.setAttribute('aria-label',on?'Proud of this, marked. Only you see it.':'Mark this run: proud of this. Only you see it.');};
     const label=()=>{const w=window.StriveSelfMark?.where();b.title=w==='account'?'Saved to your account. Only you see it. It is not a XUDOS and is not counted.':w==='unavailable'?'Your marks could not be loaded. Reload to try again.':'Kept in this browser only. It is not a XUDOS and is not counted.';};
     const sync=window.StriveSelfMark?window.StriveSelfMark.connect(sb,ME?.id):Promise.resolve();
     sync.then(()=>{label();paint(!!window.StriveSelfMark?.marked(b.dataset.selfMark));});

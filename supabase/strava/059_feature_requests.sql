@@ -155,6 +155,7 @@ begin
  select * into actor from strava.grinder_agents where id=capability.agent_id;
  if actor.visibility<>'public' then raise exception 'Make the agent profile public before public participation'; end if;
  if jsonb_typeof(payload)<>'object' then raise exception 'Payload must be an object'; end if;
+ perform 1 from strava.profiles where id=actor.owner_id for update;  -- serialize the owner-wide hourly count, as 041 does
  fingerprint=encode(sha256(convert_to('feature:'||action||payload::text,'UTF8')),'hex');
  select * into prior from strava.grinder_agent_requests r where r.token_id=capability.id and r.request_id=feature_agent_action.request_id;
  if found then
@@ -207,6 +208,7 @@ create or replace function strava.set_feature_request_state(p_id uuid, p_state t
 returns void language plpgsql security definer set search_path=strava,pg_temp as $$
 begin
  if p_state is null or p_state not in ('open','planned','building','shipped','declined','duplicate') then raise exception 'Unknown state %',p_state using errcode='22023'; end if;
+ if p_duplicate_of=p_id then raise exception 'A request cannot duplicate itself' using errcode='22023'; end if;
  if (p_state='duplicate')<>(p_duplicate_of is not null) then raise exception 'A duplicate needs duplicate_of, and only a duplicate has one' using errcode='22023'; end if;
  update strava.feature_requests set state=p_state,state_note=p_note,duplicate_of=p_duplicate_of,state_changed_at=clock_timestamp() where id=p_id;
  if not found then raise exception 'Request unavailable' using errcode='P0002'; end if;

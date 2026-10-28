@@ -104,6 +104,7 @@ async function suite(sql,label){
 
  // Closed or decided requests keep their thread and votes.
  await root(db);await assert.rejects(db.query("select set_feature_request_state($1,'done')",[r1]),/Unknown state/);
+ await assert.rejects(db.query("select set_feature_request_state($1,'duplicate',null,$1)",[r1]),/duplicate itself/);
  await assert.rejects(db.query("select set_feature_request_state($1,'duplicate')",[r1]),/duplicate_of/);
  await as(db,A);assert.equal((await db.query('delete from feature_requests where id=$1',[r1])).affectedRows,0,'no withdraw once planned');
  await as(db,A);assert.equal((await db.query('delete from feature_votes where request_id=$1',[posted.x.id])).affectedRows,0,'no unvote once shipped');
@@ -121,6 +122,10 @@ async function suite(sql,label){
  await assert.rejects(db.query("select grant_research_consent('update_text','Kite')"),/your own projects/,'another person\'s project');
  await assert.rejects(db.query("select grant_research_consent('update_text','Nope')"),/your own projects/);
  await assert.rejects(db.query("insert into research_consents(profile_id,scope) values($1,'update_text')",[A]),/permission denied/);
+ await root(db);await db.query("insert into runs(profile_id,title,project,visibility,harness,schema_version,measurement_revision,trace_basis,rhythm) values($1,'Padded','Pad ','private','Codex',1,repeat('e',64),'elapsed','[1]')",[A]);
+ await as(db,A);const padded=(await one(db,"select grant_research_consent('update_text','Pad') as id")).id;
+ assert.equal((await one(db,'select project from research_consents where id=$1',[padded])).project,'Pad','a stored project with spaces still matches');
+ await db.query('select delete_research_consent($1)',[padded]);
  const g=(await one(db,"select grant_research_consent('update_text','Tide') as id")).id;
  assert.equal((await one(db,"select grant_research_consent('update_text','Tide') as id")).id,g,'granting twice keeps one active consent');
  const g2=(await one(db,"select grant_research_consent('run_measurements') as id")).id;
@@ -156,10 +161,14 @@ async function suite(sql,label){
 await suite(without058,'without 058:');
 const db=await suite(full,'full install:');
 
+// Rolling back 061 alone leaves export working, with no marks.
+await root(db);await db.exec(readFileSync('supabase/rollback/061_run_self_marks.sql','utf8'));
+await as(db,A);assert.deepEqual((await one(db,'select export_my_feedback_and_consent() as x')).x.self_marks,[],'export survives 061 rollback');
+await root(db);await db.exec(readFileSync('supabase/strava/061_run_self_marks.sql','utf8'));
 // Rollback, check nothing is left, re-apply.
 await root(db);
 for(const f of ['060_research_consent','059_feature_requests','061_run_self_marks'])await db.exec(readFileSync(`supabase/rollback/${f}.sql`,'utf8'));
-const left=await all(db,"select relname as n from pg_class c join pg_namespace s on s.oid=c.relnamespace where s.nspname='strava' and relname ~ '^(feature_|research_consent|run_self_marks)' union all select proname from pg_proc p join pg_namespace s on s.oid=p.pronamespace where s.nspname='strava' and proname ~ '^(feature_|create_feature_|vote_feature_|set_feature_|grant_research_|revoke_research_|delete_research_|export_my_feedback|run_self_mark)'");
+const left=await all(db,"select relname as n from pg_class c join pg_namespace s on s.oid=c.relnamespace where s.nspname='strava' and relname ~ '^(feature_|research_consent|run_self_marks)' union all select proname from pg_proc p join pg_namespace s on s.oid=p.pronamespace where s.nspname='strava' and proname ~ '^(feature_|create_feature_|vote_feature_|set_feature_|grant_research_|revoke_research_|delete_research_|export_my_|run_self_mark)'");
 assert.deepEqual(left,[],'rollback leaves nothing: '+JSON.stringify(left));
 for(const f of ['059_feature_requests','060_research_consent','061_run_self_marks'])await db.exec(readFileSync(`supabase/strava/${f}.sql`,'utf8'));
 await as(db,A);assert.equal((await all(db,'select * from feature_request_board()')).length,0);

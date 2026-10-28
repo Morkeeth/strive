@@ -17,11 +17,11 @@ async function StriveResearchConsent({client,slot,profileId,current=()=>true,dow
  const paint=async(note='')=>{
   const [{data:rows,error},{data:runs}]=await Promise.all([
    client.from('research_consents').select('id,scope,project,granted_at,revoked_at').order('granted_at',{ascending:false}),
-   client.from('runs').select('project').eq('profile_id',profileId).not('project','is',null).limit(500)]);
+   client.from('runs').select('project').eq('profile_id',profileId).not('project','is',null).limit(5000)]);
   if(!current())return;
   if(error){slot.innerHTML=`<h2 id="account-research-title">Research use</h2><p>${missing(error)?'Research choices are not available yet. Nothing is recorded, and research use stays off.':'Your research choice could not be confirmed right now. It is unchanged: if you allowed research use before, it is still allowed. Reload to check.'}</p>`;return}
   const active=rows.filter(r=>!r.revoked_at),ended=rows.filter(r=>r.revoked_at);
-  const projects=[...new Set((runs||[]).map(r=>r.project).filter(Boolean))].sort();
+  const projects=[...new Set((runs||[]).map(r=>String(r.project||'').trim()).filter(Boolean))].sort();
   slot.innerHTML=`<h2 id="account-research-title">Research use</h2>
    <p>Off unless you choose it here. This records a choice, not content: STRIVE never collects transcripts, prompts or session files for research. Saving and publishing are separate choices and do not change this.</p>
    ${legacyYes()?'<p class="research-legacy" role="status">You said yes on a device before. That was never sent to STRIVE. Choose again below if you still want it. <button type="button" class="act" id="research-legacy-dismiss">Dismiss</button></p>':''}
@@ -36,7 +36,7 @@ async function StriveResearchConsent({client,slot,profileId,current=()=>true,dow
   const call=async(fn,done)=>{try{const {data,error}=await fn();if(error)throw error;await paint(done(data))}catch(e){say(missing(e)?'Research choices are not available yet. Nothing was recorded.':(e.message||'That did not work.'))}};
   slot.querySelector('#research-legacy-dismiss')?.addEventListener('click',()=>{clearLegacy();paint('Dismissed. Research use stays as shown.')});
   slot.querySelector('#research-form').onsubmit=e=>{e.preventDefault();const f=e.target;
-   call(()=>client.rpc('grant_research_consent',{p_scope:f.elements.scope.value,p_project:f.elements.project.value||null}),()=>{clearLegacy();return 'Recorded. You can stop it at any time.'})};
+   call(()=>client.rpc('grant_research_consent',{p_scope:f.elements.scope.value,p_project:f.elements.project.value.trim()||null}),()=>{clearLegacy();return 'Recorded. You can stop it at any time.'})};
   slot.querySelectorAll('[data-revoke]').forEach(b=>b.onclick=()=>call(()=>client.rpc('revoke_research_consent',{p_consent_id:b.dataset.revoke}),()=>'Stopped. The dated record stays until you delete it.'));
   slot.querySelector('#research-delete').onclick=()=>{if(root.confirm('Delete every research choice and its history? This cannot be undone.'))call(()=>client.rpc('delete_research_consent',{p_consent_id:null}),n=>`Deleted ${Number(n)||0} research ${Number(n)===1?'choice':'choices'} and their history.`)};
   slot.querySelector('#research-export').onclick=()=>call(()=>client.rpc('export_my_feedback_and_consent'),data=>{(download||save)(data);return 'Exported. The file has your research choices, requests, votes and private marks.'});

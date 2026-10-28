@@ -44,7 +44,6 @@ assert.match(html,/class="grant-steps"/);
 for(const step of ['Read on your computer','Save privately','Publish','Research use'])assert.ok(html.includes(step),step);
 assert.doesNotMatch(html,/id="research-optin"/,'no device-only research box any more');
 assert.match(html,/Off unless you choose it in <a href="\/\?account#account-research">Settings<\/a>/);
-assert.match(html,/data-self-mark="\$\{r\.id\}"/);
 assert.match(html,/It is not a XUDOS and is not counted/);
 assert.match(html,/history\.replaceState/);
 
@@ -79,3 +78,10 @@ w.eval("ME={id:'signed-in-owner'}");paint();
 assert.equal(w.document.getElementById('f_title').value,'Faster sync','draft survives sign-in re-render');
 assert.equal(w.document.getElementById('f_caption').value,'Sync now resumes.');
 console.log('draft link survives sign-in: ok');
+
+// "Proud of this" renders in the live action row on your own run only, beside an uncounted XUDOS total.
+const FeedCard=require('../site/feed-card.js');
+const mine=FeedCard.actions({id:'run-1',mode:'mine',count:3}),theirs=FeedCard.actions({id:'run-2',mode:'live',count:3,to:'p2'});
+assert.match(mine,/data-self-mark="run-1"/);assert.match(mine,/not a XUDOS and is not counted/);assert.doesNotMatch(mine,/class="fc-act kudo/);
+assert.doesNotMatch(theirs,/data-self-mark/);assert.match(theirs,/class="fc-act kudo/);
+console.log('self mark in the live action row: ok');

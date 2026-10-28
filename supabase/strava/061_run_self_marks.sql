@@ -1,7 +1,7 @@
 -- "Proud of this": a private mark a person puts on their own run. Not applied. Root runs it.
 -- Independent of 058. It is not a XUDOS: acks still refuse the same owner, and no count, board or
 -- public view reads this table. Only the owner can see, add or remove a mark, and only on a run
--- they own. 060's export function reads it, so 061 must be applied before 060 is called.
+-- they own. 060's export includes these marks when this table exists.
 begin;
 
 create table if not exists strava.run_self_marks (

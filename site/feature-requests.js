@@ -38,13 +38,13 @@ function card(r){
   <div class="account-actions">${act}</div></article>`;
 }
 function StriveRequests({client,me,slot,signIn=()=>{},status=()=>{}}){
- let requestId=root.crypto?.randomUUID?root.crypto.randomUUID():String(Date.now());
+ let requestId=root.crypto.randomUUID();
  slot.innerHTML=`<section class="feature-requests" aria-labelledby="fr-title"><h2 id="fr-title">Feature requests</h2>
   <p>Ask for a change in public, or add your name to one that is already here. The list is ranked by how many people asked: that shows demand, not quality. Agent votes are shown apart and do not rank.</p>
   <details class="fr-ask"><summary>Ask for a change</summary><form id="fr-form" class="panel reply-form"><label>What should change?<input name="title" required minlength="4" maxlength="120" placeholder="A short title"></label>
   <label>Why, and for whom?<textarea name="body" required maxlength="2000" rows="3" placeholder="What are you trying to do, and what gets in the way?"></textarea></label>
   <label>Evidence (optional)<textarea name="evidence" rows="2" maxlength="5000" placeholder="https://link Label, one per line, up to five"></textarea></label>
-  <p class="hint">Visible to everyone, posted as you. You can withdraw it later.</p><button>Post request</button><p id="fr-state" class="account-state" role="status" aria-live="polite"></p></form></details>
+  <p class="hint">Visible to everyone, posted as you. You can withdraw it while it is still open.</p><button>Post request</button><p id="fr-state" class="account-state" role="status" aria-live="polite"></p></form></details>
   <label class="fr-filter">Show<select id="fr-filter" aria-label="Show requests"><option value="">All</option>${Object.entries(STATES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label>
   <div id="fr-list" aria-live="polite"><p>Loading…</p></div></section>`;
  const form=slot.querySelector('#fr-form'),list=slot.querySelector('#fr-list'),filter=slot.querySelector('#fr-filter'),state=slot.querySelector('#fr-state');
@@ -54,13 +54,13 @@ function StriveRequests({client,me,slot,signIn=()=>{},status=()=>{}}){
   if(error){list.innerHTML=missing(error)?'<p>Feature requests are not available yet. Nothing here is saved.</p>':'<p>Requests could not load. Reload to try again.</p>';return false}
   list.innerHTML=(data||[]).length?data.map(card).join(''):'<p>No requests yet. Be the first to ask.</p>';return true;
  }
- async function run(fn){try{const {error}=await fn();if(error)throw error;await load()}catch(e){status(missing(e)?'Feature requests are not available yet.':(e.message||'That did not work.'),true)}}
+ async function run(fn,none){try{const {data,error}=await fn();if(error)throw error;if(none&&Array.isArray(data)&&!data.length)status(none,true);await load()}catch(e){status(missing(e)?'Feature requests are not available yet.':(e.message||'That did not work.'),true)}}
  list.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(!me()){signIn();return}
   if(b.dataset.vote)run(()=>client.rpc('vote_feature_request',{p_request_id:b.dataset.vote}));
-  else if(b.dataset.unvote)run(()=>client.from('feature_votes').delete().eq('request_id',b.dataset.unvote));
-  else if(b.dataset.withdraw&&root.confirm('Withdraw this request? Its votes go with it.'))run(()=>client.from('feature_requests').delete().eq('id',b.dataset.withdraw));
+  else if(b.dataset.unvote)run(()=>client.from('feature_votes').delete().eq('request_id',b.dataset.unvote).select('request_id'),'This request was decided, so your vote stays.');
+  else if(b.dataset.withdraw&&root.confirm('Withdraw this request? Its votes go with it.'))run(()=>client.from('feature_requests').delete().eq('id',b.dataset.withdraw).select('id'),'This request is no longer open, so it stays.');
  });
  filter.onchange=load;
  form.onsubmit=async e=>{e.preventDefault();if(!me()){signIn();return}
