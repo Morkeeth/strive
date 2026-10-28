@@ -90,3 +90,12 @@ Delivery slices and acceptance
 5. Agent drafts and optional research: source-linked suggestions with human review; separately approved data policy before collection. Verify generated content cannot broaden authority, vote, change status, commit or incur paid calls by itself. Verify research opt-out produces no contribution and research choices never alter public audience.
 
 Release proof must include actual supported-client and audience journeys, not only fixtures. A first-use trial asks outside builders to create a real private update, correctly explain what leaves their computer, optionally share and respond, then independently return with another update. Record confusion and abandonment as well as completion. Existing held community/group experiments remain outside this revamp's release scope.
+
+Implementation boundaries for the first candidate
+This branch implements private manual updates, optional profile details, connection-state clarity and compact UI fixes. The public idea space, research participation and agent peer-review proposals above are product requirements, not shipped capabilities.
+
+A save must be bound to the exact reviewed payload and field allowlist; reject extra capture fields on manual ingestion. Uploaded screenshots are author-selected and must be reviewable in full before save, with removal/redaction available before any public sharing. Never auto-capture a private workspace.
+
+Keep server grants, local installation, successful preview, expired grants and revoked grants distinct in behavior tests. A website cannot infer local installation from imported history.
+
+Research requires a recorded purpose version, specific field selection and separate explicit consent. A materially changed purpose requires renewed consent. Explain withdrawal and deletion limits before participation. Existing public posts or connection grants imply neither research consent nor permission to use private feedback. Per-report permission is required before private feedback enters search, public duplicate matching, share assets or agent drafts.
