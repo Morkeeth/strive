@@ -59,7 +59,8 @@ const visit=async(search,reply={confirmed:true})=>{
     calls = [line for line in index.splitlines() if "fairConfirmRun(" in line]
     assert index.count("fairConfirmRun(") == 4 and len(calls) == 4
     assert calls[0] == "async function fairConfirmRun(id){"
-    for line, saved in zip(calls[1:], ("data.id", "runId", "published.id")):
+    assert "if(created)fairConfirmRun(id)" in calls[1]
+    for line, saved in zip(calls[2:], ("runId", "published.id")):
         assert f"history.replaceState(null,'','/?run='+{saved});fairConfirmRun({saved});" in line
     # The import does exactly that: a new save is confirmed once; opening a run that already
     # exists, or a save that failed, is not a new action and is not confirmed.

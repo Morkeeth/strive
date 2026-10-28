@@ -303,5 +303,5 @@ def test_typed_only_runs_do_not_pose_as_captured_or_ranked_runs():
     feed = (ROOT / "site/feed-card.js").read_text()
     boards = INDEX[INDEX.index("async function viewBoards()") : INDEX.index("function heatmapSvg")]
     assert 'trace_basis === "typed-by-author"' in feed
-    assert "Typed by the author. No capture." in feed
+    assert "Manual · unmeasured. Provided by the author." in feed
     assert "filter(r=>!typedOnlyRun(r))" in boards

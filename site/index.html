@@ -2193,7 +2193,7 @@ function postComposerHtml(){
     <label>What changed?<textarea id="f_caption" required maxlength="2000"></textarea></label>
     <label>What feedback would help?<textarea id="f_feedback" maxlength="500" placeholder="Ask a specific question"></textarea></label>
     <button type="button" id="manual-preview">Preview update</button><div id="manual-preview-content" hidden></div>
-    <p class="hint">Save creates a private update. Open it to review your images and choose whether to publish.</p>
+    <p class="hint">Save creates a private update. Open it to review your images and choose whether to publish. If a save is interrupted, retry checks the same update.</p>
     <button id="publish" type="button">Save privately</button><div id="manual-recover" hidden></div>
   </div></section>`;
 }
@@ -2247,7 +2247,7 @@ function viewFeedback(){
 
 function wireComposer(){
   const pb=$('publish');if(!pb)return;
-  const owner=ME?.id,fields=['f_title','f_project','f_caption','f_output_url','f_problem','f_feedback'],key='ag_manual_project_draft';
+  const owner=ME?.id,fields=['f_title','f_project','f_caption','f_output_url','f_problem','f_feedback'],key='ag_manual_post_draft';
   let attemptId=crypto.randomUUID();
   try{const saved=JSON.parse(sessionStorage.getItem(key)||'null');if(saved&&(saved.profileId==null||saved.profileId===owner)&&typeof saved.id==='string'){attemptId=saved.id;for(const id of fields)if(typeof saved[id]==='string')$(id).value=saved[id];}}catch(_){}
   const token='manual-project:'+attemptId,current=()=>$('publish')===pb&&ME?.id===owner;
@@ -2260,14 +2260,14 @@ function wireComposer(){
     if(!ME){keep();showSignIn();return;}
     if(!current())return;
     let row;try{row=await build()}catch(e){status(e.message,true);return}keep();
-    const recover=$('manual-recover'),open=async id=>{try{sessionStorage.removeItem(key)}catch(_){}history.replaceState(null,'','/?run='+id);await viewRun(id);status('Saved privately. Review the update before choosing an audience.');};
-    if(await StrivePhotoDraft.saveIfDraft({token,profileId:owner,client:sb,buildRow:()=>row,audience:'private',manual:true,button:pb,recover,status,isCurrent:current,onSaved:result=>open(result.runId)}))return;
+    const recover=$('manual-recover'),open=async (id,created=false)=>{try{sessionStorage.removeItem(key)}catch(_){}history.replaceState(null,'','/?run='+id);if(created)fairConfirmRun(id);await viewRun(id);status(created?'Saved privately. Review the update before choosing an audience.':'This save was already received; no duplicate was created. Opening the saved update.');};
+    if(await StrivePhotoDraft.saveIfDraft({token,profileId:owner,client:sb,buildRow:()=>row,audience:'private',manual:true,button:pb,recover,status,isCurrent:current,onSaved:result=>open(result.runId,true)}))return;
     pb.disabled=true;recover.hidden=true;
     try{
       const {data:prior,error:lookupError}=await sb.from('runs').select('id,visibility').eq('id',attemptId).eq('profile_id',owner).maybeSingle();if(!current())return;if(lookupError)throw lookupError;
       if(!prior){const {error}=await sb.from('runs').insert({...row,id:attemptId,profile_id:owner}).select('id').single();if(error)throw error;}
-      if(current())await open(attemptId);
-    }catch(e){if(current()){recover.hidden=false;recover.innerHTML='<p role="alert">Save not confirmed. Your draft is kept. Retry checks the same update before saving again.</p>';status(e.message||'Save not confirmed.',true)}}finally{pb.disabled=false;}
+      if(current())await open(attemptId,!prior);
+    }catch(e){if(current()){recover.hidden=false;recover.innerHTML='<p role="alert">Save not confirmed. Your draft is kept. Retry checks the same update before saving again.</p><button type="button" id="manual-retry">Check and try again</button>';$('manual-retry').onclick=()=>pb.click();status(e.message||'Save not confirmed.',true)}}finally{pb.disabled=false;}
   };
 }
 

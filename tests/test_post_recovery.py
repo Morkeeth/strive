@@ -50,12 +50,13 @@ def test_manual_save_has_a_stable_browser_id_and_checks_before_retry():
     assert "ag_manual_post_draft" in manual
     assert "crypto.randomUUID()" in manual
     assert "id:attemptId" in manual
-    assert "const prior=await existing()" in manual
+    assert ".eq('id',attemptId).eq('profile_id',owner).maybeSingle()" in manual
     assert "Save not confirmed." in manual
-    assert "cannot tell whether the service received the run" in manual
+    assert "Your draft is kept" in manual
     assert "Check and try again" in manual
     assert "no duplicate was created" in manual
     assert "setTimeout" not in manual and "setInterval" not in manual
+    subprocess.run(["node", "scripts/test-manual-recovery.mjs"], cwd=ROOT, check=True)
 
 
 def test_same_capture_is_one_run_not_two():
@@ -116,10 +117,11 @@ def test_the_save_with_images_checks_the_same_reference_before_it_inserts():
     # The second save path (site/photo-draft.js, used when images are attached) must refuse a
     # capture that is already a run, and must refuse a row with no reference at all.
     save = PHOTO_DRAFT[PHOTO_DRAFT.index("async function save({token") : PHOTO_DRAFT.index("const savingButtons=")]
-    guard = "if(!row.measurement_revision||row.trace_basis==='typed-by-author')throw new Error("
+    guard = "if(!manualRow&&(!row.measurement_revision||row.trace_basis==='typed-by-author'))throw new Error("
     lookup = ".eq('profile_id',profileId).eq('measurement_revision',row.measurement_revision).limit(1)"
     refuse = "if(prior?.length&&prior[0].id!==runId){const error=new Error('This session is already saved."
     insert = "client.from('runs').insert("
+    assert "manual&&row.trace_basis==='typed-by-author'&&!row.measurement_revision" in save
     assert save.count(insert) == 1
     assert save.index(guard) < save.index(lookup) < save.index(refuse) < save.index(insert)
     assert "error.existingRunId=prior[0].id;throw error;" in save

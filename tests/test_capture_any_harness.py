@@ -67,7 +67,8 @@ def test_the_capture_commands_offer_deliberate_native_session_selection():
 def test_the_page_promises_exactly_the_tools_the_reader_supports():
     """The mismatch the audit found was between a promise and a command, so bind them."""
     from agentgrinder.ingest import HARNESSES
-    assert "reads the freshest Cursor, Claude Code, Codex or imported Grok Bot session" in INDEX
+    assert "strive sessions --harness ${h} --open --site __ORIGIN__" in INDEX
+    assert "Grok Bot" in INDEX  # Explicit exports remain supported; manual updates need no capture.
     for tool in HARNESSES.values():
         assert tool in INDEX, tool
     assert "striverun.app/?post" in README

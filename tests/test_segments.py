@@ -117,12 +117,14 @@ process.stdout.write(JSON.stringify({
         "manualSet": {"segment_id": "segment-01", "wall_time_s": 0, "model": "m"},
         "manualUnset": ["title"],
     }
-    assert "segment_id:$('f_segment').value||null,wall_time_s:wallTime," in index
-    manual = index[index.index("segment_id:$('f_segment').value||null"):]
-    assert manual.index("dropNullSegmentColumns(row);") < manual.index("sb.from('runs').insert(row)")
+    manual = index[index.index("function postComposerHtml("):index.index("async function viewPost()")]
+    assert 'id="f_segment"' not in manual and 'id="f_wall"' not in manual
+    # Manual updates cannot supply a model or measured segment duration.
+    row = json.loads(subprocess.check_output(["node", "-e", "console.log(JSON.stringify(require('./site/project-update.js').row({title:'Synthetic',project:'P',changed:'Result',link:'https://example.com'})))"], cwd=ROOT, text=True))
+    assert "segment_id" not in row and row["wall_time_s"] is None and row["model"] is None
     assert 'id="i_segment"' not in index[index.index("async function importRun(){"):]
-    # One definition and the typed-form call; every import insert goes through StriveImportRow.build.
-    assert index.count("dropNullSegmentColumns(") == 2
+    # The old helper remains; every captured import insert goes through StriveImportRow.build.
+    assert index.count("dropNullSegmentColumns(") == 1
     imports = index[index.index("async function importRun(){"):]
     save = imports[imports.index("const row=StriveImportRow.build(run,{profileId:ME.id,"):]
     assert save.index("const row=StriveImportRow.build(") < save.index("await sb.from('runs').insert(row).select('id').single()")

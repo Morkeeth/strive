@@ -84,10 +84,11 @@ def test_responses_signed_out_uses_github():
 
 def test_manual_post_names_its_duplicate_limit():
     composer = INDEX[INDEX.index("function postComposerHtml(") : INDEX.index("async function viewPost()")]
-    assert "Manual posts have no capture identifier." in composer
-    assert "browser gives each save an identifier" in composer
-    assert "Check and try again" in composer
-    assert "never invents a measurement revision" in composer
+    assert "Manual · unmeasured" in composer
+    assert "Save privately" in composer
+    assert "retry checks the same update" in composer
+    subprocess.run(["node", "scripts/test-manual-recovery.mjs"], cwd=ROOT, check=True)
+
 
 
 def test_landing_featured_card_keeps_caption_and_output_primary():
