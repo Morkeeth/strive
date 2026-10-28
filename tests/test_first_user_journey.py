@@ -42,7 +42,7 @@ def test_signed_in_builder_lands_on_the_feed_not_a_tour():
     assert "function connectBodyHtml()" in INDEX
     assert "const capture=ONE_LINE('auto')" in INDEX
     assert "agentCommands:Object.fromEntries(['cursor','claude','codex'].map(h=>[h,picker(h)]))" in INDEX
-    assert '<details class="post-setup" id="post-setup"><summary><span>Import setup</span>' in POSTFLOW
+    assert '<details class="post-setup" id="post-setup" data-mcp-spec="${esc(mcpSpec)}" data-cursor-mcp-link="${esc(cursorMcpLink)}"><summary><span>Import setup</span>' in POSTFLOW
     assert POSTFLOW.index('class="post-source-grid"') < POSTFLOW.index('id="post-setup"') < POSTFLOW.index('<code class="c">${esc(capture)}</code>')
     # ba3cf50 moved the Grok Bot guide link from the page to the My runs empty state.
     assert "docs/GROK-PUSH.md" in PROGRESS
@@ -50,7 +50,7 @@ def test_signed_in_builder_lands_on_the_feed_not_a_tour():
 
 def test_zero_run_surfaces_connect_and_deliberate_save():
     assert "Preview stays private on this device" not in INDEX
-    assert "Sign in to save the run and choose who can read it." in INDEX
+    assert "Sign in when you choose to save privately." in INDEX
     assert "Your first run starts private" in PROGRESS
     assert 'href="/?connect">Connect an agent</a>' in PROGRESS
     assert "Private uploads appear here" in PROGRESS
@@ -84,10 +84,11 @@ def test_responses_signed_out_uses_github():
 
 def test_manual_post_names_its_duplicate_limit():
     composer = INDEX[INDEX.index("function postComposerHtml(") : INDEX.index("async function viewPost()")]
-    assert "Manual posts have no capture identifier." in composer
-    assert "browser gives each save an identifier" in composer
-    assert "Check and try again" in composer
-    assert "never invents a measurement revision" in composer
+    assert "Manual · unmeasured" in composer
+    assert "Save privately" in composer
+    assert "retry checks the same update" in composer
+    subprocess.run(["node", "scripts/test-manual-recovery.mjs"], cwd=ROOT, check=True)
+
 
 
 def test_landing_featured_card_keeps_caption_and_output_primary():

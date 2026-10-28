@@ -75,7 +75,7 @@ def test_capture_is_primary_and_manual_import_is_advanced():
     assert "return StrivePostFlow.setupHtml({agentPrompt,capture,syncHtml:autoSyncHtml(),dropHtml:dropZoneHtml()," in connect
     page = node(ADD_RUN)
     assert page["blocks"] == ["section.post-start", "details.post-file-entry", "p.post-sample", "details.post-setup"]
-    assert page["intro"] == "Open a local session picker, then check your private preview. Nothing is saved online yet."
+    assert page["intro"] == "Choose your agent and copy one command. It opens a session list on your own computer; the session you pick opens here as a private preview. Nothing is saved online yet."
     picker = "uvx --from __CAPTURE_PACKAGE__ strive sessions --harness {} --open --site __ORIGIN__"
     assert page["sources"] == [
         ["cursor", "Cursor", picker.format("cursor")],
@@ -303,5 +303,5 @@ def test_typed_only_runs_do_not_pose_as_captured_or_ranked_runs():
     feed = (ROOT / "site/feed-card.js").read_text()
     boards = INDEX[INDEX.index("async function viewBoards()") : INDEX.index("function heatmapSvg")]
     assert 'trace_basis === "typed-by-author"' in feed
-    assert "Typed by the author. No capture." in feed
+    assert "Manual · unmeasured. Provided by the author." in feed
     assert "filter(r=>!typedOnlyRun(r))" in boards

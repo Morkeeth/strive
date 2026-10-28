@@ -19,6 +19,7 @@ import { JSDOM } from "jsdom";
 const site = new URL("../../site/", import.meta.url);
 const read = (name) => readFileSync(new URL(name, site), "utf8");
 const INDEX = read("index.html");
+if (INDEX.indexOf('<script src="/project-update.js"></script>') < 0 || INDEX.indexOf('<script src="/project-update.js"></script>') > INDEX.indexOf('<script src="/auth.js"></script>')) throw new Error("Profile context validator must load before profile editing");
 const between = (start, end) => {
   const a = INDEX.indexOf(start);
   const b = INDEX.indexOf(end, a);
@@ -51,7 +52,7 @@ async function scenario({ viewer, preview = false, providers = ["github"], rows 
     url: "https://strive.test/?u=ada" + (preview ? "&preview=public" : ""), runScripts: "outside-only",
   });
   const w = dom.window;
-  for (const file of ["run-links.js", "activity-order.js", "run-contract.js", "run-context.js", "feed-card.js", "auth.js"]) w.eval(read(file));
+  for (const file of ["project-update.js", "run-links.js", "activity-order.js", "run-contract.js", "run-context.js", "feed-card.js", "auth.js"]) w.eval(read(file));
   const calls = [];
   w.__probe = {
     calls, prof, providers,

@@ -110,7 +110,7 @@ export async function runPhotos({method,headers={},query={},body},config,fetchIm
   if(method==='POST') {
    // Reject invalid tokens and other people's runs before spending image-decoder resources.
    if(!await ownsRun(runId)) return result(404,{error:'Run not found.'});
-   // INSERT RLS proves ownership and the captured source before the server writes any bytes.
+   // INSERT RLS proves ownership and the accepted source kind before the server writes any bytes.
    const image=await sanitizePhoto(body?.image_base64).catch(()=>null);
    if(!image) return result(400,{error:'Choose a still JPEG, PNG or WebP photo under 3 MB (up to 40 megapixels).'});
    const digest=createHash('sha256').update(image.data).digest('hex');
@@ -131,7 +131,7 @@ export async function runPhotos({method,headers={},query={},body},config,fetchIm
    const p={id:randomUUID(),run_id:runId,width:image.width,height:image.height,byte_size:image.data.length,content_sha256:digest};
    let saved;
    try {saved=await rows('run_photos?select='+fields,{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(p)});}
-   catch(error) {if(error.status===409){const prior=await existingPhoto();if(prior)return prior;}return result(error.status===401?401:400,{error:'This run can show six images and keep twelve saved images. Remove one from the run before adding another.'});}
+   catch(error) {if(error.status===409){const prior=await existingPhoto();if(prior)return prior;}return result(error.status===401?401:400,{error:'The image could not be added. Retry; if the run is at its image limit, remove an image first.'});}
    let uploaded;
    try {uploaded=await storage(BUCKET+'/'+path(p),{method:'POST',headers:{'Content-Type':'image/jpeg','x-upsert':'false'},body:image.data});} catch {}
    if(!uploaded?.ok) {

@@ -5,26 +5,30 @@ const run={id,visibility:'public',title:'TEST DATA work',caption:'TEST DATA capt
 const photos=await readPublicPhotos(run,async()=>new Response(JSON.stringify([{id:first,run_id:id,is_cover:false,width:400,height:300},{id:cover,run_id:id,is_cover:true,width:400,height:300}])));
 assert.equal(photos[1].is_cover,true,'public reader keeps the author-selected cover flag');
 const page=html(run,{photos,kudos:0});
-assert.ok(page.indexOf('class="share-author"')<page.indexOf('class="public-run-photo-grid"'),'builder identity precedes the selected image mosaic');
+const before=(first,second,message)=>{const a=page.indexOf(first),b=page.indexOf(second);assert.ok(a>=0,'Missing '+first);assert.ok(b>=0,'Missing '+second);assert.ok(a<b,message);};
+before('class="share-author"','class="public-run-photo-grid"','builder identity precedes the selected image mosaic');
 assert.ok(page.includes(`/api/og?run=${id}&v=5`),'the public page requests the current share-card image');
-assert.ok(page.indexOf('class="public-run-photos"')<page.indexOf('class="share-copy"'),'selected photos lead the public story');
+before('aria-label="Project highlights"','class="public-run-photos"','authored project highlights precede selected photos');
+before('class="public-run-photos"','aria-label="Recorded facts"','selected photos still precede supporting metrics');
 assert.ok(page.includes('href="/?legacy=1&run='+id+'">Open in STRIVE'),'entry opens this exact run in the interactive app');
 assert.ok(page.includes('<link rel="canonical" href="https://striverun.app/test-author/11111111-test-data-work">'),'shared address stays clean');
-assert.ok(page.indexOf('aria-label="Recorded facts"')<page.indexOf('class="share-route"'),'measured stats precede the activity bars');
+before('aria-label="Recorded facts"','class="share-route"','measured stats precede the activity bars');
 assert.doesNotMatch(page,/<dt>(?:Active time|Tool-active time · proxy)<\/dt>/,'elapsed duration must not become an active-time metric');
 assert.doesNotMatch(page,/<dt>(?:Dollars|Est. dollars)<\/dt>/,'missing price inputs omit the face metric');assert.match(page,/Recorded details and sources/);
 assert.match(page,/<dd[^>]*>0<\/dd>/,'recorded zero remains a recorded zero');
 assert.ok(page.includes('Human messages'),'recorded turns remain available in details');
 assert.ok(page.includes('Tool requests'),'recorded tools remain available in details');
-assert.ok(page.indexOf('/api/run-photos?id='+cover)<page.indexOf('/api/run-photos?id='+first),'selected cover leads the public gallery even when metadata is unordered');
+before('/api/run-photos?id='+cover,'/api/run-photos?id='+first,'selected cover leads the public gallery even when metadata is unordered');
 assert.ok(!page.includes('<script'),'shared public page stays script-free');
-assert.match(page,/<footer class="site-foot share-foot"><details><summary>Info<\/summary><nav aria-label="Information and policies">/,'share footer hides the link row behind Info');
+assert.match(page,/<footer class="site-foot share-foot"><nav aria-label="Information and policies"><a href="\/about">About<\/a><a href="\/privacy">Privacy<\/a><a href="\/terms">Terms<\/a>/,'share footer shows its policy links in view');
+assert.ok(!/<footer class="site-foot share-foot">[^]*?<details/.test(page),'no policy link hides behind a toggle');
 const extra='44444444-4444-4444-8444-444444444444';
 const noImage=html(run,{photos:[],moreRuns:[
  {id:extra,visibility:'public',title:'Another build',profiles:{handle:'test-author'}},
  {id:'55555555-5555-4555-8555-555555555555',visibility:'private',title:'Private note',profiles:{handle:'test-author'}}
 ]});
-assert.ok(noImage.includes('class="share-quote"'),'runs without selected images use an authored blue quote card');
+assert.ok(!noImage.includes('class="share-quote"'),'no image does not repeat the authored context in a second quote card');
+assert.ok(noImage.includes('aria-label="Project highlights"'),'authored context stays visible without images');
 assert.ok(noImage.includes('Another build'),'another public run is linked below the activity');
 assert.ok(!noImage.includes('Private note'),'private related runs never appear');
 const candid=[{id:first,run_id:id,role:'personal',is_cover:false},{id:cover,run_id:id,role:'personal',personal_public_selected:true,is_cover:true},{id:extra,run_id:id,role:'result',is_cover:false}];

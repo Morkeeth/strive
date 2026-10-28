@@ -223,6 +223,8 @@ html[data-auth-boot="pending"] #app{min-height:100vh}
 @media(max-width:520px){.activity-post .post-share-facts{gap:0 10px!important}.activity-post .post-share-facts dd{font-size:18px!important}}
 /* Space is held before data arrives, so nothing below the feed moves when cards land. */
 #app{min-height:calc(100vh - 64px)}
+/* Once a page has no loading placeholder left, a short page such as Feedback lets its footer links into view. */
+#app:not(:has(.loading-card,.feed-skeleton,.feed-loading,[data-first-paint])){min-height:calc(100vh - 260px)}
 .home #landing-feature-body.feed-loading,.home .feed-loading{min-height:120vh}
 .home .land-head .first-paint-title{font-size:24px;letter-spacing:-.5px;margin:0}
 .feed-skeleton{display:grid;gap:12px;height:560px;box-sizing:border-box;padding:18px 20px;margin:0 0 16px;background:#fff;border:1px solid var(--rule);border-radius:12px;grid-template-rows:36px 44px 52px 1fr}
@@ -248,3 +250,15 @@ html[data-auth-boot="pending"] #app{min-height:100vh}
 .card .run-media-gallery figcaption{position:relative;grid-row:2;grid-column:1;inset:auto;margin:0;padding:3px 30px 3px 5px;height:20px;box-sizing:border-box;overflow:hidden;background:transparent}
 .card .run-media-gallery figure a::after{top:auto;bottom:-19px;right:4px;padding:0 3px;background:transparent}
 .card .run-media-gallery .media-more-count{top:auto;bottom:-19px;right:28px;padding:1px 3px;font-size:10px}
+
+/* Project problem, change and feedback lead. Recorded activity supports the story. */
+.activity-post .project-highlights{margin:12px 0 16px;gap:10px}
+.activity-post .project-highlight p{font-size:15px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.activity-post .project-feedback p{display:block;overflow:visible}
+.activity-post .project-source{margin:5px 0 10px}
+.activity-post .post-share-facts{margin:12px 0 8px!important;padding-top:10px}
+.activity-post .post-share-facts dd{font-size:16px!important;font-weight:500;letter-spacing:0}
+.activity-post .post-share-facts dt{font-size:11px!important}
+.run-detail-card>.project-highlights,.run-detail-card>.project-source{margin:12px var(--detail-pad)}
+.run-detail-card>.post-facts dd,.run-detail-card>.run-metrics dd,.run-detail-card .run-metric dd{font-size:17px;letter-spacing:0;font-weight:500}
+@media(max-width:700px){.activity-post .project-highlight p{font-size:14px}.activity-post .post-share-facts dd{font-size:15px!important}.project-highlights{gap:10px}}

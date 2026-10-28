@@ -72,7 +72,7 @@
     try{await paint()}catch(error){slot.textContent=error.message;}
     return dispose;
   }
-  async function save({token,profileId,client,buildRow,audience='private',isCurrent=()=>true,onProgress=()=>{}}){
+  async function save({token,profileId,client,buildRow,audience='private',manual=false,isCurrent=()=>true,onProgress=()=>{}}){
     const key=await keyFor(token);await work.get(key);let draft=await read(key);
     if(!draft||(!draft.items.length&&!draft.runId)||draft.phase==='complete')return null;
     bound(draft,profileId);
@@ -88,9 +88,14 @@
     try{
       onProgress('Saving the run privately…');let existing=await queryRun(runId);
       if(!existing){
-        const row=buildRow();if(!row.measurement_revision||row.trace_basis==='typed-by-author')throw new Error('Choose a recorded session with a capture reference before adding images.');
-        const {data:prior,error:lookupError}=await client.from('runs').select('id,visibility').eq('profile_id',profileId).eq('measurement_revision',row.measurement_revision).limit(1);assertCurrent();if(lookupError)throw lookupError;
-        if(prior?.length&&prior[0].id!==runId){const error=new Error('This session is already saved. Open that run to add images; these selected images are still on this device.');error.existingRunId=prior[0].id;throw error;}
+        const row=buildRow();
+        const manualRow=manual&&row.trace_basis==='typed-by-author'&&!row.measurement_revision&&row.visibility==='private'&&row.title&&row.project&&row.story_result;
+        if(!manualRow&&(!row.measurement_revision||row.trace_basis==='typed-by-author'))throw new Error('Choose a recorded session with a capture reference before adding images.');
+        if(manualRow&&['prompts','duration_s','wall_time_s','commits','model','harness','tool_calls','tokens','bill'].some(key=>row[key]!=null))throw new Error('Manual updates cannot claim captured measurements.');
+        if(!manualRow){
+          const {data:prior,error:lookupError}=await client.from('runs').select('id,visibility').eq('profile_id',profileId).eq('measurement_revision',row.measurement_revision).limit(1);assertCurrent();if(lookupError)throw lookupError;
+          if(prior?.length&&prior[0].id!==runId){const error=new Error('This session is already saved. Open that run to add images; these selected images are still on this device.');error.existingRunId=prior[0].id;throw error;}
+        }
         await session();const {error}=await client.from('runs').insert({...row,id:runId,profile_id:profileId,visibility:'private'}).select('id').single();assertCurrent();if(error)throw error;existing={id:runId,visibility:'private'};
       }
       if(existing.visibility!=='private'){

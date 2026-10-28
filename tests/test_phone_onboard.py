@@ -28,8 +28,8 @@ def test_connect_leads_with_computer_capture():
     page = drawn()
     # The page opens on capture from the computer, ahead of the file drop and the setup fold.
     assert page['order'] == sorted(page['order']) and page['order'][0] == 0
-    assert page['intro'] == 'Open a local session picker, then check your private preview. Nothing is saved online yet.'
-    assert page['steps'] == ['1Choose your agent', '2Pick a session', '3Private preview']
+    assert page['intro'] == 'Choose your agent and copy one command. It opens a session list on your own computer; the session you pick opens here as a private preview. Nothing is saved online yet.'
+    assert page['steps'] == ['1Choose your agent', '2Run it in Terminal', '3Private preview']
     assert page['before'] == {'quick': False, 'agent': False}
     # Choosing an agent shows one command to copy, and says which computer to run it on.
     for source, name in (('cursor', 'Cursor'), ('claude', 'Claude Code'), ('codex', 'Codex')):
@@ -39,7 +39,7 @@ def test_connect_leads_with_computer_capture():
         assert pick['copyLabel'] == 'Copy command'
         assert pick['command'] == pick['copy'] == PICKER.format(source)
     assert 'Copy this command into Terminal on the computer where you worked.' in page['quickText']
-    assert 'Pick your session to prepare its private preview.' in page['quickText']
+    assert 'Pick your session there and its private preview opens in this browser as step 3.' in page['quickText']
     assert 'This website cannot read your disk.' in page['quickText']
     assert 'prompts and session files stay on your computer' in page['quickText']
 

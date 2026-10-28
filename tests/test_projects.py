@@ -19,10 +19,14 @@ def _import_flow(run, **spec):
 
 
 def test_preview_and_composer_take_a_repository_link():
-    assert 'id="i_repo"' in INDEX and 'id="f_repo"' in INDEX
+    assert 'id="i_repo"' in INDEX and 'id="f_output_url"' in INDEX
     assert "'i_repo'" in INDEX.split("const editFields=")[1].split("]")[0]
-    assert "'f_repo'" in INDEX.split("const fields=['f_title'")[1].split("]")[0]
-    assert "repo_url:safeRepoUrl($('f_repo')?.value)" in INDEX
+    manual = INDEX[INDEX.index("function wireComposer()"):INDEX.index("// GitHub is provider-backed")]
+    assert "'f_output_url'" in manual
+    assert "link:$('f_output_url').value" in manual
+    # A manual repository link is an author-provided project output, never captured repository evidence.
+    row = json.loads(subprocess.check_output(["node", "-e", "console.log(JSON.stringify(require('./site/project-update.js').row({title:'Synthetic',project:'P',changed:'Result',link:'https://github.com/you/project'})))"], cwd=ROOT, text=True))
+    assert row["output_url"] == "https://github.com/you/project" and "repo_url" not in row
     # https only, or nothing: a repository link is clicked, never printed as text.
     assert "function safeRepoUrl(value)" in INDEX
     links = ["https://github.com/you/project", " https://github.com/you/project ", "http://github.com/you/project",

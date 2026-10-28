@@ -240,7 +240,8 @@ WEB_CARD = r"""
 const fs=require('fs'),vm=require('vm'),{JSDOM}=require('jsdom');
 const s=fs.readFileSync('site/index.html','utf8');
 const cut=(from,to)=>s.slice(s.indexOf(from),s.indexOf(to,s.indexOf(from)));
-const ctx={URL,Date,ME:null,GrinderContract:require('./site/run-contract.js'),GrinderFeed:require('./site/feed-card.js'),
+// Supply the browser location used to bind rendered cards to same-document anchor routing.
+const ctx={URL,Date,location:new URL('https://strive.example/?run=11111111-1111-1111-1111-111111111111'),ME:null,GrinderContract:require('./site/run-contract.js'),GrinderFeed:require('./site/feed-card.js'),
  StriveActivity:require('./site/activity-order.js'),StriveContext:require('./site/run-context.js'),StriveEvidence:require('./site/run-evidence.js'),
  StriveHistory:require('./site/historical-import.js'),StrivePost:require('./site/activity-post.js'),StriveLinks:require('./site/run-links.js'),
  StriveStory:require('./site/run-story.js'),
