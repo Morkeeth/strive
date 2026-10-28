@@ -75,7 +75,7 @@ def test_logged_out_landing_exposes_browsing_and_first_post():
     ]
     assert seen["signin"] == {"text": "Sign in", "hidden": False}
     post = HTML[HTML.index('async function viewPost(){'):HTML.index('async function viewExplore(){')]
-    assert "${ME?'':'<div class=\"panel pad auth-empty\"><h3>Sign in to save</h3>" in post
+    assert "${ME?'':'<div class=\"panel pad auth-empty\"><h3>No account needed to start</h3>" in post
     assert 'Sign in to browse' not in body
     # Phone used to pull the feature card above the pitch via order:-1. Keep source order.
     assert '.launch-grid>.landing-feature{order:-1}' not in HTML
