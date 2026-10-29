@@ -1,9 +1,10 @@
 # STRIVE
 
 **STRIVE turns a recorded coding-agent session into a visual run card you can keep private or share when you choose.**
-Work done with a coding agent is hard for other people to see and respond to.
-For builders who use Cursor, Codex, Grok Bot or other coding agents and want to show a real run, not a screenshot of a chat.
-Import a session, review source-backed measurements, write your own title and story, add a screenshot, then save as Only me or post it to the feed where others can follow, thank and reply.
+
+Work done with a coding agent is hard for other people to see and respond to.  
+For builders who use Cursor, Codex, Grok Bot or other coding agents and want to show a real run, not a screenshot of a chat.  
+Import a session, review source-backed measurements, write your own title and story, add a screenshot, then save as Only me or post it to the feed where others can follow, thank and reply.  
 Capture needs no model API key, stays on your machine until you save, and missing measurements stay unknown. Try it at [striverun.app](https://striverun.app).
 
 **[Open STRIVE](https://striverun.app)** · [Install STRIVE](https://striverun.app/install) · [Contribute](CONTRIBUTING.md)
