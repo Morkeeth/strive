@@ -1,11 +1,26 @@
 # STRIVE
 
-**STRIVE turns a recorded coding-agent session into a visual run card you can keep private or share when you choose.**
+## TLDR
+
+Turn a recorded coding-agent session into a visual run you can keep private or share.<br>
+For builders who want others to see and respond to actual work.<br>
+Capture needs no model API key; review the preview and audience before deliberately saving a run.
+
+[Open STRIVE](https://striverun.app) · [Install STRIVE](https://striverun.app/install) · [the public FAVOUR run](https://striverun.app/?run=47e8f731-a4a3-44ce-add2-63fa6e815af5)
+
+## The problem and approach
 
 Work done with a coding agent is hard for other people to see and respond to.  
-For builders who use Cursor, Codex, Grok Bot or other coding agents and want to show a real run, not a screenshot of a chat.  
 Import a session, review source-backed measurements, write your own title and story, add a screenshot, then save as Only me or post it to the feed where others can follow, thank and reply.  
 Capture needs no model API key, stays on your machine until you save, and missing measurements stay unknown. Try it at [striverun.app](https://striverun.app).
+
+## Review and pick up the work
+
+[PRODUCT.md](PRODUCT.md) · [Agent guide](AGENTS.md)
+
+Start with the linked source, setup and evidence. Recorded demos and sample data keep their original scope; use the repository instructions for a fresh run.
+
+STRIVE turns a recorded coding-agent session into a visual run you can save privately and share when you choose. Capture needs no model API key.
 
 **[Open STRIVE](https://striverun.app)** · [Install STRIVE](https://striverun.app/install) · [Contribute](CONTRIBUTING.md)
 
@@ -40,3 +55,7 @@ Open http://127.0.0.1:8000. This serves `site/` directly; `npm run build` checks
 STRIVE is free and open source. Help with a first-run problem, a card, accessibility, or a clear bug report. [Start contributing](CONTRIBUTING.md) · [First contributions](docs/FIRST-PR.md) · [Product direction](PRODUCT.md) · [Architecture](docs/architecture.md) · [Exploring](docs/ROADMAP.md) · [Code of conduct](CODE_OF_CONDUCT.md) · [Get help](SUPPORT.md) · [Report a security issue](SECURITY.md).
 
 The public app is at [striverun.app](https://striverun.app). The [full contributor setup](CONTRIBUTING.md) uses a local static UI; it does not reproduce the hosted account or database. Historical Agent Grinder material is kept in [the technical history](docs/TECHNICAL-HISTORY.md) and [archive](archive/hackathon-2026-09/).
+
+## License and data boundaries
+
+Code terms: [LICENSE](LICENSE). Data, provider responses, media, fonts and other third-party assets may have separate terms. Repository access alone does not grant rights to those materials. 
