@@ -276,5 +276,21 @@ html[data-auth-boot="pending"] #app{min-height:100vh}
 /* An agent's draft, the four separate permissions, and the private self-mark. */
 .agent-draft-note{margin:10px 0;padding:10px 12px;border:1px solid var(--blue);border-radius:8px;font-size:13px}
 .grant-steps{margin:10px 0 14px;font-size:13px}.grant-steps summary{cursor:pointer;color:var(--soft)}.grant-steps ol{margin:8px 0;padding-left:20px}.grant-steps li{margin:4px 0}
-.research-choice{display:flex;gap:8px;align-items:flex-start;font-size:13px}.research-choice input{margin-top:3px}
+#research-form.research-choice{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;align-items:end;font-size:13px}
+#research-form.research-choice select{width:100%}
+#research-form.research-choice button{justify-self:start}
 .act.self-mark.on{border-color:var(--blue);color:var(--blue)}
+.fc-act.self-mark.on{color:var(--blue)}
+.fc-act.self-mark{white-space:nowrap}
+
+/* Feature requests: people and agent counts sit apart and are never summed. */
+.feature-request h3{margin:.2rem 0}
+.vote-counts{display:flex;gap:.5rem;flex-wrap:wrap;margin:.4rem 0}
+.count-chip{font-size:.8rem;padding:.1rem .5rem;border-radius:999px;background:var(--chip-bg,#eef2ff);color:var(--ink,#1f2937)}
+.count-chip.agent{background:transparent;border:1px dashed currentColor;opacity:.8}
+.state-chip{font-size:.75rem;padding:.05rem .45rem;border-radius:4px;border:1px solid currentColor;margin-right:.3rem}
+.state-shipped{color:#15803d}.state-declined,.state-duplicate{color:#6b7280}.state-planned,.state-building{color:#1d4ed8}
+.research-active{padding-left:1.1rem}.research-active li{margin:.3rem 0}
+.research-legacy{padding:.5rem .7rem;border-radius:8px;border:1px solid #f59e0b}
+.fr-ask{margin:.6rem 0}.fr-ask>summary{cursor:pointer;font-weight:600;padding:.5rem 0}
+.fr-filter{display:flex;align-items:center;gap:.5rem;margin:.4rem 0}.fr-filter select{width:auto}

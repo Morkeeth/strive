@@ -659,7 +659,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/historical-import.js"></script>
 <script src="/run-evidence.js"></script>
 <script src="/run-story.js"></script>
-<script src="/project-update.js"></script><script src="/agent-draft.js"></script><script src="/self-mark.js"></script>
+<script src="/project-update.js"></script><script src="/agent-draft.js"></script><script src="/self-mark.js"></script><script src="/feature-requests.js"></script><script src="/research-consent.js"></script>
 <script src="/provenance.js"></script><script src="/run-estimates.js"></script><script src="/run-context.js"></script>
 <script src="/feed-card.js"></script>
 <script src="/day.js"></script>
@@ -910,7 +910,7 @@ const challenges=GrinderChallenges({client:sb,me:()=>ME,app:()=>$('app'),frame,s
 // No connector is supplied until an Origin application and callback are registered and reviewed.
 // Origin remains a post-sign-in repository connection, never an Auth provider.
 const originConnection=GrinderOrigin.create();
-const account=GrinderAccount({auth,me:()=>ME,authGeneration:()=>AUTH_GENERATION,app:()=>$('app'),frame,status,providersEnabled:PROVIDERS_ENABLED,origin:originConnection,signIn:showSignIn,onProfileChange:p=>{ME=p;refreshAuth();}});
+const account=GrinderAccount({auth,me:()=>ME,authGeneration:()=>AUTH_GENERATION,app:()=>$('app'),frame,status,providersEnabled:PROVIDERS_ENABLED,origin:originConnection,signIn:showSignIn,onProfileChange:p=>{ME=p;refreshAuth();},researchConsent:(slot,profileId,current)=>window.StriveResearchConsent?.({client:sb,slot,profileId,current})});
 const connect=typeof GrinderConnect==='function'?GrinderConnect({db:sb,me:()=>ME,app:()=>$('app'),frame,railHtml,feedTabs,setPrimarySection,status,signInGitHub:()=>signInWithGitHub(),signIn:showSignIn}):null;
 
 // THE MARK IS THE GRIND, drawn small.
@@ -1388,7 +1388,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
   const declared=()=>!typedOnlyRun(r)&&typeof GrinderContract!=='undefined'&&GrinderContract.outcome?GrinderContract.outcome(r):'';
   const selfAck=ME&&ME.id===r.profile_id;
   let xudosTip='';
-  const ackBtn=selfAck?`<button class="act self-mark" data-self-mark="${r.id}" aria-pressed="false" title="Only you see this. It is not a XUDOS and is not counted.">Proud of this</button>`:`<button class="act kudo ${acked?'on':''}" data-run="${r.id}" data-to="${r.profile_id}" title="Send XUDOS" aria-label="${acked?'XUDOS sent':'Send XUDOS'}">XUDOS${count?' <span class="n num">'+count+'</span>':''}</button>`;
+  const ackBtn=selfAck?'':`<button class="act kudo ${acked?'on':''}" data-run="${r.id}" data-to="${r.profile_id}" title="Send XUDOS" aria-label="${acked?'XUDOS sent':'Send XUDOS'}">XUDOS${count?' <span class="n num">'+count+'</span>':''}</button>`;
   const whoLink=att.link&&!opts.preview?`<a href="${att.link}">${esc(att.name)}</a>`:`<span>${esc(att.name)}</span>`;
   const anonTag=att.ghost?'<span class="ghost-tag">anon</span>':'';
   const started=r.started_at&&Number.isFinite(Date.parse(r.started_at))?new Date(r.started_at).toLocaleString([], {dateStyle:'medium',timeStyle:'short'}):'Start time unknown';
@@ -1464,9 +1464,11 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
 function wireKudos(){
   window.StriveCardMotion?.mount(document);
   document.querySelectorAll('[data-self-mark]:not([data-wired])').forEach(b=>{b.dataset.wired='true';
-    const paint=on=>{b.setAttribute('aria-pressed',String(on));b.classList.toggle('on',on);b.textContent=on?'Proud of this · only you see it':'Proud of this';};
-    paint(!!window.StriveSelfMark?.marked(b.dataset.selfMark));
-    b.addEventListener('click',()=>paint(!!window.StriveSelfMark?.toggle(b.dataset.selfMark)));});
+    const paint=on=>{b.setAttribute('aria-pressed',String(on));b.classList.toggle('on',on);b.textContent=on?'✓ Proud':'Proud';b.setAttribute('aria-label',on?'Proud of this, marked. Only you see it.':'Mark this run: proud of this. Only you see it.');};
+    const label=()=>{const w=window.StriveSelfMark?.where();b.title=w==='account'?'Saved to your account. Only you see it. It is not a XUDOS and is not counted.':w==='unavailable'?'Your marks could not be loaded. Reload to try again.':'Kept in this browser only. It is not a XUDOS and is not counted.';};
+    const sync=window.StriveSelfMark?window.StriveSelfMark.connect(sb,ME?.id):Promise.resolve();
+    sync.then(()=>{label();paint(!!window.StriveSelfMark?.marked(b.dataset.selfMark));});
+    b.addEventListener('click',async()=>{b.disabled=true;try{await sync;paint(!!await window.StriveSelfMark?.toggle(b.dataset.selfMark));}catch(_){status('Your mark could not be saved. Try again.',true);}finally{b.disabled=false;label();}});});
   if(typeof GrinderContract==='object'&&GrinderContract.mountRunMaps) GrinderContract.mountRunMaps(document);
   if(typeof GrinderFeed==='object'&&GrinderFeed.wireStride) GrinderFeed.wireStride(document);
   if(window.StriveRunPhotos?.mountVisuals) StriveRunPhotos.mountVisuals({client:sb,root:document});
@@ -2204,9 +2206,7 @@ function postComposerHtml(){
       <li><b>Read on your computer.</b> A plugin or command reads the session you pick, on your own machine. This website cannot read your disk.</li>
       <li><b>Save privately.</b> Needs sign-in. Only you can see the saved update.</li>
       <li><b>Publish.</b> A separate choice on the saved update, after you preview what readers will see.</li>
-      <li><b>Research use.</b> Off unless you turn it on below. STRIVE does not collect research data yet.</li></ol>
-      <label class="research-choice"><input type="checkbox" id="research-optin"> Allow my updates to be used for research about building with agents, once STRIVE has a reviewed research process</label>
-      <p class="hint" id="research-note">Saved on this device only. Nothing is sent or collected.</p></details>
+      <li><b>Research use.</b> Off unless you choose it in <a href="/?account#account-research">Settings</a>. It records a choice you can stop, delete or export. Never transcripts.</li></ol></details>
     <label>Project<input id="f_project" required maxlength="120" placeholder="Project name"></label>
     <label>Update title<input id="f_title" required maxlength="120" placeholder="What did you build or improve?"></label>
     <label>Link to your project (or add a screenshot below)<input id="f_output_url" type="url" maxlength="2048" placeholder="https://…"></label>
@@ -2264,7 +2264,10 @@ async function viewExplore(){
 
 function viewFeedback(){
  frame(railHtml(''),null);$('app').innerHTML='<div class="head"><h1>Your feedback shapes STRIVE</h1></div><p>Ideas, bugs, small annoyances. We want to hear them.</p><button id="open-roadmap">Impact the roadmap or whine</button>';
- $('open-roadmap').onclick=()=>roadmapFeedback.open();roadmapFeedback.open();
+ $('open-roadmap').onclick=()=>roadmapFeedback.open();
+ $('app').insertAdjacentHTML('beforeend','<p class="hint">That message is private to the STRIVE team. To ask for a feature in public and see who else needs it, use the requests below.</p><div id="feature-requests"></div>');
+ window.StriveRequests?.({client:sb,me:()=>ME,slot:$('feature-requests'),signIn:showSignIn,status});
+ roadmapFeedback.open();
 }
 
 function wireComposer(){
@@ -2272,7 +2275,6 @@ function wireComposer(){
   const owner=ME?.id,fields=['f_title','f_project','f_caption','f_output_url','f_problem','f_feedback'],key='ag_manual_post_draft';
   let attemptId=crypto.randomUUID();
   try{const saved=JSON.parse(sessionStorage.getItem(key)||'null');if(saved&&(saved.profileId==null||saved.profileId===owner)&&typeof saved.id==='string'){attemptId=saved.id;for(const id of fields)if(typeof saved[id]==='string')$(id).value=saved[id];}}catch(_){}
-  const ro=$('research-optin');if(ro&&window.StriveSelfMark){ro.checked=StriveSelfMark.research()==='yes';ro.onchange=()=>{StriveSelfMark.setResearch(ro.checked);$('research-note').textContent=ro.checked?'Your yes is saved on this device only. STRIVE does not collect research data yet; nothing is sent.':'Saved on this device only. Nothing is sent or collected.';};}
   const token='manual-project:'+attemptId,current=()=>$('publish')===pb&&ME?.id===owner;
   const keep=()=>{try{sessionStorage.setItem(key,JSON.stringify({id:attemptId,profileId:owner,...Object.fromEntries(fields.map(id=>[id,$(id).value]))}))}catch(_){}};
   fields.forEach(id=>$(id).addEventListener('input',keep));

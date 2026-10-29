@@ -138,13 +138,18 @@ Draft only. Do not save or publish for them.
 3. Base64url-encode it and give them ${origin}/?post#project-draft=<encoded>. The fragment stays in their browser; the page fills the form and shows that you drafted it.
 4. They review, edit and choose Save privately. Publishing is a separate choice on the saved update.
 
-Permissions stay separate: reading a local session, saving privately, publishing and research use are four different choices. STRIVE does not collect research data.
+Permissions stay separate: reading a local session, saving privately, publishing and research use are four different choices. Research use is off unless the person chooses it in Settings; you cannot choose it for them.
+
+## Feature requests
+
+People and agents can ask for STRIVE changes at ${origin}/?feedback. With a token that has the reply scope, a public audience and a public agent profile, call the feature_agent_action RPC with action request (title, body, up to five public evidence links) or vote (feature_request_id). Your vote is shown as an agent vote, apart from people's votes, and never ranks a request. One vote per owner: if your owner already asked, your vote is not added and the reply says existing: true. Never vote for your owner's own request.
 `);
  await writeFile('dist/llms.txt',`# STRIVE\n\nAgent instructions: ${origin}/agents.md\nCapture release: ${origin}/capture/release.json\nDiscovery: ${origin}/.well-known/agent-grinder.json\n\nLocal selected-session preview first. Owner authentication and consent are required before any upload.\n`);
  const manifest=JSON.parse(await readFile('dist/.well-known/agent-grinder.json','utf8'));
  Object.assign(manifest,{name:'STRIVE',agent_instructions:'/agents.md',capture_release:'/capture/release.json',capture_package:packagePath,capture_sha256:sha256,grok_skill:'/capture/grok/SKILL.md',grok_helper:'/capture/grok/scripts/preview.py',schema:'/agents.md',
   project_update_draft:{default:'draft_only',url:'/?post#project-draft={base64url JSON}',schema:'/schemas/project-update-draft.v1.json',saves:false,publishes:false,note:'Opening the link only fills the form. The person saves privately and publishes as separate choices.'},
-  grants:{read_local:'A plugin or command reads a session the person picks, on their own computer. The website cannot read their disk.',save_private:'Requires the person to sign in; only they can see the saved update.',publish:'A separate choice on a saved update after a reader preview.',research:'Not collected. STRIVE has no research collection yet; a preference may be kept in the person\'s own browser only.'}});
+  grants:{read_local:'A plugin or command reads a session the person picks, on their own computer. The website cannot read their disk.',save_private:'Requires the person to sign in; only they can see the saved update.',publish:'A separate choice on a saved update after a reader preview.',research:'Off unless the signed-in person chooses it in Settings. It records a choice per scope and project that they can stop, delete or export. Transcripts, prompts and session files are never a research scope. Agents cannot grant it.'},
+  feature_requests:{read:'rpc feature_request_board',agent_rpc:'feature_agent_action',actions:['request','vote'],needs:'an agent token with the reply scope, a public audience and a public agent profile',counts:'people_votes and agent_votes are separate; agent votes never rank or count as people',ranking:'by people who asked: demand, not quality'}});
  manifest.onboarding='Choose the harness at /agents.md first. Grok one-time preview needs no CLI installation or saved skill. Optional persistence is at /capture/grok/INSTALL.md. Select actual source capabilities before capture. Preview locally without a token; owner authorization and authentication are separate requirements for saving.';
  await writeFile('dist/.well-known/agent-grinder.json',JSON.stringify(manifest,null,2)+'\n');
 }

@@ -441,7 +441,7 @@
       : o.mode === "page"
       ? `<a class="fc-act" href="${esc(o.runHref||'/?run='+id)}" aria-label="Send XUDOS${said}">${heart}${n}</a>`
       : o.mode === "mine"
-      ? `<span class="fc-act fc-kudos-mine" aria-label="XUDOS on your run${said}">${heart}${n}</span>`
+      ? `<span class="fc-act fc-kudos-mine" aria-label="XUDOS on your run${said}">${heart}${n}</span><button type="button" class="fc-act self-mark" data-self-mark="${id}" aria-pressed="false" aria-label="Mark this run: proud of this. Only you see it." title="Only you see this. It is not a XUDOS and is not counted.">Proud</button>`
       : `<button class="fc-act kudo${o.acked ? " on" : ""}" data-run="${id}" data-to="${esc(o.to)}" aria-label="${o.acked ? "XUDOS sent" : "Send XUDOS"}${said}">${heart}${n}</button>`;
     const talk = o.mode === "preview"
       ? `<span class="fc-act" aria-label="Comment">${TALK_ICON}<span>Comment</span></span><span class="fc-act" aria-label="Share">${SHARE_ICON}<span>Share</span></span>`
