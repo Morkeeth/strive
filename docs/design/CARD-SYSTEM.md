@@ -385,3 +385,7 @@ Reader cards lead with the project's authored problem/context, what changed and 
 New manual project updates store the optional plain-language project purpose and hackathon context in `caption` (280 characters), the built feature/change in `story_result`, and the explicit feedback ask in `feedback_question`. They leave `story_next` empty. Existing rows retain their stored values and Still open meaning; no migration rewrites an older author's text. The local manual preview uses the same project highlights as reader cards.
 
 The saved-run editor shows its story fields directly. Purpose/context, built feature/change and a feedback question are authored inputs, never inferred from activity, repository names or a competition link. Optional hackathon context stays plain author text. Recording a context never implies participation, submission or verification by an event.
+
+## Project identity on saved manual updates
+
+A manual update’s saved project name appears above its feature headline on the SPA run card, using the same `StriveActivity.project` label normalizer as the feed. A visitor can identify the app even when the headline describes a feature. Missing and placeholder names stay absent, account path prefixes stay cleaned and authored text stays escaped. Public HTML and feed cards retain their existing project identity; do not duplicate it there.
