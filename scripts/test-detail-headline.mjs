@@ -80,3 +80,14 @@ assert.equal(noteDetail.querySelectorAll('.project-source').length,1);assert.equ
 console.log('PASS legacy note-only detail, conversation target, one primary source label, preserved measurement/source/setup disclosures.');
 
 const noDescription=await render({...base,caption:null,note:null,story_result:null,story_next:null,feedback_question:null});assert(noDescription.querySelector('.run-context-none'),'missing-description explanation remains when no highlights exist');
+
+// The update title describes a feature; project identity must stand on its own.
+actual=await render({...base,trace_basis:'typed-by-author',project:'SkillWire',title:'Community voting is live',story_result:'A catalog with daily votes.'});
+assert.equal(actual.querySelector('[data-project-name]')?.textContent,'SkillWire','manual saved run identifies its project independently of its title');
+assert.equal(actual.textContent.split('SkillWire').length-1,1,'project identity appears once in the visible manual card');
+actual=await render({...base,trace_basis:'typed-by-author',project:'-Users-privateaccount-CODE-skillwire',title:'Voting',story_result:'A catalog.'});
+assert(!actual.textContent.includes('privateaccount'),'project labels never expose encoded home account names');
+assert.equal(actual.querySelector('[data-project-name]')?.textContent,ctx.StriveActivity.project('-Users-privateaccount-CODE-skillwire'));
+for(const project of [null,'unknown','session','.']){actual=await render({...base,trace_basis:'typed-by-author',project});assert.equal(actual.querySelector('[data-project-name]'),null,'unknown project name stays absent');}
+actual=await render({...base,trace_basis:'typed-by-author',project:'<img src=x onerror=alert(1)>'});assert.equal(actual.querySelector('[data-project-name] img'),null,'authored project label is escaped');
+console.log('PASS actual saved-run renderer: project visible once, normalizer used, placeholders absent and hostile names escaped');

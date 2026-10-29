@@ -1442,6 +1442,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     <div class="runtop">${!att.ghost&&GrinderFeed.face?GrinderFeed.face(r,40):avatar(h,{rhythm:r.rhythm,ghost:att.ghost})}
       <div class="who">${whoLink}${anonTag}<small>${att.ghost?'metrics only ·':`@${esc(h)} ·`} ${opts.preview?esc(date):`<a href="${esc(StriveLinks.runHref(r))}">${esc(date)}</a>`}</small></div></div>
 
+    ${typedOnlyRun(r)&&project?`<p class="meta run-project-name" data-project-name>${esc(project)}</p>`:''}
     <div class="run-title-row"><div class="title">${opts.preview?esc(r.title):`<a href="${esc(StriveLinks.runHref(r))}">${esc(r.title)}</a>`}</div>${ownerActions}</div>
     ${projectContext}
     <p class="project-source">${esc(StriveStory.source(r))}</p>
