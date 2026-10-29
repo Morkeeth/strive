@@ -95,23 +95,35 @@ def test_social_actions_remain_in_the_focused_app():
     assert "xudos-tip" not in INDEX
     rows = json.loads(subprocess.check_output(["node", "-e", """
 const {JSDOM}=require('jsdom'),F=require('./site/feed-card.js');
-const read=o=>{const d=new JSDOM(F.actions(o)).window.document,b=d.querySelector('button.kudo');
+const read=o=>{const d=new JSDOM(F.actions(o)).window.document,b=d.querySelector('button.kudo'),p=d.querySelector('[data-self-mark]');
  return {button:b&&{run:b.dataset.run,to:b.dataset.to,label:b.getAttribute('aria-label'),on:b.classList.contains('on')},
+  proud:p&&{tag:p.tagName,cls:p.className,run:p.dataset.selfMark,pressed:p.getAttribute('aria-pressed'),label:p.getAttribute('aria-label'),title:p.getAttribute('title'),text:p.textContent.trim(),
+   ackData:'run' in p.dataset||'to' in p.dataset,kudo:p.classList.contains('kudo')},
   buttons:d.querySelectorAll('button').length,links:[...d.querySelectorAll('a')].map(a=>[a.textContent.trim(),a.getAttribute('href')])}};
 const base={id:'run-1',to:'author',count:2,shareHref:'/?share=1&run=run-1',commentHref:'#grind-thread'};
-process.stdout.write(JSON.stringify({fresh:read({...base,acked:false}),sent:read({...base,acked:true}),mine:read({...base,mode:'mine'}),preview:read({mode:'preview'})}));
+process.stdout.write(JSON.stringify({fresh:read({...base,acked:false}),sent:read({...base,acked:true}),mine:read({...base,mode:'mine'}),page:read({...base,mode:'page'}),preview:read({mode:'preview'})}));
 """], cwd=ROOT, text=True))
     links = [["Comment", "#grind-thread"], ["Share", "/?share=1&run=run-1"]]
-    assert rows["fresh"] == {"button": {"run": "run-1", "to": "author", "label": "Send XUDOS, 2 so far", "on": False}, "buttons": 1, "links": links}
-    assert rows["sent"] == {"button": {"run": "run-1", "to": "author", "label": "XUDOS sent, 2 so far", "on": True}, "buttons": 1, "links": links}
-    # Nobody sends XUDOS to their own run, and an unsaved preview has nothing to press.
-    assert rows["mine"] == {"button": None, "buttons": 0, "links": links}
-    assert rows["preview"] == {"button": None, "buttons": 0, "links": []}
+    assert rows["fresh"] == {"button": {"run": "run-1", "to": "author", "label": "Send XUDOS, 2 so far", "on": False}, "proud": None, "buttons": 1, "links": links}
+    assert rows["sent"] == {"button": {"run": "run-1", "to": "author", "label": "XUDOS sent, 2 so far", "on": True}, "proud": None, "buttons": 1, "links": links}
+    # Nobody sends XUDOS to their own run. The owner's one button is the private "Proud" mark:
+    # it carries no XUDOS class or ack data (run/to), and says it is not a XUDOS and not counted.
+    assert rows["mine"] == {"button": None, "proud": {"tag": "BUTTON", "cls": "fc-act self-mark", "run": "run-1", "pressed": "false",
+        "label": "Mark this run: proud of this. Only you see it.", "title": "Only you see this. It is not a XUDOS and is not counted.",
+        "text": "Proud", "ackData": False, "kudo": False}, "buttons": 1, "links": links}
+    # The share page and an unsaved preview have no XUDOS and no "Proud".
+    assert rows["page"]["button"] is None and rows["page"]["proud"] is None
+    assert rows["preview"] == {"button": None, "proud": None, "buttons": 0, "links": []}
     toggle = INDEX[INDEX.index("async function toggleXudos(button){") : INDEX.index("function consumePendingXudos(){")]
     assert "sb.from('acks').insert({from_profile:ME.id,to_profile:toProfile,run_id:runId,reason:'appreciated',same_owner:false})" in toggle
     assert "sb.from('acks').delete().eq('run_id',runId).eq('from_profile',ME.id)" in toggle
     assert "if(ME.id===toProfile)return;" in toggle
     assert "b.addEventListener('click',()=>void toggleXudos(b));" in INDEX
+    # "Proud" is wired only to the private mark: no ack row, no XUDOS toggle.
+    start = INDEX.index("document.querySelectorAll('[data-self-mark]:not([data-wired])')")
+    proud = INDEX[start : INDEX.index("});});", start)]
+    assert "StriveSelfMark?.toggle(b.dataset.selfMark)" in proud
+    assert "acks" not in proud and "toggleXudos" not in proud
     assert "GrinderFeed.actions({id:r.id,shareHref:'/?share=1&run='+encodeURIComponent(r.id),to:r.profile_id" in INDEX
     assert "Scene photo URL" not in INDEX
     # Photos are added on the saved run, in its own slot (the editor's copy is not pinned here).
