@@ -21,7 +21,7 @@ const s=fs.readFileSync('site/index.html','utf8');
 const cut=(a,b)=>s.slice(s.indexOf(a),s.indexOf(b,s.indexOf(a)));
 const w=new JSDOM(s,{url:'https://strive.test/',runScripts:'outside-only'}).window,d=w.document;
 w.eval(fs.readFileSync('site/navigation.js','utf8'));w.eval(fs.readFileSync('site/run-links.js','utf8'));
-w.eval('var ME=null,AUTH_USER=null;const esc=v=>String(v);const signInLabel=()=>"Sign in with GitHub or email";const profileHandle=p=>p.handle;'+
+w.eval('var ME=null,AUTH_USER=null,AUTH_GENERATION=0,sb=null;const esc=v=>String(v);const signInLabel=()=>"Sign in with GitHub or email";const profileHandle=p=>p.handle;'+
   cut('const $=id=>','function projectStats(')+cut('function railHtml(){','const REAL_RUN=')+cut('function menuLinks(kind){','function feedTabs()'));
 const nav=d.getElementById('product-nav'),text=el=>el.textContent.replace(/\s+/g,' ').trim();
 const links=()=>[...nav.querySelectorAll('a,button')].map(a=>({label:text(a),href:a.getAttribute('href'),page:a.dataset.navPage,
