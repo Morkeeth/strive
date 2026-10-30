@@ -389,3 +389,8 @@ The saved-run editor shows its story fields directly. Purpose/context, built fea
 ## 29 October — owner connection cards
 
 The header replaces Connect agent with existing maker marks and a small check only after an owner-authorized read confirms an unrevoked, unexpired upload key. A check confirms the grant, not the named provider’s identity or public posting permission. Names come from owner labels; unknown or ambiguous labels get a neutral key mark. Errors and account changes remove badges. Connection cards share one renderer between setup and management: owner label, mark, status and recorded expiry. Revoked/expired keys stay in a closed disclosure. No per-key upload clock is recorded by the existing API; say so instead of assigning another key’s run. The account’s latest recorded upload remains a separate linked fact.
+
+
+## 30 October — compact owner connections
+
+Connection keys use compact list rows with 16px maker marks, one owner label, a short key prefix, status and the recorded expiry. Do not repeat the inferred agent name beneath its owner label. The missing per-key upload fact is stated once above the list. Setup and key management still share the renderer; key checks, expiry, revocation and owner isolation are unchanged. On phones, the expiry sits beneath the identity within the same row, keeping Revoke a 44px target.
