@@ -36,3 +36,16 @@ html[data-auth-boot="pending"][data-auth-hint="member"] .profile-link[hidden]{di
 .review-strip{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;margin:0 0 20px;border:1px solid #bacbff;border-radius:12px;background:#edf3ff;color:#143ba7;text-decoration:none;font-size:14px}.review-strip span{font-size:12px}.profile-trigger{position:relative}.review-avatar-badge{position:absolute;top:0;right:-5px;min-width:18px;height:18px;padding:1px 4px;border-radius:10px;background:var(--blue);color:white;font-size:11px;line-height:16px}.review-avatar-badge[hidden]{display:none}@media(max-width:500px){.review-strip{align-items:flex-start;flex-direction:column;gap:3px}}
 
 .queue-preview{border:1px solid var(--rule);border-radius:12px;padding:16px;margin-top:12px;background:var(--card,#fff)}.queue-preview h3{margin:0 0 8px}.queue-preview .meta{margin:0 0 12px}.queue-preview button{margin-left:12px}
+
+/* Hold the connection footprint while its owner-only grant read completes. */
+.global-connect{box-sizing:border-box;width:144px;justify-content:center;gap:7px}
+.connected-agent{position:relative;display:inline-flex;align-items:center;justify-content:center;width:24px;height:30px;flex:0 0 24px}
+.connection-check{position:absolute;right:-4px;bottom:-1px;display:grid;place-items:center;width:13px;height:13px;border-radius:50%;background:var(--blue);color:white;font-size:10px;border:2px solid white;line-height:1}
+.connection-more{font-size:10px}.connection-generic{font-size:22px}
+@media(max-width:800px){.global-connect.has-connections{display:inline-flex!important;width:auto;max-width:132px;min-height:44px;padding:0 6px;gap:5px}.connected-agent{width:22px;flex-basis:22px}.connected-agent svg{width:19px;height:19px}}
+
+.global-connect.connection-unavailable{font-size:11px;white-space:normal;text-align:center;line-height:1.25}
+@media(max-width:800px){.global-connect.connection-unavailable{display:inline-flex!important;width:100px;min-height:44px;padding:0 6px}}
+
+.global-connect.connection-pending{font-size:11px;white-space:normal;text-align:center;line-height:1.25}
+.global-connect[hidden]{display:none!important}

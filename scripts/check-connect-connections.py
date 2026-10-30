@@ -9,7 +9,7 @@ from importlib import import_module
 helper = import_module('check-photo-editor')
 out = Path(sys.argv[1]); out.mkdir(parents=True, exist_ok=True)
 READ = """() => { const box = document.getElementById('connect-connections'); const t = e => e ? e.textContent.replace(/\\s+/g, ' ').trim() : null;
-  return {present: !!box, text: t(box), keys: box ? [...box.querySelectorAll('.connect-token strong')].map(t) : [],
+  return {present: !!box, text: t(box), keys: box ? [...box.querySelectorAll('.connection-card[data-active="true"] strong')].map(t) : [],
     manage: box?.querySelector('a[href="/?connect=auto"]') ? true : false, add: box?.querySelector('[data-connections-add]') ? true : false,
     steps: [...document.querySelectorAll('.post-start .post-flow-steps li')].map(li => (li.classList.contains('is-done') ? 'done:' : li.getAttribute('aria-current') ? 'now:' : '') + t(li)),
     cards: [...document.querySelectorAll('[data-post-source] span:last-child')].map(t)} }"""

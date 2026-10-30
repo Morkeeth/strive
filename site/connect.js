@@ -59,20 +59,7 @@ window.GrinderConnect = function ({ db, me, app, frame, status, signInGitHub, si
     if (!rows.length) {
       return `<p class="account-hint">No upload keys yet. Name an agent below to create one.</p>`;
     }
-    return `<ul class="connect-tokens" aria-label="Upload keys">${rows
-      .map((row) => {
-        const revoked = row.revoked === true;
-        const label = row.label || "Upload key";
-        const prefix = row.token_prefix || "********";
-        const exp = row.expires_at ? new Date(row.expires_at).toLocaleDateString() : "";
-        return `<li class="connect-token${revoked ? " is-revoked" : ""}">
-          <div><strong>${esc(label)}</strong>
-            <span class="account-hint">${esc(prefix)}…${revoked ? " · revoked" : exp ? " · expires " + esc(exp) : ""}</span>
-          </div>
-          ${revoked ? "" : `<button type="button" class="act" data-revoke="${esc(row.id)}">Revoke</button>`}
-        </li>`;
-      })
-      .join("")}</ul>`;
+    return window.StriveConnections.cards(rows,{revoke:true});
   }
 
   function agentVisibilityHtml(agent) {
@@ -136,6 +123,7 @@ window.GrinderConnect = function ({ db, me, app, frame, status, signInGitHub, si
   async function rpcCreate(label) {
     const { data, error } = await db.rpc("agent_token_create", { p_label: label });
     if (error) throw error;
+    document.dispatchEvent(new CustomEvent('strive-connections-changed'));
     return data;
   }
   async function rpcList() {
@@ -167,6 +155,7 @@ window.GrinderConnect = function ({ db, me, app, frame, status, signInGitHub, si
   async function rpcRevoke(id) {
     const { data, error } = await db.rpc("agent_token_revoke", { p_id: id });
     if (error) throw error;
+    document.dispatchEvent(new CustomEvent('strive-connections-changed'));
     return data;
   }
 
