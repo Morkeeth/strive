@@ -152,3 +152,12 @@ button.fc-act:hover,a.fc-act:hover{background:var(--blue-wash);color:var(--blue)
 [data-review-count][hidden]{display:none}
 /* Your own run carries four controls; let them share a phone row without pushing Share off it. */
 @media (max-width:420px){.fc-foot:has(.self-mark) .fc-act{min-width:0;gap:5px;padding:0 4px;font-size:13px}}
+
+/* A run has three aligned actions. Labels and large counts can wrap inside their own cell. */
+.run-actions.fc-foot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.run-actions .fc-act{min-width:0;flex-wrap:wrap;gap:6px;line-height:1.25;padding:10px 6px;overflow-wrap:anywhere}
+.run-actions .fc-act svg{flex:none}
+.run-actions .fc-act .num{min-width:0;overflow-wrap:anywhere}
+.run-actions .fc-act[aria-label="Share"]{background:var(--blue,#0047ff);color:#fff;font-weight:600;border-left:0}
+.run-actions .fc-act[aria-label="Share"]:hover{background:#003bd6;color:#fff}
+.run-actions .fc-kudos-mine{color:var(--soft);cursor:default}

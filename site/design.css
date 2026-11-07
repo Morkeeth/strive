@@ -621,3 +621,31 @@ button,summary{touch-action:manipulation}
 .fc-body .project-highlights{margin:12px 0}.fc-body .project-highlight p{font-size:14px}
 
 .fc-body .fc-activity-stats dd{font-size:16px;font-weight:500;letter-spacing:0}
+
+/* Run detail: long task names stay inside the card; one primary sharing action. */
+.run-title-row{min-width:0}
+.run-title-row .title{overflow-wrap:anywhere;word-break:normal;line-height:1.35}
+.run-owner-actions{flex-wrap:wrap;min-width:0}
+.run-share-sheet,.run-share-sheet>*{min-width:0;max-width:100%;box-sizing:border-box}
+.run-share-sheet .share-formats button:not(.fc-act):not(.dc-arrow):not([role=menuitem]){min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.25;padding:8px 6px}
+.run-share-sheet .share-copy-link{background:var(--blue,#0047ff);border:1px solid var(--blue,#0047ff);color:#fff;font-weight:600}
+.run-share-sheet .share-image-actions>*{min-width:0;min-height:44px;white-space:normal;overflow-wrap:anywhere;line-height:1.25;padding:10px}
+.run-share-sheet nav a{min-width:0;overflow-wrap:anywhere;text-align:center}
+
+/* Two explicit authoring paths; saved run card tokens stay unchanged. */
+.entry-modes{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 24px}.manual-post{max-width:680px;margin:0 auto}.manual-heading{display:flex;align-items:center;gap:24px;margin-bottom:24px}.manual-heading h2{margin:0}.manual-post label{display:block;margin:16px 0}.manual-post input,.manual-post textarea,.manual-post select{width:100%;max-width:100%;box-sizing:border-box}.manual-post textarea{min-height:100px}.manual-actions{display:flex;gap:12px;flex-wrap:wrap;margin:24px 0}.manual-details{margin:24px 0}.manual-post select:disabled{opacity:1;color:inherit;background:var(--bg,#fff)}.agent-entry{max-width:680px}.agent-entry h2:not(:first-child){margin-top:32px}.session-consent{display:flex;gap:10px;align-items:center;margin:20px 0}.session-consent input{width:20px;height:20px;flex-shrink:0}@media(max-width:600px){.manual-post .pad{padding:20px}.manual-heading{gap:16px}}
+
+.entry-modes a[aria-current="page"]{background:var(--blue);border-color:var(--blue);color:#fff}.manual-actions #manual-preview{background:var(--card);color:var(--ink);border:1px solid var(--rule)}
+/* Keep the existing right-corner add control reachable on phones. */
+@media(max-width:800px){.bar .right .global-add{display:inline-flex!important;width:40px;min-width:40px;min-height:40px;padding:0;gap:0;font-size:0}.bar .right .global-add span{font-size:20px}}
+.manual-post .photo-editor-head h3,.manual-post .photo-editor label{text-transform:lowercase}
+
+.github-project-import{border:1px solid var(--line,#ddd);padding:16px;margin:12px 0 20px;border-radius:8px}.github-project-import h3{margin-top:0}.github-project-link{display:inline-flex;gap:6px;align-items:center;max-width:100%;font-size:13px;line-height:1.4;overflow-wrap:anywhere;color:inherit;margin:6px 0}.github-project-link img{object-fit:contain;flex:none}.gh-owner-logo{border-radius:50%;background:#f0f0f0}.gh-provider-logo{opacity:.75}#gh-import-status:empty{display:none}
+
+/* Add-work navigation is navigation; connect is the single primary action. */
+.entry-modes[data-entry-navigation] a{background:transparent;border:0;border-radius:0;color:var(--soft);padding:8px 0;margin-right:16px;text-decoration:none}
+.entry-modes[data-entry-navigation] a[aria-current="page"]{background:transparent;border:0;border-bottom:2px solid var(--blue);color:var(--blue)}
+#manual-session-import{margin-top:24px}
+#manual-session-import>summary{min-height:44px;display:list-item;cursor:pointer;color:var(--blue);padding:10px 0;box-sizing:border-box}
+
+.agent-entry>.act.blue{background:var(--blue);border-color:var(--blue);color:#fff}

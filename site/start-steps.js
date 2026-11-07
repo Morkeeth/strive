@@ -1,0 +1,2 @@
+/* The same short journey on setup, add-work and sharing screens. */
+(function(root){const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));function steps(stage){return '<nav class="v2-start-steps" aria-label="Get started">'+['Connect','Add your work','Share with a friend'].map((label,i)=>'<span'+(i+1===stage?' aria-current="step"':'')+'><b aria-hidden="true">'+(i+1)+'</b>'+esc(label)+'</span>').join('')+'</nav>';}root.StriveStart={steps};})(typeof window==='undefined'?globalThis:window);

@@ -37,15 +37,20 @@ html[data-auth-boot="pending"][data-auth-hint="member"] .profile-link[hidden]{di
 
 .queue-preview{border:1px solid var(--rule);border-radius:12px;padding:16px;margin-top:12px;background:var(--card,#fff)}.queue-preview h3{margin:0 0 8px}.queue-preview .meta{margin:0 0 12px}.queue-preview button{margin-left:12px}
 
-/* Hold the connection footprint while its owner-only grant read completes. */
-.global-connect{box-sizing:border-box;width:144px;justify-content:center;gap:7px}
-.connected-agent{position:relative;display:inline-flex;align-items:center;justify-content:center;width:24px;height:30px;flex:0 0 24px}
-.connection-check{position:absolute;right:-4px;bottom:-1px;display:grid;place-items:center;width:13px;height:13px;border-radius:50%;background:var(--blue);color:white;font-size:10px;border:2px solid white;line-height:1}
-.connection-more{font-size:10px}.connection-generic{font-size:22px}
-@media(max-width:800px){.global-connect.has-connections{display:inline-flex!important;width:auto;max-width:132px;min-height:44px;padding:0 6px;gap:5px}.connected-agent{width:22px;flex-basis:22px}.connected-agent svg{width:19px;height:19px}}
+/* Hold the connection footprint while its owner-only grant read completes.
+   1 Nov: compact harness logos, with names on hover; no key icon. */
+.global-connect{box-sizing:border-box;min-width:144px;justify-content:center;gap:8px}
+.global-connect.has-connections{min-width:0;width:auto;padding:0 10px}
+.connected-stack{display:inline-flex;align-items:center;gap:6px}
+.connected-agent{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;flex:none}
+.connected-agent svg{width:20px;height:20px}
+.connected-generic{color:var(--soft)}
+@media(max-width:800px){.global-connect.has-connections{display:inline-flex!important;min-width:0;width:auto;min-height:44px;padding:0 8px}.connected-stack{gap:4px}}
 
-.global-connect.connection-unavailable{font-size:11px;white-space:normal;text-align:center;line-height:1.25}
-@media(max-width:800px){.global-connect.connection-unavailable{display:inline-flex!important;width:100px;min-height:44px;padding:0 6px}}
-
-.global-connect.connection-pending{font-size:11px;white-space:normal;text-align:center;line-height:1.25}
+/* Pending and unavailable keep the plain "Connect agent" pill; the state lives in the aria-label. */
+.global-connect.connection-pending{opacity:.6}
 .global-connect[hidden]{display:none!important}
+
+/* Logos keep a bounded footprint; the named tooltip carries the label. */
+.global-connect.has-connections{max-width:100%;flex-shrink:0}
+.connected-stack{min-width:0;flex-wrap:wrap;justify-content:center}

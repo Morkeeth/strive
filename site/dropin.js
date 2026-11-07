@@ -86,38 +86,44 @@
     if (e) { e.textContent = message || ""; e.hidden = !message; }
   }
 
+  let readEpoch=0;
+  function cancel(){readEpoch++;run=null;step=1;const zone=$("drop-zone"),progress=$("drop-progress");zone?.classList.remove("reading");if(progress)progress.textContent="";}
   async function read(file) {
     setError("");
     const zone = $("drop-zone"), progress = $("drop-progress");
-    if (!file) return;
+    if (!file||!zone) return;
+    const epoch=++readEpoch,readOptions=opts,current=()=>epoch===readEpoch&&$("drop-zone")===zone;
     // Make feedback visible when the file was dropped beside the collapsed fallback.
     const fallback=zone?.closest('details');if(fallback)fallback.open=true;
     if (file.size > 64*1024*1024) {
-      setError("This session is larger than 64 MiB. Choose your agent above and open the local session picker, then choose a sitting. It reads up to 2 GiB locally; nothing is truncated or uploaded.");
+      setError("This file exceeds the 64 MiB browser limit and has not been read. Use the large-session options below to choose a smaller sitting locally.");
+      readOptions.onTooLarge?.();
       zone?.scrollIntoView?.({block:'center'});return;
     }
     if (/\.strive\.json$/i.test(file.name||'')) {
       try {
         if(file.size>1024*1024)throw Error('This prepared preview exceeds 1 MiB. Choose a smaller sitting in the local picker.');
-        const prepared=JSON.parse(await file.text());
+        const prepared=JSON.parse(await file.text());if(!current())return;
         const allowed=new Set(['schema_version','measurement_revision','harness','title','project','visibility','turns_typed','prompt_provenance','tool_calls','shell_calls','files_touched','commits','started','duration_s','rhythm','trace_basis','capture_metadata','route','ridge','ridge_basis','ridge_wall_seconds','worker_bins','commit_bins','ridge_tool_calls','code_route','claims','claims_verified','artifacts_produced']);
         if(!prepared||Array.isArray(prepared)||Object.keys(prepared).some(key=>!allowed.has(key)))throw Error('This is not a bounded STRIVE preview. Choose the .strive.json file from the local picker.');
         if(prepared.schema_version!==1||!/^[a-f0-9]{64}$/.test(prepared.measurement_revision||''))throw Error('This preview is missing its source reference. Prepare it again in the local picker.');
         prepared.visibility='private';GrinderContract.validate(prepared);
         const bytes=new TextEncoder().encode(JSON.stringify(prepared));let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);
         const token=encodeURIComponent(btoa(binary));
-        if(opts.post)opts.post(token);else location.href='/#import='+token;
-      }catch(error){setError(error?.message||'This preview file could not be read.');}
+        if(!current())return;if(readOptions.post)readOptions.post(token);else location.href='/#import='+token;
+      }catch(error){if(current())setError(error?.message||'This preview file could not be read.');}
       return;
     }
     if (/^image\//.test(file.type||"") || /\.(jpe?g|png|webp|gif|heic)$/i.test(file.name||"")) { setError("This picker reads a session file. Add photos after saving a run, or open an existing run in My runs."); return; }
     zone.classList.add("reading");
     const started = performance.now();
     try {
-      run = await GrinderDropin.parseFile(file, (done, total) => {
-        if (progress && total > 2e6) progress.textContent = `Reading ${Math.floor((done / total) * 100)}%`;
+      const parsed = await GrinderDropin.parseFile(file, (done, total) => {
+        if (current() && progress && total > 2e6) progress.textContent = `Reading ${Math.floor((done / total) * 100)}%`;
       });
+      if(!current())return;run=parsed;
     } catch (error) {
+      if(!current())return;
       zone.classList.remove("reading");
       if (progress) progress.textContent = "";
       run = null;
@@ -126,14 +132,14 @@
     }
     zone.classList.remove("reading");
     root.__dropinTimings = { readMs: Math.round(performance.now() - started) };
-    if (opts.privateFirst) {
+    if (readOptions.privateFirst) {
       try {
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        const rawHash=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),v=>v.toString(16).padStart(2,"0")).join("");
+        const bytes = new Uint8Array(await file.arrayBuffer());if(!current())return;
+        const rawHash=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),v=>v.toString(16).padStart(2,"0")).join("");if(!current())return;
         run.capture_metadata=root.StriveCaptureEstimates?.bind(run,rawHash)||run.capture_metadata;
         const prefix = new TextEncoder().encode("strive-browser-file-v1\0");
         const source = new Uint8Array(prefix.length + bytes.length);source.set(prefix);source.set(bytes,prefix.length);
-        const digest = await crypto.subtle.digest("SHA-256",source);
+        const digest = await crypto.subtle.digest("SHA-256",source);if(!current())return;
         const measurement_revision = Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,"0")).join("");
         const metrics={schema_version:1,measurement_revision,harness:run.harness,
           turns_typed:run.turns_typed,prompt_provenance:run.prompt_provenance,tool_calls:run.tool_calls,files_touched:run.files_touched,
@@ -144,8 +150,8 @@
         // Neither proves successful commits or elapsed duration. Keep those fields unknown.
         GrinderContract.validate(metrics);
         const token=encodeURIComponent(btoa(JSON.stringify(metrics)));
-        if(opts.post)opts.post(token);else location.href='/#import='+token;
-      } catch(error) { run=null;setError(error?.message||"This session could not be prepared. Try the agent capture link."); }
+        if(!current())return;if(readOptions.post)readOptions.post(token);else location.href='/#import='+token;
+      } catch(error) { if(!current())return;run=null;setError(error?.message||"This session could not be prepared. Try the agent capture link."); }
       return;
     }
     showResult();
@@ -361,7 +367,7 @@
   }
 
   function mount(options) {
-    opts = options || {};
+    cancel();opts = options || {};
     const stage = $("drop-stage");
     if (!stage) return;
     if (opts.template) stage.innerHTML = opts.template;
@@ -369,8 +375,10 @@
     if (!stage.dataset.template) stage.dataset.template = stage.innerHTML;
     const input = $("drop-file"), zone = $("drop-zone");
     if (!input || !zone) return;
-    phoneStage(zone);
+    if(!opts.singleFile)phoneStage(zone);
     input.onchange = () => read(input.files && input.files[0]);
+    const choose=$("select-export");
+    if(choose)choose.onclick=()=>{input.value="";input.click();};
     const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
     zone.addEventListener("dragenter", (e) => { stop(e); zone.classList.add("over"); });
     zone.addEventListener("dragover", (e) => { stop(e); zone.classList.add("over"); });
@@ -394,5 +402,5 @@
     }
   }
 
-  root.GrinderDropinUI = { mount, read, reveal };
+  root.GrinderDropinUI = { mount, read, reveal, cancel };
 })(typeof window !== "undefined" ? window : globalThis);

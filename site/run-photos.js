@@ -287,6 +287,18 @@
       return {...run,_readablePhotoCount:count};
     }catch(_){return run;}}));
   }
+  // Bounded ranking metadata only. No image bytes, decorative showcase or private images.
+  async function rankingSignals(runs,client){
+    const h=await headers(client),result={},queue=[...runs].slice(0,20);
+    await Promise.all(Array.from({length:Math.min(4,queue.length)},async()=>{
+      while(queue.length){const run=queue.shift();result[run.id]=null;
+        try{const res=await get(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:h});
+          if(!res.ok)continue;const payload=await res.json();if(!Array.isArray(payload?.photos))continue;
+          result[run.id]=cardPhotos(payload.photos,run.photo_layout||'cover',true).some(p=>p.role!=='personal');
+        }catch(_){}
+      }
+    }));return result;
+  }
   // A feed knows its runs before it paints them. Ask for their photo lists then, in parallel with
   // the card reads, and hand each answer to the first mount that wants it. Same server access check;
   // an answer is used once and dropped after 15 seconds.
@@ -313,7 +325,7 @@
         const visuals=!publishReview&&card.dataset.runVisibility==='public'?showcase[runId]||[]:[];
         const listHeaders=await headers(client);if(!current())return;
         const list=await (takeEarly(listHeaders,runId)||get(`/api/run-photos?run_id=${encodeURIComponent(runId)}`,{headers:listHeaders,signal:controller.signal}));
-        if(!current())return;if(!list.ok){if(publishReview)throw Error('Selected photos could not be read. This run is still private.');if(placeholder)placeholder.innerHTML='<p class="media-read-error">Images unavailable. Open the run to try again.</p>';return;}
+        if(!current())return;if(!list.ok){if(publishReview)throw Error('Selected photos could not be read. This run is still private.');const errorSlot=placeholder||card.querySelector('.run-media-slot');if(errorSlot)errorSlot.innerHTML='<p class="media-read-error">Images unavailable. Open the run to try again.</p>';return;}
         const payload=await list.json();if(publishReview&&!Array.isArray(payload?.photos))throw Error('The selected photo list is unknown. This run is still private.');const photos=payload?.photos||[];
         const mode=card.dataset.photoLayout||'cover';
         const ordered=photos.length>0&&photos.every(p=>Number.isInteger(p.sort_position));
@@ -328,7 +340,7 @@
             if(approved){selected.unshift(approved);selected.length=Math.min(selected.length,6);}
           }
         }
-        if(!selected.length&&!visuals.length){if(publishReview){card.querySelector('[data-photo-placeholder]')?.replaceChildren();return {runId,status:'known-none',selectedIds:[],dispose};}card.querySelector('.post-workline>.run-agent-identity')?.remove();const empty=card.querySelector('[data-photo-placeholder]');if(empty){empty.hidden=false;if(root.StrivePlaceholders)empty.innerHTML=root.StrivePlaceholders.render('screenshot',{story:card.dataset.mediaStory||'',owner:card.dataset.runOwner==='true',seed:card.dataset.mediaSeed,harness:card.dataset.mediaHarness,model:card.dataset.mediaModel});}return;}
+        if(!selected.length&&!visuals.length){if(publishReview){card.querySelector('[data-photo-placeholder]')?.replaceChildren();return {runId,status:'known-none',selectedIds:[],dispose};}card.querySelector('.post-workline>.run-agent-identity')?.remove();if(card.classList.contains('activity-post')){card.querySelector('.run-media-slot')?.replaceChildren();return;}const empty=card.querySelector('[data-photo-placeholder]');if(empty){empty.hidden=false;if(root.StrivePlaceholders)empty.innerHTML=root.StrivePlaceholders.render('screenshot',{story:card.dataset.mediaStory||'',owner:card.dataset.runOwner==='true',seed:card.dataset.mediaSeed,harness:card.dataset.mediaHarness,model:card.dataset.mediaModel});}return;}
         // Build a detached group. Attach only while the same view is active, after all reads.
         const pendingImages=[];const group=document.createElement('div');group.className='run-media run-media-gallery';if(publishReview)group.dataset.publishReview='true';group.setAttribute('aria-label','Images from this run');group.tabIndex=0;
         if(projectFirst&&!selected.some(p=>p.role!=='personal')){
@@ -393,7 +405,7 @@
         else{const title=card.querySelector('.run-metrics')||card.querySelector('.note')||card.querySelector('.run-title-row');if(title)title.after(group);else card.prepend(group)}
         images.add(group);
         if(publishReview){await Promise.all(pendingImages);if(!current())return;return {runId,status:'ready',selectedIds:selected.map(p=>p.id),dispose};}
-      }catch(error){if(publishReview){dispose();throw error;}}
+      }catch(error){if(publishReview){dispose();throw error;}if(current()){const errorSlot=placeholder||card.querySelector('.run-media-slot');if(errorSlot)errorSlot.innerHTML='<p class="media-read-error">Images unavailable. Open the run to try again.</p>';}}
     }));
     if(active){stopTileFit();stopTileFit=root.StrivePlaceholders?.fit?.(host)||(()=>{});}
     return outcomes;
@@ -510,5 +522,5 @@
     })();
     return next=>{chosen=next||null;paint()};
   }
-  root.StriveRunPhotos={prefetch,prepareCards,mount,mountCovers,mountPair,mountThumbs,mountVisuals,mountChooser,disposeAll,forget,lead,cardPhotos,frameRule};
+  root.StriveRunPhotos={prefetch,prepareCards,rankingSignals,mount,mountCovers,mountPair,mountThumbs,mountVisuals,mountChooser,disposeAll,forget,lead,cardPhotos,frameRule};
 })(typeof window!=="undefined"?window:globalThis);

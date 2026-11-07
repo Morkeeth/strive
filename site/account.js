@@ -95,36 +95,27 @@ window.GrinderAccount = function ({
       });
     return `<ul class="account-identities">${rows.join("") || '<li class="account-hint">No sign-in methods were returned. Reload to try again.</li>'}</ul>${
       offers.length ? `<div class="account-actions">${offers.join("")}</div>` : ""
-    }<p class="account-hint">Linking adds another way into the same profile. It never merges two profiles. Origin repository access is separate from sign-in and is shown below.</p>`;
+    }<p class="account-hint">Linking adds another way into the same profile. It never merges two profiles. Repository access is managed separately when you import a project.</p>`;
   }
 
   function panelHtml(profile, ids, recovered, pend, user) {
     const p = present(profile);
-    return `<div class="account" id="account-body">${recoveryHtml(recovered, pend, user)}
-      <section class="card pad account-section"><h1>Settings</h1>
-        <p class="account-lead">Your STRIVE username is <a id="account-lead-handle" href="${esc(p.url)}">@${esc(p.handle)}</a>. Manage GitHub and X below as linked accounts; they do not change your STRIVE username.</p>
-        <form id="account-profile" class="account-form" novalidate>
-          <label for="account-name">Name</label>
-          <input id="account-name" name="display_name" autocomplete="nickname" maxlength="60" value="${esc(profile.display_name || profile.name || "")}">
-          <p class="account-hint">Shown beside your runs. It does not need to be unique.</p>
-          <label for="account-handle">STRIVE username</label>
-          <input id="account-handle" name="handle" autocomplete="username" maxlength="40" spellcheck="false" value="${esc(profile.handle || "")}" aria-describedby="account-handle-help">
-          <p id="account-handle-help" class="account-hint">Unique on STRIVE. Letters, numbers, - or _. Your profile link uses this username.</p>
-          <p id="account-profile-state" class="account-state" role="status" aria-live="polite"></p>
-          <div class="account-actions"><button type="submit" id="account-save">Save</button></div>
-        </form></section>
-      <section class="card pad account-section" aria-labelledby="account-methods-title"><h2 id="account-methods-title">Linked accounts</h2>
+    return `<div class="account" id="account-body">${recoveryHtml(recovered, pend, user)}<div class="account-preferences v2-surface">
+      <section class="account-section"><h1>Settings</h1>
+        <p class="account-lead">Your STRIVE username is <a id="account-lead-handle" href="${esc(p.url)}">@${esc(p.handle)}</a>. </p>
+        <p>Manage your name, photo, bio and links in one place.</p><a class="v2-button" href="/?u=${encodeURIComponent(profile.handle||profile.github_handle||'')}#edit-profile">Edit profile</a></section>
+      <section class="account-section" aria-labelledby="account-methods-title"><h2 id="account-methods-title">Linked accounts</h2>
         <div id="account-identities">${identitiesHtml(ids)}</div>
         <p id="account-identities-state" class="account-state" role="status" aria-live="polite"></p></section>
-      ${origin ? origin.html({ signedIn: true }) : ""}
-      <section class="card pad account-section" aria-labelledby="account-connect-title"><h2 id="account-connect-title">Connect an agent</h2><p><a href="/?queue">Review pending agent runs</a></p>
-        <p>One private upload credential for automatic runs. Advanced scopes stay on Agents.</p>
-        <div class="account-actions"><a class="act blue" href="/?connect=auto">Open Connect</a><a class="act" href="/?agents">Advanced Agents</a></div></section>
-      <section class="card pad account-section" id="account-research" aria-labelledby="account-research-title"><h2 id="account-research-title">Research use</h2><p>Loading…</p></section>
-      <section class="card pad account-section" aria-labelledby="account-signout-title"><h2 id="account-signout-title">Sign out on this device</h2>
-        <p>Signs you out of __BRAND__ in this browser only. Other devices, and Agent Grinder if you use it with the same sign-in, stay signed in.</p>
+      
+      <section class="account-section" aria-labelledby="account-connect-title"><h2 id="account-connect-title">Agent connections</h2>
+        <p>Connect an editor or manage its upload access.</p>
+        <div class="account-actions"><a class="act blue" href="/?connect#manage-connections">Open Connect</a></div></section>
+      <section class="account-section" id="account-research" aria-labelledby="account-research-title"><h2 id="account-research-title">Research use</h2><p>Loading…</p></section>
+      <section class="account-section" aria-labelledby="account-signout-title"><h2 id="account-signout-title">Sign out on this device</h2>
+        <p>Signs you out of __BRAND__ on this device.</p>
         <div class="account-actions"><button type="button" class="act" id="account-signout">Sign out here</button></div></section>
-      <section class="card pad account-section account-danger" id="danger" aria-labelledby="account-delete-title"><h2 id="account-delete-title">Delete your __BRAND__ profile</h2>
+      </div><section class="card pad account-section account-danger" id="danger" aria-labelledby="account-delete-title"><h2 id="account-delete-title">Delete your __BRAND__ profile</h2>
         <p><strong>Goes:</strong> this __BRAND__ profile, your posted runs, and the XUDOS and replies you gave or received here. Deleted work cannot be restored.</p>
         <p><strong>Stays:</strong> your sign-in account, your Agent Grinder profile and runs if you have one, and anything on your own computer.</p>
         <form id="account-delete" class="account-form" novalidate>
@@ -178,7 +169,7 @@ window.GrinderAccount = function ({
     root.innerHTML = panelHtml(profile, ids, recovered, pend, current.user);
     wireCommon();
     wirePanel(profile);
-    origin?.mount?.(root, { signedIn: true });
+
     if (typeof researchConsent === "function") researchConsent(byId("account-research"), profile.id, isCurrent);
     if (location.hash === "#danger") byId("danger")?.scrollIntoView();
     if (location.hash === "#account-research") byId("account-research")?.scrollIntoView();

@@ -173,8 +173,8 @@
       return `<span class="fc-face fc-brand" style="--s:${s}px" aria-hidden="true">${BRAND_FACE}</span>`;
     const p = profileOf(r);
     const src = /^https:\/\//i.test(p.avatar || "") ? p.avatar : null;
-    if (!src) return `<span class="fc-face fc-brand" style="--s:${s}px" aria-hidden="true">${BRAND_FACE}</span>`;
-    return `<span class="fc-face fc-brand" style="--s:${s}px" aria-hidden="true">${BRAND_FACE}<img src="${esc(src)}" alt="" width="${s}" height="${s}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"></span>`;
+    if (!src) return `<span class="fc-face fc-brand" style="--s:${s}px" aria-hidden="true">${esc((p.name||p.handle||"B").slice(0,1))}</span>`;
+    return `<span class="fc-face fc-brand" style="--s:${s}px" aria-hidden="true">${esc((p.name||p.handle||"B").slice(0,1))}<img src="${esc(src)}" alt="" width="${s}" height="${s}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"></span>`;
   }
 
   // A short sitting spread over 50 bins is a comb of ones and zeros, and a comb is not a shape
@@ -434,18 +434,17 @@
   function actions(o) {
     const id = esc(o.id), count = o.count === null || o.count === undefined ? null : whole(o.count) || 0;
     const unavailable=o.count===null;
-    const n = count === null ? (unavailable?'<span title="XUDOS count unavailable" aria-label="Count unavailable">—</span>':"") : `<span class="num">${count}</span>`, said = count === null ? (unavailable?", count unavailable":"") : `, ${count} so far`;
+    const n = count === null ? (unavailable?'<span title="XUDOS count unavailable" aria-label="Count unavailable">—</span>':"") : `<span class="num"${count===0?' hidden':''}>${count}</span>`, said = count === null ? (unavailable?", count unavailable":"") : `, ${count} so far`;
     const heart = `${KUDOS_ICON}<span>XUDOS</span>`;
     const xudos = o.mode === "preview"
       ? `<span class="fc-act" aria-label="Send XUDOS">${heart}</span>`
       : o.mode === "page"
       ? `<a class="fc-act" href="${esc(o.runHref||'/?run='+id)}" aria-label="Send XUDOS${said}">${heart}${n}</a>`
-      : o.mode === "mine"
-      ? `<span class="fc-act fc-kudos-mine" aria-label="XUDOS on your run${said}">${heart}${n}</span><button type="button" class="fc-act self-mark" data-self-mark="${id}" aria-pressed="false" aria-label="Mark this run: proud of this. Only you see it." title="Only you see this. It is not a XUDOS and is not counted.">Proud</button>`
-      : `<button class="fc-act kudo${o.acked ? " on" : ""}" data-run="${id}" data-to="${esc(o.to)}" aria-label="${o.acked ? "XUDOS sent" : "Send XUDOS"}${said}">${heart}${n}</button>`;
+      : `<button class="fc-act kudo${o.acked ? " on" : ""}" data-run="${id}" data-to="${esc(o.to)}" aria-pressed="${Boolean(o.acked)}" aria-label="${o.acked ? "Remove XUDOS" : "Send XUDOS"}${said}">${heart}${n}</button>`;
     const talk = o.mode === "preview"
       ? `<span class="fc-act" aria-label="Comment">${TALK_ICON}<span>Comment</span></span><span class="fc-act" aria-label="Share">${SHARE_ICON}<span>Share</span></span>`
       : `<a class="fc-act" href="${o.commentHref ? esc(o.commentHref) : esc(o.runHref||'/?run='+id)+'#grind-thread'}" aria-label="Comment"${o.commentHref ? " data-comment" : ""}>${TALK_ICON}<span>Comment</span></a><a class="fc-act" href="${o.shareHref ? esc(o.shareHref) : esc(o.runHref||'/?run='+id)}"${o.publicShare?' data-share-public="1"':''} aria-label="Share">${SHARE_ICON}<span>Share</span></a>`;
+    if(o.visibility==='private'||o.visibility==='anonymous')return xudos+`<a class="fc-act" href="${esc(o.runHref||'/?run='+id)}#grind-thread" data-comment>${TALK_ICON}<span>Comment</span></a>`;
     return xudos + talk;
   }
 
@@ -488,7 +487,7 @@
     ${page||checkpoints||r.capture_metadata?`${context?.headlineHtml?.(r,'fc-activity-stats',{preview})||''}${context?.cardSecondary?.(r,{commits:true,preview})||''}`:''}
     ${story?story.visual(r):''}
 
-    ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author'&&(page||preview) ? '<p class="fc-source">Non-verified · Manual · unmeasured. Provided by the author.</p>' : ''}${evidence&&!page&&!preview?evidence.summary(r):''}
+    ${observedProjection(r) ? '<p class="fc-source">Observed message order. Distinct requests are a lower bound.</p>' : ''}${r.trace_basis === 'typed-by-author'&&(page||preview) ? '<p class="fc-source">Project update from the author.</p>' : ''}${evidence&&!page&&!preview?evidence.summary(r):''}
     ${page&&receiptContext?`<details class="public-receipts"><summary>Receipts and scope</summary>${receiptContext}</details>`:''}
     <div class="fc-route-secondary">${checkpoints?"":(page?(typeof module!=="undefined"&&module.exports?require("./activity-post.js"):root.StrivePost)?.trail(r)||"":heroVisual(r))}</div>
     ${checkpoints||preview?'':`<p class="fc-open">Open the story →</p>`}
@@ -500,7 +499,7 @@
   ${page||checkpoints||r.capture_metadata?context?.measurementDetails?.(r,{preview})||'':''}
   ${checkpoints}
   ${!preview&&typeof r.output_url==='string'&&/^https:\/\/[^\s<>"'\\]+$/i.test(r.output_url)?`<p class="fc-output-link"><a href="${esc(r.output_url)}" target="_blank" rel="noopener noreferrer">Open the work ↗</a></p>`:''}
-  ${preview||opts.foot === false ? "" : `<footer class="fc-foot">${actions({ id: r.id, runHref:page?(opts.appRunHref||links.runHref(r)):links.runHref(r), publicShare:!page&&!!links.runPath(r), to: r.profile_id, count: preview || (opts.count === null && page) ? null : opts.count, acked: opts.acked, mode: preview ? "preview" : page ? "page" : mine ? "mine" : "" })}</footer>`}
+  ${preview||opts.foot === false ? "" : `<footer class="fc-foot">${actions({ id: r.id, visibility:r.visibility,owner:mine, runHref:page?(opts.appRunHref||links.runHref(r)):links.runHref(r), publicShare:!page&&!!links.runPath(r), to: r.profile_id, count: preview || (opts.count === null && page) ? null : opts.count, acked: opts.acked, mode: preview ? "preview" : page ? "page" : mine ? "mine" : "" })}</footer>`}
 </article>`;
   }
 

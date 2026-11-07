@@ -1,3 +1,5 @@
+import {buildOutput} from './build-output.mjs';
+import {createHash} from 'node:crypto';
 import {buildBrowserCompat} from './build-browser-compat.mjs';
 import {buildReviewImageEngine} from './build-review-image-engine.mjs';
 import {cp,mkdir,readdir,readFile,writeFile} from 'node:fs/promises';
@@ -8,18 +10,23 @@ import {buildAgentFrontdoor} from './build-agent-frontdoor.mjs';
 import {withContentSecurityPolicy} from './csp.mjs';
 import {execFileSync} from 'node:child_process';
 const config=runtimeConfig();
-await mkdir('dist',{recursive:true});
-await cp('site','dist',{recursive:true});
-await buildReviewImageEngine();
+if(process.env.STRIVE_REHEARSAL==='1'){
+ for(const value of [config.SB_URL,config.ORIGIN])if(!['localhost','127.0.0.1','[::1]'].includes(new URL(value).hostname))throw Error('Rehearsal requires loopback services.');
+ if(config.SB_KEY!=='local-development-only')throw Error('Rehearsal requires the local dummy key.');
+}
+await mkdir(buildOutput(),{recursive:true});
+await cp('site',buildOutput(),{recursive:true});
+await import('./build-generic-share.mjs');
+await buildReviewImageEngine(buildOutput('review-image-engine'));
 // Default off: old production validators reject the estimates key.
 // Turn on only after the approved SQL validator has been applied and verified.
 if(process.env.STRIVE_ESTIMATE_UPLOADS_READY==='1') {
- const path='dist/run-estimates.js',source=await readFile(path,'utf8');
+ const path=buildOutput('run-estimates.js'),source=await readFile(path,'utf8');
  const marker='const ESTIMATE_UPLOADS_READY=false;';
  if(!source.includes(marker))throw new Error('Missing estimate upload readiness marker');
  await writeFile(path,source.replace(marker,'const ESTIMATE_UPLOADS_READY=true;'));
 }
-let html=await readFile('dist/index.html','utf8');
+let html=await readFile(buildOutput('index.html'),'utf8');
 for(const name of ['SB_URL','SB_KEY']) {
  const pattern=new RegExp(`const ${name}="[^"]*";`);
  if(!pattern.test(html)) throw new Error(`Missing ${name} deployment marker`);
@@ -45,7 +52,7 @@ if(gitSha) {
  if(!html.includes(title)) throw new Error('Missing deployment identity marker');
  html=html.replace(title,`${title}\n<meta name="strive-git-sha" content="${gitSha}">`);
 }
-await writeFile('dist/index.html',html);
+await writeFile(buildOutput('index.html'),html);
 
 // The brand tokens carry the product name into every built text file, and __ORIGIN__ carries the
 // deployed address into the share tags: a crawler will not resolve a relative og:image, so the
@@ -62,7 +69,7 @@ async function files(dir) {
  return out;
 }
 let replaced=0;
-for(const path of await files('dist')) {
+for(const path of await files(buildOutput())) {
  const before=await readFile(path,'utf8');
  const after=before.replaceAll('__BRAND__',BRAND).replaceAll('__TAGLINE__',TAGLINE).replaceAll('__ORIGIN__',config.ORIGIN);
  if(after===before) continue;
@@ -71,7 +78,7 @@ for(const path of await files('dist')) {
  await writeFile(path,after);
 }
 if(!replaced) throw new Error('Missing __BRAND__ deployment marker in the built site');
-const built=await readFile('dist/index.html','utf8');
+const built=await readFile(buildOutput('index.html'),'utf8');
 for(const tag of ['property="og:image"','name="twitter:card" content="summary_large_image"']) {
  if(!built.includes(tag)) throw new Error(`The home page lost its share tag: ${tag}`);
 }
@@ -80,6 +87,11 @@ console.log(`Built ${BRAND} website with explicit strava schema; no privileged k
 
 await buildAgentFrontdoor({origin:config.ORIGIN,revision:gitSha});
 execFileSync('python3',['scripts/build-native-plugin.py'],{stdio:'inherit'});
-await buildBrowserCompat();
-await writeFile('dist/index.html',withContentSecurityPolicy(await readFile('dist/index.html','utf8'),{supabaseOrigin:config.SB_URL}));
+await buildBrowserCompat(buildOutput());
+// A changed asset gets a changed address, including preloads. A returning browser must not run an old UI with new HTML.
+let versioned=await readFile(buildOutput('index.html'),'utf8');
+const assets=[...new Set([...versioned.matchAll(/(?:src|href)="(\/[^"?]+\.(?:js|css))"/g)].map(match=>match[1]))];
+for(const asset of assets){if(asset.startsWith('/_vercel/'))continue;const bytes=await readFile(buildOutput()+asset);const version=createHash('sha256').update(bytes).digest('hex').slice(0,12);versioned=versioned.replaceAll('"'+asset+'"','"'+asset+'?v='+version+'"');}
+await writeFile(buildOutput('index.html'),versioned);
+await writeFile(buildOutput('index.html'),withContentSecurityPolicy(await readFile(buildOutput('index.html'),'utf8'),{supabaseOrigin:config.SB_URL}));
 console.log('Content-Security-Policy written for dist/index.html.');
