@@ -280,9 +280,11 @@
   async function prepareCards(runs,client){
     const h=await headers(client);
     return Promise.all(runs.map(async run=>{try{
-      const res=await get(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:h});
+      const key=`${h.Authorization||''} ${run.id}`;
+      const res=await (early.get(key)||get(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:h}));
       if(!res.ok)return run;
-      const photos=(await res.json())?.photos||[];
+      const payload=await res.json();if(!Array.isArray(payload?.photos))return run;
+      const photos=payload.photos;
       const count=cardPhotos(photos,run.photo_layout||'cover').length+(run.visibility==='public'?(showcase[run.id]||[]).length:0);
       return {...run,_readablePhotoCount:count};
     }catch(_){return run;}}));

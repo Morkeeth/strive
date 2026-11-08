@@ -1963,9 +1963,12 @@ async function feedCards(runs,ad,{ownerView=false,preview=false,decorate=html=>h
   const rows=preserveOrder?runs:StriveActivity.sort(runs),choices=new Map(),mounts=[],cards=[],timezone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
   for(const run of rows){const t=StriveActivity.time(run);if(t===null)continue;const day=StriveDay.localDay(new Date(t)),key=run.profile_id+'|'+day;
     if(!choices.has(key))choices.set(key,Promise.resolve(sb.rpc('read_day_card',{owner_id:run.profile_id,card_key:day+'_'+day,viewer_timezone:timezone})));}
-  // Photo metadata is not needed to paint recorded work. The existing media mount
-  // checks reader authorization and saved photo choices before adding any image.
-  for(const run of rows){
+  // Read only metadata in parallel with card choices. Reuse the authorized prefetch
+  // so known image-free cards never paint a large frame that later collapses.
+  // Each card waits only for its own metadata; image bytes still mount afterwards.
+  const photoRows=new Map(rows.map(run=>[run.id,window.StriveRunPhotos?.prepareCards?StriveRunPhotos.prepareCards([run],sb):Promise.resolve([run])]));
+  for(const original of rows){
+    const run=(await photoRows.get(original.id))?.[0]||original;
     const t=StriveActivity.time(run),day=t===null?null:StriveDay.localDay(new Date(t)),saved=day?await choices.get(run.profile_id+'|'+day):{data:null},own=ownerView&&typeof ME==='object'&&ME?.id===run.profile_id;
     if(!current())return '';
     if(saved?.error){if(requireComplete)throw Error('Card choices could not load.');if(preview)throw Error('Card choices could not load.');const failure='<article class="card"><p>Card choices could not load. Refresh to try again.</p></article>';cards.push(failure);if(onCard)onCard(failure);continue;}

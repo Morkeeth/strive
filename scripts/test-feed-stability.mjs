@@ -12,9 +12,29 @@ const socialDom=new JSDOM('<div class="fc-builder"><div class="card-follow"></di
 // Actual card path: no-image identity belongs inside the tile, image cards keep the work-line identity.
 const c=new JSDOM('',{runScripts:'outside-only'}).window;for(const file of ['run-contract.js','run-estimates.js','run-context.js','story-tile.js','run-placeholders.js','run-story.js','feed-card.js','day.js','day-card.js','activity-order.js','activity-post.js'])c.eval(fs.readFileSync('site/'+file,'utf8'));
 const run={id:'fixture',title:'TEST DATA source-bound card',caption:'An author description.',harness:'Codex',visibility:'public',capture_metadata:{basis:'codex-records',models:['test-model']}};
-const empty=new JSDOM(c.StrivePost.render({...run,_readablePhotoCount:0})).window.document;assert.equal(empty.querySelectorAll('.harness-mark').length,1);assert.ok(empty.querySelector('.story-tile .harness-mark'));const withImage=new JSDOM(c.StrivePost.render({...run,_readablePhotoCount:1})).window.document;assert.ok(withImage.querySelector('.media-loading'));assert.equal(withImage.querySelector('.story-tile'),null);assert.ok(withImage.querySelector('.post-workline .harness-mark'));
+const empty=new JSDOM(c.StrivePost.render({...run,_readablePhotoCount:0})).window.document;assert.equal(empty.querySelectorAll('.dc-head .fc-face').length,1);const withImage=new JSDOM(c.StrivePost.render({...run,_readablePhotoCount:1})).window.document;assert.ok(withImage.querySelector('.media-loading'));assert.equal(withImage.querySelector('.story-tile'),null);
 const selectedRun='20000000-0000-0000-0000-000000000001',selectedPhoto='30000000-0000-0000-0000-000000000001';
 const selected=new JSDOM(c.StrivePost.render({...run,id:selectedRun,_readablePhotoCount:1},{choices:{v:2,visual:'photo',photo:{run:selectedRun,id:selectedPhoto}}})).window.document;
 assert.equal(selected.querySelectorAll('.run-media-slot').length,1,'selected photo keeps one reserved image region');
 assert.equal(selected.querySelectorAll('.post-visual').length,0,'no second image is removed after an async photo fetch');
 console.log('PASS startup coalescing, count-up, self control, and one stable feed media slot even with a selected photo.');
+
+// Actual authorized metadata + renderer + media mount: a known-empty frame never enters the DOM.
+let photoReads=0;c.fetch=async()=>{photoReads++;return {ok:true,json:async()=>({photos:[]})}};
+c.eval(fs.readFileSync('site/run-photos.js','utf8'));const client={auth:{getSession:async()=>({data:{session:null}})}};
+await c.StriveRunPhotos.prefetch({client,runIds:[run.id]});
+const prepared=(await c.StriveRunPhotos.prepareCards([run],client))[0];
+c.document.body.innerHTML=c.StrivePost.render(prepared);
+assert.equal(c.document.querySelector('.media-loading'),null,'confirmed image-free cards must not paint a frame that collapses later');
+await c.StriveRunPhotos.mountCovers({client,root:c.document});
+assert.equal(photoReads,1,'the render preparation and image mount reuse one authorized prefetched manifest');
+assert.equal(c.document.querySelector('.media-loading'),null);
+console.log('PASS actual authorized prefetch/prepare/render/mount keeps an image-free card frame out of first paint without another list request.');
+
+// A prefetched answer under another account cannot supply the card's image metadata.
+let account='A';const scopedClient={auth:{getSession:async()=>({data:{session:{access_token:account}}})}};
+const authReads=[];c.fetch=async(_url,options)=>{authReads.push(options.headers.Authorization);return {ok:true,json:async()=>({photos:options.headers.Authorization==='Bearer B'?[{id:'selected',is_selected:true,is_private:false,is_cover:true,role:'result'}]:[]})}};
+await c.StriveRunPhotos.prefetch({client:scopedClient,runIds:['scoped-run']});account='B';
+const scoped=(await c.StriveRunPhotos.prepareCards([{...run,id:'scoped-run'}],scopedClient))[0];
+assert.equal(scoped._readablePhotoCount,1);assert.deepEqual(authReads,['Bearer A','Bearer B']);
+console.log('PASS metadata prefetch remains scoped to the current reader authorization.');
