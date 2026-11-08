@@ -47,7 +47,15 @@
       for(const name of ['localStorage','sessionStorage']){try{root[name].setItem(storageKey,editor.value)}catch(_){}}
       paint();
     });
-    const modal=setup.querySelector('#connect-alternatives');setup.querySelector('#connect-alternatives-open').onclick=()=>modal.showModal();setup.querySelector('#connect-alternatives-close').onclick=()=>modal.close();
+    const modal=setup.querySelector('#connect-alternatives'),opener=setup.querySelector('#connect-alternatives-open');opener.onclick=()=>modal.showModal();setup.querySelector('#connect-alternatives-close').onclick=()=>modal.close();
+    // WebKit can otherwise skip every button when macOS keyboard navigation is off.
+    modal.addEventListener('keydown',event=>{
+      if(event.key!=='Tab')return;
+      const controls=[...modal.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter(el=>el.tabIndex>=0&&[...el.getClientRects()].some(r=>r.width>0&&r.height>0)&&getComputedStyle(el).visibility!=='hidden');
+      if(!controls.length)return;
+      event.preventDefault();const index=controls.indexOf(document.activeElement),next=index<0?(event.shiftKey?controls.length-1:0):(index+(event.shiftKey?-1:1)+controls.length)%controls.length;controls[next].focus();
+    });
+    modal.addEventListener('close',()=>{if(opener.isConnected)opener.focus();});
 
     paint();
   }
