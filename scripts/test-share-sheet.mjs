@@ -51,4 +51,17 @@ for(const viewer of ['author','reader']){
  assert.equal(shared.text,'https://striverun.app'+path);assert.deepEqual(fetched,['/api/og?run='+run.id+'&format=story&v=5']);
  w.close();
 }
-console.log('PASS shared Feed/detail handlers: author/reader fixtures, canonical clipboard, neutral copy, desktop/mobile menu, denied clipboard fallback, private exclusion, focus return');
+const page=new JSDOM('<div id="sheet"></div>',{url:'https://striverun.app/',runScripts:'outside-only'}).window;
+for(const f of ['run-links.js','sharing.js'])page.eval(readFileSync(new URL('../site/'+f,import.meta.url),'utf8'));
+const slot=page.document.getElementById('sheet');
+page.GrinderSharing.mountPublic({run,slot,lead:'Post this link or image where you already talk. STRIVE does not post it for you.'});
+const publicUrl='https://striverun.app'+page.StriveLinks.runPath(run);
+assert.match(slot.textContent,/STRIVE does not post it for you/);
+assert.equal(slot.querySelector('.share-public-url').textContent,publicUrl);
+const postToX=[...slot.querySelectorAll('nav a')].find(link=>link.textContent==='X');
+assert.ok(decodeURIComponent(postToX.href).includes(publicUrl));
+assert.equal(page.GrinderSharing.openPublic({...run,visibility:'private'}),false);
+assert.match(app,/owner&&r\.visibility==='public'\?'<section class="run-distribute"/);
+assert.match(app,/Post this link or image where you already talk\. STRIVE does not post it for you\./);
+page.close();
+console.log('PASS shared Feed/detail handlers: author/reader fixtures, canonical clipboard, neutral copy, desktop/mobile menu, denied clipboard fallback, private exclusion, focus return, public handoff');

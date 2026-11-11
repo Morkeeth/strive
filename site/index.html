@@ -2153,12 +2153,14 @@ async function viewRun(id){
   app.innerHTML=`<div class="head"><h2>Behind the run</h2><span class="meta">${esc(audienceLabel(r.visibility))}</span></div>`
     +runCard(r,ad.mine.has(r.id),ad.countsKnown===false?null:ad.counts[r.id]||0,{ownerActions:owner,detail:true})
     +nextAction
+    +(owner&&r.visibility==='public'?'<section class="run-distribute" aria-label="Send this run"><div id="run-distribute-sheet"></div></section>':'')
     +`<section id="run-photos"></section>`
     +`<section id="grind-thread"></section>`
     // No empty XUDOS block: the card's action row already shows the count. People who sent XUDOS sit behind one disclosure.
     +(acks===null?`<div class="panel run-xudos">${ackListHtml(acks)}</div>`:acks.length?`<details class="panel run-xudos"><summary>XUDOS from ${acks.length} ${acks.length===1?'person':'people'}</summary>${ackListHtml(acks)}</details>`:'')
 ;
   const copyLink=$('run-copy-link');if(copyLink)copyLink.onclick=async()=>{const said=$('run-copy-state'),label=copyLink.getAttribute('aria-label');try{const sharePath=GrinderSharing.cleanRunPath(r)||(r.visibility==='public'?'/r/'+r.id:'/?run='+r.id);await navigator.clipboard.writeText(location.origin+sharePath);said.textContent='Link copied';copyLink.setAttribute('aria-label','Link copied')}catch(_){said.textContent='Could not copy. Copy this page address to share your run.'}setTimeout(()=>{said.textContent='';copyLink.setAttribute('aria-label',label)},2500)};
+  if($('run-distribute-sheet'))GrinderSharing.mountPublic({run:r,slot:$('run-distribute-sheet'),lead:'Post this link or image where you already talk. STRIVE does not post it for you.'});
   const photoEditor=window.StriveRunPhotos?await StriveRunPhotos.mount({client:sb,run:r,slot:$('run-photos'),owner,staged:owner,status,isCurrent:current,audience:()=>$('run-audience')?.value||r.visibility,onChanged:async()=>{if(!current())return;const card=document.querySelector('[data-run-id="'+r.id+'"]');if(card){card.querySelectorAll('.run-media, .run-personal-photo, .run-photo-cover').forEach(image=>image.remove());delete card.dataset.photoChecked;await StriveRunPhotos.mountCovers({client:sb,root:document});}}}):null;
   if(!current())return;
   if(ME?.id===r.profile_id){

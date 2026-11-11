@@ -580,6 +580,10 @@ button,summary{touch-action:manipulation}
 .run-share-dialog{width:min(520px,calc(100% - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:1px solid #d5ddea;border-radius:18px;padding:24px;background:#fff;color:#172445;box-sizing:border-box}
 .run-share-dialog::backdrop{background:rgb(23 36 69 / 35%)}
 .run-share-dialog .share-close{float:right;min-width:44px;min-height:44px;font-size:24px;padding:0}
+.run-distribute{margin:16px 0 0}
+.run-distribute .share-handoff{margin:0 0 8px;font-size:15px;line-height:1.45}
+.run-distribute .share-public-url{margin:0 0 14px;font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+.run-distribute .run-share-sheet{max-width:none;margin:0}
 .run-share-sheet{max-width:520px;margin:auto;clear:both}
 .run-share-sheet h2{font-size:22px;margin:0 0 16px}
 .run-share-sheet .share-formats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;margin:0 0 14px;border-radius:var(--button-radius,999px);background:var(--blue-wash,#f2f5ff)}
