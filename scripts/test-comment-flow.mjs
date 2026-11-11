@@ -4,9 +4,10 @@ import {JSDOM} from 'jsdom';
 const run='10000000-0000-4000-8000-000000000001',a='20000000-0000-4000-8000-000000000001',b='20000000-0000-4000-8000-000000000002';
 const w=new JSDOM('<section id="thread"></section>',{url:'https://strive.test/',runScripts:'outside-only'}).window;
 for(const f of ['run-links.js','run-contract.js','social.js'])w.eval(fs.readFileSync('site/'+f,'utf8'));
-w.confirm=()=>true;let viewer={id:a},rows=[],failed=false,seq=0,count=null;
+w.confirm=()=>true;let viewer={id:a},rows=[],failed=false,failReads=false,seq=0,count=null;
 const client={from(table){let action='read',value,filters=[],countOnly=false;return {select(fields,options){countOnly=options?.head;return this},eq(k,v){filters.push([k,v]);return this},order(){return this},limit(){return this},or(){return this},insert(v){action='insert';value=v;return this},update(v){action='update';value=v;return this},delete(){action='delete';return this},then(resolve){
  const found=rows.filter(r=>filters.every(([k,v])=>r[k]===v));
+ if(failReads&&action==='read')return resolve({error:{message:'TEST DATA read failed'}});
  if(failed&&action!=='read')return resolve({error:{message:'TEST DATA rejected write'}});
  if(action==='insert')rows.unshift({...value,id:`30000000-0000-4000-8000-${String(++seq).padStart(12,'0')}`,created_at:new Date().toISOString(),author:{github_handle:viewer.id===a?'author-a':'author-b'}});
  if(action==='update')for(const r of found){if(r.author_id!==viewer.id)return resolve({error:{message:'Denied'}});Object.assign(r,value,{edited_at:new Date().toISOString()})}
@@ -29,4 +30,13 @@ for(const id of [a,b]){
  const retry=slot.querySelector('textarea[name=body]');retry.value='TEST DATA keep draft';failed=true;await slot.querySelector('form.reply-form').onsubmit({preventDefault(){}});assert.equal(retry.value,'TEST DATA keep draft');assert.equal(rows.length,0);assert.equal(slot.querySelector('form button').disabled,false);failed=false;
  retry.value='   ';await slot.querySelector('form.reply-form').onsubmit({preventDefault(){}});assert.equal(rows.length,0,'blank comments stay unsaved');
 }
-w.close();console.log('PASS two fixture viewers: Enter/Shift Enter, long/second comment, edit/delete/reload, compact form, exact count, rejected write retains draft, blank input');
+viewer={id:a};rows=[];count=null;await ui.thread(run,slot,options);
+const saved=slot.querySelector('textarea[name=body]');saved.value='TEST DATA saved unread';failReads=true;
+await slot.querySelector('form.reply-form').onsubmit({preventDefault(){}});
+assert.equal(rows.length,1,'a failed refresh does not insert again');
+assert.match(slot.textContent,/Your comment was saved\. The list could not refresh\./);
+assert.equal(slot.querySelector('textarea'),null,'the composer stays closed so the saved comment cannot be posted twice');
+const show=[...slot.querySelectorAll('button')].find(x=>x.textContent==='Show replies');
+assert.ok(show);failReads=false;await show.onclick();
+assert.equal(rows.length,1);assert.match(slot.textContent,/TEST DATA saved unread/);assert.equal(slot.querySelector('textarea[name=body]').value,'');
+w.close();console.log('PASS two fixture viewers: Enter/Shift Enter, long/second comment, edit/delete/reload, compact form, exact count, rejected write retains draft, blank input, saved comment survives a failed list refresh');

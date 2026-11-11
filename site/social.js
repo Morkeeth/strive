@@ -973,7 +973,7 @@ window.GrinderSocial = function ({
                     .update({ body: area.value })
                     .eq("id", reply.id),
                 );
-                await thread(runId, slot, opts);
+                await thread(runId, slot, { ...opts, refreshNotice: "Your edit was saved. The list could not refresh.", refreshReady: "Edit saved." });
               } catch (e) {
                 fail(e);
                 save.disabled = false;
@@ -990,7 +990,7 @@ window.GrinderSocial = function ({
               await result(
                 db.from("grinder_replies").delete().eq("id", reply.id),
               );
-              await thread(runId, slot, opts);
+              await thread(runId, slot, { ...opts, refreshNotice: "Your comment was deleted. The list could not refresh.", refreshReady: "Comment deleted." });
             } catch (e) {
               fail(e);
               remove.disabled = false;
@@ -1090,8 +1090,19 @@ window.GrinderSocial = function ({
         if (!loaded || (cursor && cursor.id === before)) break; // backend did not advance: stop
       }
     } catch (e) {
-      items.textContent = "Replies are temporarily unavailable.";
-      fail(e);
+      // A failed read never means the comment is missing. Retry loads the list again and does not insert.
+      const notice = opts?.refreshNotice || "Replies are temporarily unavailable.";
+      items.replaceChildren();
+      const note = document.createElement("p");
+      note.className = "thread-empty";
+      note.textContent = notice;
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "ghost";
+      retry.textContent = "Show replies";
+      retry.onclick = () => thread(runId, slot, opts);
+      items.append(note, retry);
+      status(notice, true);
       return;
     }
     slot.querySelector(".reply-missing")?.remove();
@@ -1120,6 +1131,7 @@ window.GrinderSocial = function ({
     } else if (focusReply && sawFocus) {
       focusTarget();
     }
+    if (opts?.refreshReady) status(opts.refreshReady);
     if (typeof opts?.onCount === "function") {
       try {
         const total = await db.from("grinder_replies").select("id", { count: "exact", head: true }).eq("run_id", runId);
@@ -1148,12 +1160,16 @@ window.GrinderSocial = function ({
                 evidence_ref: form.elements.evidence?.value || null,
               }),
           );
-          status(
-            responseReturnHref()
-              ? "Reply posted. Return to Notifications when you are ready."
-              : "Reply posted.",
-          );
-          await thread(runId, slot, opts);
+          const posted = responseReturnHref()
+            ? "Reply posted. Return to Notifications when you are ready."
+            : "Reply posted.";
+          form.elements.body.value = "";
+          status(posted);
+          await thread(runId, slot, {
+            ...opts,
+            refreshNotice: "Your comment was saved. The list could not refresh.",
+            refreshReady: posted,
+          });
           slot.querySelector('textarea[name="body"]')?.focus();
         } catch (error) {
           fail(error);
