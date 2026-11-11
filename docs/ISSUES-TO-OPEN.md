@@ -4,11 +4,7 @@ These tasks are drafts, not published GitHub issues or assigned work. Check [ope
 
 ## Preserve comment text when a read fails
 
-Files: `site/social.js`, `scripts/test-comment-flow.mjs`.
-
-A rejected comment write keeps the draft. Investigate the different case where the write succeeds but the following thread read fails. The reader should understand that the save succeeded and have a retry action without accidentally posting twice.
-
-Done when: a browser test rejects the refresh after a successful insert; exactly one row remains; the user sees a clear saved/read-failed state and can retry the read. Keep fixture and hosted evidence distinct.
+Covered in `site/social.js` and `scripts/test-comment-flow.mjs`. A rejected write still keeps the draft. When the insert succeeds and the following thread read fails, the list says the comment was saved and **Show replies** only reads again. The composer stays closed until that read works, so the same text is not posted twice. The fixture covers this. Hosted use is still separate.
 
 ## Recover when GitHub friends cannot load
 
