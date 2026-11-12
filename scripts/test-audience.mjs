@@ -27,7 +27,7 @@ assert.deepEqual(await A.counts(failing,'p1'),{followers:null,closeFriends:null}
 const working={from:t=>({select:()=>({eq:async()=>({error:null,count:t==='grinder_follows'?3:1})})})};
 assert.deepEqual(await A.counts(working,'p1'),{followers:3,closeFriends:1});
 // Profile strip: says how many are hidden; an unknown run count does not invent one.
-assert.match(text(A.profileStrip({public:1,link:2,close_friends:0,private:1},{followers:1,closeFriends:0},{handle:'h'})),/3 more are hidden/);
-assert.ok(!/hidden from them/.test(A.profileStrip(null,{},{handle:'h'})),'unknown runs make no hidden claim');
+assert.match(text(A.profileStrip({public:1,link:2,close_friends:5,private:1,crew:1},{followers:1,closeFriends:0},{handle:'h'})),/4 more never show here/,'Followers, Only me and crew never show on a profile; Close friends can');
+assert.ok(!/never show here/.test(A.profileStrip(null,{},{handle:'h'})),'unknown runs make no hidden claim');
 assert.match(A.profileStrip(null,{},{handle:'a b'}),/preview=public/);
 console.log('audience: ok');

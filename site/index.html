@@ -916,7 +916,7 @@ const roadmapFeedback=StriveFeedback({client:sb,me:()=>ME,signIn:()=>showSignIn(
 let AUTH_GENERATION=0, RUN_VIEW_GENERATION=0;
 // Invalidate synchronously, before any queued auth refresh or pending private request.
 function invalidatePrivateView(){
-  document.getElementById('visibility-dialog')?.remove();
+  document.getElementById('visibility-dialog')?.remove();document.getElementById('audience-dialog')?.remove();
   document.querySelectorAll('[data-review-count]').forEach(b=>{b.hidden=true;b.textContent=''});$('review-strip')?.remove();
   AUTH_GENERATION++;RUN_VIEW_GENERATION++;
   document.querySelector('dialog.run-share-dialog')?.close();
@@ -2181,7 +2181,7 @@ async function viewRun(id){
     const suggestedVisual=availableVisuals.find(v=>v[0]===r.hero_visual)?.[0]||availableVisuals[0]?.[0]||'';
     // Oscar, 25 Oct: "Automatic framing, don't display the options for the user." The card uses the
     // run's saved visual, or the suggestion when none is saved; the owner is not asked to choose.
-    controls.id='run-edit';controls.innerHTML='<h2>Edit update</h2><div class="run-story-fields"><label>Title<input id="run-title" required maxlength="120"></label><label>Project<input id="run-project" maxlength="120"></label><label>Project purpose / context<textarea id="run-caption" maxlength="280" rows="3" placeholder="Who is this for, what problem does it solve, and is it for a hackathon?"></textarea></label><label>Link to what was built (optional)<input id="run-output-url" type="url" maxlength="2048"></label></div><div id="run-editor-photos"></div><details class="run-presentation"><summary>Card appearance</summary><label class="pin-check"><input type="checkbox" id="run-pin"> Pin to my profile</label></details><label id="run-audience-label">Who can view<select id="run-audience"><option value="private">Only me · just you</option><option value="close_friends">Close friends · your private list</option><option value="link">Followers · not on your profile or Feed</option><option value="public">Everyone · your profile and the Feed</option></select></label><div class="run-edit-actions"><button id="run-save">Save changes</button><button id="run-edit-cancel" class="ghost">Cancel</button><button id="run-delete" class="ghost">Delete run</button></div>';
+    controls.id='run-edit';controls.innerHTML='<h2>Edit update</h2><div class="run-story-fields"><label>Title<input id="run-title" required maxlength="120"></label><label>Project<input id="run-project" maxlength="120"></label><label>Project purpose / context<textarea id="run-caption" maxlength="280" rows="3" placeholder="Who is this for, what problem does it solve, and is it for a hackathon?"></textarea></label><label>Link to what was built (optional)<input id="run-output-url" type="url" maxlength="2048"></label></div><div id="run-editor-photos"></div><details class="run-presentation"><summary>Card appearance</summary><label class="pin-check"><input type="checkbox" id="run-pin"> Pin to my profile</label></details><label id="run-audience-label">Who can see this<select id="run-audience"><option value="private">Only me · just you</option><option value="close_friends">Close friends · your private list</option><option value="link">Followers · not on your profile or Feed</option><option value="public">Everyone · your profile and the Feed</option></select></label><div class="run-edit-actions"><button id="run-save">Save changes</button><button id="run-edit-cancel" class="ghost">Cancel</button><button id="run-delete" class="ghost">Delete run</button></div>';
 
     if(r.repo_url)controls.insertAdjacentHTML('afterbegin','<p class="hint">Sharing this post can reveal the linked repository name, logo and text, including for a private repository.</p>');
     controls.querySelector('.run-story-fields').insertAdjacentHTML('afterend',StriveStory.editor(r));
@@ -2356,7 +2356,7 @@ function wireComposer(){
     try{
       const row=await build();if(!live())return;const slot=$('manual-preview-content');
       slot.innerHTML=StrivePost.render({...row,id:'preview',profiles:ME||{display_name:'Your preview'},_readablePhotoCount:0},{owner:false,review:true,dateLabel:'Update date: '+new Date(row.started_at).toLocaleDateString()+' · browser clock'});
-      slot.querySelector('.dc-audience').textContent='Reader preview · not saved';
+      const previewLabel=slot.querySelector('.dc-audience');if(previewLabel)previewLabel.textContent='Reader preview · not saved';else slot.querySelector('.dc-head')?.insertAdjacentHTML('afterend','<p class="dc-audience">Reader preview · not saved</p>');
       const marker=slot.querySelector('.private-run-marker');if(marker)marker.textContent='On this device. Not saved or shared.';
       if(row.output_url)slot.querySelector('.post-story').insertAdjacentHTML('beforeend','<p><a data-review-href="'+esc(row.output_url)+'" role="link" aria-disabled="true" tabindex="-1">Open project link</a></p>');
       disposePreview=await window.StrivePhotoDraft?.preview({slot:slot.querySelector('.run-media-slot'),token,profileId:owner,isCurrent:live});
@@ -3154,7 +3154,7 @@ function mountHomeCommunity(){
     if(RUN_VIEW_GENERATION!==generation||$('home-community'))return;if(!body){if(++tries<40)setTimeout(place,100);return}
     const slot=document.createElement('section');slot.id='home-community';slot.innerHTML=H.community(data);body.before(slot)};place()});
 }
-async function route(){ document.querySelector('[data-project-agentic]')?.remove();setPrimarySection(); RUN_VIEW_GENERATION++;feedRefresh.stop();window.StriveRunPhotos?.disposeAll?.();account.recover(); try{document.title=pageTitle(new URLSearchParams(location.search))}catch(_){}
+async function route(){ document.getElementById('audience-dialog')?.remove();document.querySelector('[data-project-agentic]')?.remove();setPrimarySection(); RUN_VIEW_GENERATION++;feedRefresh.stop();window.StriveRunPhotos?.disposeAll?.();account.recover(); try{document.title=pageTitle(new URLSearchParams(location.search))}catch(_){}
   if(ME && social.refreshUnread) social.refreshUnread();
   if(IDENTITY_SETUP)return viewIdentitySetup();
   restoreImport();

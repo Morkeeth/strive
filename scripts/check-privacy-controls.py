@@ -74,6 +74,15 @@ try:
                     if 'everyone' not in (label or '').lower():
                         failures.append(f'picker: save button does not name the wider audience: {label!r}')
                     page.locator('#audience-dialog .aud-cancel').click()
+                    page.wait_for_timeout(300)
+                    # The import review box opens the same picker.
+                    approve = page.locator('[data-approve]')
+                    if approve.count():
+                        approve.first.click(); page.wait_for_timeout(1200)
+                        if not page.locator('#audience-dialog[open]').count():
+                            failures.append('review box: Choose visibility does not open the picker')
+                        else:
+                            page.locator('#audience-dialog .aud-cancel').click()
             context.close()
 
         # 2. Owner, post form: the audience is set before typing, on the first screen.
@@ -91,7 +100,7 @@ try:
             for word in ('Everyone', 'Followers', 'Close friends', 'Only me', '1 follower', 'Close friends: 1'):
                 if word not in probe['text']:
                     failures.append(f'owner-profile: panel is missing {word!r}')
-            if '3 more are hidden' not in probe['text']:
+            if '2 more never show here' not in probe['text']:
                 failures.append('owner-profile: panel does not say how many updates visitors cannot see')
         shot(page, 'owner-profile')
         context.close()
@@ -122,6 +131,42 @@ try:
                 failures.append(f'{key}: owner privacy panel rendered for a visitor or in preview')
             shot(page, key)
             context.close()
+        # 6. Saves, end to end on the local database: the picker writes, the reader rules follow.
+        # Close friends, not Followers: Followers access rides a request header this local stub does not
+        # pass to the database, so a follower is refused here even on the live code.
+        context, page = open_page('casey', '/?run=' + RUN['private'])
+        page.locator('[data-audience-pill]').first.click(); page.wait_for_timeout(1000)
+        page.locator('#audience-dialog input[value=close_friends]').check()
+        page.locator('#audience-dialog .aud-save').click(); page.wait_for_timeout(2500)
+        saved = page.evaluate("document.querySelector('[data-run-id] [data-audience-pill]')?.dataset.audiencePill || null")
+        seen['save-run'] = saved
+        if saved != 'close_friends':
+            failures.append(f'save-run: Only me to Close friends did not save and repaint (shows {saved!r})')
+        shot(page, 'owner-run-saved-close-friends')
+        context.close()
+        for key, who, may in (('save-run-close-friend', 'riley', True), ('save-run-signed-out', None, False)):
+            context, page = open_page(who, '/?run=' + RUN['private'])
+            opened = page.locator('.run-detail-card').count() > 0
+            seen[key] = opened
+            if opened != may:
+                failures.append(f'{key}: expected {"open" if may else "refused"} after the save, got {"open" if opened else "refused"}')
+            context.close()
+        context, page = open_page('casey', '/?post')
+        page.fill('#f_project', 'TEST DATA privacy post'); page.fill('#f_caption', 'TEST DATA description for the audience save check')
+        page.locator('#post-audience-slot [data-audience-pill]').click(); page.wait_for_timeout(1000)
+        page.locator('#audience-dialog input[value=close_friends]').check()
+        page.locator('#audience-dialog .aud-save').click(); page.wait_for_timeout(500)
+        button = page.locator('#publish').text_content()
+        seen['post-button'] = button
+        if 'close friends' not in (button or '').lower():
+            failures.append(f'save-post: the post button does not name the chosen audience: {button!r}')
+        page.locator('#publish').click(); page.wait_for_timeout(4000)
+        stored = page.evaluate("document.querySelector('[data-run-visibility]')?.dataset.runVisibility || null")
+        seen['save-post'] = {'url': page.url, 'stored': stored}
+        if stored != 'close_friends':
+            failures.append(f'save-post: the new update is not stored for Close friends (got {stored!r} at {page.url})')
+        shot(page, 'owner-post-saved')
+        context.close()
         browser.close()
 finally:
     proc.terminate(); proc.wait(timeout=10)

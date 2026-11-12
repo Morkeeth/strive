@@ -73,15 +73,18 @@ function open({current,counts:known=null,title='Who can see this?',onSave,saveLa
 }
 // Owner-only summary for the profile: which audiences are hidden from visitors, and how many people are in each circle.
 async function ownerRunCounts(client,profileId){
- const by={public:0,link:0,close_friends:0,private:0};
- const {data,error}=await client.from('runs').select('visibility').eq('profile_id',profileId).limit(2000);
- if(error)return null;
- for(const r of data||[])by[norm(r.visibility==='crew'?'private':r.visibility)]++;
- return by;
+ // Head counts per audience: exact at any size, no rows transferred. A crew share is not Only me.
+ const count=async apply=>{const r=await apply(client.from('runs').select('id',{count:'exact',head:true}).eq('profile_id',profileId));if(r.error||!Number.isFinite(r.count))throw r.error||Error('count');return r.count;};
+ try{
+  const [pub,link,cf,priv,crew]=await Promise.all([count(q=>q.eq('visibility','public')),count(q=>q.eq('visibility','link')),count(q=>q.eq('visibility','close_friends')),count(q=>q.in('visibility',['private','anonymous'])),count(q=>q.in('visibility',['private','anonymous']).eq('crew_shared',true))]);
+  return {public:pub,link,close_friends:cf,private:Math.max(0,priv-crew),crew};
+ }catch(_){return null;}
 }
 function profileStrip(runCounts,people,{handle}){
- const hidden=runCounts?runCounts.link+runCounts.close_friends+runCounts.private:null;
- const lead=runCounts===null?'Visitors see only your Everyone updates.':hidden?`Visitors see only your Everyone updates. ${hidden} more ${hidden===1?'is':'are'} hidden from them.`:'Visitors see only your Everyone updates. Nothing is hidden right now.';
+ // Who sees this page: everyone sees Everyone updates; listed close friends also see Close friends updates.
+ // Followers and Only me updates never appear on a profile.
+ const never=runCounts?runCounts.link+runCounts.private+(runCounts.crew||0):null;
+ const lead='Visitors see your Everyone updates. Your close friends also see Close friends updates.'+(never?` ${never} more never show here.`:'');
  const chip=a=>`<a class="aud-count aud-${a.replace('_','-')}" href="/?mine">${mark(a)}<span>${LABEL[a]}</span><strong>${runCounts?runCounts[a]:'–'}</strong></a>`;
  const followers=Number.isFinite(people?.followers)?people.followers:null,friends=Number.isFinite(people?.closeFriends)?people.closeFriends:null;
  return `<section class="aud-profile" id="profile-privacy" aria-labelledby="profile-privacy-title"><div class="aud-profile-head"><h2 id="profile-privacy-title">Who sees what</h2><a href="/?account#privacy">Privacy settings</a></div><p class="aud-profile-lead">${esc(lead)}</p><div class="aud-profile-row">${ORDER.map(chip).join('')}</div><p class="aud-profile-people"><a href="/?account#privacy">${followers===null?'Followers':followers===1?'1 follower':followers+' followers'}</a><span aria-hidden="true"> · </span><a href="/?friends">${friends===null?'Close friends list':`Close friends: ${friends}`}</a><span aria-hidden="true"> · </span><a href="/?u=${encodeURIComponent(handle)}&amp;preview=public">See it as a visitor</a></p></section>`;
@@ -90,7 +93,7 @@ function profileStrip(runCounts,people,{handle}){
 async function mountSettings({client,slot,profile,isCurrent=()=>true}){
  if(!slot||!profile)return;
  const handle=profile.handle||profile.github_handle||'';
- slot.innerHTML=`<h2 id="account-privacy-title">Privacy</h2><p>You choose who can see each update when you post it. Change it any time with the audience button on the update.</p><ul class="aud-legend">${ORDER.map(a=>`<li>${mark(a)}<span><strong>${LABEL[a]}</strong> ${esc(DESC[a])}</span></li>`).join('')}</ul><div class="aud-settings-people"><div><h3>Followers</h3><p id="privacy-followers" role="status">Loading…</p></div><div><h3>Close friends</h3><p id="privacy-friends" role="status">Loading…</p><a class="v2-button" href="/?friends">Edit Close friends</a></div><div><h3>Your profile</h3><p>Visitors see only your Everyone updates.</p><a class="v2-button" href="/?u=${encodeURIComponent(handle)}&amp;preview=public">See it as a visitor</a></div></div>`;
+ slot.innerHTML=`<h2 id="account-privacy-title">Privacy</h2><p>You choose who can see each update when you post it. Change it any time with the audience button on the update.</p><ul class="aud-legend">${ORDER.map(a=>`<li>${mark(a)}<span><strong>${LABEL[a]}</strong> ${esc(DESC[a])}</span></li>`).join('')}</ul><div class="aud-settings-people"><div><h3>Followers</h3><p id="privacy-followers" role="status">Loading…</p></div><div><h3>Close friends</h3><p id="privacy-friends" role="status">Loading…</p><a class="v2-button" href="/?friends">Edit Close friends</a></div><div><h3>Your profile</h3><p>Visitors see your Everyone updates. Your close friends also see Close friends updates.</p><a class="v2-button" href="/?u=${encodeURIComponent(handle)}&amp;preview=public">See it as a visitor</a></div></div>`;
  const c=await counts(client,profile.id);if(!isCurrent())return;
  const fEl=slot.querySelector('#privacy-followers'),cEl=slot.querySelector('#privacy-friends');
  cEl.textContent=c.closeFriends===null?'Could not load your list. Reload to try again.':c.closeFriends===0?'Nobody yet. Only you can see this list.':`${c.closeFriends} ${c.closeFriends===1?'person':'people'}. Only you can see this list.`;

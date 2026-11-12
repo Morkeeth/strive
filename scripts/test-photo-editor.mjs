@@ -139,23 +139,23 @@ const cases={
   },
   async 'the photo label follows the run audience and never says Public on a private run'(){
     const edit=await editor({visibility:'private',count:2});
-    assert.deepEqual(labels(edit.slot),['Only you','Only you']);assert.doesNotMatch(edit.slot.textContent,/Public/);
-    edit.setAudience('public');assert.deepEqual(labels(edit.slot),['Public','Public'],'the label follows the audience control without a reload');
+    assert.deepEqual(labels(edit.slot),['Only me','Only me']);assert.doesNotMatch(edit.slot.textContent,/Everyone/);
+    edit.setAudience('public');assert.deepEqual(labels(edit.slot),['Everyone','Everyone'],'the label follows the audience control without a reload');
     tiles(edit.slot)[0].querySelector('[data-photo-private]').click();await until(()=>labels(edit.slot)[0]==='Hidden','hidden label');
-    assert.deepEqual(labels(edit.slot),['Hidden','Public']);
+    assert.deepEqual(labels(edit.slot),['Hidden','Everyone']);
     edit.setAudience('close_friends');assert.deepEqual(labels(edit.slot),['Hidden','Close friends']);
     edit.setAudience('link');assert.deepEqual(labels(edit.slot),['Hidden','Followers']);
-    edit.setAudience('private');assert.doesNotMatch(edit.slot.textContent,/Public/);
+    edit.setAudience('private');assert.doesNotMatch(edit.slot.textContent,/Everyone/);
     // A run saved as public still reads from the control: the control now says Only me.
-    const saved=await editor({visibility:'public',count:1});assert.deepEqual(labels(saved.slot),['Public']);saved.setAudience('private');assert.deepEqual(labels(saved.slot),['Only you']);
+    const saved=await editor({visibility:'public',count:1});assert.deepEqual(labels(saved.slot),['Everyone']);saved.setAudience('private');assert.deepEqual(labels(saved.slot),['Only me']);
     // An audience this code does not know is treated as the narrowest one.
-    const odd=await editor({visibility:'anonymous',count:1});assert.deepEqual(labels(odd.slot),['Only you']);
+    const odd=await editor({visibility:'anonymous',count:1});assert.deepEqual(labels(odd.slot),['Only me']);
     // The import step has no saved run. Its photos are private until an audience is chosen.
-    const step=await draft({names:['a.png']});assert.deepEqual(labels(step.slot),['Only you']);assert.doesNotMatch(step.slot.textContent,/Public/);
-    step.setAudience('public');assert.deepEqual(labels(step.slot),['Public']);
+    const step=await draft({names:['a.png']});assert.deepEqual(labels(step.slot),['Only me']);assert.doesNotMatch(step.slot.textContent,/Everyone/);
+    step.setAudience('public');assert.deepEqual(labels(step.slot),['Everyone']);
     // A personal photo from before this editor stays hidden, as the database keeps it.
     const personal=await editor({visibility:'public',photos:[{id:'saved-1',role:'personal',personal_public_selected:false,is_private:true,is_selected:true,sort_position:0,url:`/api/run-photos?run_id=${RUN}&id=saved-1`},{id:'saved-2',role:'photo',is_private:false,is_selected:true,sort_position:1,url:`/api/run-photos?run_id=${RUN}&id=saved-2`}]});
-    assert.deepEqual(labels(personal.slot),['Hidden','Public']);assert.deepEqual(covers(personal.slot),[false,true]);
+    assert.deepEqual(labels(personal.slot),['Hidden','Everyone']);assert.deepEqual(covers(personal.slot),[false,true]);
   },
   async 'there are no explanatory paragraphs'(){
     for(const make of [()=>editor({count:2}),()=>draft({names:['a.png']}),()=>draft()]){
