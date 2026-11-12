@@ -46,6 +46,8 @@ CURSOR_GLOB = "~/.cursor/projects/*/agent-transcripts/*/*.jsonl"
 # Grok Bot exports are explicitly placed here by the user. This is an Agent Grinder import
 # location, not a claim that a bot can read transcripts from somebody else's laptop.
 GROKBOT_GLOB = "~/.agentgrinder/imports/grokbot/*.jsonl"
+# Hermes Agent keeps every session in one SQLite file, read-only here (agentgrinder/hermes.py).
+HERMES_DB = "~/.hermes/state.db"
 
 # THE READER'S HARNESSES — one registry, `--harness` key -> the name a person reads.
 # Every user-facing sentence that lists what this tool can read is checked against this dict by
@@ -57,6 +59,7 @@ HARNESSES = {
     "cursor": "Cursor",
     "codex": "Codex",
     "grokbot": "Grok Bot",
+    "hermes": "Hermes",
 }
 
 
@@ -71,7 +74,7 @@ def searched_paths() -> tuple:
     An error that says "nothing found" without saying where it looked is untestable by the person
     reading it. Every not-found message prints this list.
     """
-    return (CLAUDE_GLOB, CURSOR_GLOB, GROKBOT_GLOB) + CODEX_GLOBS
+    return (CLAUDE_GLOB, CURSOR_GLOB, GROKBOT_GLOB) + CODEX_GLOBS + (HERMES_DB,)
 
 
 # THE ROUTE: the folders the run went through, as station indices. site/dropin-parse.js
@@ -1076,3 +1079,22 @@ def detect_rig() -> dict:
     if os.path.isdir(sk):
         skills = sum(1 for e in os.listdir(sk) if os.path.isdir(os.path.join(sk, e)))
     return {"mcps": mcps, "skills": skills, "mcp_names": mcp_names}
+
+
+# ---- Hermes origin -----------------------------------------------------------
+def latest_hermes_session() -> str | None:
+    """The Hermes state.db when it holds at least one session a person typed in."""
+    from . import hermes
+    path = hermes.default_db()
+    if not path:
+        return None
+    try:
+        return path if hermes.sessions(path) else None
+    except (OSError, ValueError, __import__("sqlite3").Error):
+        return None
+
+
+def parse_hermes_session(path: str, athlete: str = "you", records=None) -> dict:
+    """One Hermes session (one sitting) from a state.db, counts only."""
+    from .hermes import parse_hermes_session as parse
+    return parse(path, athlete=athlete, records=records)
