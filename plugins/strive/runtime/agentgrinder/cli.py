@@ -98,7 +98,7 @@ def no_session_message(harness: str | None = None) -> str:
               "  It only reads transcripts you already have. Next step:",
               "",
               "      python3 -m agentgrinder grind --harness auto",
-              "          the freshest session of any of those four on this machine",
+              "          the freshest Claude Code, Cursor, Codex or Grok Bot session on this machine",
               "",
               "      python3 -m agentgrinder grind /path/to/session.jsonl --harness "
               + (harness or "claude"),
@@ -228,7 +228,7 @@ def main(argv=None) -> int:
     # AUTO IS THE DEFAULT. It was `claude` until 3 Sep 2026, so a Cursor or Codex user running the
     # advertised one-liner got "no Claude Code session with a human turn" — a wall, with no hint
     # that either of the other two harnesses was supported at all. The site promises three.
-    g.add_argument("--harness", choices=["claude", "cursor", "codex", "grokbot", "auto"], default="auto",
+    g.add_argument("--harness", choices=["claude", "cursor", "codex", "grokbot", "hermes", "auto"], default="auto",
                    help="which agent's transcript (default auto = freshest Claude, Cursor, Codex or imported Grok Bot export)")
     g.add_argument("--no-rank", action="store_true",
                    help="skip the pass over your history (faster; drops the progression line)")
@@ -282,7 +282,7 @@ def main(argv=None) -> int:
     sh.add_argument("--claim", action="store_true", help="invite card — open handle slot")
     sh.add_argument("--profile", action="store_true", help="scrapbook card from local stats")
     sh.add_argument("--handle", default="you", help="GitHub handle on the card")
-    sh.add_argument("--harness", choices=["claude", "cursor", "codex", "grokbot", "auto"], default="auto")
+    sh.add_argument("--harness", choices=["claude", "cursor", "codex", "grokbot", "hermes", "auto"], default="auto")
     sh.add_argument("-o", "--out", default="share.html")
     sh.add_argument("--no-open", action="store_true"); sh.add_argument("--open", action="store_true", help="open the result in a browser (default: print the path or link, open nothing)")
     sh.add_argument("--push-url", default=None, help="base URL printed on the claim stub")
@@ -290,7 +290,7 @@ def main(argv=None) -> int:
     sh.add_argument("--roast", action="store_true", help="add roast-shape lines to the card")
     vb = sub.add_parser("vibe", help="meme label for a grind — real numbers, no streaks")
     vb.add_argument("session", nargs="?", help="run JSON (default: latest grind)")
-    vb.add_argument("--harness", choices=["claude", "cursor", "codex", "grokbot", "auto"], default="auto")
+    vb.add_argument("--harness", choices=["claude", "cursor", "codex", "grokbot", "hermes", "auto"], default="auto")
     vb.add_argument("--json", dest="as_json", action="store_true")
     rb = sub.add_parser("roast", help="roast your grind shape — receipts only, no streaks")
     rb.add_argument("session", nargs="?", help="run JSON (default: latest grind)")
@@ -316,7 +316,7 @@ def main(argv=None) -> int:
     a2sub = a2.add_subparsers(dest="a2cmd", required=True)
     a2sub.add_parser("onboard", help="print A2A agent onboarding (for MCP agents)")
     ex = a2sub.add_parser("export", help="export latest grind as A2A JSON")
-    ex.add_argument("--harness", choices=["claude", "cursor", "codex", "grokbot"], default="claude")
+    ex.add_argument("--harness", choices=["claude", "cursor", "codex", "grokbot", "hermes"], default="claude")
     ex.add_argument("--handle", default="you")
     fd = a2sub.add_parser("feed", help="fetch public grinds (network)")
     fd.add_argument("--handle", default=None, help="athlete GitHub handle")
@@ -331,7 +331,7 @@ def main(argv=None) -> int:
     akls.add_argument("run_id")
     r = sub.add_parser("v1card", help="the v1 sparkline card (kept for the bundled sample)")
     r.add_argument("session", nargs="?")
-    r.add_argument("--harness", choices=["claude", "cursor", "codex", "grokbot"], default="claude")
+    r.add_argument("--harness", choices=["claude", "cursor", "codex", "grokbot", "hermes"], default="claude")
     r.add_argument("--athlete", default=None, help=ATHLETE_HELP)
     r.add_argument("-o", "--out", default="card.html")
     r.add_argument("--no-open", action="store_true"); r.add_argument("--open", action="store_true", help="open the result in a browser (default: print the path or link, open nothing)")
@@ -555,11 +555,12 @@ def main(argv=None) -> int:
                 print(format_feed(public_feed(args.limit)))
             return 0
         if args.a2cmd == "export":
-            from .ingest import latest_codex_session, latest_grokbot_session
+            from .ingest import latest_codex_session, latest_grokbot_session, latest_hermes_session
             from .native_sittings import read_sitting
             p = {'claude': latest_session, 'cursor': latest_cursor_session,
                  'codex': latest_codex_session,
-                 'grokbot': latest_grokbot_session}[args.harness]()
+                 'grokbot': latest_grokbot_session,
+                 'hermes': latest_hermes_session}[args.harness]()
             if not p:
                 print(f"No {args.harness} session"); return 1
             try:
@@ -623,7 +624,13 @@ def main(argv=None) -> int:
     if args.cmd == "v1card":
         # the pre-trace sparkline card. Kept because `demo`/`card` render the bundled sample,
         # which has no per-event data, and because the Cursor path still lands here.
-        if args.harness in ("cursor", "grokbot"):
+        if args.harness == "hermes":
+            from .ingest import latest_hermes_session, parse_hermes_session
+            path = args.session or latest_hermes_session()
+            if not path:
+                print("no hermes session found"); return 1
+            run = parse_hermes_session(path, athlete=args.athlete)
+        elif args.harness in ("cursor", "grokbot"):
             from .ingest import latest_grokbot_session, parse_grokbot_session
             path = args.session or (
                 latest_cursor_session() if args.harness == "cursor" else latest_grokbot_session()
@@ -779,8 +786,10 @@ def _grind(args) -> int:
     harness = args.harness
     if harness == "auto" and args.session:
         from .native_sittings import records
-        first = next(records(args.session), {})
-        harness = 'codex' if first.get('type') in ('session_meta','event_msg','response_item') else 'cursor' if first.get('role') in ('user','assistant') else 'claude'
+        with open(args.session, 'rb') as head:
+            is_sqlite = head.read(16) == b'SQLite format 3\x00'
+        first = {} if is_sqlite else next(records(args.session), {})
+        harness = 'hermes' if is_sqlite else 'codex' if first.get('type') in ('session_meta','event_msg','response_item') else 'cursor' if first.get('role') in ('user','assistant') else 'claude'
 
     if harness == "auto" and not args.session:
         from .flex import latest_any
@@ -848,6 +857,35 @@ def _grind(args) -> int:
                   "\n  card to draw. Run without --session to take the newest one you typed in.\n")
             return 1
         return _native_grind(run, args, path, source_digest, selected, len(groups))
+
+    if harness == "hermes":
+        from . import hermes
+        from .ingest import latest_hermes_session
+        path = args.session or latest_hermes_session()
+        if not path:
+            print(no_session_message("hermes")); return 1
+        try:
+            groups = hermes.sessions(path)
+            if args.list:
+                print(f"\n  {len(groups)} Hermes session{'' if len(groups) == 1 else 's'} with a typed turn"
+                      f" in {Path(path).name}\n")
+                for i, group in enumerate(groups, 1):
+                    run_i = hermes.parse_hermes_session(path, records=group)
+                    when = (run_i.get('started') or '')[:16].replace('T', ' ')
+                    print(f"   --pick {i:<3} {when}  {run_i['turns_typed']:>3} prompts  "
+                          f"{run_i['tool_calls']:>4} tool calls")
+                print()
+                return 0
+            if not groups:
+                print(no_session_message("hermes")); return 1
+            selected = len(groups) if args.pick in (None, -1) else args.pick
+            source_digest = hermes.digest(path, args.pick)
+            run = hermes.parse_hermes_session(path, athlete=args.athlete, records=hermes.choose(groups, args.pick))
+        except (ValueError, __import__("sqlite3").Error) as error:
+            print(str(error), file=sys.stderr)
+            return 1
+        return _native_grind(run, args, path, source_digest, selected, len(groups),
+                             digest_fn=lambda p: hermes.digest(p, args.pick))
 
     if harness == "grokbot":
         from .ingest import latest_grokbot_session, parse_grokbot_session
@@ -1069,11 +1107,11 @@ def _list_native_selection(path, harness, groups, parser, show_paths=False):
     return 0
 
 
-def _native_grind(run, args, path, source_digest, selected=None, total=None):
+def _native_grind(run, args, path, source_digest, selected=None, total=None, digest_fn=None):
     from .contract import capture_digest
     from .engine.series import record_and_attach
     _stamp_identity(run, getattr(args, "athlete", None))
-    if source_digest != capture_digest(path):
+    if source_digest != (digest_fn or capture_digest)(path):
         print('The transcript changed during analysis. Try again.',file=sys.stderr);return 1
     run['input_digest']=source_digest
     if not args.no_series and run.get('started'):

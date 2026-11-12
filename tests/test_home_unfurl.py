@@ -131,7 +131,7 @@ def test_the_unfurl_describes_the_product_and_the_page_names_the_tools_it_reads(
     # The page's own description is where the tools are named now: the three the drop-in reads
     # (site/dropin-parse.js HARNESSES) and Grok Bot, and no tool the product has no reader for.
     page = re.search(r'<meta name="description" content="([^"]+)">', INDEX).group(1)
-    assert page == ("Turn a Cursor, Grok Bot, Claude Code or Codex session into a run card. Post your runs and see "
+    assert page == ("Turn a Cursor, Grok Bot, Claude Code, Codex or Hermes session into a run card. Post your runs and see "
                     "what other builders are making. Private until you choose to share.")
     dropin = json.loads(subprocess.run(["node", "-e", "process.stdout.write(JSON.stringify(require('./site/dropin-parse.js').HARNESSES))"],
                                        cwd=ROOT, check=True, capture_output=True, text=True).stdout)
