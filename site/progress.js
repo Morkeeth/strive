@@ -14,7 +14,7 @@ window.GrinderProgress = function ({client: db, me, app, frame, status, signIn, 
     return bits;
   }
   const title = run => run.title || 'Untitled run';
-  const audience = run => run.crew_shared ? 'Crew members' : ({private:'Only you',public:'Public',link:'Followers',anonymous:'Only you',close_friends:'Close friends'}[run.visibility] || 'Only you');
+  const audience = run => run.crew_shared ? 'Crew members' : ({private:'Only me',public:'Everyone',link:'Followers',anonymous:'Only me',close_friends:'Close friends'}[run.visibility] || 'Only me');
   async function rows(query) {const result = await query; if(result.error) throw Error(result.error.message); return result.data || [];}
   function start(heading, active) {
     // Keep the primary rail. This used to clear it, so My runs was the only signed-in page with no

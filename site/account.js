@@ -24,6 +24,7 @@ window.GrinderAccount = function ({
   signIn,
   onDeleted,
   researchConsent,
+  privacy,
 }) {
   const esc = (x) =>
     String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -104,6 +105,7 @@ window.GrinderAccount = function ({
       <section class="account-section"><h1>Settings</h1>
         <p class="account-lead">Your STRIVE username is <a id="account-lead-handle" href="${esc(p.url)}">@${esc(p.handle)}</a>. </p>
         <p>Manage your name, photo, bio and links in one place.</p><a class="v2-button" href="/?u=${encodeURIComponent(profile.handle||profile.github_handle||'')}#edit-profile">Edit profile</a></section>
+      <section class="account-section" id="privacy" aria-labelledby="account-privacy-title"><h2 id="account-privacy-title">Privacy</h2><p>Loading…</p></section>
       <section class="account-section" aria-labelledby="account-methods-title"><h2 id="account-methods-title">Linked accounts</h2>
         <div id="account-identities">${identitiesHtml(ids)}</div>
         <p id="account-identities-state" class="account-state" role="status" aria-live="polite"></p></section>
@@ -171,6 +173,8 @@ window.GrinderAccount = function ({
     wirePanel(profile);
 
     if (typeof researchConsent === "function") researchConsent(byId("account-research"), profile.id, isCurrent);
+    if (typeof privacy === "function") privacy(byId("privacy"), profile, isCurrent);
+    if (location.hash === "#privacy") byId("privacy")?.scrollIntoView();
     if (location.hash === "#danger") byId("danger")?.scrollIntoView();
     if (location.hash === "#account-research") byId("account-research")?.scrollIntoView();
   }

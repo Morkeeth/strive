@@ -552,7 +552,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.fade{opacity:1}.capture-actions .act:hover{transform:none}}
 
 [hidden]{display:none!important}.visibility-dialog{border:1px solid var(--rule);border-radius:16px;padding:24px;width:min(440px,calc(100vw - 32px));box-sizing:border-box}.visibility-dialog::backdrop{background:#14213d55}.visibility-dialog h2{font-size:22px;margin:0 0 20px}.visibility-dialog select{width:100%;min-height:48px}.visibility-dialog .cta{flex-wrap:wrap;gap:10px}.run-detail-card>.private-run-marker{border:0;background:none;color:var(--soft);padding:16px 24px 0;margin:0;font-size:13px}.run-visibility-action{margin:14px 0}.optional-github{margin:12px 0}.link-enrichment{margin:-8px 0 20px}.link-enrichment p{margin:4px 0}.connect-alternatives{margin-top:24px}.connect-alternatives>details{margin:16px 0}.connect-management{margin-top:24px}.post-setup label{max-width:420px}.post-setup code{overflow-wrap:anywhere;white-space:pre-wrap}.link-preview-source{padding:0 20px}
-</style><link rel="stylesheet" href="/social.css"><link rel="stylesheet" href="/people.css"><link rel="stylesheet" href="/project-profile.css"><link rel="stylesheet" href="/account.css"><link rel="stylesheet" href="/feed.css"><link rel="stylesheet" href="/dropin.css"><link rel="stylesheet" href="/home.css"><link rel="stylesheet" href="/run-photos.css"><link rel="stylesheet" href="/run-media-frame.css"><link rel="stylesheet" href="/activity.css"><link rel="stylesheet" href="/run-queue.css">
+</style><link rel="stylesheet" href="/social.css"><link rel="stylesheet" href="/people.css"><link rel="stylesheet" href="/project-profile.css"><link rel="stylesheet" href="/account.css"><link rel="stylesheet" href="/audience.css"><link rel="stylesheet" href="/feed.css"><link rel="stylesheet" href="/dropin.css"><link rel="stylesheet" href="/home.css"><link rel="stylesheet" href="/run-photos.css"><link rel="stylesheet" href="/run-media-frame.css"><link rel="stylesheet" href="/activity.css"><link rel="stylesheet" href="/run-queue.css">
 <link rel="stylesheet" href="/navigation.css"><link rel="stylesheet" href="/shared-ui.css"><link rel="stylesheet" href="/components.css">
 <script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};</script>
 <script defer data-optional src="/_vercel/insights/script.js"></script>
@@ -655,7 +655,7 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/run-links.js"></script>
 <script src="/activity-order.js"></script>
 <script src="/feed-ranking.js"></script>
-<script src="/activity-post.js"></script>
+<script src="/audience.js"></script><script src="/activity-post.js"></script>
 <script src="/card-motion.js"></script>
 <script src="/components.js"></script><script src="/agent-review.js"></script><script src="/profile-v2.js"></script><script src="/start-steps.js"></script><script src="/run-contract.js"></script>
 <script src="/code-route-view.js"></script>
@@ -948,7 +948,7 @@ const challenges=GrinderChallenges({client:sb,me:()=>ME,app:()=>$('app'),frame,s
 // No connector is supplied until an Origin application and callback are registered and reviewed.
 // Origin remains a post-sign-in repository connection, never an Auth provider.
 const originConnection=GrinderOrigin.create();
-const account=GrinderAccount({auth,me:()=>ME,authGeneration:()=>AUTH_GENERATION,app:()=>$('app'),frame,status,providersEnabled:PROVIDERS_ENABLED,origin:originConnection,signIn:showSignIn,onProfileChange:p=>{ME=p;refreshAuth();},researchConsent:(slot,profileId,current)=>window.StriveResearchConsent?.({client:sb,slot,profileId,current})});
+const account=GrinderAccount({auth,me:()=>ME,authGeneration:()=>AUTH_GENERATION,app:()=>$('app'),frame,status,providersEnabled:PROVIDERS_ENABLED,origin:originConnection,signIn:showSignIn,onProfileChange:p=>{ME=p;refreshAuth();},researchConsent:(slot,profileId,current)=>window.StriveResearchConsent?.({client:sb,slot,profileId,current}),privacy:(slot,profile,current)=>globalThis.StriveAudience?.mountSettings({client:sb,slot,profile,isCurrent:current})});
 const connect=typeof GrinderConnect==='function'?GrinderConnect({db:sb,me:()=>ME,app:()=>$('connect-management-body'),frame:()=>{},railHtml,feedTabs,setPrimarySection,status,signInGitHub:()=>signInWithGitHub(),signIn:showSignIn}):null;
 
 // THE MARK IS THE GRIND, drawn small.
@@ -1445,7 +1445,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
     ${storyFacts.length?`<dl class="run-story-facts">${storyFacts.join('')}</dl>`:''}
     ${declared()}`;
   const recorded=StriveEvidence.detail(r);
-  const audienceNote=r.visibility==='link'?'<p class="meta run-audience-note">Followers. Signed-in followers and close friends can open it; it does not appear on the public profile or Feed.</p>':'';
+  const audienceNote=r.visibility==='link'&&!selfAck?'<p class="meta run-audience-note">Followers. Signed-in followers and close friends can open it; it does not appear on the public profile or Feed.</p>':'';
   const agentChip=(!typedOnlyRun(r)&&!opts.preview&&r.source_actor_id&&!connectWrapperName(r.agent_name))
     ?`<div class="run-agent-chip">with <a href="/?agent=${encodeURIComponent(r.source_actor_id)}">${esc(r.agent_name)}</a>${r.harness?` · <span class="card-harness">${esc((globalThis.StriveAgents?.agentName(r.harness)||r.harness||''))}</span>`:''}</div>`
     :'';
@@ -1475,7 +1475,7 @@ function runCard(r,acked,count,opts={}){ const att=runAttribution(r),h=att.handl
   const detailLink='';
   const ownerActions=opts.ownerActions&&!opts.preview?`<span class="run-owner-actions"><a href="#run-edit">Edit run</a><a href="#run-photos">Add photos</a></span>`:'';
   return `<div class="card run-detail-card" id="card-${r.id}" data-route-key="${esc(location.pathname+location.search)}" data-run-id="${esc(r.id)}" data-run-visibility="${esc(r.visibility||'')}" data-media-story="${esc(r.caption||r.title)}" data-photo-layout="${esc(r.photo_layout||'cover')}"${r.photo_layout==='result'&&r.capture_metadata?.estimates?.v===1?' data-project-gallery':''}>
-    ${r.visibility==='private'?'<p class="meta private-run-marker">Only me</p>':''}
+    ${!opts.preview&&globalThis.StriveAudience?(selfAck?'<p class="aud-run">'+StriveAudience.pill(r.visibility,{owner:true,href:'#run-audience',crew:r.crew_shared===true&&r.visibility!=='close_friends'})+'</p>':r.visibility!=='public'?'<p class="aud-run aud-run-reader">'+StriveAudience.pill(r.visibility,{shared:true,crew:r.crew_shared===true&&r.visibility!=='close_friends'})+'</p>':''):r.visibility==='private'?'<p class="meta private-run-marker">Only me</p>':''}
     <div class="runtop">${!att.ghost&&GrinderFeed.face?GrinderFeed.face(r,40):avatar(h,{rhythm:r.rhythm,ghost:att.ghost})}
       <div class="who">${whoLink}${anonTag}<small>${att.ghost?'metrics only ·':`@${esc(h)} ·`} ${opts.preview?esc(date):`<a href="${esc(StriveLinks.runHref(r))}">${esc(date)}</a>`}</small></div></div>
 
@@ -2162,10 +2162,10 @@ async function viewRun(id){
   const owner=ME?.id===r.profile_id;
   const shareable=r.visibility==='public'||r.visibility==='link'||r.visibility==='close_friends';
   // Audience is a quiet status; the card footer owns the single Share action.
-  const savedHint=r.visibility==='link'?'Only signed-in followers and close friends can open this run.':r.visibility==='close_friends'?'Only people on your Close friends list can open this run.':'';
-  const nextAction=owner?'<div class="run-visibility-action"><a class="act" href="#run-audience">Change visibility</a></div>':savedHint?`<p class="hint">${savedHint}</p>`:'';
+  const savedHint=r.visibility==='link'?'Only signed-in followers and close friends can open this run.':r.visibility==='close_friends'?'Only people on the author’s Close friends list can open this run.':'';
+  const nextAction=owner&&globalThis.StriveAudience?'':owner?'<div class="run-visibility-action"><a class="act" href="#run-audience">Change visibility</a></div>':savedHint?`<p class="hint">${savedHint}</p>`:'';
   frame(typeof railHtml==='function'?railHtml(null):null,null);app.classList.remove('is-editing-run');
-  app.innerHTML=`<div class="head"><h2>${typedOnlyRun(r)?'Project update':'Behind the run'}</h2>${r.visibility==='private'?'':`<span class="meta run-visibility">${esc(audienceLabel(r.visibility))}</span>`}</div>`
+  app.innerHTML=`<div class="head"><h2>${typedOnlyRun(r)?'Project update':'Behind the run'}</h2>${r.visibility==='private'||globalThis.StriveAudience?'':`<span class="meta run-visibility">${esc(audienceLabel(r.visibility))}</span>`}</div>`
     +runCard(r,ad.mine.has(r.id),ad.countsKnown===false?null:ad.counts[r.id]||0,{ownerActions:owner,detail:true})
     +nextAction
     +`<section id="run-photos"></section>`
@@ -2181,7 +2181,7 @@ async function viewRun(id){
     const suggestedVisual=availableVisuals.find(v=>v[0]===r.hero_visual)?.[0]||availableVisuals[0]?.[0]||'';
     // Oscar, 25 Oct: "Automatic framing, don't display the options for the user." The card uses the
     // run's saved visual, or the suggestion when none is saved; the owner is not asked to choose.
-    controls.id='run-edit';controls.innerHTML='<h2>Edit update</h2><div class="run-story-fields"><label>Title<input id="run-title" required maxlength="120"></label><label>Project<input id="run-project" maxlength="120"></label><label>Project purpose / context<textarea id="run-caption" maxlength="280" rows="3" placeholder="Who is this for, what problem does it solve, and is it for a hackathon?"></textarea></label><label>Link to what was built (optional)<input id="run-output-url" type="url" maxlength="2048"></label></div><div id="run-editor-photos"></div><details class="run-presentation"><summary>Card appearance</summary><label class="pin-check"><input type="checkbox" id="run-pin"> Pin to my profile</label></details><label id="run-audience-label">Who can view<select id="run-audience"><option value="private">Only me - just you</option><option value="close_friends">Close friends - people on your private list</option><option value="link">Followers - followers and close friends</option><option value="public">Public - Feed and profile</option></select></label><div class="run-edit-actions"><button id="run-save">Save changes</button><button id="run-edit-cancel" class="ghost">Cancel</button><button id="run-delete" class="ghost">Delete run</button></div>';
+    controls.id='run-edit';controls.innerHTML='<h2>Edit update</h2><div class="run-story-fields"><label>Title<input id="run-title" required maxlength="120"></label><label>Project<input id="run-project" maxlength="120"></label><label>Project purpose / context<textarea id="run-caption" maxlength="280" rows="3" placeholder="Who is this for, what problem does it solve, and is it for a hackathon?"></textarea></label><label>Link to what was built (optional)<input id="run-output-url" type="url" maxlength="2048"></label></div><div id="run-editor-photos"></div><details class="run-presentation"><summary>Card appearance</summary><label class="pin-check"><input type="checkbox" id="run-pin"> Pin to my profile</label></details><label id="run-audience-label">Who can view<select id="run-audience"><option value="private">Only me · just you</option><option value="close_friends">Close friends · your private list</option><option value="link">Followers · not on your profile or Feed</option><option value="public">Everyone · your profile and the Feed</option></select></label><div class="run-edit-actions"><button id="run-save">Save changes</button><button id="run-edit-cancel" class="ghost">Cancel</button><button id="run-delete" class="ghost">Delete run</button></div>';
 
     if(r.repo_url)controls.insertAdjacentHTML('afterbegin','<p class="hint">Sharing this post can reveal the linked repository name, logo and text, including for a private repository.</p>');
     controls.querySelector('.run-story-fields').insertAdjacentHTML('afterend',StriveStory.editor(r));
@@ -2197,7 +2197,15 @@ async function viewRun(id){
     controls.querySelector('.run-edit-actions').before(textColumn,mediaColumn);
     controls.hidden=true;
     const showEditor=(focus='run-title')=>{for(const child of app.children)if(child!==controls)child.hidden=true;controls.hidden=false;app.classList.add('is-editing-run');history.replaceState(null,'','/?run='+r.id+'#run-edit');window.scrollTo?.(0,0);controls.querySelector('#'+focus)?.focus({preventScroll:true});};
-    const showVisibility=()=>{
+    const showVisibility=async()=>{
+      if(!globalThis.StriveAudience)return legacyVisibility();
+      const known=await StriveAudience.counts(sb,ME.id);if(!current())return;
+      StriveAudience.open({current:r.visibility,counts:known,title:'Who can see this update?',onSave:async audience=>{
+        if(audience==='close_friends'){const {data,error}=await sb.from('close_friends').select('friend_profile_id').eq('owner_profile_id',ME.id).limit(1);if(error)throw Error('Close friends could not be checked. Try again.');if(!data?.length)throw Error('Add at least one close friend first, then choose Close friends.');}
+        await StriveRunVisibility.save({client:sb,id:r.id,owner:ME.id,audience,isCurrent:current});if(!current())return;
+        history.replaceState(null,'','/?run='+r.id);await viewRun(r.id);status('Now visible to: '+StriveAudience.label(audience)+'.');}});
+    };
+    const legacyVisibility=()=>{
       document.getElementById('visibility-dialog')?.remove();
       const dialog=document.createElement('dialog');dialog.id='visibility-dialog';dialog.className='visibility-dialog';
       dialog.innerHTML='<h2>Who can view this update?</h2><label>Visibility<select id="visibility-choice">'+$('run-audience').innerHTML+'</select></label><p class="hint" id="visibility-state" role="status"></p><div class="cta"><button type="button" id="visibility-save">Save visibility</button><button type="button" class="ghost" id="visibility-cancel">Cancel</button></div>';
@@ -2259,6 +2267,7 @@ function trendingBlock(repos){ if(!repos.length) return '';
 function postComposerHtml(mode='project'){
   const manual=mode==='manual',U=StriveUI;
   return `<section class="v2-surface manual-post${manual?' manual-session':''}"><div id="manualbox" class="v2-pad v2-stack" data-entry-mode="${mode}">
+    ${globalThis.StriveAudience?`<div class="aud-post"><span id="project-audience-label">Who can see this</span><span id="post-audience-slot"></span><input type="hidden" id="f_visibility" value="${manual?'private':'link'}"></div>`:''}
     <div id="agent-draft-note" class="agent-draft-note" role="status" hidden></div>
     ${U.field({id:'f_project',label:'Project name',placeholder:'What are you building?',required:true})}
     ${U.field({id:'f_title',label:manual?'Run title':'Title (optional)',placeholder:manual?'What happened in this session?':'What is new?',required:manual})}
@@ -2268,7 +2277,7 @@ function postComposerHtml(mode='project'){
     <div id="manual-photos"></div>
     <input id="f_problem" type="hidden"><input id="f_feedback" type="hidden">
     ${manual?'':'<div class="v2-import-extra"><details class="optional-github"><summary>Import from a GitHub repository</summary>'+StriveGitHubProject.form()+'</details></div>'}
-    <div class="v2-field"><span id="project-audience-label">Who can view</span><input type="hidden" id="f_visibility" value="${manual?'private':'link'}"><div class="v2-choice-row" role="group" aria-labelledby="project-audience-label">${[['link','Followers'],['public','Everyone'],['close_friends','Close friends'],['private','Only me']].map(([value,label])=>`<button type="button" class="v2-button" data-project-audience="${value}" aria-pressed="${value===(manual?'private':'link')}">${label}</button>`).join('')}</div></div>
+    ${globalThis.StriveAudience?'':`<div class="v2-field"><span id="project-audience-label">Who can view</span><input type="hidden" id="f_visibility" value="${manual?'private':'link'}"><div class="v2-choice-row" role="group" aria-labelledby="project-audience-label">${[['link','Followers'],['public','Everyone'],['close_friends','Close friends'],['private','Only me']].map(([value,label])=>`<button type="button" class="v2-button" data-project-audience="${value}" aria-pressed="${value===(manual?'private':'link')}">${label}</button>`).join('')}</div></div>`}
     <div class="v2-footer"><a class="v2-button" id="manual-cancel" href="/">Cancel</a>${U.button({id:'manual-preview',label:'Preview'})}<button id="publish" class="v2-button primary" type="button">${manual?'Save draft':'Post to followers'}</button></div>
     <div id="manual-preview-content" hidden></div><div id="manual-recover" hidden></div>
   </div></section>`;
@@ -2334,8 +2343,9 @@ function wireComposer(){
   window.StrivePhotoDraft?.mount({slot:$('manual-photos'),token,profileId:owner,eligible:true,isCurrent:current,audience:()=> $('f_visibility').value,onChange:invalidatePreview});
   const build=async()=>{await linkPreviewPending;if(!current())throw Error('This project is no longer open.');const row=(manual?StriveProjectUpdate.manualSession:StriveProjectUpdate.row)({title:$('f_title').value,project:$('f_project').value,changed:$('f_caption').value,problem:$('f_problem').value,feedback:$('f_feedback').value,link:$('f_output_url').value,repository:manual?null:$('f_repo_url')?.value,hasImage:await window.StrivePhotoDraft?.hasDraft(token)});if(linkPreview&&linkPreview.source===StriveProjectUpdate.safeLink($('f_output_url').value))row.link_preview=linkPreview;return row;};
   const audience=()=> $('f_visibility').value;
-  const paintSave=()=>{pb.textContent=audience()==='private'?'Save draft':audience()==='public'?'Post publicly':audience()==='link'?'Post to followers':'Post to close friends';document.querySelectorAll('[data-project-audience]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.projectAudience===audience())));window.StrivePhotoGrid?.refreshAudience();invalidatePreview();};
-  $('f_visibility').onchange=()=>{paintSave();keep();};document.querySelectorAll('[data-project-audience]').forEach(b=>b.onclick=()=>{$('f_visibility').value=b.dataset.projectAudience;$('f_visibility').dispatchEvent(new Event('change',{bubbles:true}));});paintSave();
+  const paintAudience=()=>{const slot=$('post-audience-slot');if(slot&&globalThis.StriveAudience)slot.innerHTML=StriveAudience.pill(audience(),{owner:true,href:'#post-audience'});};
+  const paintSave=()=>{paintAudience();pb.textContent=audience()==='private'?'Save draft':audience()==='public'?'Post publicly':audience()==='link'?'Post to followers':'Post to close friends';document.querySelectorAll('[data-project-audience]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.projectAudience===audience())));window.StrivePhotoGrid?.refreshAudience();invalidatePreview();};
+  $('f_visibility').onchange=()=>{paintSave();keep();};$('post-audience-slot')?.addEventListener('click',async event=>{const pill=event.target.closest('[data-audience-pill]');if(!pill)return;event.preventDefault();const known=await StriveAudience.counts(sb,owner);if(!current())return;StriveAudience.open({current:audience(),counts:known,title:'Who can see this?',saveLabel:a=>'Use '+StriveAudience.label(a),onSave:async a=>{if(a==='close_friends'&&known.closeFriends===0)throw Error('Add at least one close friend first, then choose Close friends.');$('f_visibility').value=a;$('f_visibility').dispatchEvent(new Event('change',{bubbles:true}));}});});document.querySelectorAll('[data-project-audience]').forEach(b=>b.onclick=()=>{$('f_visibility').value=b.dataset.projectAudience;$('f_visibility').dispatchEvent(new Event('change',{bubbles:true}));});paintSave();
   const syncLinkButton=()=>{};
   $('f_output_url').addEventListener('input',()=>{linkRequestGeneration++;linkPreview=null;keep();$('link-preview-state').textContent='';});
   const loadLinkPreview=async()=>{const wanted=$('f_output_url').value.trim();if(linkPreview?.source===StriveProjectUpdate.safeLink(wanted))return;if(linkPreviewPending&&linkPendingUrl===wanted)return linkPreviewPending;if(!StriveProjectUpdate.safeLink(wanted)){$('link-preview-state').textContent='Use a public http or https link, for example https://example.com/project.';return;}const task=(async()=>{const url=$('f_output_url').value.trim(),state=$('link-preview-state'),request=++linkRequestGeneration,live=()=>current()&&request===linkRequestGeneration&&url===$('f_output_url').value.trim();state.textContent='Loading preview…';try{const response=await fetch('/api/project-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url}),cache:'no-store'}),data=await response.json();if(!response.ok)throw Error(data.message||'Preview unavailable.');if(!live())return;linkPreview={source:StriveProjectUpdate.safeLink(url),title:data.title||'',imageSource:data.imageSource||null};if(!$('f_title').value.trim())$('f_title').value=data.title||'';if(!$('f_project').value.trim())$('f_project').value=data.siteName||data.title||new URL(url).hostname;if(!$('f_caption').value.trim())$('f_caption').value=data.description||'';if(data.image)await StrivePhotoDraft.addLinkPreview({token,profileId:owner,image:data.image,isCurrent:live});if(!live())return;state.textContent=data.image?'Link preview loaded from '+new URL(data.source).hostname+'.':'Page details loaded. No usable preview image; you can add a photo.';keep();invalidatePreview();}catch(error){if(live())state.textContent=error.message+' You can still add details and a photo.';}finally{if(current()&&request===linkRequestGeneration)syncLinkButton();}})();linkPreviewPending=task;linkPendingUrl=wanted;try{await task;}finally{if(linkPreviewPending===task){linkPreviewPending=null;linkPendingUrl=null;}}};
@@ -2683,6 +2693,9 @@ async function viewProfile(handle){
     ${mine?`<details class="profile-summary"><summary>Activity details</summary><div class="ptotals num"><div><div class="k">Public runs</div><div class="v" data-count="${publicCount}">0</div></div><div><div class="k">XUDOS received</div><div class="v"${acksR===null?'':` data-count="${acksR}"`}>${acksR===null?'Unavailable':'0'}</div></div></div></details>`:''}`;
   if(!current())return;app.innerHTML=profileHtml;
   window.StriveProfileV2?.mount({app,runs:R,client:sb,esc,current});
+  // Owner only, never in the visitor preview: what visitors cannot see, and who is in each circle.
+  // A separate owner query; the profile's own run list (R) stays public-only.
+  if(mine&&globalThis.StriveAudience){void (async()=>{const [byAudience,people]=await Promise.all([StriveAudience.ownerRunCounts(sb,prof.id).catch(()=>null),StriveAudience.counts(sb,prof.id)]);if(!current()||!mine)return;const header=app.querySelector('.profile-header');if(!header||app.querySelector('#profile-privacy'))return;header.insertAdjacentHTML('afterend',StriveAudience.profileStrip(byAudience,people,{handle}));})();}
   window.StriveProjectProfile?.wire($('pp-root'),{onEdit:()=>$('profile-edit-dialog')?.showModal()});
   wireKudos(); countUp();
   await social.followControl(prof,$('social-follow'));
