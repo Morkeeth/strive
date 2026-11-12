@@ -18,7 +18,7 @@ from .ingest import (
     parse_grokbot_session,
 )
 
-HARNESS_ORDER = ("Claude Code", "Cursor", "Fleet", "Codex", "Grok Bot")
+HARNESS_ORDER = ("Claude Code", "Cursor", "Fleet", "Codex", "Grok Bot", "Hermes")
 
 
 def _claude_stats() -> dict:
@@ -69,9 +69,26 @@ def _grokbot_stats(scan: int = 80) -> dict:
     return _native_stats(grokbot_session_files()[:scan], 'grokbot')
 
 
+def _hermes_stats() -> dict:
+    from . import hermes
+    path = hermes.default_db()
+    runs = []
+    if path:
+        try:
+            runs = [hermes.parse_hermes_session(path, records=group) for group in hermes.sessions(path)]
+        except (OSError, ValueError, __import__("sqlite3").Error):
+            runs = []
+    durations = [r.get('duration_s') for r in runs]
+    return dict(harness='Hermes', grinds=len(runs),
+        prompts=sum(r.get('turns_typed') or 0 for r in runs),
+        moving_s=sum(durations) if runs and all(d is not None for d in durations) else None,
+        tools=sum(r.get('tool_calls') or 0 for r in runs),
+        time_basis='elapsed session time', source='Hermes state.db sessions')
+
+
 def local_flex() -> list[dict]:
     """Per-harness totals on this machine."""
-    rows = [_claude_stats(), _cursor_stats(), _codex_stats(), _grokbot_stats()]
+    rows = [_claude_stats(), _cursor_stats(), _codex_stats(), _grokbot_stats(), _hermes_stats()]
     return [r for r in rows if r["grinds"] > 0]
 
 

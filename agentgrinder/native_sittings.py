@@ -117,6 +117,10 @@ def read_sitting(path, harness, athlete='you', pick=-1, gap=1800):
     if harness == 'claude':
         from .solo import parse_solo
         return parse_solo(path, athlete=athlete, pick=pick, gap=gap)
+    if harness == 'hermes':
+        # One Hermes session is one sitting; the store has no idle-gap split to make.
+        from . import hermes
+        return hermes.parse_hermes_session(path, athlete=athlete, pick=pick)
     from .ingest import parse_codex_session, parse_cursor_session, parse_grokbot_session
     parser = {
         'codex': parse_codex_session,

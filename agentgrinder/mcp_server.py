@@ -37,7 +37,7 @@ TOOLS = [
     },
     {
         "name": "list_sessions",
-        "description": "List recent local agent sessions (Claude Code, Cursor, Codex, Grok Bot). Local only.",
+        "description": "List recent local agent sessions (Claude Code, Cursor, Codex, Grok Bot, Hermes). Local only.",
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
@@ -46,7 +46,7 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "harness": {"type": "string", "enum": ["claude", "cursor", "codex", "grokbot"]},
+                "harness": {"type": "string", "enum": ["claude", "cursor", "codex", "grokbot", "hermes"]},
             },
         },
     },
@@ -56,7 +56,7 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "harness": {"type": "string", "enum": ["claude", "cursor", "codex", "grokbot"]},
+                "harness": {"type": "string", "enum": ["claude", "cursor", "codex", "grokbot", "hermes"]},
                 "athlete_handle": {"type": "string", "description": "GitHub handle if known"},
             },
         },
@@ -67,7 +67,7 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "harness": {"type": "string", "enum": ["claude", "cursor", "codex", "grokbot"]},
+                "harness": {"type": "string", "enum": ["claude", "cursor", "codex", "grokbot", "hermes"]},
                 "web_base": {"type": "string", "description": "e.g. http://localhost:8000"},
             },
         },
@@ -96,7 +96,7 @@ TOOLS = [
     },
     {
         "name": "a2a_flex",
-        "description": "Compare your real runs across agents on this machine (Claude Code, Cursor, Codex, Grok Bot). Local only.",
+        "description": "Compare your real runs across agents on this machine (Claude Code, Cursor, Codex, Grok Bot, Hermes). Local only.",
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
@@ -149,6 +149,11 @@ def _load_run(harness: str = "claude") -> tuple[dict, str]:
         if not path:
             raise FileNotFoundError("no imported Grok Bot export")
         return read_sitting(path, 'grokbot'), path
+    if harness == "hermes":
+        path = ingest.latest_hermes_session()
+        if not path:
+            raise FileNotFoundError("no Hermes session")
+        return read_sitting(path, 'hermes'), path
     path = ingest.latest_session()
     if not path:
         raise FileNotFoundError("no Claude Code session")
@@ -170,7 +175,8 @@ def list_sessions() -> str:
     for label, path in (("Claude Code", ingest.latest_session()),
                         ("Cursor", ingest.latest_cursor_session()),
                         ("Codex", ingest.latest_codex_session()),
-                        ("Grok Bot", ingest.latest_grokbot_session())):
+                        ("Grok Bot", ingest.latest_grokbot_session()),
+                        ("Hermes", ingest.latest_hermes_session())):
         if not path:
             continue
         try:
