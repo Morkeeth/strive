@@ -16,7 +16,7 @@ import sys
 from datetime import datetime
 
 from . import __version__, ingest
-from .a2a import export_grind, onboarding_text
+from .a2a import INGEST, export_grind, onboarding_text
 from .push import import_url
 
 PROTO = "2024-11-05"
@@ -207,7 +207,7 @@ def a2a_export(harness: str = "claude", athlete_handle: str = "you") -> str:
         run,
         athlete_handle=athlete_handle,
         session_path=path,
-        ingest=f"native-{harness}-jsonl",
+        ingest=INGEST[harness],
     )
     return json.dumps(doc, indent=2)
 

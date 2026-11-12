@@ -452,7 +452,7 @@ def main(argv=None) -> int:
             run = json.loads(Path(args.session).read_text())
             html = from_run_dict(run, handle=args.handle, base_url=base, vibe=args.vibe, roast=args.roast)
         else:
-            run = _load_latest_run()
+            run = _load_latest_run(harness=getattr(args, "harness", None))
             if not run:
                 print("no session found. Try: agentgrinder share --claim"); return 1
             html = from_run_dict(run, handle=args.handle, base_url=base, vibe=args.vibe, roast=args.roast)
@@ -465,7 +465,7 @@ def main(argv=None) -> int:
         return 0
     if args.cmd == "vibe":
         from .meme import format_vibe, vibe_or_default
-        run = _load_latest_run(getattr(args, "session", None))
+        run = _load_latest_run(getattr(args, "session", None), harness=getattr(args, "harness", None))
         if not run:
             print(no_session_message()); return 1
         label, line = vibe_or_default(run)
@@ -476,7 +476,7 @@ def main(argv=None) -> int:
         return 0
     if args.cmd == "roast":
         from .meme import format_roast, roast_shape
-        run = _load_latest_run(getattr(args, "session", None))
+        run = _load_latest_run(getattr(args, "session", None), harness=getattr(args, "harness", None))
         if run is None:
             print(no_session_message()); return 1
         if args.as_json:
@@ -744,8 +744,16 @@ def main(argv=None) -> int:
     return 0
 
 
-def _load_latest_run(session: str | None = None) -> dict | None:
-    """Latest grind dict from JSON path or local transcripts."""
+def _load_latest_run(session: str | None = None, harness: str | None = None) -> dict | None:
+    """Latest grind dict from JSON path or local transcripts.
+
+    Hermes is never picked by `auto`, so an explicit `--harness hermes` is honoured here.
+    """
+    if not session and harness == "hermes":
+        from .ingest import latest_hermes_session
+        from .native_sittings import read_sitting
+        path = latest_hermes_session()
+        return read_sitting(path, "hermes") if path else None
     if session:
         try:
             return json.loads(Path(session).read_text())
@@ -879,8 +887,10 @@ def _grind(args) -> int:
             if not groups:
                 print(no_session_message("hermes")); return 1
             selected = len(groups) if args.pick in (None, -1) else args.pick
-            source_digest = hermes.digest(path, args.pick)
-            run = hermes.parse_hermes_session(path, athlete=args.athlete, records=hermes.choose(groups, args.pick))
+            group = hermes.choose(groups, args.pick)
+            # The digest is of the rows counted, so a row that lands after the read is caught below.
+            source_digest = hermes.records_digest(group)
+            run = hermes.parse_hermes_session(path, athlete=args.athlete, records=group)
         except (ValueError, __import__("sqlite3").Error) as error:
             print(str(error), file=sys.stderr)
             return 1
