@@ -52,6 +52,8 @@ a.aud-pill:active{transform:translateY(1px)}
 .aud-legend li{display:grid;grid-template-columns:22px 1fr;gap:10px;font-size:14px;line-height:1.4;color:var(--soft)}
 .aud-legend li strong{color:var(--ink)}
 .aud-legend .aud-mark{color:var(--blue);margin-top:1px}
+.aud-settings-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}
+.aud-settings-actions .v2-button{padding:0 14px}
 .aud-settings-people{display:grid;gap:16px}
 .aud-settings-people h3{font-size:15px;margin:0 0 4px}
 .aud-settings-people p{margin:0 0 8px}

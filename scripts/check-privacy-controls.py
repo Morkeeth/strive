@@ -116,6 +116,21 @@ try:
         shot(page, 'owner-settings')
         context.close()
 
+        # 4b. Owner, ordinary Settings with no anchor: both privacy actions sit on the first screen.
+        # The #privacy anchor above scrolls the page and hid this gap once (Codex check, 13 Nov).
+        context, page = open_page('casey', '/?account')
+        seen['settings-no-anchor-scroll-y'] = page.evaluate('window.scrollY')
+        if seen['settings-no-anchor-scroll-y'] != 0:
+            failures.append(f'settings-no-anchor: page opened scrolled to {seen["settings-no-anchor-scroll-y"]}px')
+        for key, sel, name in (('settings-no-anchor-friends', '#privacy a[href="/?friends"]', 'Edit Close friends'),
+                               ('settings-no-anchor-visitor', '#privacy a[href*="preview=public"]', 'See it as a visitor')):
+            probe = page.evaluate(IN_VIEW, sel); seen[key] = probe
+            first_screen(key, probe, name)
+            if probe and name not in probe['text']:
+                failures.append(f'{key}: action reads {probe["text"]!r}, expected {name!r}')
+        shot(page, 'owner-settings-no-anchor')
+        context.close()
+
         # 5. Leaks: preview, signed out and a close friend see only what they may.
         for key, who, path, allowed in (
                 ('owner-preview', 'casey', '/?u=test-casey&preview=public', {'public'}),
