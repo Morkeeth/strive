@@ -9,6 +9,7 @@ import {deploymentGitSha} from '../server/deployment-identity.mjs';
 import {buildAgentFrontdoor} from './build-agent-frontdoor.mjs';
 import {withContentSecurityPolicy} from './csp.mjs';
 import {execFileSync} from 'node:child_process';
+import {emailSigninEnabled,ignoredLegacyEmailFlag,EMAIL_SIGNIN_FLAG} from './email-signin-flag.mjs';
 const config=runtimeConfig();
 if(process.env.STRIVE_REHEARSAL==='1'){
  for(const value of [config.SB_URL,config.ORIGIN])if(!['localhost','127.0.0.1','[::1]'].includes(new URL(value).hostname))throw Error('Rehearsal requires loopback services.');
@@ -41,7 +42,8 @@ if(process.env.AGENTGRINDER_X_SIGNIN==='1') {
  html=html.replace(marker,'const PROVIDERS_ENABLED=["github","x"];');
 }
 // Enable only after delivery from the configured custom SMTP sender has been verified.
-if(process.env.STRIVE_EMAIL_SIGNIN==='1') {
+if(ignoredLegacyEmailFlag()) console.warn(`Email sign-in stays hidden: STRIVE_EMAIL_SIGNIN is ignored; set ${EMAIL_SIGNIN_FLAG}=1 after SMTP delivery is verified.`);
+if(emailSigninEnabled()) {
  const marker='const EMAIL_SIGNIN_READY=false;';
  if(!html.includes(marker)) throw new Error('Missing email readiness marker');
  html=html.replace(marker,'const EMAIL_SIGNIN_READY=true;');

@@ -882,7 +882,7 @@ function grinderFetch(input, options={}){
 const sb=window.supabase&&window.supabase.createClient(SB_URL,SB_KEY,{db:{schema:SB_SCHEMA},auth:{storageKey:"agentic-strava-auth"},global:{fetch:grinderFetch}});
 const auth=sb?GrinderAuth.create({client:sb,redirectTo:location.origin+'/'}):null;
 // Email sign-in is off until a custom SMTP sender can deliver to intended users.
-// After verifying custom SMTP delivery, build with STRIVE_EMAIL_SIGNIN=1.
+// After verifying custom SMTP delivery, build with STRIVE_EMAIL_SIGNIN_SMTP_VERIFIED=1 (scripts/email-signin-flag.mjs).
 // The runtime settings probe must also confirm that the email provider is enabled.
 // X joins the list at load when Supabase Auth reports the X provider enabled (25 Sep 2026), so
 // the button appears the moment the provider is switched on, with no redeploy. GitHub is always
