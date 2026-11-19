@@ -291,14 +291,17 @@
   }
   // Bounded ranking metadata only. No image bytes, decorative showcase or private images.
   async function rankingSignals(runs,client){
-    const h=await headers(client),result={},queue=[...runs].slice(0,20);
-    await Promise.all(Array.from({length:Math.min(4,queue.length)},async()=>{
-      while(queue.length){const run=queue.shift();result[run.id]=null;
-        try{const res=await get(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:h});
-          if(!res.ok)continue;const payload=await res.json();if(!Array.isArray(payload?.photos))continue;
-          result[run.id]=cardPhotos(payload.photos,run.photo_layout||'cover',true).some(p=>p.role!=='personal');
-        }catch(_){}
-      }
+    // All reads leave together (HTTP/2 carries them on one connection), and each answer is kept as an
+    // early answer, so the cards painted next reuse it instead of asking the server a second time.
+    const h=await headers(client),result={},window20=[...runs].slice(0,20);
+    await Promise.all(window20.map(async run=>{result[run.id]=null;
+      try{const key=`${h.Authorization||''} ${run.id}`;
+        let job=early.get(key);
+        if(!job){job=get(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:h});early.set(key,job);setTimeout(()=>{if(early.get(key)===job)early.delete(key)},15000);}
+        const res=await job;
+        if(!res.ok)return;const payload=await res.json();if(!Array.isArray(payload?.photos))return;
+        result[run.id]=cardPhotos(payload.photos,run.photo_layout||'cover',true).some(p=>p.role!=='personal');
+      }catch(_){}
     }));return result;
   }
   // A feed knows its runs before it paints them. Ask for their photo lists then, in parallel with

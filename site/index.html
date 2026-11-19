@@ -1888,10 +1888,16 @@ function playStrip(){
   steps.forEach((x,i)=>setTimeout(()=>{ x.classList.add('done');
     if(st) st.textContent = i===steps.length-1 ? x.querySelector('.o').textContent : x.querySelector('.n').textContent; },320+i*520));
 }
+let publicFeedOrder="highlights";
+// The feed header has the same lines while loading and after, so the cards below it never move.
+function feedHeader(order,detail){
+  const note=order==='latest'?'Newest work first.':'Most XUDOS, a work image and recent work first.';
+  return `${StriveUI.segmented({id:'public-feed-order',label:'Feed order',options:[['highlights','Highlights'],['latest','Latest']],value:order})}<p class="feed-order-note">${note}</p><details><summary>How highlights work</summary><p>${detail||''}</p><p>Within the newest 20 updates: 2 × log2(1 + actual XUDOS), plus 0.5 for a selected work image, plus 2 / (1 + age in days). Self-XUDOS count. Text-only projects remain eligible. Unknown activity time has no freshness bonus. Missing reaction data uses Latest; incomplete image reads disable the image bonus for everyone in the window. This is a local rule, not a quality score or a personalized recommendation.</p></details><p data-public-total>&nbsp;</p>`;
+}
 function landingHTML(){
   return `<div class="home ${ME?'home-member':''}">
     <div class="home-layout">
-      <section class="home-sec landing-feature" aria-labelledby="h-popular" id="landing-feature"><div class="land-head"><h2 id="h-popular">${ME||document.documentElement.dataset.authHint==='member'?'Your feed':'Public runs'}</h2></div><div id="public-run-count" class="public-run-count" role="status"></div><div id="landing-feature-body" class="feed-loading" aria-busy="true">${'<div class="feed-skeleton" aria-hidden="true"><span></span><span></span><span></span><span></span></div>'.repeat(2)}</div></section>
+      <section class="home-sec landing-feature" aria-labelledby="h-popular" id="landing-feature"><div class="land-head"><h2 id="h-popular">${ME||document.documentElement.dataset.authHint==='member'?'Your feed':'Public runs'}</h2></div><div id="public-run-count" class="public-run-count" role="status">${feedHeader(publicFeedOrder,'')}</div><div id="landing-feature-body" class="feed-loading" aria-busy="true">${'<div class="feed-skeleton" aria-hidden="true"><span></span><span></span><span></span><span></span></div>'.repeat(2)}</div></section>
       <aside class="home-around" id="home-people-clubs" aria-label="Around STRIVE" tabindex="-1">
         <section class="home-sec" aria-labelledby="h-builders"><div class="land-head"><h2 id="h-builders">People building</h2><a class="home-people-link" href="/?people">Find people</a></div><div id="home-builders"></div></section>
         <section class="home-sec" id="home-week-section" aria-labelledby="h-week"><div class="land-head"><h2 id="h-week">This week</h2></div><div id="home-week"><p class="meta">Public activity from the last seven days.</p></div></section>
@@ -1989,7 +1995,6 @@ async function feedCards(runs,ad,{ownerView=false,preview=false,decorate=html=>h
 
 // A stranger lands on what is going on, then people, then runs. Real rows only (site/home.js).
 const FEED_PAGE=20;
-let publicFeedOrder="highlights";
 async function viewLanding(){
   const requireComplete=arguments[0]?.requireComplete===true;
   const app=$('app'),generation=AUTH_GENERATION,viewGeneration=RUN_VIEW_GENERATION;
@@ -2039,6 +2044,10 @@ async function viewLanding(){
       if(requireComplete){$('feed-more')?.closest('.feed-more-row')?.remove();body.querySelectorAll('.feed-skeleton').forEach(el=>el.remove());body.innerHTML=complete.html;complete.mount()}
       wireKudos();return true;
     };
+    // The header above the cards is written before the cards, so the cards never move down under it.
+    const rankingNote=ranking?.active?'Highlights among the newest '+windowRuns.length+' public updates. XUDOS + selected work image + recency. Remaining updates follow newest first.':ranking?.reason||'Newest recorded activity first.';
+    put('public-run-count',feedHeader(publicFeedOrder,esc(rankingNote)+' '+runs.length+' loaded public updates.'));
+    $('public-feed-order').onchange=async event=>{if(!event.target.matches('input[type=radio]')||!event.target.checked)return;const chosen=event.target.value;publicFeedOrder=chosen;await viewLanding();if(publicFeedOrder===chosen)$('public-feed-order')?.querySelector('input:checked')?.focus({preventScroll:true});};
     if(!requireComplete){if(!body.querySelector('.feed-skeleton'))body.innerHTML='';$('feed-more')?.closest('.feed-more-row')?.remove()}
     const ok=await more();body.querySelectorAll('.feed-skeleton').forEach(el=>el.remove());body.classList.remove('feed-loading');body.removeAttribute('aria-busy');
     if(!ok)return false;
@@ -2047,10 +2056,8 @@ async function viewLanding(){
       const button=$('feed-more');
       button.addEventListener('click',async()=>{button.disabled=true;await more();if(shown>=sorted.length)button.parentElement.remove();else button.disabled=false;});
     }
-    const rankingNote=ranking?.active?'Highlights among the newest '+windowRuns.length+' public updates. XUDOS + selected work image + recency. Remaining updates follow newest first.':ranking?.reason||'Newest recorded activity first.';
-    put('public-run-count',`${StriveUI.segmented({id:'public-feed-order',label:'Feed order',options:[['highlights','Highlights'],['latest','Latest']],value:publicFeedOrder})}<p>${esc(rankingNote)} ${runs.length} loaded public updates.</p><details><summary>How highlights work</summary><p>Within the newest 20 updates: 2 × log2(1 + actual XUDOS), plus 0.5 for a selected work image, plus 2 / (1 + age in days). Self-XUDOS count. Text-only projects remain eligible. Unknown activity time has no freshness bonus. Missing reaction data uses Latest; incomplete image reads disable the image bonus for everyone in the window. This is a local rule, not a quality score or a personalized recommendation.</p></details>`);
-    $('public-feed-order').onchange=async event=>{if(!event.target.matches('input[type=radio]')||!event.target.checked)return;const chosen=event.target.value;publicFeedOrder=chosen;await viewLanding();if(publicFeedOrder===chosen)$('public-feed-order')?.querySelector('input:checked')?.focus({preventScroll:true});};
   }else if(body){
+    put('public-run-count','');
     body.classList.remove('feed-loading');body.removeAttribute('aria-busy');
     body.innerHTML=runsFailed?failed:'<p class="home-none">No public run yet. <a href="/?post">Connect your agent and add the first one</a>.</p>';
   }
