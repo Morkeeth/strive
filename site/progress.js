@@ -14,7 +14,7 @@ window.GrinderProgress = function ({client: db, me, app, frame, status, signIn, 
     return bits;
   }
   const title = run => run.title || 'Untitled run';
-  const audience = run => run.crew_shared ? 'Crew members' : ({private:'Only you',public:'Public',link:'Followers',anonymous:'Only you',close_friends:'Close friends'}[run.visibility] || 'Only you');
+  const audience = run => run.crew_shared ? 'Crew members' : ({private:'Only me',public:'Everyone',link:'Followers',anonymous:'Only me',close_friends:'Close friends'}[run.visibility] || 'Only me');
   async function rows(query) {const result = await query; if(result.error) throw Error(result.error.message); return result.data || [];}
   function start(heading, active) {
     // Keep the primary rail. This used to clear it, so My runs was the only signed-in page with no
@@ -56,7 +56,7 @@ window.GrinderProgress = function ({client: db, me, app, frame, status, signIn, 
         const f=$('history-filter').elements;
         const filtered=StriveActivity.sort(loaded).filter(r=>(!f.query.value || [r.title,r.project].join(' ').toLowerCase().includes(f.query.value.toLowerCase()))&&(!f.harness.value||r.harness===f.harness.value)&&(!f.audience.value||(f.audience.value==='crew'?r.crew_shared:r.visibility===f.audience.value)));
         $('history-count').textContent=`${filtered.length} shown · ${loaded.length} loaded${more?' · older runs available':''}`;
-        $('history-list').innerHTML=filtered.map(runTile).join('')||`<div class="panel reply-form"><h2>${loaded.length?'No matching runs':'Your first run starts private'}</h2><p>${loaded.length?'Change the filters or load older runs.':'Connect an agent for automatic Only-me upload, or capture a session and choose an audience. Private uploads appear here. Choose Public to add one to the feed.'}</p>${loaded.length?'':'<div class="cta"><a class="act blue" href="/?connect">Connect an agent</a><a class="act" href="/?post">Post a run</a><a class="act" href="https://github.com/Morkeeth/strive/blob/main/docs/GROK-PUSH.md">Grok Bot push guide</a></div>'}</div>`;
+        $('history-list').innerHTML=filtered.map(runTile).join('')||`<div class="panel reply-form"><h2>${loaded.length?'No matching runs':'Post your first project'}</h2><p>${loaded.length?'Change the filters or load older runs.':'Add what changed. Screenshots and a project link are optional. Preview before saving.'}</p>${loaded.length?'':'<div class="cta"><a class="act blue" href="/?post">Post a project</a></div>'}</div>`;
         window.StriveRunPhotos?.mountCovers({client:db,root:$('history-list')});
       }
       function harnessOptions(){const select=$('history-filter').elements.harness, selected=select.value;select.innerHTML='<option value="">All harnesses</option>'+[...new Set(loaded.map(r=>r.harness).filter(Boolean))].sort().map(h=>`<option value="${esc(h)}">${esc(globalThis.StriveAgents?.agentName(h)||h)}</option>`).join('');select.value=selected;}

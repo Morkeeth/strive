@@ -1,0 +1,31 @@
+/* First-visit onboarding (1 Nov pilot). Rare, first-time motion: the sheet rises once, steps
+   crossfade, and the blue trace draws one segment further per step. Tokens from design.css. */
+.ob-backdrop{position:fixed;inset:0;z-index:1000;display:flex;align-items:flex-end;justify-content:center;background:rgb(10 10 10 / 0);transition:background-color 240ms cubic-bezier(0.23,1,0.32,1)}
+.ob-backdrop.is-open{background:rgb(10 10 10 / .38)}
+.ob-sheet{box-sizing:border-box;width:100%;max-width:440px;margin:0 12px 12px;background:var(--box,#fff);color:var(--ink);border-radius:18px;padding:20px 20px 16px;box-shadow:0 10px 40px rgb(0 0 0 / .18);
+ opacity:0;transform:translateY(16px);transition:opacity 280ms cubic-bezier(0.23,1,0.32,1),transform 280ms cubic-bezier(0.23,1,0.32,1)}
+.ob-backdrop.is-open .ob-sheet{opacity:1;transform:none}
+@media(min-width:700px){.ob-backdrop{align-items:center}.ob-sheet{margin:0}}
+.ob-trace{display:block;width:100%;height:46px;margin:0 0 6px}
+.ob-trace path{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.ob-trace-bg{stroke:var(--rule)}
+.ob-trace-line{stroke:var(--blue);stroke-dasharray:100;stroke-dashoffset:100;transition:stroke-dashoffset 300ms cubic-bezier(0.77,0,0.175,1)}
+.ob-step{animation:none;border:0;padding:0;margin:0;background:none;box-shadow:none;border-radius:0}
+.ob-step.is-in{animation:ob-in 200ms cubic-bezier(0.23,1,0.32,1)}
+@keyframes ob-in{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
+.ob-count{margin:0 0 4px;font-size:13px;font-weight:600;color:var(--blue)}
+.ob-step h2{margin:0 0 8px;font-size:24px;line-height:1.2;outline:none}
+.ob-step p{margin:0 0 10px;line-height:1.5;color:var(--soft)}
+.ob-prompt{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.ob-prompt code{display:block;padding:12px;border-radius:10px;background:var(--blue-wash);border:1px solid var(--blue-soft);font-size:13px;line-height:1.5;white-space:normal;word-break:break-word;color:var(--ink)}
+.ob-prompt .act{align-self:flex-start;min-height:44px}
+.ob-list{margin:0 0 6px;padding-left:22px;line-height:1.6}
+.ob-list li{padding:2px 0}
+.ob-actions{display:flex;justify-content:space-between;gap:10px;margin-top:14px}
+.ob-actions button{min-height:44px}
+@media (prefers-reduced-motion: reduce){
+ .ob-sheet{transform:none;transition:opacity 200ms ease}
+ .ob-step.is-in{animation:ob-fade 160ms ease}
+ .ob-trace-line{transition:none}
+}
+@keyframes ob-fade{from{opacity:0}to{opacity:1}}

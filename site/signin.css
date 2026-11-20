@@ -1,0 +1,28 @@
+/* Entry uses the live STRIVE blue, wordmark, favicon and IBM Plex Sans. */
+html[data-auth-hint="guest"] body,body:has(.identity-welcome){--paper:#fff;--bg:#fff;background:#fff}
+#signin-dialog{box-sizing:border-box;width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:32px;border:1px solid #e3e3df;border-radius:16px;background:#fff;color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif;box-shadow:0 24px 100px rgb(0 24 80 / .16)}
+#signin-dialog::backdrop{background:rgb(0 20 70 / .28)}
+.signin-brand{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:600;letter-spacing:-.04em;color:var(--blue)}
+.signin-brand img{display:block}
+#signin-close{position:absolute;right:16px;top:16px;display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;background:transparent;color:var(--soft);font-size:26px;font-weight:400;border-radius:50%}
+#signin-close:hover{background:var(--blue-wash);color:var(--blue)}
+#signin-dialog .signin-hello{margin:36px 0 10px;color:var(--blue);font-size:13px;line-height:1.5}
+#signin-dialog h2{margin:0;font-size:36px;font-weight:600;letter-spacing:-.045em;line-height:1.08;max-width:300px}
+#signin-explanation{margin:16px 0 28px;font-size:16px;line-height:1.55;color:#5b5b60}
+.signin-providers{display:grid;gap:10px}
+#signin-dialog [data-provider]{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;min-height:52px;padding:16px 18px;border:1px solid var(--blue);border-radius:8px;background:var(--blue);color:#fff;font-size:15px;font-weight:600}
+#signin-dialog [data-provider]:hover{background:#0038cc}
+#signin-dialog [data-provider]:disabled{opacity:.65;cursor:wait}
+#signin-dialog [data-provider] span{font-size:20px;font-weight:400}
+#signin-state:empty{display:none}
+#signin-state{font-size:14px;line-height:1.5;color:var(--ink)}
+#signin-privacy{margin:16px 0 0;font-size:12px;line-height:1.5;color:#64646b;text-align:center}
+.identity-welcome{max-width:480px;margin:32px auto;background:#fff;border-radius:16px;border:1px solid var(--rule)}
+.identity-welcome .identity-intro{padding:28px 28px 20px;background:#fff;border:0}
+.identity-welcome .identity-kicker{font-size:13px;letter-spacing:0;text-transform:none}
+.identity-welcome .identity-intro h1{font-size:34px;line-height:1.1}
+.identity-welcome .identity-preview{margin:0 28px;background:var(--blue-wash);border:0;border-radius:8px}
+.identity-welcome .identity-form{padding:24px 28px 28px}
+.identity-welcome .identity-form input{min-height:48px;box-sizing:border-box;width:100%;background:#fff;border-radius:6px}
+.identity-welcome .identity-form button{min-height:52px;background:var(--blue);color:#fff;border:1px solid var(--blue);border-radius:8px;font-size:15px}
+@media(max-width:560px){#signin-dialog{padding:28px 24px}#signin-dialog h2{font-size:34px}.identity-welcome{margin:12px 0}.identity-welcome .identity-intro{padding:24px 20px 16px}.identity-welcome .identity-preview{margin:0 20px}.identity-welcome .identity-form{padding:20px}}

@@ -35,10 +35,18 @@ module.exports=async function handler(req,res){
   if(!preferred||!validHandle(preferred))return res.status(404).send('Profile unavailable.');
   const path=profilePath(preferred);
   if(handle!==path.slice(1)){res.writeHead(301,{Location:path});return res.end()}
-  if(browser){res.writeHead(307,{Location:'/?u='+encodeURIComponent(preferred)+'&legacy=1'});return res.end()}
-  const title=escape(profile.display_name||preferred),url=canonicalProfile(preferred),image=shareOrigin+'/api/og?profile='+encodeURIComponent(preferred)+'&v=3';
-  const description=escape(`Public runs by ${profile.display_name||'@'+preferred} on STRIVE.`);
+  // ?project=<name> (1 Nov): a project's share link opens that card and unfurls with its latest public run.
+  const projectName=String(req.query.project||'').trim().slice(0,120);
+  if(projectName&&!globalThis.GrinderContract)globalThis.GrinderContract=require('../site/run-contract.js');
+  const PP=projectName?require('../site/project-profile.js'):null,label=projectName?require('../site/activity-order.js').project:null;
+  if(browser){res.writeHead(307,{Location:'/?u='+encodeURIComponent(preferred)+'&legacy=1'+(PP?'#project-'+PP.slug(projectName):'')});return res.end()}
   const activities=await readProfileActivities(profile);
+  const projectRun=PP?activities.find(run=>label(run.project)===projectName)||null:null;
+  const projectStory=projectRun?PP.story(projectRun):null;
+  const title=escape(projectRun?`${projectName} · ${profile.display_name||preferred}`:profile.display_name||preferred);
+  const url=canonicalProfile(preferred)+(projectRun?'?project='+encodeURIComponent(projectName):'');
+  const image=shareOrigin+(projectRun?'/api/og?run='+encodeURIComponent(projectRun.id):'/api/og?profile='+encodeURIComponent(preferred)+'&v=3');
+  const description=escape(projectRun?[projectStory.headline,projectStory.pitch].filter(Boolean).join(' ').slice(0,280)||`${projectName} on STRIVE.`:`Public runs by ${profile.display_name||'@'+preferred} on STRIVE.`);
   const alt=escape(`STRIVE profile card: ${profile.display_name||preferred} (@${preferred}) · ${activities.length>=50?'50+':activities.length} public ${activities.length===1?'run':'runs'}`);
   const activityHtml=activities.length?`<ol style="list-style:none;padding:0;margin:0">${activities.map(run=>`<li style="border-top:1px solid #ddd;padding:16px 0"><a href="${escape(runPath(run)||'/r/'+run.id)}" style="color:#111;font-weight:600;text-decoration:none">${escape(run.title||'Run')}</a><p style="color:#555;margin:6px 0">${escape(String(run.caption||'').split(/\r?\n/)[0].slice(0,180))}</p></li>`).join('')}</ol>`:'<p>No public activities yet.</p>';
   res.setHeader('Content-Type','text/html; charset=utf-8');

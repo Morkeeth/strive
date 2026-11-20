@@ -628,6 +628,7 @@ window.GrinderSocial = function ({
           button.focus();
         }
       };
+      if(!slot.classList.contains("profile-follow"))return;
       const blocks = await result(
         db
           .from("grinder_blocks")
@@ -642,8 +643,11 @@ window.GrinderSocial = function ({
       block.textContent = blocked ? "Unblock" : "Block";
       const menu=document.createElement("details");menu.className="profile-more";
       const menuToggle=document.createElement("summary");menuToggle.textContent="···";menuToggle.setAttribute("aria-label","More profile actions");menu.append(menuToggle,block);slot.append(menu);
+      document.addEventListener("click",event=>{if(!menu.isConnected)return;if(!menu.contains(event.target))menu.open=false;});
+      menu.addEventListener("keydown",event=>{if(event.key==="Escape"){menu.open=false;menuToggle.focus();}});
       block.onclick = async () => {
-        block.disabled = true;
+        if(!blocked&&!confirm("Block interactions with this person?"))return;
+        menu.open=false;block.disabled = true;
         try {
           if (blocked)
             await result(

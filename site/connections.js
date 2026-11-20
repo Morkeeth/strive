@@ -1,19 +1,25 @@
-/* Owner-only upload grants. A check means an active key, never provider identity verification. */
+/* Owner-only active upload grants; agent labels are not provider identity verification. */
 (function(root){
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const time=v=>v?Date.parse(v):NaN;
  const active=(row,now=Date.now())=>row.revoked!==true&&(!row.expires_at||time(row.expires_at)>now);
+ // 1 Nov: owner labels like "claude laptop + codex" name more than one agent; the header shows each.
+ const AGENTS=[['Claude Code','anthropic',/\bclaude(?:[ -]code)?\b/i],['Codex','openai',/\bcodex\b/i],['Cursor','cursor',/\bcursor\b/i],['Grok','x',/\bgrok(?:[ -]bot)?\b/i]];
+ const named=label=>{const hits=AGENTS.filter(x=>x[2].test(String(label||'')));return hits.length?hits.map(x=>({name:x[0],maker:x[1]})):[{name:'Unknown agent',maker:null}];};
  function identity(label){
-  const names=[['Claude Code','anthropic',/\bclaude(?:[ -]code)?\b/i],['Codex','openai',/\bcodex\b/i],['Cursor','cursor',/\bcursor\b/i],['Grok','x',/\bgrok(?:[ -]bot)?\b/i]].filter(x=>x[2].test(String(label||'')));
-  return names.length===1?{name:names[0][0],maker:names[0][1]}:{name:'Upload key',maker:null};
+  const names=AGENTS.filter(x=>x[2].test(String(label||'')));
+  return names.length===1?{name:names[0][0],maker:names[0][1]}:{name:'Unknown agent',maker:null};
  }
- const mark=agent=>agent.maker?root.StriveAgents.markSvg(agent.maker,{size:22}):'<span class="connection-generic" aria-hidden="true">↗</span>';
+ const GENERIC='<svg class="agent-logo" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="12" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/></svg>';
+ const mark=agent=>agent.maker?root.StriveAgents.markSvg(agent.maker,{size:22}):GENERIC;
  const date=v=>Number.isFinite(time(v))?new Date(v).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}):'not recorded';
  function header(rows,now=Date.now()){
-  const agents=[...new Map(rows.filter(r=>active(r,now)).map(r=>{const i=identity(r.label);return[i.name,i]})).values()];
-  if(!agents.length)return null;
-  const names=agents.map(i=>i.name).join(', '),limit=agents.length>4?3:4;
-  return {label:'Connections: '+names+'. Active upload keys; owner labels, not provider-verified identities',title:'Active upload key checked by STRIVE; agent names are owner labels, not provider-verified identities.',html:agents.slice(0,limit).map(i=>`<span class="connected-agent" data-connected-agent="${esc(i.name)}">${mark(i)}<span class="connection-check" aria-hidden="true">✓</span></span>`).join('')+(agents.length>4?`<span class="connection-more">+${agents.length-limit}</span>`:'')};
+  // Active owner-labelled harnesses only. Repeated grants share one mark; unknown names stay neutral.
+  const all=[...new Map(rows.filter(r=>active(r,now)).flatMap(r=>named(r.label)).map(i=>[i.name,i])).values()];
+  if(!all.length)return null;
+  const agents=[...all.filter(i=>i.maker),...all.filter(i=>!i.maker)];
+  const names=agents.map(i=>i.name).join(', ');
+  return {label:'Open your active connections',title:names,html:'Connections'};
  }
  function card(row,{now=Date.now(),revoke=false}={}){
   const live=active(row,now),i=identity(row.label),status=row.revoked===true?'Revoked':live?'Active':'Expired';

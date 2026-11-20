@@ -40,7 +40,41 @@
   // hidden from readers, which is what the database does with it.
   function ordered(items){const lead=items.find(item=>item.cover);return (lead?[lead,...items.filter(item=>item!==lead)]:[...items]);}
   const hidden=item=>item.is_private===true||item.role==='personal';
-  async function mount({slot,token,profileId=null,eligible=true,isCurrent=()=>true,audience=()=> 'private'}){
+  // Read-only reader preview: never uploads, crops, saves, or changes the draft.
+  // A slot owns its object URLs; replacing it or navigating away disposes them.
+  const previews=new WeakMap();
+  async function preview({slot,token,profileId=null,isCurrent=()=>true}){
+    if(!slot)return;
+    previews.get(slot)?.();
+    let active=true,urls=[],observer;
+    const dispose=()=>{active=false;urls.forEach(url=>URL.revokeObjectURL(url));urls=[];observer?.disconnect();if(previews.get(slot)===dispose)previews.delete(slot)};
+    previews.set(slot,dispose);
+    const current=()=>active&&slot.isConnected&&isCurrent();
+    observer=new MutationObserver(()=>{if(!slot.isConnected)dispose()});observer.observe(document.documentElement,{childList:true,subtree:true});
+    try{
+      const key=await keyFor(token);await work.get(key);const draft=await read(key);
+      if(!current()){dispose();return dispose;}
+      if(draft)bound(draft,profileId);
+      const items=ordered(draft?.items||[]).filter(item=>!hidden(item));
+      if(!draft?.items?.length)return dispose;
+      const gallery=document.createElement('div');gallery.className='draft-reader-images';
+      for(const [index,item] of items.entries()){
+        const image=new Image(),url=URL.createObjectURL(item.blob);urls.push(url);
+        image.alt='Selected project image '+(index+1)+' of '+items.length;
+        image.dataset.draftPreview='true';image.src=url;
+        image.style.cssText='display:block;width:100%;height:auto;object-fit:contain;max-width:100%';
+        await image.decode();gallery.append(image);
+      }
+      if(!items.length){const note=document.createElement('p');note.className='hint';note.textContent='No images selected for readers.';gallery.append(note);}
+      if(current()){
+        // The saved feed's bounded media frame must not clip a draft screenshot.
+        slot.style.cssText='height:auto;min-height:0;max-height:none;aspect-ratio:auto;overflow:visible';
+        slot.replaceChildren(gallery);
+      }else dispose();
+      return dispose;
+    }catch(error){dispose();throw error;}
+  }
+  async function mount({slot,token,profileId=null,eligible=true,isCurrent=()=>true,audience=()=> 'private',onChange=()=>{}}){
     if(!slot)return;
     if(!eligible){slot.innerHTML='<p class="hint">Images can be added to a recorded session with a capture reference.</p>';return;}
     const key=await keyFor(token);let active=true,urls=[],grid=null,lastRemoved=null;
@@ -53,7 +87,7 @@
       for(const file of files)enqueue(key,async()=>{const image=await imageBlob(file);await change(key,d=>{bound(d,profileId);editable(d);if(d.items.length>=6)throw new Error('Six photos selected. Remove one before adding another.');if(d.items.some(i=>i.contentKey===image.contentKey))throw new Error('This photo is already selected.');if(profileId)d.profileId=profileId;d.items=ordered(d.items).map(({cover,...item})=>item);d.items.push({id:crypto.randomUUID(),role:'photo',...image});return d;});}).catch(error=>message(error.message));
     }
     async function paint(){
-      const draft=await read(key);if(!current())return;clear();grid=null;
+      const draft=await read(key);if(!current())return;clear();grid=null;onChange();
       if(draft?.profileId&&draft.profileId!==profileId){slot.innerHTML='<p role="alert">These images belong to a different signed-in account. Sign back in to that account to continue.</p>';return;}
       if(draft?.phase==='complete'){slot.innerHTML='<p class="hint">These images are on your saved run. <a href="/?run='+encodeURIComponent(draft.runId)+'">Open the run</a> to change them.</p>';return;}
       const items=ordered(draft?.items||[]),locked=!!draft?.runId;
@@ -116,7 +150,7 @@
       if(audience!=='private'){
         if(!['close_friends','link','public'].includes(audience))throw new Error('Choose a supported audience.');
         draft=await change(key,d=>{d.phase='audience_pending';d.requestedAudience=audience;return d});
-        await session();onProgress('Saving the audience you chose…');const {error}=await client.from('runs').update({visibility:audience}).eq('id',runId).eq('profile_id',profileId).eq('visibility','private');assertCurrent();if(error)throw error;
+        await session();onProgress('Saving the audience you chose…');if(root.StriveRunVisibility){await root.StriveRunVisibility.save({client,id:runId,owner:profileId,audience,isCurrent:()=>{assertCurrent();return true}});}else{const {error}=await client.from('runs').update({visibility:audience}).eq('id',runId).eq('profile_id',profileId).eq('visibility','private');assertCurrent();if(error)throw error;}
         const confirmed=await queryRun(runId);if(!confirmed||confirmed.visibility!==audience)throw new Error('The audience change was not confirmed. Retry to check this run.');
       }
       return await finish(audience);
@@ -148,5 +182,13 @@
       return true;
     }finally{savingButtons.delete(button);if(active){button.disabled=false;button.removeAttribute('aria-busy');if(button.isConnected)button.textContent=label;}}
   }
-  root.StrivePhotoDraft={mount,hasDraft,save,saveIfDraft};
+  async function addLinkPreview({token,profileId=null,image,isCurrent=()=>true}){
+    if(!isCurrent())return;
+    if(!/^data:image\/(png|jpeg|webp);base64,/.test(image)||image.length>3*1024*1024)throw Error('The link image is not supported.');
+    const blob=await (await fetch(image)).blob();if(!isCurrent())return;
+    const prepared=await imageBlob(blob);if(!isCurrent())return;
+    const key=await keyFor(token);if(!isCurrent())return;
+    await enqueue(key,()=>{if(!isCurrent())return;return change(key,d=>{if(!isCurrent())throw Error('The account or link changed. Load the preview again.');bound(d,profileId);editable(d);if(d.items.some(i=>i.contentKey===prepared.contentKey))return d;if(d.items.length>=6)throw Error('Remove a photo before loading another image.');if(profileId)d.profileId=profileId;d.items.push({id:crypto.randomUUID(),role:'photo',...prepared});return d;});});
+  }
+  root.StrivePhotoDraft={mount,preview,hasDraft,save,saveIfDraft,addLinkPreview};
 })(typeof window==='object'?window:globalThis);
