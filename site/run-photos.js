@@ -277,11 +277,35 @@
     await load();
     return dispose;
   }
+  // Guest head-prefetch: one use, then seed into `early` so ranking/prepare/mount share it.
+  function takeGuestPhoto(id){
+    const feed=root.__striveEarlyFeed;
+    if(!feed||typeof feed.at!=='number'||Date.now()-feed.at>=15000||!feed.photos||!feed.photos.has(id))return null;
+    const pending=feed.photos.get(id);feed.photos.delete(id);
+    return pending.then(body=>body!=null?{ok:true,status:200,json:async()=>body}:null).catch(()=>null);
+  }
+  function seedPhotoJob(id,h){
+    const key=`${h.Authorization||''} ${id}`;
+    let job=early.get(key);
+    if(job)return job;
+    if(!h.Authorization){
+      const guest=takeGuestPhoto(id);
+      if(guest){job=guest.then(res=>res||get(`/api/run-photos?run_id=${encodeURIComponent(id)}`,{headers:h}));early.set(key,job);setTimeout(()=>{if(early.get(key)===job)early.delete(key)},15000);return job;}
+    }
+    job=get(`/api/run-photos?run_id=${encodeURIComponent(id)}`,{headers:h});
+    early.set(key,job);setTimeout(()=>{if(early.get(key)===job)early.delete(key)},15000);
+    return job;
+  }
   async function prepareCards(runs,client){
     const h=await headers(client);
     return Promise.all(runs.map(async run=>{try{
       const key=`${h.Authorization||''} ${run.id}`;
-      const res=await (early.get(key)||get(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:h}));
+      let job=early.get(key);
+      if(!job&&!h.Authorization){
+        const guest=takeGuestPhoto(run.id);
+        if(guest){job=guest.then(res=>res||get(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:h}));early.set(key,job);setTimeout(()=>{if(early.get(key)===job)early.delete(key)},15000);}
+      }
+      const res=await (job||get(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:h}));
       if(!res.ok)return run;
       const payload=await res.json();if(!Array.isArray(payload?.photos))return run;
       const photos=payload.photos;
@@ -295,10 +319,8 @@
     // early answer, so the cards painted next reuse it instead of asking the server a second time.
     const h=await headers(client),result={},window20=[...runs].slice(0,20);
     await Promise.all(window20.map(async run=>{result[run.id]=null;
-      try{const key=`${h.Authorization||''} ${run.id}`;
-        let job=early.get(key);
-        if(!job){job=get(`/api/run-photos?run_id=${encodeURIComponent(run.id)}`,{headers:h});early.set(key,job);setTimeout(()=>{if(early.get(key)===job)early.delete(key)},15000);}
-        const res=await job;
+      try{
+        const res=await seedPhotoJob(run.id,h);
         if(!res.ok)return;const payload=await res.json();if(!Array.isArray(payload?.photos))return;
         result[run.id]=cardPhotos(payload.photos,run.photo_layout||'cover',true).some(p=>p.role!=='personal');
       }catch(_){}
@@ -310,8 +332,7 @@
   const early=new Map();
   async function prefetch({client,runIds}){
     const h=await headers(client);
-    for(const id of runIds||[]){const key=`${h.Authorization||''} ${id}`;if(early.has(key))continue;
-      early.set(key,get(`/api/run-photos?run_id=${encodeURIComponent(id)}`,{headers:h}));setTimeout(()=>early.delete(key),15000);}
+    for(const id of runIds||[]){const key=`${h.Authorization||''} ${id}`;if(early.has(key))continue;seedPhotoJob(id,h);}
   }
   function takeEarly(h,id){const key=`${h.Authorization||''} ${id}`,job=early.get(key);early.delete(key);return job||null}
   async function mountCovers({client,root:host=document,publishReview=false}){

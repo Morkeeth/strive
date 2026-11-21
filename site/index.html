@@ -6,6 +6,36 @@
 <script src="/load-guard.js"></script>
 <script src="/browser-compat.js"></script>
 <script src="/startup.js"></script>
+<script>
+const SB_URL="http://127.0.0.1:54321";
+const SB_KEY="local-development-only";
+const SB_SCHEMA="strava";
+/* Guest home: start feed reads in <head> so they finish while classic scripts load. */
+try{
+  if(window.fetch&&document.documentElement.dataset.authHint==='guest'&&(!location.search||new URLSearchParams(location.search).has('explore'))&&!location.hash.includes('import=')){
+    const headers={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Accept-Profile':SB_SCHEMA};
+    const params=new URLSearchParams({select:'*,profiles!runs_profile_id_fkey(github_handle,name,rig,handle,display_name,avatar_url)',visibility:'eq.public',order:'started_at.desc.nullslast,id.desc',limit:'300'});
+    const photos=new Map(),cards=new Map();
+    const rows=fetch(SB_URL+'/rest/v1/runs?'+params,{headers}).then(async res=>{try{if(!res.ok)return null;const body=await res.json();return Array.isArray(body)?body:null;}catch(_){return null;}}).catch(()=>null);
+    const acks=rows.then(async list=>{
+      if(!Array.isArray(list))return null;
+      const top=list.slice(0,20),ids=top.map(r=>r.id);
+      for(const id of ids)photos.set(id,fetch('/api/run-photos?run_id='+encodeURIComponent(id)).then(async res=>{try{if(!res.ok)return null;return await res.json();}catch(_){return null;}}).catch(()=>null));
+      const pad=n=>String(n).padStart(2,'0'),tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC',seen=new Set();
+      for(const run of top){
+        const t=Date.parse(run.started_at);if(!Number.isFinite(t)||!run.profile_id)continue;
+        const d=new Date(t),day=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()),dedupe=run.profile_id+'|'+day;
+        if(seen.has(dedupe))continue;seen.add(dedupe);
+        const owner_id=run.profile_id,card_key=day+'_'+day,viewer_timezone=tz,key=JSON.stringify([owner_id,card_key,viewer_timezone]);
+        cards.set(key,fetch(SB_URL+'/rest/v1/rpc/read_day_card',{method:'POST',headers:Object.assign({},headers,{'Content-Type':'application/json','Content-Profile':SB_SCHEMA}),body:JSON.stringify({owner_id,card_key,viewer_timezone})}).then(async res=>{try{if(!res.ok)return undefined;return await res.json();}catch(_){return undefined;}}).catch(()=>undefined));
+      }
+      if(!ids.length)return {ids:[],rows:[]};
+      try{const res=await fetch(SB_URL+'/rest/v1/acks?select=run_id&run_id=in.('+ids.join(',')+')',{headers});if(!res.ok)return null;const body=await res.json();return Array.isArray(body)?{ids:[...ids],rows:body}:null;}catch(_){return null;}
+    }).catch(()=>null);
+    window.__striveEarlyFeed={at:Date.now(),rows,photos,acks,cards};
+  }
+}catch(_){}
+</script>
 <title>__BRAND__ · __TAGLINE__</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <meta name="description" content="Turn a Cursor, Grok Bot, Claude Code or Codex session into a run card. Post your runs and see what other builders are making. Private until you choose to share.">
@@ -703,9 +733,6 @@ footer{max-width:1320px;margin:0 auto;padding:20px 24px 40px;color:var(--dim);fo
 <script src="/example.js"></script>
 <script src="/forum.js"></script>
 <script>
-const SB_URL="http://127.0.0.1:54321";
-const SB_KEY="local-development-only";
-const SB_SCHEMA="strava";
 // The home count is always read from this deployment. A failed read stays unknown.
 async function fetchPublicRunCount(){
   if(!sb) return null;
@@ -1197,6 +1224,21 @@ function shapeRow(sh){ return `<div class="ptotals">
 async function ackData(runs){
   const ids=runs.map(r=>r.id);if(!ids.length)return {counts:{},mine:new Set(),countsKnown:true};
   let counts={},countsKnown=false,mine=new Set();
+  // Guest head-prefetch: one matching id set, then fall through if null/mismatch.
+  const feed=!ME?window.__striveEarlyFeed:null;
+  if(feed&&typeof feed.at==='number'&&Date.now()-feed.at<15000&&feed.acks){
+    try{
+      const early=await feed.acks;
+      if(early&&Array.isArray(early.ids)&&Array.isArray(early.rows)){
+        const want=new Set(ids),got=new Set(early.ids);
+        if(want.size===got.size&&ids.every(id=>got.has(id))){
+          delete feed.acks;
+          countsKnown=true;for(const id of ids)counts[id]=0;early.rows.forEach(a=>counts[a.run_id]=(counts[a.run_id]||0)+1);
+          return {counts,mine,countsKnown};
+        }
+      }
+    }catch(_){}
+  }
   try{const {data:all,error}=await sb.from('acks').select('run_id').in('run_id',ids);
     if(!error&&Array.isArray(all)){countsKnown=true;for(const id of ids)counts[id]=0;all.forEach(a=>counts[a.run_id]=(counts[a.run_id]||0)+1);}}
   catch(_){}
@@ -1968,7 +2010,18 @@ function bindCompactCard(card,deck,ad,{onChange=()=>{},shareHref=null}={}){
 async function feedCards(runs,ad,{ownerView=false,preview=false,decorate=html=>html,onCard=null,current=()=>true,requireComplete=false,preserveOrder=false}={}){
   const rows=preserveOrder?runs:StriveActivity.sort(runs),choices=new Map(),mounts=[],cards=[],timezone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
   for(const run of rows){const t=StriveActivity.time(run);if(t===null)continue;const day=StriveDay.localDay(new Date(t)),key=run.profile_id+'|'+day;
-    if(!choices.has(key))choices.set(key,Promise.resolve(sb.rpc('read_day_card',{owner_id:run.profile_id,card_key:day+'_'+day,viewer_timezone:timezone})));}
+    if(!choices.has(key)){
+      let job=null;
+      const feed=!ME&&!requireComplete?window.__striveEarlyFeed:null;
+      if(feed&&typeof feed.at==='number'&&Date.now()-feed.at<15000&&feed.cards){
+        const earlyKey=JSON.stringify([run.profile_id,day+'_'+day,timezone]);
+        if(feed.cards.has(earlyKey)){
+          const pending=feed.cards.get(earlyKey);feed.cards.delete(earlyKey);
+          job=pending.then(value=>value!==undefined?{data:value,error:null}:sb.rpc('read_day_card',{owner_id:run.profile_id,card_key:day+'_'+day,viewer_timezone:timezone})).catch(()=>sb.rpc('read_day_card',{owner_id:run.profile_id,card_key:day+'_'+day,viewer_timezone:timezone}));
+        }
+      }
+      choices.set(key,job||Promise.resolve(sb.rpc('read_day_card',{owner_id:run.profile_id,card_key:day+'_'+day,viewer_timezone:timezone})));
+    }}
   // Read only metadata in parallel with card choices. Reuse the authorized prefetch
   // so known image-free cards never paint a large frame that later collapses.
   // Each card waits only for its own metadata; image bytes still mount afterwards.
@@ -2026,9 +2079,11 @@ async function viewLanding(){
     noteTraces(runs);
     const newest=StriveActivity.sort(runs),windowRuns=newest.slice(0,FEED_PAGE);
     let ranking=null;
+    let rankingAd=null;
     if(publicFeedOrder==='highlights'){
       const [ad,signals]=await Promise.all([ackData(windowRuns),StriveRunPhotos.rankingSignals(windowRuns,sb)]);
       if(!current())return false;
+      rankingAd=ad;
       ranking=StriveFeedRanking.rank(windowRuns,{counts:ad.counts,countsKnown:ad.countsKnown,images:signals,now});
     }
     const sorted=ranking?[...ranking.rows,...newest.slice(FEED_PAGE)]:newest;
@@ -2037,9 +2092,12 @@ async function viewLanding(){
     let shown=0;
     const more=async()=>{
       const page=sorted.slice(shown,shown+FEED_PAGE);shown+=page.length;
+      // Reuse ranking's ack read when the first page is still the same id set.
+      const sameWindow=rankingAd&&page.length===windowRuns.length&&page.every(r=>windowRuns.some(w=>w.id===r.id))&&windowRuns.every(w=>page.some(r=>r.id===w.id));
+      const pageAd=sameWindow?rankingAd:await ackData(page);if(sameWindow)rankingAd=null;
       let complete;try{
-        if(requireComplete)complete=await feedCards(page,await ackData(page),{current,requireComplete,preserveOrder:true});
-        else await feedCards(page,await ackData(page),{current,preserveOrder:true,onCard:html=>{if(current()){body.querySelector('.feed-skeleton')?.remove();let deck=body.querySelector(':scope>.strive-overview');if(!deck){deck=document.createElement('div');deck.className='strive-overview';body.prepend(deck)}deck.insertAdjacentHTML('beforeend',html)}}});if(!current())return false;
+        if(requireComplete)complete=await feedCards(page,pageAd,{current,requireComplete,preserveOrder:true});
+        else await feedCards(page,pageAd,{current,preserveOrder:true,onCard:html=>{if(current()){body.querySelector('.feed-skeleton')?.remove();let deck=body.querySelector(':scope>.strive-overview');if(!deck){deck=document.createElement('div');deck.className='strive-overview';body.prepend(deck)}deck.insertAdjacentHTML('beforeend',html)}}});if(!current())return false;
       }catch(_){return false}
       if(requireComplete){$('feed-more')?.closest('.feed-more-row')?.remove();body.querySelectorAll('.feed-skeleton').forEach(el=>el.remove());body.innerHTML=complete.html;complete.mount()}
       wireKudos();return true;

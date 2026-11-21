@@ -98,6 +98,30 @@
   const runsQuery = (sb) => sb.from("runs").select("*, profiles!runs_profile_id_fkey(github_handle,name,rig,handle,display_name,avatar_url)")
     .eq("visibility", "public").order("started_at", { ascending: false, nullsFirst: false }).order("id", { ascending: false }).limit(300);
 
+  // One head-started guest read shared by baseline + feed; null means miss/fail, not empty.
+  let earlyRowsShared, earlyRowsForRead = true, earlyRowsForToken = true;
+  async function takeEarlyRows() {
+    if (earlyRowsShared !== undefined) return earlyRowsShared;
+    const feed = root.__striveEarlyFeed;
+    if (!feed || typeof feed.at !== "number" || Date.now() - feed.at >= 15000 || !feed.rows) {
+      earlyRowsShared = null;
+      return null;
+    }
+    const pending = feed.rows;
+    delete feed.rows;
+    try {
+      const rows = await pending;
+      earlyRowsShared = Array.isArray(rows) ? rows : null;
+    } catch (_) {
+      earlyRowsShared = null;
+    }
+    return earlyRowsShared;
+  }
+  function tokenFromRows(rows) {
+    const ids = rows.map((row) => row.id);
+    return ids.length ? ids.join(":") : "empty";
+  }
+
   async function readOwnerWeek(sb,owner,now=Date.now()) {
     if(!owner)return {runs:null};
     try {
@@ -109,13 +133,25 @@
 
   // The feed with Clubs and Events hidden reads runs only; null still means the read failed.
   async function readRuns(sb) {
-    try { return { runs: await runsQuery(sb).then((r) => (r.error ? null : r.data || []), () => null) }; } catch (_) { return { runs: null }; }
+    try {
+      if (earlyRowsForRead) {
+        earlyRowsForRead = false;
+        const early = await takeEarlyRows();
+        if (Array.isArray(early)) return { runs: early };
+      }
+      return { runs: await runsQuery(sb).then((r) => (r.error ? null : r.data || []), () => null) };
+    } catch (_) { return { runs: null }; }
   }
 
   // A small polling read for the open feed. The ordered IDs are the membership of the same
   // 300-row window as the feed, so a public/private swap cannot collide at an unchanged count.
   async function latestRunToken(sb) {
     try {
+      if (earlyRowsForToken) {
+        earlyRowsForToken = false;
+        const early = await takeEarlyRows();
+        if (Array.isArray(early)) return tokenFromRows(early);
+      }
       const response=await sb.from("runs").select("id").eq("visibility","public")
         .order("started_at",{ascending:false,nullsFirst:false}).order("id",{ascending:false}).limit(300);
       if(response.error)return null;
