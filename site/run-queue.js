@@ -13,6 +13,13 @@
     let repo='';try{const u=new URL(run.repo_url);if(u.protocol==='https:'&&!u.username&&!u.password&&['github.com','gitlab.com','bitbucket.org'].includes(u.hostname))repo=u.hostname+'/'+u.pathname.replace(/^\/|\/$/g,'').replace(/\.git$/,'');}catch(_){}
     return {project:root.GrinderContract?.projectLabel?.(run.project)||String(run.project||'').trim()||'Project not recorded',repo,result:result||note||'Result not recorded. Activity alone does not say what was achieved.',label:result?'What changed':note?'Author note':'What changed'};
   }
+  function shareable(run){
+    const project=String(root.GrinderContract?.projectLabel?.(run.project)||run.project||'').trim();
+    if(!project||/^(unknown|project unknown|unknown project|project|session|untitled|none|null)$/i.test(project))return false;
+    const result=String(run.story_result||'').trim();
+    let output=false;try{const url=new URL(run.output_url);output=url.protocol==='https:'&&!url.username&&!url.password;}catch(_){}
+    return result.length>=12||output;
+  }
   async function read(client,owner){
     if(!owner)return [];
     const all=[];
@@ -27,7 +34,8 @@
     return newest([...new Map(all.filter(run=>waiting(run,owner)).map(r=>[r.id,r])).values()]);
   }
   function recordedDay(run){const d=new Date(run.started_at||run.created_at);return Number.isFinite(d.getTime())?d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'):'';}
-  function matches(run,{search='',project='',harness='',day=''}={}){
+  function matches(run,{search='',project='',harness='',day='',owner=null,includeQA=false}={}){
+    if(!includeQA&&owner&&run.profile_id===owner&&run.title==='QA STRIVE private acceptance 4Nov165126')return false;
     const info=identity(run),text=[run.title,info.project,info.repo,info.result,run.harness].join(' ').toLowerCase();
     return (!search||text.includes(search.toLowerCase().trim()))&&(!project||info.project===project)&&(!harness||run.harness===harness)&&(!day||recordedDay(run)===day);
   }
@@ -48,69 +56,26 @@
     if(data?.length!==1)throw Error('This run changed. Refresh before posting.');
   }
   async function mount({client,owner,slot,esc,current,open,renderCard}){
-    if(!owner)return;
-    let rows;try{rows=await read(client,owner)}catch(_){if(current())slot.insertAdjacentHTML('afterbegin','<p role="alert">Your review queue could not load. <a href="/?queue">Try again</a></p>');return}
-    if(!current())return;if(!rows.length){if(!open)slot.insertAdjacentHTML('beforeend','<p>No private runs are waiting for review.</p>');return;}
-    const box=document.createElement('section');box.className='card pad queue-list';box.setAttribute('aria-label','Choose private runs to post');
-    const selected=new Set(),filters={search:'',project:'',harness:'',day:''};let page=0,activeId=null,renderGeneration=0,busy=false,disposePreview=()=>{};
-    const options=(values)=>[...new Set(values.filter(Boolean))].sort().map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('');
-    box.innerHTML='<header class="queue-heading"><div><h2>Choose what to post</h2><p class="meta">'+rows.length+' saved private runs · Only me</p></div><a href="/?post" class="act">Import an older run</a></header><div class="queue-filters"><label>Search<input type="search" data-filter="search" placeholder="Project, title or result"></label><label>Project<select data-filter="project"><option value="">All projects</option>'+options(rows.map(r=>identity(r).project))+'</select></label><label>Agent<select data-filter="harness"><option value="">All agents</option>'+options(rows.map(r=>r.harness))+'</select></label><label>Recorded day<input type="date" data-filter="day"></label><button type="button" class="ghost" data-clear>Clear filters</button></div><div class="queue-selection"><span data-selected-count>0 chosen</span><button type="button" class="act blue" data-review disabled>Preview chosen runs</button><button type="button" class="ghost" data-clear-selection hidden>Clear choices</button></div><div data-results></div><nav class="queue-pages" aria-label="Saved run pages"><button type="button" class="ghost" data-prev>Previous</button><span data-page role="status"></span><button type="button" class="ghost" data-next-page>Next</button></nav><section class="queue-publish-preview" data-preview hidden aria-label="Public post preview"></section>';
-    slot[open?'prepend':'append'](box);
-    const results=box.querySelector('[data-results]'),preview=box.querySelector('[data-preview]');
+    if(!owner)return;const box=document.createElement('section');box.className='v2-stack queue-one';slot[open?'prepend':'append'](box);
+    let cursor=null,justPosted=false;let generation=0,busy=false,dispose=()=>{};
     const valid=()=>current()&&box.isConnected;
-    const selection=()=>{box.querySelector('[data-selected-count]').textContent=selected.size+' chosen';box.querySelector('[data-review]').disabled=!selected.size||busy;box.querySelector('[data-clear-selection]').hidden=!selected.size;};
-    const paint=()=>{
-      box.querySelector('.queue-heading .meta').textContent=rows.length+' saved private runs · Only me';
-      const found=rows.filter(r=>matches(r,filters)),pages=Math.max(1,Math.ceil(found.length/12));page=Math.min(page,pages-1);
-      results.innerHTML=found.slice(page*12,page*12+12).map(run=>{
-        const info=identity(run),date=run.started_at||run.created_at,when=date?new Date(date).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'Date unknown';
-        return '<label class="queue-choice"><input type="checkbox" data-choose="'+esc(run.id)+'" '+(selected.has(run.id)?'checked':'')+'><span><strong>'+esc(run.title||'Untitled run')+'</strong><small>'+esc(info.project)+(info.repo?' · '+esc(info.repo):'')+' · '+esc(when)+' · '+esc(run.harness||'Agent unknown')+(run.started_at?'':' · start unknown')+'</small><span class="queue-choice-result">'+esc(info.result)+'</span></span></label>';
-      }).join('')||'<p>No runs match these filters. Clear filters to see your history.</p>';
-      box.querySelector('[data-page]').textContent=found.length+' matching · Page '+(page+1)+' of '+pages;
-      box.querySelector('[data-prev]').disabled=page===0;box.querySelector('[data-next-page]').disabled=page===pages-1;
-      results.querySelectorAll('[data-choose]').forEach(input=>input.onchange=()=>{input.checked?selected.add(input.dataset.choose):selected.delete(input.dataset.choose);selection();});selection();
-    };
-    box.querySelectorAll('[data-filter]').forEach(input=>input.addEventListener(input.tagName==='INPUT'&&input.type==='search'?'input':'change',()=>{filters[input.dataset.filter]=input.value;page=0;paint();}));
-    box.querySelector('[data-clear]').onclick=()=>{for(const k of Object.keys(filters))filters[k]='';box.querySelectorAll('[data-filter]').forEach(i=>i.value='');page=0;paint();};
-    box.querySelector('[data-prev]').onclick=()=>{page--;paint();};box.querySelector('[data-next-page]').onclick=()=>{page++;paint();};
-    const browsing=shown=>box.querySelectorAll('.queue-filters,.queue-selection,[data-results],.queue-pages').forEach(el=>el.hidden=!shown);
-    const closePreview=()=>{disposePreview();disposePreview=()=>{};renderGeneration++;activeId=null;preview.hidden=true;preview.replaceChildren();browsing(true);};
-    box.querySelector('[data-clear-selection]').onclick=()=>{if(busy)return;selected.clear();closePreview();paint();};
-    async function showPreview(id){
-      if(!valid()||busy)return;const run=rows.find(r=>r.id===id&&selected.has(id));if(!run)return;
-      disposePreview();disposePreview=()=>{};const generation=++renderGeneration;activeId=id;browsing(false);const chosen=[...selected],index=chosen.indexOf(id);preview.hidden=false;
-      preview.innerHTML='<header><h3>Review public post · '+(index+1)+' of '+chosen.length+'</h3><button type="button" class="ghost" data-back>Back to choices</button></header><p><strong>Public</strong> · Anyone can see this run and its selected photos in Feed and on your profile.</p><div data-queue-card="'+esc(id)+'"><p role="status">Loading the exact card</p></div><p class="meta">Only this run is posted. Your other saved runs stay private.</p><div class="queue-actions"><button type="button" class="act blue" data-approve-id="'+esc(id)+'" disabled>Post this run publicly</button><a class="act" href="/?run='+encodeURIComponent(id)+'&review=1#run-edit">Edit this run</a><button type="button" class="ghost" data-skip>Skip this choice</button></div><p data-post-status role="status"></p>';
-      preview.querySelector('[data-back]').onclick=()=>{if(!busy)closePreview();};
-      preview.querySelector('[data-skip]').onclick=()=>{if(busy)return;selected.delete(id);paint();const next=[...selected][0];next?void showPreview(next):closePreview();};
-      const button=preview.querySelector('[data-approve-id]');
-      button.onclick=async()=>{
-        if(!valid()||busy||button.disabled||activeId!==id||generation!==renderGeneration||!selected.has(id))return;busy=true;button.disabled=true;selection();
-        preview.querySelectorAll('button,a').forEach(b=>{if(b.tagName==='BUTTON')b.disabled=true;else b.setAttribute('aria-disabled','true');});
-        try{await approve(client,run,owner);if(!valid())return;rows=rows.filter(r=>r.id!==id);selected.delete(id);busy=false;paint();
-          disposePreview();disposePreview=()=>{};preview.innerHTML='<h3>Posted</h3><p>'+esc(run.title||'Your run')+' is public.</p><a class="act" href="/r/'+encodeURIComponent(id)+'">Open public run</a><button type="button" class="act blue" data-continue>'+(selected.size?'Preview next chosen run':'Back to choices')+'</button>';
-          preview.querySelector('[data-continue]').onclick=()=>selected.size?void showPreview([...selected][0]):closePreview();root.dispatchEvent?.(new Event('strive-review-changed'));
-        }catch(error){busy=false;if(valid()&&generation===renderGeneration){preview.querySelector('[data-post-status]').textContent=error.message;preview.querySelectorAll('button').forEach(b=>b.disabled=false);selection();}}
-      };
-      preview.scrollIntoView?.({block:'start',behavior:'smooth'});
-      try{const html=renderCard?await renderCard({...run,visibility:'public'}):null;if(!valid()||generation!==renderGeneration)return;
-        if(!html)throw Error('Preview unavailable');const host=preview.querySelector('[data-queue-card]');host.innerHTML=html;
-        if(!root.StriveRunPhotos?.mountCovers)throw Error('Selected photos cannot be verified. This run is still private.');
-        const outcomes=await root.StriveRunPhotos.mountCovers({client,root:host,publishReview:true});
-        if(!valid()||generation!==renderGeneration){outcomes?.forEach(result=>result?.dispose?.());return;}
-        const outcome=outcomes?.find(result=>result?.runId===id);
-        if(!outcome||!['ready','known-none'].includes(outcome.status))throw Error('Selected photos cannot be verified. This run is still private.');
-        disposePreview=outcome.dispose||(()=>{});
-        if(outcome.status==='known-none')preview.querySelector('[data-post-status]').textContent='No images selected. This run will post without images.';
-        button.disabled=false;
-      }catch(error){if(valid()&&generation===renderGeneration){
-        button.disabled=true;const status=preview.querySelector('[data-post-status]');status.setAttribute('role','alert');status.textContent=(error.message||'Preview could not load.')+' ';
-        const retry=document.createElement('button');retry.type='button';retry.className='ghost';retry.textContent='Retry selected photo preview';retry.onclick=()=>void showPreview(id);status.append(retry);
-      }}
+    async function next(){
+      if(!valid()||busy)return;dispose();dispose=()=>{};const ticket=++generation;box.innerHTML='<p role="status">Finding your next private update…</p>';
+      let run;try{let query=client.from('runs').select('*, profiles!runs_profile_id_fkey(github_handle,name,rig,handle,display_name,avatar_url)').eq('profile_id',owner).eq('visibility','private').order('created_at',{ascending:false}).order('id',{ascending:false}).not('project','is',null).not('project','eq','').or('story_result.not.is.null,output_url.not.is.null');if(cursor)query=query.or('created_at.lt.'+cursor.created_at+',and(created_at.eq.'+cursor.created_at+',id.lt.'+cursor.id+')');const result=await query.limit(1);if(result.error)throw result.error;run=result.data?.[0];}catch{if(valid())box.innerHTML='<p role="alert">Your next update could not load. <a href="/?queue">Try again</a></p>';return;}
+      if(!valid()||ticket!==generation)return;
+      if(!run){box.innerHTML=root.StriveUI?.empty({title:'You have reviewed these updates',body:'Updates with a named project and a written result or product link appear here. Your other private runs stay in your activity.'})||'<p>No more private updates to review.</p>';if(justPosted)box.insertAdjacentHTML('afterbegin','<p role="status">Posted. Your update is public.</p>');return;}
+      if(!shareable(run)||!matches(run,{owner})){cursor=run;await next();return;}
+      const id=run.id;box.innerHTML='<header><p class="v2-help">Only me · One update at a time</p><h2>Would you share this?</h2><p>Check the text and selected images. Posting makes this update public.</p></header><div data-queue-card="'+esc(id)+'"></div><div class="v2-row"><button type="button" class="v2-button primary" data-post disabled>Post publicly</button><a class="v2-button" href="/?run='+encodeURIComponent(id)+'#run-edit">Edit update</a><button type="button" class="v2-button" data-next>Keep private and next</button></div><p data-state role="status"></p>';
+      const button=box.querySelector('[data-post]'),state=box.querySelector('[data-state]');box.querySelector('[data-next]').onclick=()=>{if(busy)return;cursor=run;void next();};
+      button.onclick=async()=>{if(!valid()||busy||button.disabled||ticket!==generation)return;busy=true;box.querySelectorAll('button').forEach(b=>b.disabled=true);try{await approve(client,run,owner);if(!valid())return;cursor=run;justPosted=true;busy=false;root.dispatchEvent?.(new Event('strive-review-changed'));await next();}catch(error){busy=false;if(valid()&&ticket===generation){state.textContent=error.message;box.querySelectorAll('button').forEach(b=>b.disabled=false);}}};
+      try{const host=box.querySelector('[data-queue-card]');host.innerHTML=await renderCard({...run,visibility:'public'});if(!valid()||ticket!==generation)return;
+       if(!root.StriveRunPhotos?.mountCovers)throw Error('Selected images could not be checked. Your update stays private.');
+       const outcomes=await root.StriveRunPhotos.mountCovers({client,root:host,publishReview:true});if(!valid()||ticket!==generation){outcomes?.forEach(o=>o?.dispose?.());return;}
+       const outcome=outcomes?.find(o=>o?.runId===id);if(!outcome||!['ready','known-none'].includes(outcome.status))throw Error('Selected images could not be checked. Your update stays private.');dispose=outcome.dispose||(()=>{});if(outcome.status==='known-none')state.textContent='No images selected. This update will post without images.';button.disabled=false;
+      }catch(error){if(valid()&&ticket===generation){state.textContent=error.message||'Preview unavailable. Your update stays private.';button.disabled=true;const retry=document.createElement('button');retry.type='button';retry.className='v2-button';retry.textContent='Try preview again';retry.onclick=()=>void next();state.append(retry);}}
     }
-    box.querySelector('[data-review]').onclick=()=>void showPreview([...selected][0]);paint();
-    const seen=rows.reduce((best,run)=>!best||stamp(run)>stamp(best)||(stamp(run)===stamp(best)&&String(run.id)>String(best.id))?run:best,null);
-    if(seen&&client.rpc)void client.rpc('mark_review_alerts_seen',{through_created_at:seen.created_at,through_id:seen.id}).then(({error})=>{if(!error&&current())root.dispatchEvent?.(new Event('strive-review-changed'))}).catch(()=>{});
+    await next();
   }
 
-  const api={pending,waiting,newest,facts,identity,matches,read,discard,approve,mount};root.StriveRunQueue=api;if(typeof module!=='undefined')module.exports=api;
+  const api={shareable,pending,waiting,newest,facts,identity,matches,read,discard,approve,mount};root.StriveRunQueue=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window==='undefined'?globalThis:window);

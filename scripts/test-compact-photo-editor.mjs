@@ -25,7 +25,7 @@ assert.equal(d.querySelectorAll('[data-photo-role],[data-photo-cover],[data-phot
 assert.equal(d.querySelectorAll('[data-photo-private]').length,3);
 assert.equal(d.querySelectorAll('[data-photo-remove]').length,3);
 assert.equal(d.querySelector('[data-photo-file]').multiple,true);
-assert.deepEqual(tiles().map(tile=>tile.querySelector('.photo-audience').textContent),['Public','Public','Public'],'this fixture run is public');
+assert.deepEqual(tiles().map(tile=>tile.querySelector('.photo-audience').textContent),['Everyone','Everyone','Everyone'],'this fixture run is public');
 await click('[data-photo-remove="two"]');
 assert.equal(tiles().length,2,'removed image leaves grid');
 assert.equal(edit.writes.length,0,'edit staged until Save');

@@ -15,13 +15,21 @@ function details(raw={}){
  return result;
 }
 function row(input={}){
- const title=String(input.title||'').trim(),project=String(input.project||'').trim(),changed=String(input.changed||'').trim(),problem=String(input.problem||'').trim(),feedback=String(input.feedback||'').trim();
+ const project=String(input.project||'').trim(),title=String(input.title||project).trim(),changed=String(input.changed||'').trim(),problem=String(input.problem||'').trim(),feedback=String(input.feedback||'').trim();
  if(!project||!title||!changed)throw Error('Add a project, update title and what changed.');
  if(problem.length>280)throw Error('Keep project purpose / context to 280 characters.');
  if(title.length>120||project.length>120||changed.length>2000||feedback.length>500)throw Error('Please shorten the project update.');
  const output=safeLink(input.link);if(String(input.link||'').trim()&&!output)throw Error('Use a public http or https link.');
- if(!output&&!input.hasImage)throw Error('Add a screenshot or a link to your project.');
- return {title,project,caption:problem||null,story_result:changed,story_next:null,feedback_question:feedback||null,output_url:output,trace_basis:'typed-by-author',visibility:'private',harness:null,model:null,prompts:null,duration_s:null,wall_time_s:null,commits:null,started_at:new Date().toISOString()};
+
+ const github=root.StriveGitHubProject||(typeof require==='function'?require('./github-project.js'):null);
+ const repo=input.repository?github.repository(input.repository).url:null;
+ return {...(repo?{repo_url:repo}:{}),title,project,caption:problem||null,story_result:changed,story_next:null,feedback_question:feedback||null,output_url:output,trace_basis:'typed-by-author',visibility:'private',harness:null,model:null,prompts:null,duration_s:null,wall_time_s:null,commits:null,started_at:new Date().toISOString()};
 }
-const api={safeLink,details,row};root.StriveProjectUpdate=api;if(typeof module!=='undefined')module.exports=api;
+function manualSession(input={}){
+ // The entry time comes from this device. Old draft dates/durations cannot override it.
+ if(!String(input.title||'').trim())throw Error('Add a session title.');
+ return row(input);
+}
+
+const api={safeLink,details,row,manualSession};root.StriveProjectUpdate=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

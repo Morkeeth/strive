@@ -58,9 +58,8 @@ button.act.follow-button:focus-visible{outline:2px solid var(--blue);outline-off
 #status.shown{opacity:1;transform:translate(-50%,0)}
 #status.err{border-color:#e9a5a5;color:#8b1e1e}
 
-/* A single portrait needs a bounded, readable stage instead of a short crop. */
-.activity-post.card .run-media-slot:has(.run-media-gallery[data-media-count="1"] img.run-photo-cover){height:400px;min-height:400px}
-@media(max-width:700px){.activity-post.card .run-media-slot:has(.run-media-gallery[data-media-count="1"] img.run-photo-cover){height:330px;min-height:330px}}
+/* A single image follows its bounded source-shape gallery without spare wrapper space. */
+.activity-post.card .run-media-slot[data-media-count="1"]{height:auto;min-height:0;aspect-ratio:auto}
 
 .day-nav{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin:10px 0 22px}
 .day-nav>span{font-size:13px;color:var(--soft);text-align:center}
@@ -223,3 +222,15 @@ a.act{display:inline-flex;align-items:center;justify-content:center}
 .account-panel a,.account-panel button{border-radius:var(--control-radius,8px)}
 .account-panel>button[data-signout]{color:var(--ink)}
 .run-saved-status{padding:12px 16px}.run-saved-line{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0}.run-saved-tools{display:flex;gap:6px;flex-shrink:0}.icon-act{display:inline-grid;place-items:center;width:40px;height:40px;padding:0;border:1px solid var(--rule);border-radius:50%;background:#fff;color:var(--ink);cursor:pointer}.icon-act:hover{border-color:var(--blue);color:var(--blue)}.icon-act:focus-visible{outline:2px solid var(--blue);outline-offset:2px}.run-copy-state{margin:4px 0 0;font-size:13px;color:var(--soft);min-height:0}.run-copy-state:empty{display:none}.run-xudos>summary{cursor:pointer;padding:12px 17px;font-weight:600}
+
+/* Project-first feed, Oscar 6 Nov: the work leads; provenance stays readable on request. */
+.activity-post .post-story{border-left:3px solid var(--blue);padding:16px;background:var(--blue-wash);margin:12px 0}
+.activity-post .post-project{display:inline-block;font-size:15px;font-weight:600;margin-bottom:8px}
+.activity-post .post-story h2{font-size:24px;line-height:1.22;margin:0;overflow-wrap:anywhere}
+.activity-post .project-source-details{font-size:12px;color:var(--soft);margin:10px 0}
+.activity-post .project-source-details>summary{cursor:pointer;min-height:32px;display:flex;align-items:center}
+.activity-post .run-media-slot:empty{display:none}
+.connect-saved{margin-top:28px;border-top:1px solid var(--rule);padding-top:16px}
+.connect-saved>summary{cursor:pointer;min-height:44px}
+#post-request-copy{margin-top:8px}
+@media(max-width:600px){.activity-post .post-story h2{font-size:21px}.activity-post .post-story{padding:12px}}

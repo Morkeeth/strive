@@ -16,10 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = Path("/tmp/agentgrinder-cold-first-minute")
-EXPLANATION = (
-    "Sign in to keep your profile and responses connected. You will return to "
-    "this preview or social action."
-)
+EXPLANATION = "Save your runs and find your people. We’ll bring you right back."
 
 SUPABASE_FIXTURE = """
 <script>
@@ -68,7 +65,7 @@ PROBE = """
 <script>
 window.addEventListener('load',()=>{
   setTimeout(()=>{
-    if(window.__coldSignin) showSignIn();
+    if(window.__coldSignin) document.getElementById('auth').click();
     setTimeout(()=>{
       // The public feed starts with the real run, followed by people and the week.
       const intro=document.querySelector('.home-hero');
@@ -91,18 +88,27 @@ window.addEventListener('load',()=>{
       );
       const visibleAdd=[...document.querySelectorAll('.global-add,.product-nav-add')].filter(el=>{
         const style=getComputedStyle(el),box=el.getBoundingClientRect();
-        return style.display!=='none'&&box.width>0&&box.height>0;
+        return style.visibility==='visible'&&box.width>0&&box.height>0&&
+          box.right>0&&box.left<innerWidth&&box.bottom>0&&box.top<innerHeight;
       });
+      const headerAdd=visibleAdd.find(el=>el.matches('.global-add'));
+      const bottomAdd=visibleAdd.find(el=>el.matches('.product-nav-add'));
       document.documentElement.dataset.coldFeedFirst=String(feedFirst);
       document.documentElement.dataset.coldFeatureVisible=String(Boolean(rect&&visible>0));
-      document.documentElement.dataset.coldSingleAdd=String(visibleAdd.length===1);
+      document.documentElement.dataset.coldAddCount=String(visibleAdd.length);
+      document.documentElement.dataset.coldHeaderAdd=String(Boolean(
+        headerAdd?.getAttribute('href')==='/?post'&&headerAdd.getAttribute('aria-label')==='add your work'
+      ));
+      document.documentElement.dataset.coldBottomAdd=String(Boolean(
+        bottomAdd?.getAttribute('href')==='/?post'&&bottomAdd.textContent.trim()==='Add project'
+      ));
       document.documentElement.dataset.coldSampleAbsent=String(!sample);
       document.documentElement.dataset.coldDropAbsent=String(!document.getElementById('drop-zone'));
       document.documentElement.dataset.coldCountRendered=String(
         Boolean(count&&count.offsetHeight&&count.dataset.countState==='ready')
       );
       document.documentElement.dataset.coldSigninRendered=String(
-        Boolean(explanation&&explanation.offsetHeight)
+        Boolean(explanation?.closest('dialog')?.open&&explanation.offsetHeight)
       );
     },250);
   },500);
@@ -245,12 +251,15 @@ def main() -> None:
                 return
             modal = capture(chrome, base + "#cold-signin", args.screenshots / "sign-in-390.png", 390, 844)
             desktop = capture(chrome, base, args.screenshots / "anonymous-home-1280.png", 1280, 900)
+            post = capture(chrome, base + "?post", args.screenshots / "add-project-390.png", 390, 844)
         finally:
             server.shutdown()
 
     assert 'data-cold-feed-first="true"' in phone
     assert 'data-cold-feature-visible="true"' in phone
-    assert 'data-cold-single-add="true"' in phone
+    assert 'data-cold-add-count="2"' in phone, "phone needs the header and bottom Add project links"
+    assert 'data-cold-header-add="true"' in phone, "phone header must link to the project composer"
+    assert 'data-cold-bottom-add="true"' in phone, "phone bottom navigation must link to the project composer"
     assert 'data-cold-sample-absent="true"' in phone
     assert 'data-cold-count-rendered="true"' in phone
     assert "WHAT A RUN LOOKS LIKE" not in phone
@@ -258,20 +267,23 @@ def main() -> None:
     assert "Cold public run" in phone
     assert "A measured outcome from a real public post." in phone
     assert "1 public run is live." in phone
-    # The drop zone lives on Add run (/?post), with one visible entry per width.
     assert "Follow what people are building." not in phone
-    assert "Public runs" in phone and "Add run" in phone
+    assert "Public runs" in phone
     assert 'data-cold-drop-absent="true"' in phone
     # The fixture run is linked from the rendered feed, never the bundled example.
     assert 'href="/?run=cold-public-1">Cold public run</a>' in phone
     assert 'href="/?example"' not in phone
     assert 'data-cold-signin-rendered="true"' in modal
     assert EXPLANATION in modal
+    assert "Continue with GitHub" in modal
     assert "Continue with X" not in modal
     assert 'data-cold-feed-first="true"' in desktop
     assert 'data-cold-feature-visible="true"' in desktop
-    assert 'data-cold-single-add="true"' in desktop
+    assert 'data-cold-add-count="1"' in desktop, "desktop needs one Add project link"
+    assert 'data-cold-header-add="true"' in desktop, "desktop header must link to the project composer"
     assert 'data-cold-sample-absent="true"' in desktop
+    assert "Add a project" in post and 'data-entry-mode="project"' in post
+    assert 'id="f_project"' in post and 'id="post-signin-note"' in post
     print(f"Cold first minute passed. Screenshots: {args.screenshots}")
 
 

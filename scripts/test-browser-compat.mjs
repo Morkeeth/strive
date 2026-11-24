@@ -35,6 +35,11 @@ for(const navigator of [{clipboard:{writeText:()=>Promise.reject(Error('permissi
  try{new Function('navigator','location','GrinderSharing','handle','status','$',binding)(navigator,{origin:'https://example.test'},{cleanProfilePath:()=>'/test'},'test',text=>notices.push(text),()=>({addEventListener:(_,fn)=>listener=fn}));await listener();await new Promise(ok=>setImmediate(ok));assert.ok(notices.some(n=>n.includes('Copy this page address')),'permission denial gives a useful local fallback');assert.equal(unhandled.length,0,'clipboard denial never becomes a global load error');}finally{process.removeListener('unhandledRejection',onRejection);}
 }
 const result=await checkBrowserCompat();assert.deepEqual(result.failures,[]);
-const html=await readFile('dist/index.html','utf8');assert.ok(html.indexOf('/load-guard.js')<html.indexOf('/startup.js'));assert.ok(html.indexOf('/browser-compat.js')<html.indexOf('/vendor/supabase-'));assert.match(html,/<main[^>]*>[\s\S]*?data-first-paint/);assert.match(html,/Something failed to load/);assert.match(html,/script src="\/vendor\/supabase-2\.117\.3\.js" integrity="sha384-/);
+const html=await readFile('dist/index.html','utf8');assert.ok(html.indexOf('/load-guard.js')<html.indexOf('/startup.js'));assert.ok(html.indexOf('/browser-compat.js')<html.indexOf('/vendor/supabase-'));assert.match(html,/<main[^>]*>[\s\S]*?data-first-paint/);assert.match(html,/Something failed to load/);const builtDocument=new JSDOM(html,{url:'https://strive.test/'});
+const sdkScripts=[...builtDocument.window.document.scripts].filter(script=>script.src&&new URL(script.src).pathname==='/vendor/supabase-2.117.3.js');
+assert.equal(sdkScripts.length,1,'one pinned SDK loads, including versioned asset URLs');
+assert.match(sdkScripts[0].getAttribute('integrity'),/^sha384-[A-Za-z0-9+/]+=*$/);
+assert.equal(sdkScripts[0].getAttribute('crossorigin'),'anonymous');
+builtDocument.window.close();
 const sdk=await readFile('dist/vendor/supabase-2.117.3.js');assert.ok(html.includes('integrity=\"sha384-'+createHash('sha384').update(sdk).digest('base64')+'\"'),'compiled SDK integrity matches served bytes');
 console.log(`PASS: ${result.count} deployment scripts ES2019, secure UUID, missing API semantics, failure fallback without personal data.`);

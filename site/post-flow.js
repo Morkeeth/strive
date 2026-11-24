@@ -11,100 +11,53 @@
     if(editor==='codex')return{command:`codex mcp add strive -- uvx --from ${mcpSpec} strive-mcp`,next:'Start a new Codex session and ask it to list your recent STRIVE sessions.'};
     return{link:cursorMcpLink,command:JSON.stringify({mcpServers:{strive:{command:'uvx',args:['--from',mcpSpec,'strive-mcp']}}}),next:'Cursor asks you to confirm. Then ask your agent to list your recent STRIVE sessions.'};
   }
-  function setupHtml({agentPrompt,capture,syncHtml,dropHtml,agentFiles=[],agentCommands={},mcpSpec='',cursorMcpLink=''}){
-    const route=editorRoute('cursor',{mcpSpec,cursorMcpLink});
-    const tabs=[['editor','Editor plugin'],['terminal','Terminal'],['automatic','Automatic imports'],['files','Find a session']];
-    return `<section class="post-start" aria-label="Choose your agent">
-      <p class="post-start-intro">Choose your agent and copy one command. It opens a session list on your own computer; the session you pick opens here as a private preview. Nothing is saved online yet.</p><ol class="post-flow-steps" id="post-import-steps" aria-label="Import steps"><li aria-current="step"><span>1</span>Choose your agent</li><li><span>2</span>Run it in Terminal</li><li><span>3</span>Private preview</li></ol>
-      <div class="post-source-grid" id="post-source-grid" aria-label="Choose your agent">
-        <button class="ghost" type="button" data-post-source="cursor" data-command="${esc(agentCommands.cursor||capture)}"><img src="/media/cursor-mark.svg" alt=""><strong>Cursor</strong><span>Copy a Terminal command</span></button>
-        <button class="ghost" type="button" data-post-source="claude" data-command="${esc(agentCommands.claude||capture)}"><img src="/media/claude-mark.svg" alt=""><strong>Claude Code</strong><span>Copy a Terminal command</span></button>
-        <button class="ghost" type="button" data-post-source="codex" data-command="${esc(agentCommands.codex||capture)}"><img src="/media/openai-mark.svg" alt=""><strong>Codex</strong><span>Copy a Terminal command</span></button>
-        <button class="ghost" type="button" data-post-source="grok"><span class="post-grok-mark" aria-hidden="true">𝕏</span><strong>Grok Bot</strong><span>Ask your companion</span></button>
-        <button class="ghost" type="button" data-post-source="bb" data-command="bb thread log --self --all --json > bb-session.json"><span class="post-grok-mark" aria-hidden="true">bb</span><strong>bb</strong><span>Export this thread</span></button>
-      </div>
-      <section class="post-quick-start" id="post-quick-start" hidden aria-live="polite"><h3 id="post-quick-title">Pick a recent session</h3><p>Copy this command into Terminal on the computer where you worked. It opens a local list with time, project and first prompt. Pick your session there and its private preview opens in this browser as step 3.</p><div class="cmd"><button class="act blue" type="button" id="post-quick-copy" data-copy="">Copy command</button><details class="post-command-details"><summary>View command</summary><code class="c" id="post-quick-command"></code></details></div><p class="hint">Needs <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> and Python 3.9+. This website cannot read your disk. The command reads locally; prompts and session files stay on your computer. Already installed the STRIVE plugin? Ask it to show recent sessions.</p><details><summary>No uv? Use pipx</summary><p>With Python 3.9+ and pipx installed, run:</p><code id="post-pipx-command"></code><button type="button" class="ghost" id="post-pipx-copy" data-copy="">Copy pipx command</button></details><p class="hint">The picker opens on 127.0.0.1, your own computer. Only the measured preview travels in a URL fragment; the website does not receive that fragment in its page request.</p></section>
-      <div class="post-agent-entry" hidden><div><strong>Working with your agent?</strong><span>Ask it to collect a private preview.</span></div><button class="act" type="button" data-copy="${esc(agentPrompt)}">Copy request</button></div>
-      <p class="hint">You can preview without signing in. Nothing is saved until you choose to save it.</p>
-    </section>
-    <details class="post-file-entry" aria-label="Find a session"><summary>Or drop a session file</summary><h3>Find your session file</h3><p>Choose a file from the agent you used. On macOS, click <strong>Choose session file</strong>, press <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>G</kbd> in the file picker, and paste the folder below. For bb, run the shown export inside the thread.</p><dl class="post-source-folders">${agentFiles.map(([name,path,help])=>`<div data-agent-folder="${esc(name)}"><dt>${esc(name)}</dt><dd><code>${esc(path)}</code><button class="ghost" type="button" data-copy="${esc(path)}" aria-label="Copy ${esc(name)} session source">Copy</button><span>${esc(help)}</span></dd></div>`).join('')}</dl>${dropHtml}<p class="hint">JSON or JSONL up to 64 MiB from bb, Cursor, Claude Code, Codex, or another role-based agent, or a prepared .strive.json preview. For larger native sessions, use the local picker above to choose a sitting. For Grok, use an export your companion can actually read.</p></details>
-    <p class="post-sample"><a href="/r/90a16040-8ad5-4096-978c-8b1f78f3dd2f">See a real sample run →</a><span class="hint"> A public STRIVE run. Your preview will use your own session.</span></p>
-    <details class="post-setup" id="post-setup" data-mcp-spec="${esc(mcpSpec)}" data-cursor-mcp-link="${esc(cursorMcpLink)}"><summary><span>Import setup</span><span class="post-setup-summary">Editor plugins, terminal and other sources</span></summary>
-      <div class="post-setup-body"><div class="post-setup-tabs" role="tablist" aria-label="Import method">${tabs.map(([id,title],i)=>`<button type="button" role="tab" id="setup-tab-${id}" data-setup-tab="${id}" aria-controls="setup-${id}" aria-selected="${i===0}" tabindex="${i===0?'0':'-1'}">${title}</button>`).join('')}</div>
-      <section id="setup-editor" role="tabpanel" aria-labelledby="setup-tab-editor"><h3>Keep STRIVE in your editor</h3><p>Install once, then ask for a private preview across the projects you choose.</p>
-        <label class="post-editor-label">Your editor<select id="post-editor"><option value="cursor">Cursor</option><option value="claude">Claude Code</option><option value="codex">Codex</option></select></label>
-        <p id="post-plugin-link-row"${route.link?'':' hidden'}><a class="act blue" id="post-plugin-link" href="${esc(route.link||'')}">Add to Cursor</a></p>
-        <p id="post-plugin-command-label">${route.link?'Or add this server by hand in Settings, Tools and MCP:':'Run in Terminal:'}</p>
-        <div class="cmd"><code class="c" id="post-plugin-command">${esc(route.command).replace(/\n/g,'<br>')}</code><button type="button" class="act" id="post-plugin-copy" data-copy="${esc(route.command)}">Copy</button></div>
-        <p id="post-plugin-next">${esc(route.next)}</p>
-        <p class="hint" id="post-plugin-privacy">Runs on your computer. Your agent can list recent sessions from every project on this computer, by project name and time only. Nothing leaves your computer until you open a preview and choose to save it.</p>
-        <p class="hint"><a href="/install">All editor routes</a> · <a href="/plugins/install">Full plugin with the strive skill, ZIP fallback and checksum</a> · <a href="https://github.com/Morkeeth/strive">Public source</a></p>
-      </section>
-      <section id="setup-terminal" role="tabpanel" aria-labelledby="setup-tab-terminal" hidden><h3>Preview from a terminal</h3><p>Run this where you build. Check the project and session, then open the private preview link.</p><div class="cmd"><code class="c">${esc(capture)}</code><button type="button" class="act" data-copy="${esc(capture)}">Copy</button></div><p class="hint">Uses uv and Python. Supports Cursor, Claude Code and Codex. <a href="/agents.md">Choose an exact session</a>.</p></section>
-      <section id="setup-automatic" role="tabpanel" aria-labelledby="setup-tab-automatic" hidden>${syncHtml}</section>
-      <section id="setup-files" role="tabpanel" aria-labelledby="setup-tab-files" hidden><h3>Find your session file</h3><p>Use a transcript from the computer where you worked. In Finder, press Cmd+Shift+G and paste its folder.</p><dl class="post-source-folders">${agentFiles.map(([name,path,help,scope])=>`<div data-agent-folder="${esc(name)}"><dt>${esc(name)}</dt><dd><code>${esc(path)}</code><span>${esc(help)}${scope?' · '+esc(scope):''}</span></dd></div>`).join('')}</dl><p><a href="/?history-import">Recover an older build from a history file</a></p><p class="hint"><a href="/agents.md">MCP, Grok and other agent instructions</a></p></section>
-      </div>
-    </details>`;
+  function setupHtml({agentPrompt,capture,syncHtml='',dropHtml='',agentFiles=[],agentCommands={},mcpSpec='',cursorMcpLink='',ownerId='guest'}){
+    return `<section class="post-setup v2-surface v2-pad v2-stack" id="post-setup" data-setup-owner="${esc(ownerId||'guest')}" data-mcp-spec="${esc(mcpSpec)}" data-cursor-mcp-link="${esc(cursorMcpLink)}">
+      <div><h2>Bring something you built.</h2><p>A project link is enough. Add a recorded session when you want to show the work behind it.</p></div>
+      <div class="v2-row"><a class="v2-button primary" href="/?post">Add a project</a><button type="button" class="v2-button" id="connect-alternatives-open">Upload a session file</button></div>
+      <div class="v2-agent-link"><p>Already working with an agent? Give it <a href="/agentic.md">this STRIVE link</a>. It can read the setup guide and help you choose a session.</p></div>
+      <div class="v2-stack"><h2 id="connect-editor-heading">Connect your editor</h2><input type="hidden" id="post-editor"><div class="v2-editor-choices" role="group" aria-label="Your editor">${[['cursor','Cursor','cursor'],['claude','Claude Code','anthropic'],['codex','Codex','openai']].map(([value,label,maker])=>`<button type="button" class="v2-button" data-editor-choice="${value}" aria-pressed="false">${root.StriveAgents?.markSvg(maker,{size:24})||''}<span>${label}</span></button>`).join('')}</div>
+      <section id="setup-editor" class="v2-step-panel v2-stack" hidden><h3 id="post-editor-title"></h3><p id="post-plugin-link-row"><a class="v2-button primary" id="post-plugin-link">Open setup</a></p><p id="post-plugin-next"></p>
+        <details id="post-manual-config"><summary>Advanced setup</summary><p id="post-plugin-command-label"></p><div class="cmd"><code class="c" id="post-plugin-command"></code><button type="button" class="v2-button" id="post-plugin-copy" data-copy="">Copy setup command</button></div></details>
+      </section></div>
+      <dialog class="v2-alternatives" id="connect-alternatives"><div class="v2-heading"><h2>Import a session</h2><button type="button" class="v2-button" id="connect-alternatives-close">Close</button></div><p>Choose only the session you want to preview. It stays private until you decide to share.</p>${dropHtml||'<a href="/?connect">Choose a session file</a>'}</dialog>
+    </section>`;
   }
 
-  // The page can only see the choice and the copy; the pick happens in the local list, which opens step 3 here.
-  function setImportStep(scope,current){
-    scope.querySelectorAll('#post-import-steps li').forEach((li,i)=>{li.classList.toggle('is-done',i<current);if(i===current)li.setAttribute('aria-current','step');else li.removeAttribute('aria-current');});
-  }
   function mountSetup(scope){
-    const setup=scope.querySelector('#post-setup');
-    if(!setup||setup.dataset.wired)return;
-    setup.dataset.wired='1';
-    const tabs=[...setup.querySelectorAll('[data-setup-tab]')];
-    function select(tab,focus=false){
-      for(const button of tabs){const on=button===tab;button.setAttribute('aria-selected',String(on));button.tabIndex=on?0:-1;setup.querySelector('#'+button.getAttribute('aria-controls')).hidden=!on;}
-      if(focus)tab.focus();
-    }
-    tabs.forEach((tab,i)=>{
-      tab.addEventListener('click',()=>select(tab));
-      tab.addEventListener('keydown',event=>{
-        let at=i;
-        if(event.key==='ArrowRight')at=(i+1)%tabs.length;
-        else if(event.key==='ArrowLeft')at=(i+tabs.length-1)%tabs.length;
-        else if(event.key==='Home')at=0;
-        else if(event.key==='End')at=tabs.length-1;
-        else return;
-        event.preventDefault();select(tabs[at],true);
-      });
-    });
-    const routeOptions={mcpSpec:setup.dataset.mcpSpec||'',cursorMcpLink:setup.dataset.cursorMcpLink||''};
-    setup.querySelector('#post-editor').addEventListener('change',event=>{
-      const editor=['claude','codex'].includes(event.target.value)?event.target.value:'cursor';
-      const route=editorRoute(editor,routeOptions);
-      setup.querySelector('#post-plugin-link-row').hidden=!route.link;
-      if(route.link)setup.querySelector('#post-plugin-link').href=route.link;
-      setup.querySelector('#post-plugin-command-label').textContent=route.link?'Or add this server by hand in Settings, Tools and MCP:':'Run in Terminal:';
-      setup.querySelector('#post-plugin-command').innerHTML=esc(route.command).replace(/\n/g,'<br>');
+    const setup=scope.querySelector('#post-setup');if(!setup||setup.dataset.wired)return;setup.dataset.wired='1';
+    const editor=setup.querySelector('#post-editor');
+    const storageKey='strive-connect-editor:'+encodeURIComponent(setup.dataset.setupOwner||'guest');
+    const choices=['cursor','claude','codex'];
+    try{const saved=root.localStorage.getItem(storageKey)||root.sessionStorage.getItem(storageKey);if(choices.includes(saved))editor.value=saved;}catch(_){try{const saved=root.sessionStorage.getItem(storageKey);if(choices.includes(saved))editor.value=saved;}catch(_){}}
+    const paint=()=>{
+      const choice=editor.value,panel=setup.querySelector('#setup-editor');setup.querySelectorAll('[data-editor-choice]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.editorChoice===choice)));panel.hidden=!choice;if(!choice)return;
+      const route=editorRoute(choice,{mcpSpec:setup.dataset.mcpSpec,cursorMcpLink:setup.dataset.cursorMcpLink}),manual=setup.querySelector('#post-manual-config');
+      setup.querySelector('#post-editor-title').textContent='Connect '+({cursor:'Cursor',claude:'Claude Code',codex:'Codex'}[choice]);
+      setup.querySelector('#post-plugin-link-row').hidden=false;
+      const link=setup.querySelector('#post-plugin-link');link.href=route.link||'/plugins/install.html#'+choice;link.textContent=route.link?'Add to Cursor':'Set up '+({claude:'Claude Code',codex:'Codex'}[choice]||choice);
+      manual.open=false;manual.querySelector('summary').hidden=false;
+      setup.querySelector('#post-plugin-command-label').textContent=route.link?'Add this in Settings, Tools and MCP:':'Run in Terminal:';
+      setup.querySelector('#post-plugin-command').textContent=route.command;
       setup.querySelector('#post-plugin-copy').dataset.copy=route.command;
-      setup.querySelector('#post-plugin-next').textContent=route.next;
+      setup.querySelector('#post-plugin-next').textContent='After setup, give your agent a STRIVE link. It can help you preview a session before saving.';
+    };
+    setup.querySelectorAll('[data-editor-choice]').forEach(b=>b.onclick=()=>{editor.value=b.dataset.editorChoice;editor.dispatchEvent(new Event('change',{bubbles:true}));});
+    editor.addEventListener('change',()=>{
+      for(const name of ['localStorage','sessionStorage']){try{root[name].setItem(storageKey,editor.value)}catch(_){}}
+      paint();
     });
-    scope.querySelectorAll('[data-post-source]').forEach(button=>button.addEventListener('click',()=>{
-      const source=button.dataset.postSource;
-      if(source==='grok'){
-        scope.querySelector('.post-agent-entry').hidden=false;
-        scope.querySelector('#post-quick-start').hidden=true;
-        setImportStep(scope,1);
-        scope.querySelector('.post-agent-entry')?.scrollIntoView({block:'center',behavior:'smooth'});
-        scope.querySelector('.post-agent-entry button')?.focus({preventScroll:true});return;
-      }
-      scope.querySelector('.post-agent-entry').hidden=true;
-      const quick=scope.querySelector('#post-quick-start');quick.hidden=false;
-      scope.querySelector('#post-quick-title').textContent=source==='bb'?'Export this bb thread':'Copy to Terminal to open your '+({claude:'Claude Code',cursor:'Cursor',codex:'Codex'}[source]||'agent')+' session picker';
-      scope.querySelector('#post-quick-command').textContent=button.dataset.command;
-      scope.querySelector('#post-quick-copy').dataset.copy=button.dataset.command;
-      const fallback=source==='bb'?button.dataset.command:button.dataset.command.replace(/^uvx --from /,'pipx run --spec ');
-      scope.querySelector('#post-pipx-command').textContent=fallback;scope.querySelector('#post-pipx-copy').dataset.copy=fallback;
-      scope.querySelectorAll('[data-post-source]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
-      setImportStep(scope,1);
-      const selectedName={claude:'Claude Code',cursor:'Cursor',codex:'Codex',bb:'bb'}[source];
-      scope.querySelectorAll('.post-file-entry [data-agent-folder]').forEach(row=>row.hidden=row.dataset.agentFolder!==selectedName);
-      quick.scrollIntoView({block:'nearest',behavior:'smooth'});
-    }));
+    const modal=setup.querySelector('#connect-alternatives'),opener=setup.querySelector('#connect-alternatives-open');opener.onclick=()=>modal.showModal();setup.querySelector('#connect-alternatives-close').onclick=()=>modal.close();
+    // WebKit can otherwise skip every button when macOS keyboard navigation is off.
+    modal.addEventListener('keydown',event=>{
+      if(event.key!=='Tab')return;
+      const controls=[...modal.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter(el=>el.tabIndex>=0&&[...el.getClientRects()].some(r=>r.width>0&&r.height>0)&&getComputedStyle(el).visibility!=='hidden');
+      if(!controls.length)return;
+      event.preventDefault();const index=controls.indexOf(document.activeElement),next=index<0?(event.shiftKey?controls.length-1:0):(index+(event.shiftKey?-1:1)+controls.length)%controls.length;controls[next].focus();
+    });
+    modal.addEventListener('close',()=>{if(opener.isConnected)opener.focus();});
+
+    paint();
   }
 
   function mountImport(scope,photoOptions={}){
@@ -117,8 +70,8 @@
     const hints=[...body.children].filter(node=>node.tagName==='P');
     const composer=document.createElement('div');composer.className='post-composer';
     composer.innerHTML=`<nav class="post-flow-nav" aria-label="Run steps">${names.map((name,i)=>`<button type="button" class="ghost" data-post-step="${i}" aria-controls="post-pane-${i}"><span>${i+1}</span>${name}</button>`).join('')}</nav>
-      <section class="post-flow-pane" id="post-pane-0" aria-label="Preview"><p class="post-flow-intro">Check the session you brought in. You can edit how it reads on the next step.</p><div class="post-flow-preview"></div><div class="post-flow-actions"><button type="button" class="act blue" data-post-next="1">Add your story</button></div></section>
-      <section class="post-flow-pane" id="post-pane-1" aria-label="Your story" hidden><h2 tabindex="-1">What happened?</h2><div class="post-flow-fields"></div><div class="post-photo-slot"></div><div class="post-flow-actions"><button type="button" class="act" data-post-next="0">Back</button><button type="button" class="act blue" data-post-next="2">Choose audience</button></div></section>
+      <section class="post-flow-pane" id="post-pane-0" aria-label="Preview"><p class="post-flow-intro">Check the session you brought in. You can edit how it reads on the next step.</p><div class="post-flow-preview"></div><div class="post-flow-actions"><button type="button" class="act" data-post-next="1">Add your story (optional)</button></div></section>
+      <section class="post-flow-pane" id="post-pane-1" aria-label="Your story" hidden><h2 tabindex="-1">What happened?</h2><div class="post-flow-fields"></div><div class="post-photo-slot"></div><div class="post-flow-actions"><button type="button" class="act" data-post-next="0">Back</button><button type="button" class="act" data-post-next="2">Choose audience</button></div></section>
       <section class="post-flow-pane" id="post-pane-2" aria-label="Audience" hidden><h2 tabindex="-1">Who can see this?</h2><div class="post-flow-audience"></div><div class="post-flow-actions"><button type="button" class="act" data-post-next="1">Back</button></div><div class="post-flow-recovery"></div></section>`;
     const review=scope.querySelector('#import-sharing-review');
     if(review){scope.querySelector('#import-card-heading')?.closest('section')?.remove();composer.insertBefore(review,composer.querySelector('#post-pane-0'));previewSection?.querySelector('[data-share-audience-choice]')?.append(audience.closest('label'));}
@@ -143,7 +96,10 @@
       }
       step=next;
       composer.querySelectorAll('.post-flow-pane').forEach((pane,i)=>{pane.hidden=i!==next;});
-      const actions=composer.querySelector('#post-pane-'+next+' .post-flow-actions'),height=actions?.getBoundingClientRect().height||68;composer.style.setProperty('--post-action-height',height+'px');
+      const actions=composer.querySelector('#post-pane-'+next+' .post-flow-actions');
+      // Keep the actual save/recovery controls available on Preview; story edits are optional.
+      actions.append(save);actions.after(recover);
+      const height=actions.getBoundingClientRect().height||68;composer.style.setProperty('--post-action-height',height+'px');
       composer.querySelectorAll('[data-post-step]').forEach((button,i)=>{button.classList.toggle('is-done',i<next);if(i===next)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');});
       try{root.sessionStorage.setItem(storageKey,String(next))}catch(_){}
       const barHeight=document.querySelector('.bar')?.getBoundingClientRect().height||64;composer.style.setProperty('--post-bar-height',barHeight+'px');composer.style.setProperty('--import-header-offset',(barHeight+composer.querySelector('.post-flow-nav').getBoundingClientRect().height+8)+'px');

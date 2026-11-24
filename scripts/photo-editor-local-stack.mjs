@@ -47,6 +47,13 @@ if(process.env.STRIVE_TEST_SAVED_RUNS){
     await db.query("insert into strava.runs(id,profile_id,title,visibility,started_at,harness,schema_version,trace_basis,prompts,rhythm,measurement_revision) values($1,$2,$3,'private',now(),'Claude Code',1,'elapsed-agent-tool-calls',1,'[1]'::jsonb,repeat(md5(($1::uuid)::text),2))",[id,CASEY,title]).then(()=>visibility==='private'?null:db.query("update strava.runs set visibility=$2 where id=$1",[id,visibility]));
   await db.query("insert into strava.acks(run_id,from_profile,to_profile,reason) values('a2000000-0000-0000-0000-000000000081',$1,$2,'appreciated')",[RILEY,CASEY]);
 }
+if(process.env.STRIVE_TEST_AUDIENCES){
+  // Profile with every audience, TEST DATA: one run per audience; Riley follows Casey and is her close friend.
+  await db.query("insert into strava.close_friends(owner_profile_id,friend_profile_id) values($1,$2) on conflict do nothing",[CASEY,RILEY]);
+  for(const [id,title,visibility] of [['a2000000-0000-0000-0000-000000000071','TEST DATA everyone run','public'],['a2000000-0000-0000-0000-000000000072','TEST DATA followers run','link'],['a2000000-0000-0000-0000-000000000073','TEST DATA close friends run','close_friends'],['a2000000-0000-0000-0000-000000000074','TEST DATA only me run','private']])
+    await db.query("insert into strava.runs(id,profile_id,title,visibility,started_at,harness,schema_version,trace_basis,prompts,rhythm,measurement_revision) values($1,$2,$3,'private',now(),'Claude Code',1,'elapsed-agent-tool-calls',1,'[1]'::jsonb,repeat(md5(($1::uuid)::text),2))",[id,CASEY,title]).then(()=>visibility==='private'?null:db.query("update strava.runs set visibility=$2 where id=$1",[id,visibility]));
+  await db.query("insert into strava.grinder_follows(follower_id,followed_id) values($1,$2) on conflict do nothing",[RILEY,CASEY]);
+}
 const shim=await startDisposableServer(db);
 const bucket=new Map();
 const objectKey=url=>decodeURIComponent(new URL(url).pathname.replace(/^\/storage\/v1\/object\/(authenticated\/)?strive-run-photos\/?/,''));

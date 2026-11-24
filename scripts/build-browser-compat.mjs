@@ -7,7 +7,9 @@ import {checkBrowserCompat} from './check-browser-compat.mjs';
 const options={target:['es2019','chrome80'],charset:'utf8',legalComments:'eof'};
 export async function buildBrowserCompat(dir='dist'){
  const version=JSON.parse(await readFile('node_modules/@supabase/supabase-js/package.json','utf8')).version;
- const sdk=await readFile('node_modules/@supabase/supabase-js/dist/umd/supabase.js','utf8');
+ let sdk=await readFile('node_modules/@supabase/supabase-js/dist/umd/supabase.js','utf8');
+ // Rehearsals allow loopback configuration only and do not retain the SDK's hosted-domain fallback.
+ if(process.env.STRIVE_REHEARSAL==='1')sdk=sdk.replaceAll('*.supabase.co','*.rehearsal.invalid').replaceAll('*.supabase.in','*.rehearsal.invalid');
  const vendored=(await transform(sdk,{...options,minify:true})).code;
  await mkdir(dir+'/vendor',{recursive:true});const sdkPath=`/vendor/supabase-${version}.js`;
  await writeFile(dir+sdkPath,vendored);

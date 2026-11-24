@@ -1,0 +1,62 @@
+/* Who can see this. The two ends carry weight: Everyone is solid blue, Only me is solid ink.
+   Followers and Close friends sit between on the blue wash. The ring mark counts the reach. */
+.aud-mark{flex:none;display:block}
+.aud-pill{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:0 12px 0 9px;border-radius:999px;font-size:14px;font-weight:600;line-height:1;text-decoration:none;white-space:nowrap;max-width:100%;box-sizing:border-box;border:1px solid transparent;-webkit-tap-highlight-color:transparent}
+.aud-pill .aud-label{overflow:hidden;text-overflow:ellipsis}
+.aud-pill .aud-change{font-weight:500;opacity:.8;padding-left:8px;margin-left:2px;border-left:1px solid currentColor}
+a.aud-pill:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.aud-public{background:var(--blue);color:#fff}
+.aud-link,.aud-close-friends{background:var(--blue-wash);color:var(--blue);border-color:var(--blue-soft)}
+.aud-private{background:var(--ink);color:#fff}
+a.aud-pill:active{transform:translateY(1px)}
+@media (hover:hover){a.aud-pill:hover .aud-change{opacity:1;text-decoration:underline}}
+/* Run page: the pill is the first thing on the owner's card. */
+.run-detail-card>.aud-run{padding:16px 16px 0;margin:0}
+.dc-audience-pill{margin:0 0 10px}
+.dc-audience-pill .aud-pill{min-height:30px;font-size:13px;padding:0 10px 0 7px}
+/* Post form: audience sits under the heading, before any typing. */
+.aud-post{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;margin:0 0 18px}
+.aud-post>span{font-size:14px;color:var(--soft)}
+.aud-post button.aud-pill{cursor:pointer;font:inherit;font-size:14px;font-weight:600}
+/* The picker. Big rows, one line of plain consequence each. */
+.aud-dialog{border:1px solid var(--rule);border-radius:16px;padding:22px 20px 18px;width:min(460px,calc(100vw - 24px));box-sizing:border-box}
+.aud-dialog::backdrop{background:#14213d55}
+.aud-dialog h2{font-size:22px;margin:0 0 14px}
+.aud-options{display:grid;gap:8px}
+.aud-option{display:grid;grid-template-columns:20px 22px 1fr;align-items:start;gap:10px;padding:13px 12px;border:1px solid var(--rule);border-radius:12px;cursor:pointer;background:var(--box);color:var(--ink)}
+.aud-option input{margin:2px 0 0;width:18px;height:18px;accent-color:var(--blue)}
+.aud-option .aud-mark{color:var(--blue);margin-top:1px}
+.aud-option.aud-private .aud-mark{color:var(--ink)}
+.aud-option-text{display:grid;gap:3px;font-size:14px;line-height:1.35}
+.aud-option-text strong{font-size:16px}
+.aud-option-text span{color:var(--soft)}
+.aud-option-text em{font-style:normal;font-size:13px;font-weight:600;color:var(--ink)}
+.aud-option:has(input:checked){border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue);background:var(--blue-wash)}
+.aud-option.aud-private:has(input:checked){border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);background:var(--paper)}
+.aud-empty{font-size:13px}
+.aud-state{min-height:1.2em;margin:10px 0 0;font-size:14px}
+.aud-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+.aud-actions .aud-save{flex:1 1 auto;min-height:46px}
+/* Profile: the owner's map of who sees what. Never rendered for visitors or in preview. */
+.aud-profile{border:1px solid var(--rule);border-radius:14px;background:var(--box);padding:16px;margin:14px 0}
+.aud-profile-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.aud-profile-head h2{font-size:17px;margin:0}
+.aud-profile-head a,.aud-profile-people a{font-size:14px}
+.aud-profile-lead{margin:6px 0 12px;font-size:14px;color:var(--soft)}
+.aud-profile-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.aud-count{display:grid;justify-items:center;gap:4px;padding:10px 4px;border-radius:10px;text-decoration:none;font-size:12px;font-weight:600;text-align:center;border:1px solid transparent}
+.aud-count strong{font-size:20px;line-height:1}
+.aud-profile-people{margin:12px 0 0;font-size:14px;line-height:1.6}
+/* Settings: the same four words, with what each one means. */
+.aud-legend{list-style:none;padding:0;margin:12px 0 16px;display:grid;gap:10px}
+.aud-legend li{display:grid;grid-template-columns:22px 1fr;gap:10px;font-size:14px;line-height:1.4;color:var(--soft)}
+.aud-legend li strong{color:var(--ink)}
+.aud-legend .aud-mark{color:var(--blue);margin-top:1px}
+.aud-settings-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}
+.aud-settings-actions .v2-button{padding:0 14px}
+.aud-settings-people{display:grid;gap:16px}
+.aud-settings-people h3{font-size:15px;margin:0 0 4px}
+.aud-settings-people p{margin:0 0 8px}
+.aud-followers{list-style:none;padding:0;margin:0 0 8px;display:grid;gap:4px;font-size:14px}
+.aud-profile-head a,.aud-profile-people a{color:var(--blue);text-decoration:none}
+.run-detail-card>.aud-run-reader{padding-right:150px}

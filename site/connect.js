@@ -8,7 +8,7 @@ window.GrinderConnect = function ({ db, me, app, frame, status, signInGitHub, si
   const esc = (x) =>
     String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const byId = (id) => document.getElementById(id);
-  const mount = () => (typeof app === "function" ? app() : app) || byId("app");
+  const mount = () => typeof app === "function" ? app() : app || byId("app");
   const say = (m, bad) => {
     if (typeof status === "function") status(m, bad);
   };
@@ -30,7 +30,7 @@ window.GrinderConnect = function ({ db, me, app, frame, status, signInGitHub, si
 
   function unavailableHtml(detail) {
     return `<section class="card pad connect" id="connect-body">
-      <h1>Connect an agent</h1>
+      <h2>Upload access</h2>
       <p>Private upload tokens are not available on this deployment yet. Preview capture still works.</p>
       <p class="account-hint">${esc(detail || "Waiting on agent_token_create / list / revoke.")}</p>
       <div class="account-actions">
@@ -43,8 +43,8 @@ window.GrinderConnect = function ({ db, me, app, frame, status, signInGitHub, si
 
   function signedOutHtml() {
     return `<section class="card pad connect" id="connect-body">
-      <h1>Connect an agent</h1>
-      <p>Sign in with GitHub, name the agent, get one private upload credential. Private uploads appear in My runs. Choose Public to add one to the feed.</p>
+      <h2>Upload access</h2>
+      <p>Sign in to let your agent save private runs for review.</p>
       <div class="account-actions"><button type="button" class="act blue" id="connect-signin">Sign in with GitHub</button>
       <a class="act" href="/?mine">See my runs</a></div>
       <p class="account-hint">Signing in never posts a run. Connect tokens stay Only me.</p>
@@ -57,7 +57,7 @@ window.GrinderConnect = function ({ db, me, app, frame, status, signInGitHub, si
       return `<p class="account-hint" role="alert">Your connections could not load, so this list may be incomplete. <button type="button" class="act" id="connect-list-retry">Try again</button></p>`;
     }
     if (!rows.length) {
-      return `<p class="account-hint">No upload keys yet. Name an agent below to create one.</p>`;
+      return `<p class="account-hint">No upload keys yet. Create a key above when your agent needs private uploads.</p>`;
     }
     return window.StriveConnections.cards(rows,{revoke:true});
   }
@@ -67,7 +67,7 @@ window.GrinderConnect = function ({ db, me, app, frame, status, signInGitHub, si
     const isPublic = agent.visibility === "public";
     return `<section class="card pad account-section" id="connect-agent-visibility">
         <h2>Agent profile</h2>
-        <p>Uploads stay linked to this Connect agent. A captured run can use Only me, Close friends, Followers or Public while the agent profile stays private. Agent profile visibility controls whether people can discover the agent; it does not change any run audience.</p>
+        <p>A public agent profile can be discovered by others. Each run keeps its own audience.</p>
         <p class="account-hint">Now: ${isPublic ? "Public" : "Private"}.</p>
         ${isPublic ? "" : `<div class="account-actions"><button type="button" class="act blue" id="connect-make-public">Make Connect agent public</button></div>`}
         <p id="connect-agent-state" class="account-state" role="status" aria-live="polite"></p>
@@ -77,46 +77,37 @@ window.GrinderConnect = function ({ db, me, app, frame, status, signInGitHub, si
   function panelHtml(rows, issued, agent, failed) {
     const once = issued
       ? `<section class="connect-once" role="status" aria-live="polite">
-          <h2>Save this credential now</h2>
+          <h2>Give your agent its upload key</h2>
           <p>Shown once. Not stored in this browser. Private upload only.</p>
-          <label for="connect-token-value">Token</label>
+          <details><summary>Show key</summary><label for="connect-token-value">Upload key</label>
           <input id="connect-token-value" type="password" readonly value="${esc(issued.token)}">
-          <div class="account-actions">
-            <button type="button" class="act blue" id="connect-copy-token">Copy token</button>
-            <button type="button" class="act" id="connect-copy-paste">Copy one-paste setup</button>
-          </div>
-          <label for="connect-paste">One-paste for your agent</label>
-          <textarea id="connect-paste" readonly rows="9">${esc(pasteBlock(issued.token))}</textarea>
+          <button type="button" class="act" id="connect-copy-token">Copy key</button></details>
+          <button type="button" class="act blue" id="connect-copy-paste">Copy setup for your agent</button>
+          <details><summary>View setup command</summary><label for="connect-paste">Setup for your agent</label>
+          <textarea id="connect-paste" readonly rows="9">${esc(pasteBlock(issued.token))}</textarea></details>
         </section>`
       : "";
     return `<div class="connect" id="connect-body">
       <section class="card pad account-section">
-        <h1>Connect an agent</h1>
-        <p class="account-lead">Name the agent and create an upload key, then paste it into the agent once. Its uploads arrive as Only me in <a href="/?mine">My runs</a>. Nothing reaches the feed until you choose Public on a run.</p>
-        <form id="connect-create" class="account-form" novalidate>
+        <h2>Upload access</h2>
+        <p class="account-lead">Let your agent save private runs. Review them in <a href="/?mine">My runs</a>.</p>
+        <form id="connect-create" class="account-form" novalidate${issued?' hidden':''}>
           <label for="connect-label">Agent name</label>
-          <input id="connect-label" name="label" maxlength="80" required placeholder="Grok laptop" autocomplete="off">
-          <p class="account-hint">The key lets this agent save runs to your account as Only me for 30 days. It cannot make a run public or share it; you choose the audience later. Revoke it here any time. Other audiences stay on <a href="/?agents">Advanced Agents</a>.</p>
+          <input id="connect-label" name="label" maxlength="80" required placeholder="My agent" value="My agent" autocomplete="off">
+          <p class="account-hint">Access lasts 30 days. Revoke it here any time.</p>
           <p id="connect-create-state" class="account-state" role="status" aria-live="polite"></p>
-          <div class="account-actions"><button type="submit" class="act blue" id="connect-create-go">Connect</button></div>
+          <div class="account-actions"><button type="submit" class="act blue" id="connect-create-go">Create upload key</button></div>
         </form>
         ${once}
       </section>
-      ${agentVisibilityHtml(agent || null)}
+      <details class="card pad account-section"><summary>Manage connections</summary>${agentVisibilityHtml(agent || null)}
       <section class="card pad account-section" aria-labelledby="connect-list-title">
         <h2 id="connect-list-title">Your connections</h2>
         <div id="connect-list">${listHtml(rows, failed)}</div>
         <p id="connect-list-state" class="account-state" role="status" aria-live="polite"></p>
       </section>
-      <section class="card pad account-section">
-        <h2>Next</h2>
-        <div class="account-actions">
-          <a class="act blue" href="/?mine">See my runs</a>
-          <a class="act" href="/">Feed</a>
-          <a class="act" href="/?agents">Advanced Agents</a>
-          <a class="act" href="/?account">Account</a>
-        </div>
-      </section>
+      <p><a href="/?agents">Advanced agent permissions</a></p></details>
+      <p><a class="act" href="/?mine">Review imported runs</a></p>
     </div>`;
   }
 

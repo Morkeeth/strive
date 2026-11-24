@@ -6,7 +6,7 @@
   const ACCEPT=['image/jpeg','image/png','image/webp'];
   // The label on a photo is the run's audience. A hidden photo, or an audience this
   // file does not know, reads as the narrowest case. It never says Public by default.
-  const AUDIENCE={private:'Only you',close_friends:'Close friends',link:'Followers',public:'Public'};
+  const AUDIENCE={private:'Only me',close_friends:'Close friends',link:'Followers',public:'Everyone'};
   const AUDIENCE_NOTE={private:'Only you can see this run and its photos.',close_friends:'Close friends who can read this run see this photo.',link:'Followers who can read this run see this photo.',public:'Anyone who can read this run sees this photo.'};
   const known=audience=>Object.hasOwn(AUDIENCE,audience)?audience:'private';
   const audienceLabel=(audience,hidden=false)=>hidden?'Hidden':AUDIENCE[known(audience)];

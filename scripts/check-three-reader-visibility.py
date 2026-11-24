@@ -40,6 +40,7 @@ _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
 
 SB_ORIGIN = _mod.SB_ORIGIN
+RIDGE_SELECTOR = _mod.RIDGE_SELECTOR
 Handler = _mod.Handler
 mint = _mod.mint
 session = _mod.session
@@ -97,11 +98,12 @@ def page_surface(context, base: str, run_id: str) -> dict:
     page = context.new_page()
     try:
         page.goto(base + "/?run=" + run_id, wait_until="networkidle")
-        return page.evaluate(
-            "() => ({ridge: !!document.querySelector('.post-trail svg .activity-bar'),"
-            " title: document.body.innerText.includes('TEST DATA close friends ridge')"
+        result = page.evaluate(
+            "() => ({title: document.body.innerText.includes('TEST DATA close friends ridge')"
             "        || document.body.innerText.includes('TEST DATA public ridge'),"
             " caption: document.body.innerText.includes('TEST DATA private caption')})")
+        result["ridge"] = page.locator(RIDGE_SELECTOR).is_visible()
+        return result
     finally:
         page.close()
 
@@ -215,10 +217,10 @@ def main() -> int:
     owner_page = by_key[("owner", "page, close_friends run")]
     friend_page = by_key[("close friend", "page, close_friends run")]
     excluded_page = by_key[("excluded", "page, close_friends run")]
-    if not owner_page["ridge"]:
-        failures.append("the owner cannot see their own ridge")
-    if not friend_page["ridge"]:
-        failures.append("a listed close friend cannot see the ridge")
+    if not all(owner_page.values()):
+        failures.append("the owner cannot see their own title, caption or ridge")
+    if not all(friend_page.values()):
+        failures.append("a listed close friend cannot see the title, caption or ridge")
     if excluded_page["ridge"] or excluded_page["title"] or excluded_page["caption"]:
         failures.append("the excluded reader sees the close friends run on the page")
 

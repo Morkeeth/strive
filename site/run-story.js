@@ -20,5 +20,6 @@ function read(root){return Object.fromEntries(fields.map(([k,,max])=>{const valu
 function summary(r){const text=String(r.story_result||r.caption||r.note||'').trim();return text.length>240?text.slice(0,237).trimEnd()+'…':text;}
 // Images are served through the run photo API, under the run audience. Working links stay links.
 function visual(){return '';}
-const api={detail,editor,read,fields,visual,summary,highlights,source};root.StriveStory=api;if(typeof module!=='undefined')module.exports=api;
+function linkAttribution(r){const data=r?.link_preview;if(!data?.imageSource||data.source!==r.output_url)return '';try{const u=new URL(data.source);if(!['http:','https:'].includes(u.protocol))return '';return '<p class="hint link-preview-source">Link preview from '+esc(u.hostname)+'. Source artwork.</p>';}catch{return '';}}
+const api={linkAttribution,detail,editor,read,fields,visual,summary,highlights,source};root.StriveStory=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

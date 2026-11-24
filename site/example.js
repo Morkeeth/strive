@@ -50,7 +50,7 @@
     try {
       data = await fetchExample();
     } catch (e) {
-      app.innerHTML = `<div class="card"><h2>Bundled example unavailable</h2><p>${esc(e.message)}</p><p>Bring your own run stays private: <a href="/?onboard">local import</a>.</p></div>`;
+      app.innerHTML = `<div class="card"><h2>Bundled example unavailable</h2><p>${esc(e.message)}</p><p>Bring your own run stays private: <a href="/?connect">local import</a>.</p></div>`;
       return;
     }
     const state = loadState();
@@ -142,7 +142,7 @@
           state.secondReview
             ? `<p><strong>Second builder decision: ${esc(state.secondReview.decision)}</strong> · ${esc(state.secondReview.note)}</p>
             <p class="hint">Audience revocation on the source would hide the author's excerpt here and keep this person's own baseline, review and outcome. This demo does not leak revoked source text.</p>
-            <div class="cta"><a class="act" href="/?example=share">Share my outcome</a><a href="/?onboard">Bring my own run</a></div>`
+            <div class="cta"><a class="act" href="/?example=share">Share my outcome</a><a href="/?connect">Bring my own run</a></div>`
             : `<form id="ex-second"><label>Decision<select name="decision"><option value="keep">Keep</option><option value="change">Change</option><option value="drop">Drop</option><option value="incomparable">Incomparable</option></select></label>
           <label>Your observed outcome<textarea name="note" required maxlength="4000"></textarea></label>
           <button>Save my outcome</button></form>`
@@ -156,7 +156,7 @@
     const byo = `<section class="panel"><div class="pad"><h2>Bring your own sitting</h2><p>Supported Claude Code, Cursor or Codex transcripts stay on your machine. Import starts <strong>private</strong>. You review counts and coach notes before anything is public.</p>
       <div class="cmd"><span class="c">${typeof INSTALL_CMD === "string" ? INSTALL_CMD : "python3 -m agentgrinder grind"}</span></div>
       <p class="hint">Then <code>python3 -m agentgrinder grind --push</code> opens a preview. Default audience is only you.</p>
-      <a href="/?onboard">Local import instructions</a></section>`;
+      <a href="/?connect">Local import instructions</a></section>`;
 
     app.innerHTML = `<section class="landing-intro"><p class="meta">I TRIED THIS. SHOW ME WHAT CHANGED.</p>
       <h1>One sitting. One experiment.</h1>

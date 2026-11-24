@@ -2,6 +2,7 @@
    are going on, wow homey. then find some friends, most popular runs. and then boom login").
    In that order: This week, Clubs, Builders, Popular runs, then the sign-in ask.
 
+   Signed-in authors see an owner-only saved-update week; signed-out readers see public starts.
    Every row is a real row. A section with nothing in it says so in one line; nothing is seeded,
    sampled or invented. The one device is the week strip: the last seven days of public runs as
    bars and the next seven days of events as marks, so the page shows the club's week, not a pitch.
@@ -28,8 +29,9 @@
   }
 
   // runs or events may be null: that read failed, and the line says so instead of "none".
-  function weekHtml(runs, events, now, {showEvents=true}={}) {
-    const activityRuns=showEvents?(runs||[]):(runs||[]).filter(r=>Number.isFinite(Date.parse(r.started_at))).map(r=>({...r,created_at:r.started_at}));
+  function weekHtml(runs, events, now, {showEvents=true,audience='public'}={}) {
+    const scopedRuns=audience==='mine'?(runs||[]):(runs||[]).filter(r=>!r.visibility||r.visibility==='public');
+    const activityRuns=showEvents?scopedRuns:scopedRuns.filter(r=>Number.isFinite(Date.parse(r.started_at))).map(r=>({...r,created_at:r.started_at}));
     const { days, today } = week(activityRuns, showEvents?(events || []):[], now);
     if(!showEvents)days.splice(7);
     const max = Math.max(1, ...days.map((d) => d.runs));
@@ -37,16 +39,17 @@
       const wd = new Date(d.t).toLocaleDateString("en-GB", { weekday: "narrow" });
       const n = new Date(d.t).getDate();
       const past = d.t < today, isToday = d.t === today;
-      const bar = d.runs ? `<span class="wk-bar" style="--h:${Math.round((d.runs / max) * 100)}%" title="${d.runs} public run${d.runs === 1 ? "" : "s"}"></span>` : "";
+      const bar = d.runs ? `<span class="wk-bar" style="--h:${Math.round((d.runs / max) * 100)}%" title="${d.runs} ${audience==='mine'?'your update':'public run'}${d.runs === 1 ? "" : "s"}"></span>` : "";
       const mark = d.events.length ? `<a class="wk-ev" href="/?event=${esc(d.events[0].id)}" title="${esc(d.events[0].title)}"><span class="sr">${esc(d.events[0].title)}</span></a>` : "";
       return `<li class="wk-day${past ? " past" : ""}${isToday ? " today" : ""}"><span class="wk-plot">${bar}${mark}</span><span class="wk-d">${esc(wd)}</span><span class="wk-n">${n}</span></li>`;
     }).join("");
     const ran = days.reduce((a, d) => a + d.runs, 0);
     const coming = days.reduce((a, d) => a + d.events.length, 0);
-    const runPart = runs === null ? "Runs could not load" : ran ? ran + " public run" + (ran === 1 ? "" : "s") + " in the last 7 days" : "No public runs in the last 7 days";
+    const noun=audience==='mine'?'your update':'public run';
+    const runPart = runs === null ? "Runs could not load" : audience==='mine' ? (ran?ran+" of your updates in the last 7 days":"No saved updates in the last 7 days") : ran ? ran + " "+noun + (ran === 1 ? "" : "s") + " in the last 7 days" : "No "+noun+"s in the last 7 days";
     const eventPart = events === null ? "events could not load" : coming ? coming + " event" + (coming === 1 ? "" : "s") + " in the next 7" : "no events in the next 7";
     const line = showEvents?`${runPart} · ${eventPart}`:runPart;
-    return `<ol class="wk" aria-label="This week on __BRAND__">${cols}</ol><p class="wk-line">${esc(line)}</p>`;
+    return `<ol class="wk" aria-label="${audience==='mine'?'Your saved updates this week':'This week on __BRAND__'}">${cols}</ol><p class="wk-line">${esc(line)}</p>`;
   }
 
   function eventRow(e) {
@@ -95,15 +98,60 @@
   const runsQuery = (sb) => sb.from("runs").select("*, profiles!runs_profile_id_fkey(github_handle,name,rig,handle,display_name,avatar_url)")
     .eq("visibility", "public").order("started_at", { ascending: false, nullsFirst: false }).order("id", { ascending: false }).limit(300);
 
+  // One head-started guest read shared by baseline + feed; null means miss/fail, not empty.
+  let earlyRowsShared, earlyRowsForRead = true, earlyRowsForToken = true;
+  async function takeEarlyRows() {
+    if (earlyRowsShared !== undefined) return earlyRowsShared;
+    const feed = root.__striveEarlyFeed;
+    if (!feed || typeof feed.at !== "number" || Date.now() - feed.at >= 15000 || !feed.rows) {
+      earlyRowsShared = null;
+      return null;
+    }
+    const pending = feed.rows;
+    delete feed.rows;
+    try {
+      const rows = await pending;
+      earlyRowsShared = Array.isArray(rows) ? rows : null;
+    } catch (_) {
+      earlyRowsShared = null;
+    }
+    return earlyRowsShared;
+  }
+  function tokenFromRows(rows) {
+    const ids = rows.map((row) => row.id);
+    return ids.length ? ids.join(":") : "empty";
+  }
+
+  async function readOwnerWeek(sb,owner,now=Date.now()) {
+    if(!owner)return {runs:null};
+    try {
+      const since=new Date(addDays(now,-6)).toISOString();
+      const result=await sb.from('runs').select('id,profile_id,started_at,visibility').eq('profile_id',owner).gte('started_at',since).lte('started_at',new Date(now).toISOString()).order('started_at',{ascending:false}).limit(300);
+      return {runs:result.error?null:(result.data||[]).filter(r=>r.profile_id===owner)};
+    }catch(_){return {runs:null};}
+  }
+
   // The feed with Clubs and Events hidden reads runs only; null still means the read failed.
   async function readRuns(sb) {
-    try { return { runs: await runsQuery(sb).then((r) => (r.error ? null : r.data || []), () => null) }; } catch (_) { return { runs: null }; }
+    try {
+      if (earlyRowsForRead) {
+        earlyRowsForRead = false;
+        const early = await takeEarlyRows();
+        if (Array.isArray(early)) return { runs: early };
+      }
+      return { runs: await runsQuery(sb).then((r) => (r.error ? null : r.data || []), () => null) };
+    } catch (_) { return { runs: null }; }
   }
 
   // A small polling read for the open feed. The ordered IDs are the membership of the same
   // 300-row window as the feed, so a public/private swap cannot collide at an unchanged count.
   async function latestRunToken(sb) {
     try {
+      if (earlyRowsForToken) {
+        earlyRowsForToken = false;
+        const early = await takeEarlyRows();
+        if (Array.isArray(early)) return tokenFromRows(early);
+      }
       const response=await sb.from("runs").select("id").eq("visibility","public")
         .order("started_at",{ascending:false,nullsFirst:false}).order("id",{ascending:false}).limit(300);
       if(response.error)return null;
@@ -145,7 +193,7 @@
     return `<section class="home-community" aria-label="Clubs and events"><div class="hc-col"><div class="land-head"><h2>Events</h2></div>${events}</div><div class="hc-col"><div class="land-head"><h2 id="h-clubs">Clubs</h2><a href="/?crews">${data.clubs && data.clubs.length ? "All clubs" : "Start or join a club"}</a></div>${clubs}</div></section>`;
   }
 
-  const api = { week, weekHtml, eventRow, clubRow, community, builders, popular, popularDays, read, readRuns, latestRunToken };
+  const api = { week, weekHtml, readOwnerWeek, eventRow, clubRow, community, builders, popular, popularDays, read, readRuns, latestRunToken };
   root.GrinderHome = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

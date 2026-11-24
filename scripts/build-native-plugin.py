@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Build the public native plugin download from source, without local state."""
+import os
 import hashlib
 import base64
 import importlib.util
@@ -19,7 +20,8 @@ MCP_INSTALL_LINK = 'cursor://anysphere.cursor-deeplink/mcp/install?name=strive&c
 spec = importlib.util.spec_from_file_location('installer', ROOT/'scripts/strive-plugin.py')
 installer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(installer)
-out = ROOT/'dist/plugins'
+DIST = Path(os.environ.get('STRIVE_BUILD_OUTPUT', str(ROOT/'dist'))).resolve()
+out = DIST/'plugins'
 out.mkdir(parents=True, exist_ok=True)
 with tempfile.TemporaryDirectory(prefix='strive-public-plugin-') as folder:
     bundle = installer.build(Path(folder)/'strive')
@@ -151,8 +153,9 @@ print('Built STRIVE native plugin '+manifest['version']+' '+sha)
 
 # The visual install page carries the same pinned server; dist/install.html is the copy build-site made.
 # The Add run editor routes in dist/index.html carry it too; there the values sit in a script string, so no HTML escaping.
-for name, link in (('install.html', MCP_INSTALL_LINK.replace('&', '&amp;')), ('index.html', MCP_INSTALL_LINK)):
-    page = ROOT/'dist'/name
+# /install redirects to the canonical connection journey; only that app owns install controls.
+for name, link in (('index.html', MCP_INSTALL_LINK),):
+    page = DIST/name
     html = page.read_text()
     for token, value in (('__STRIVE_MCP_SPEC__', PACKAGE_SPEC), ('__STRIVE_MCP_INSTALL_LINK__', link)):
         if token not in html:

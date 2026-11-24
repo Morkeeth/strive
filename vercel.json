@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
+  "regions": ["fra1"],
   "git": {
     "deploymentEnabled": {
       "codex/**": false,
@@ -11,8 +12,47 @@
   "cleanUrls": true,
   "outputDirectory": "dist",
   "redirects": [
-    {"source":"/","has":[{"type":"query","key":"run","value":"(?<run>[0-9a-fA-F-]{36})"}],"missing":[{"type":"query","key":"legacy"}],"destination":"/api/legacy?run=:run","permanent":false},
-    {"source":"/","has":[{"type":"query","key":"u","value":"(?<handle>[A-Za-z0-9_-]{1,40})"}],"missing":[{"type":"query","key":"legacy"}],"destination":"/api/legacy?u=:handle","permanent":false}
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "run",
+          "value": "(?<run>[0-9a-fA-F-]{36})"
+        }
+      ],
+      "missing": [
+        {
+          "type": "query",
+          "key": "legacy"
+        }
+      ],
+      "destination": "/api/legacy?run=:run",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "u",
+          "value": "(?<handle>[A-Za-z0-9_-]{1,40})"
+        }
+      ],
+      "missing": [
+        {
+          "type": "query",
+          "key": "legacy"
+        }
+      ],
+      "destination": "/api/legacy?u=:handle",
+      "permanent": false
+    },
+    {
+      "source": "/install",
+      "destination": "/?connect",
+      "permanent": false
+    }
   ],
   "crons": [
     {
@@ -26,8 +66,12 @@
   ],
   "rewrites": [
     {
-      "source": "/install",
-      "destination": "/install.html"
+      "source": "/r/:id/agentic.md",
+      "destination": "/api/agent/project?id=:id"
+    },
+    {
+      "source": "/agentic.md",
+      "destination": "/agents.md"
     },
     {
       "source": "/proof/:id",

@@ -34,7 +34,7 @@ def test_post_forms_offer_three_private_first_audiences():
     assert "Save privately" in manual
     assert "visibility:'private'" in (ROOT / "site/project-update.js").read_text()
     assert 'id="run-audience"' in INDEX  # Audience changes happen in explicit saved-run review.
-    assert "Only me - just you" in INDEX
+    assert "Only me · just you" in INDEX
 
 
 def test_profile_manages_an_owner_only_list_by_handle():
@@ -67,4 +67,4 @@ def test_close_friends_detail_does_not_claim_link_access():
         )
     ]
     assert "Saved for Close friends" in detail
-    assert "Only people on your Close friends list can open this run." in detail
+    assert "Only people on the author’s Close friends list can open this run." in detail
