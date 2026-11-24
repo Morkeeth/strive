@@ -2,8 +2,8 @@
 
 What this proves. A real Chromium loads the shipped `site/index.html`, signs in as a TEST DATA
 owner, opens a run that was saved through the same REST path the browser Save uses, and finds the
-activity bars in the DOM. It then RELOADS the page, so the second render is served from the
-database and not from anything the first render left in memory, and finds the same recorded bars again.
+activity line in the DOM. It then RELOADS the page and checks that the database-backed render
+contains the same recorded points again.
 
 What this does not prove. The stack is the repository's disposable stack: PGlite plus the
 PostgREST and auth shim in `scripts/disposable-supabase.mjs`, not a hosted Supabase project. It has
@@ -34,6 +34,7 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 SB_ORIGIN = "http://127.0.0.1:54321"      # the literal site/index.html is built against
+RIDGE_SELECTOR = ".post-trail svg .activity-line"
 BINS = 50
 RIDGE = [4 if i % 7 == 0 else i % 3 for i in range(BINS)]
 WORKER_BINS = [2 if 10 < i < 30 else 0 for i in range(BINS)]
@@ -120,9 +121,14 @@ def proxy(route, disposable):
 
 
 def ridge_state(page) -> dict:
-    return page.evaluate("""() => {const s=document.querySelector('.post-trail svg');
-      return s ? {present:true,bars:[...s.querySelectorAll('.activity-bar')].map(n=>({height:n.getAttribute('height'),title:n.textContent})),
-      ticks:s.querySelectorAll('.activity-commit').length,label:s.getAttribute('aria-label')} : {present:false};}""")
+    return page.evaluate("""selector => {
+      const line = document.querySelector(selector);
+      if (!line) return {present: false};
+      const svg = line.closest('svg');
+      return {present: true, points: line.points.numberOfItems,
+        coordinates: line.getAttribute('points'), ticks: svg.querySelectorAll('.activity-commit').length,
+        label: svg.getAttribute('aria-label')};
+    }""", RIDGE_SELECTOR)
 
 
 def main() -> int:
@@ -182,25 +188,25 @@ def main() -> int:
                 failures.append("the control run drew a ridge, so the positive result proves nothing")
 
             page.goto(base + "/?run=" + with_ridge, wait_until="networkidle")
-            page.locator(".post-trail .activity-bar").first.wait_for(state="visible")
+            page.locator(RIDGE_SELECTOR).wait_for(state="visible")
             first = ridge_state(page)
             results.append(("ridge run", "first load", first))
             if not first["present"]:
                 failures.append("the ridge did not render on the first load")
 
             page.reload(wait_until="networkidle")
-            page.locator(".post-trail .activity-bar").first.wait_for(state="visible")
+            page.locator(RIDGE_SELECTOR).wait_for(state="visible")
             second = ridge_state(page)
             results.append(("ridge run", "after reload", second))
             if not second["present"]:
                 failures.append("the ridge did not survive the reload")
             elif second != first:
                 failures.append("the ridge changed across the reload: %r then %r" % (first, second))
-            elif len(second["bars"]) != sum(bool(n) or i in COMMIT_BINS for i,n in enumerate(RIDGE)):
+            elif second["points"] != len(RIDGE):
                 failures.append("recorded time windows lost across reload")
             elif second["ticks"] != len(COMMIT_BINS):
                 failures.append("commit ticks lost across the reload")
-            elif second["label"] != "Tool calls / min; idle gaps compressed":
+            elif second["label"] != "Tool calls / min. All recorded windows retained, including inactivity.":
                 failures.append("the reloaded ridge fell back from wall time: " + str(second["label"]))
 
             out = Path(os.environ.get("RIDGE_RELOAD_RECEIPTS")
