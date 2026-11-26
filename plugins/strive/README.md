@@ -1,8 +1,7 @@
 # STRIVE for Claude Code, Cursor and Codex
 
 The session-end hook records nothing until you register a project. Nothing
-leaves this machine until you press **Save run** in STRIVE or explicitly approve
-a direct private save.
+leaves this machine until you press **Save run** in STRIVE.
 
 Capture selected real coding sessions from named projects, see the cards together, and save them privately. Sharing stays a separate choice in STRIVE. Python 3.9+ is the only runtime requirement; capture needs no model API key.
 
@@ -10,7 +9,7 @@ Capture selected real coding sessions from named projects, see the cards togethe
 
 1. Install the plugin for your editor below and restart it.
 2. In Claude Code, run `/strive:strive` and name the project and session you want. In Cursor, invoke the STRIVE skill and give it the same request. The skill checks the local source, captures the selected sitting and opens the card for your review.
-3. Add your own result and project screenshot, then choose **Save run** with **Only me** in STRIVE. Saving needs a signed-in account. A Connect token is optional for a separately approved direct agent save; the token is never part of this first-run path.
+3. Add your own result and project screenshot, then choose **Save run** with **Only me** in STRIVE. Saving needs a signed-in account.
 
 The card preview is local until you save it. Check the selected source and measurements before the final step.
 
@@ -43,11 +42,11 @@ The Cursor installer copies a self-contained native plugin to `~/.cursor/plugins
 
 Cursor can also import Claude plugins automatically. The Claude-installed copy therefore has an explicit empty Cursor component map. Its imported entry is labelled “STRIVE for Claude Code (inactive in Cursor)” and contributes no second skill or hook; use the native STRIVE local entry in Cursor. The installer does not change your third-party import setting or disable other plugins.
 
-Build a portable bundle without installing: `python3 scripts/strive-plugin.py build /new/bundle/strive`. It includes both native manifests and a full copy of the same Python capture runtime, with no symlinks or downloads. Both clients support a local `--plugin-dir /new/bundle/strive` for testing. There is no marketplace publication in this workflow.
+Build a portable bundle without installing: `python3 scripts/strive-plugin.py build /new/bundle/strive`. It includes both native manifests and the Python runtime for local capture and review, with no symlinks or downloads. Both clients support a local `--plugin-dir /new/bundle/strive` for testing. There is no marketplace publication in this workflow.
 
 From the installed bundle, use `python3 scripts/strive.py --help`. Start with `doctor`, register each named project, choose a source with `sessions --project NAME`, capture selected sittings, then `review` their draft IDs. The review lists exactly which sessions and projects count, shows measured models only, and exposes the exact metrics bytes. The existing STRIVE batch preview lets you select and save cards as Only me.
 
-For a direct private save, configure a Connect token as the environment variable `STRIVE_AGENT_TOKEN`, then use `save REVIEW_ID --approve REVIEW_ID` after review. Approval is bound to immutable payloads. Network errors leave an unknown result; retry uses the same request ID. Existing runs retain and report their stored audience. Tokens, transcripts and absolute source paths never go in the request. Repository-relative file names leave the machine only with the separate Code Route opt-in below. No share command is provided.
+Save from the signed-in STRIVE browser after inspecting the review. Repository-relative file names are included only with the separate Code Route opt-in below.
 
 Completion hooks are inert until a project is registered with `--hooks`. They queue only local references, are bounded to three seconds, and never call the network. Run `collect` to parse queued sessions. Remove opt-in by registering that project again without `--hooks`. Cursor transcripts must be enabled. Child transcripts are excluded to avoid counting a parent and its workers as independent sessions.
 

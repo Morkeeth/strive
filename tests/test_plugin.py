@@ -9,7 +9,7 @@ import hashlib
 import zipfile
 
 import pytest
-from agentgrinder import plugin
+from agentgrinder import plugin, plugin_upload
 
 
 def selected(tmp_path, name='Orchard', session='s1'):
@@ -63,7 +63,7 @@ def test_review_is_immutable_and_missing_counts_unknown(tmp_path):
     frozen=db.execute('select payload from reviews').fetchone()[0]
     db.execute('delete from drafts');db.commit()
     assert db.execute('select payload from reviews').fetchone()[0]==frozen
-    with pytest.raises(ValueError,match='Approve'):plugin.save(db,review['review'],'different','http://localhost')
+    with pytest.raises(ValueError,match='Approve'):plugin_upload.save(db,review['review'],'different','http://localhost')
 
 
 def test_hooks_are_opt_in_bounded_and_keep_only_references(tmp_path,monkeypatch):
@@ -103,9 +103,9 @@ def test_ambiguous_save_retries_same_request_and_other_accounts_do_not_reuse_rec
     base='http://127.0.0.1:'+str(server.server_port)
     token='ag_'+str(uuid.uuid4())+str(uuid.uuid4())
     try:
-        first=plugin.save(db,rid,rid,base,token)
+        first=plugin_upload.save(db,rid,rid,base,token)
         assert first['results'][0]['status'].startswith('unknown')
-        second=plugin.save(db,rid,rid,base,token)
+        second=plugin_upload.save(db,rid,rid,base,token)
         assert second['results'][0]['existing'] is True
         assert second['results'][0]['review_required'] is True
         preview=second['results'][0]['preview_url'].split('#import=gz.')[1]
@@ -115,9 +115,9 @@ def test_ambiguous_save_retries_same_request_and_other_accounts_do_not_reuse_rec
         assert len(saved)==1 and received[0][0]==received[1][0]
         assert received[0][1]['visibility']=='private'
         assert 'PRIVATE SENTINEL' not in json.dumps(received)
-        plugin.save(db,rid,rid,base,token)
+        plugin_upload.save(db,rid,rid,base,token)
         assert len(received)==2 # resolved local receipt prevents a third send
-        plugin.save(db,rid,rid,base,'ag_'+str(uuid.uuid4())+str(uuid.uuid4()))
+        plugin_upload.save(db,rid,rid,base,'ag_'+str(uuid.uuid4())+str(uuid.uuid4()))
         assert len(received)==3 and len(saved)==2 # different Connect identity is a different operation
     finally:server.shutdown();server.server_close()
 
@@ -157,8 +157,11 @@ def test_public_marketplace_package_matches_capture_source():
     source=root/'agentgrinder'
     source_files={p.relative_to(source) for p in source.rglob('*.py')}
     bundled_files={p.relative_to(bundled/'runtime/agentgrinder') for p in (bundled/'runtime/agentgrinder').rglob('*.py')}
-    assert source_files==bundled_files
-    for relative in source_files:
+    standalone_only = {Path(name) for name in (
+        '__main__.py', 'agent_api.py', 'cli.py', 'connect.py', 'mcp_server.py', 'plugin_upload.py', 'sync.py',
+    )}
+    assert source_files - standalone_only == bundled_files
+    for relative in bundled_files:
         assert (source/relative).read_bytes()==(bundled/'runtime/agentgrinder'/relative).read_bytes()
     assert (root/'LICENSE').read_bytes()==(bundled/'LICENSE').read_bytes()
     assert (root/'scripts/strive-plugin.py').read_bytes()==(bundled/'scripts/strive-plugin.py').read_bytes()

@@ -11,7 +11,7 @@ Two states, and the card says which one it is in:
 
 `resolve` reads `git config github.user` plus an explicit handle from the
 command line or the environment. It makes no network call, registers no application and changes
-no sign-in. It never opens a GitHub CLI credential file.
+no sign-in. The Git config value is a public username.
 
 `of_run` is the pure half. It reads the run dict only, so a card rendered from the same run JSON
 on two machines is the same card.

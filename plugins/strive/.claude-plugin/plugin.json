@@ -1,10 +1,10 @@
 {
   "name": "strive",
-  "displayName": "STRIVE",
-  "version": "0.3.5",
-  "description": "Turn selected real coding sessions into private run cards across named projects. Review first, save privately, share deliberately.",
+  "displayName": "STRIVE Session Cards",
+  "version": "0.3.6",
+  "description": "Turn coding sessions for an iOS app, B2B SaaS, or addiction support app into run cards. Review locally and save privately in STRIVE.",
   "author": {
-    "name": "STRIVE"
+    "name": "Oscar Morkeeth"
   },
   "homepage": "https://striverun.app",
   "documentationUrl": "https://striverun.app/plugins/install.md",

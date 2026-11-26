@@ -1,6 +1,6 @@
-"""STRIVE plugin: selected local capture, immutable review, explicitly private save.
+"""STRIVE plugin: selected local capture and review.
 
-No network operation exists except save(). Hooks only queue references for opted-in
+Save through the signed-in STRIVE browser. Hooks only queue references for opted-in
 projects. Source text is parsed locally and never stored in the plugin database.
 """
 from __future__ import annotations
@@ -15,13 +15,10 @@ import re
 import sqlite3
 import sys
 import tempfile
-import urllib.error
-import urllib.request
 from urllib.parse import urlsplit
-import uuid
 from datetime import datetime
 
-VERSION = '0.3.5'
+VERSION = '0.3.6'
 MAX_SOURCE = 64 * 1024 * 1024
 FIELDS = {'harness', 'capture_metadata', 'project', 'turns_typed', 'duration_s',
           'tool_calls', 'files_touched', 'commits', 'started', 'rhythm', 'ridge',
@@ -295,54 +292,6 @@ def review(db, root, ids, base='https://striverun.app'):
     return {'review':token,'projects':groups,'sessions':len(drafts),'file':str(target),'preview_url':url,'uploaded':0}
 
 
-class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl): return None
-
-
-def save(db, review_id, approved, base, token=None):
-    if approved != review_id: raise ValueError('Approve the exact reviewed payload with --approve <review ID>.')
-    base = origin(base)
-    token = token or os.environ.get('STRIVE_AGENT_TOKEN','')
-    if not re.fullmatch(r'ag_[a-f0-9-]{72}', token):
-        raise ValueError('Set STRIVE_AGENT_TOKEN from Connect in the environment; never pass it in a prompt.')
-    row = db.execute('select payload from reviews where id=?',(review_id,)).fetchone()
-    if row is None: raise ValueError('Review not found.')
-    bundle = json.loads(row[0])
-    if digest(bundle) != review_id: raise ValueError('Review integrity check failed; make a new review.')
-    account = digest(token.encode())
-    results = []
-    for payload in bundle['runs']:
-        if payload.get('visibility') != 'private' or set(payload)-FIELDS-{'title','visibility'}:
-            raise ValueError('Only the reviewed private metrics payload may be sent.')
-        revision = payload['measurement_revision']
-        args = (review_id, revision, base, account)
-        request_id = str(uuid.uuid5(uuid.NAMESPACE_URL, encoded([base,account,revision])))
-        with db: db.execute('insert or ignore into saves values(?,?,?,?,?,null)',args+(request_id,))
-        prior = db.execute('select request,result from saves where review=? and revision=? and origin=? and account=?',args).fetchone()
-        if prior['result']:
-            results.append(json.loads(prior['result'])); continue
-        req = urllib.request.Request(base+'/api/agent/runs',data=encoded(payload).encode(),method='POST',
-            headers={'Content-Type':'application/json','Authorization':'Bearer '+token,'Idempotency-Key':prior['request']})
-        try:
-            with urllib.request.build_opener(NoRedirect).open(req,timeout=20) as response:
-                result = json.load(response)
-            run_id = str(uuid.UUID(str(result.get('id'))))
-            if not isinstance(result.get('existing'),bool) or result.get('visibility') not in ('private','public','link','close_friends','crew','anonymous'):
-                raise ValueError()
-        except (OSError, ValueError, AttributeError):
-            results.append({'status':'unknown; retry this same review','project':payload['project']})
-            break
-        result = {'id':run_id,'existing':result['existing'],'visibility':result['visibility'],'project':payload['project'],'url':base+'/r/'+run_id}
-        if result['visibility']=='private':
-            preview={**payload,'visibility':'private','review_run_id':run_id}
-            packed=base64.urlsafe_b64encode(gzip.compress(encoded(preview).encode(),mtime=0)).decode().rstrip('=')
-            result.update(review_required=True,preview_url=base+'/#import=gz.'+packed)
-        else:result['review_required']=False
-        with db: db.execute('update saves set result=? where review=? and revision=? and origin=? and account=?',(encoded(result),)+args)
-        results.append(result)
-    return {'review':review_id,'results':results,'sharing':'No sharing action performed; stored audience is reported for each result.'}
-
-
 def hook(db, harness, event):
     # Bounded stdin is enforced by main. Never store text, model choice, email, commands or tokens.
     if harness=='claude' and (os.environ.get('CURSOR_VERSION') or event.get('cursor_version')):
@@ -436,7 +385,6 @@ def main(argv=None):
     q = sub.add_parser('sessions'); q.add_argument('--project',required=True)
     q = sub.add_parser('sittings'); q.add_argument('--harness',choices=['claude','cursor','codex'],required=True); q.add_argument('--source',required=True)
     q = sub.add_parser('review'); q.add_argument('drafts',nargs='+'); q.add_argument('--base-url',default='https://striverun.app')
-    q = sub.add_parser('save'); q.add_argument('review'); q.add_argument('--approve',required=True); q.add_argument('--base-url',default='https://striverun.app')
     q = sub.add_parser('hook'); q.add_argument('--harness',choices=['claude','cursor'],required=True)
     sub.add_parser('collect'); sub.add_parser('status'); sub.add_parser('doctor')
     q = sub.add_parser('remove'); q.add_argument('draft')
@@ -470,7 +418,6 @@ def main(argv=None):
             elif args.command=='sessions': result=sessions(db,args.project)
             elif args.command=='sittings': result=list_sittings(args.harness,args.source)
             elif args.command=='review': result=review(db,root,args.drafts,args.base_url)
-            elif args.command=='save': result=save(db,args.review,args.approve,args.base_url)
             elif args.command=='hook':
                 raw=sys.stdin.buffer.read(65537)
                 if len(raw)>65536: return 0
@@ -488,7 +435,7 @@ def main(argv=None):
                 db.execute('delete from drafts where id=?',(args.draft,)); result={'removed':db.total_changes}
             else:
                 result=status(db)
-                if args.command=='doctor': result.update(python=sys.version.split()[0],state_writable=os.access(root,os.W_OK),token_available=bool(os.environ.get('STRIVE_AGENT_TOKEN')),network_checked=False)
+                if args.command=='doctor': result.update(python=sys.version.split()[0],state_writable=os.access(root,os.W_OK),network_checked=False)
         print(json.dumps(result,indent=2))
         return 0
     except (ValueError,TypeError,OSError,sqlite3.Error) as error:
